@@ -1,0 +1,95 @@
+{% extends "_template.html" %}
+
+{% block title %}{% if item %}Edit{% else %}Create{% endif %} Item{% if item %}: {{ item.full_code }}{% endif %} - Orion Sphere LRP{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="rules-management">
+        <h1>{% if item %}Edit{% else %}Create{% endif %} Item{% if item %}: {{ item.full_code }}{% endif %}</h1>
+        {% if item %}
+        <div class="alert alert-info mb-4">
+            <strong>Base Cost:</strong> {{ item.base_cost_calc(0) if item.base_cost_calc(0) is not none else '-' }}
+            &nbsp;|&nbsp;
+            <strong>Mod Cost:</strong> {{ item.get_modification_cost() if item.get_modification_cost() is not none else '-' }}
+            &nbsp;|&nbsp;
+            <strong>Maintenance Cost:</strong> {{ item.get_maintenance_cost() if item.get_maintenance_cost() is not none else '-' }}
+        </div>
+        {% endif %}
+        <form method="POST">
+            <div class="form-group mb-3">
+                <label for="blueprint_id">Blueprint</label>
+                <select class="form-select" id="blueprint_id" name="blueprint_id" required>
+                    <option value="" disabled {% if not item %}selected{% endif %}>Select Blueprint</option>
+                    {% for bp in blueprints %}
+                    <option value="{{ bp.id }}" {% if item and item.blueprint_id == bp.id %}selected{% endif %}>{{ bp.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group mb-3">
+                <label for="expiry">Expiry</label>
+                <input type="number" class="form-control" id="expiry" name="expiry" value="{{ item.expiry if item and item.expiry else '' }}" min="0">
+                <small class="form-text text-muted">Leave blank for no expiry.</small>
+            </div>
+            {% if item %}
+            <div class="form-group mb-3">
+                <label>Base Mods (from Blueprint)</label>
+                <div>
+                    {% set bp = blueprints[item.blueprint_id] %}
+                    {% set bp_mod_counts = mod_instances_by_blueprint[bp.id] %}
+                    {% if bp_mod_counts %}
+                        {% for mod, count in bp_mod_counts %}
+                            <span class="badge bg-secondary">
+                                {{ mod.name }}{% if count > 1 %} <span class="badge bg-light text-dark">x{{ count }}</span>{% endif %}
+                            </span>
+                        {% endfor %}
+                    {% else %}
+                        <span class="text-muted">None</span>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+            <div class="form-group mb-4">
+                <label>Mods Applied</label>
+                <div id="mods-applied-list">
+                    {% set initial_mods = initial_mods if initial_mods is defined else [] %}
+                    {% if initial_mods|length == 0 %}
+                        <div class="input-group d-flex align-items-center mb-2 mod-row">
+                            <select class="form-select mod-select flex-grow-1" name="mods_applied[]">
+                                <option value="" disabled selected>Select mod...</option>
+                                {% for mod in mods %}
+                                <option value="{{ mod.id }}">{{ mod.name }}</option>
+                                {% endfor %}
+                            </select>
+                            <button type="button" class="btn btn-outline-danger remove-mod flex-shrink-0" tabindex="-1" style="margin-left: 0.5rem; display:none;">&times;</button>
+                        </div>
+                    {% else %}
+                        {% for mod_id in initial_mods %}
+                        <div class="input-group d-flex align-items-center mb-2 mod-row">
+                            <select class="form-select mod-select flex-grow-1" name="mods_applied[]">
+                                <option value="" disabled>Select mod...</option>
+                                {% for mod in mods %}
+                                <option value="{{ mod.id }}" {% if mod.id == mod_id %}selected{% endif %}>{{ mod.name }}</option>
+                                {% endfor %}
+                            </select>
+                            <button type="button" class="btn btn-outline-danger remove-mod flex-shrink-0" tabindex="-1" style="margin-left: 0.5rem;">&times;</button>
+                        </div>
+                        {% endfor %}
+                    {% endif %}
+                </div>
+                <button type="button" class="btn btn-outline-primary" id="add-mod">Add Mod</button>
+                <small class="form-text text-muted">You can add the same mod multiple times.</small>
+            </div>
+            <div class="form-group">
+                <button type="submit" class="btn btn-primary">{% if item %}Save Changes{% else %}Create{% endif %}</button>
+                <a href="{{ url_for('items.list') }}" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<input type="hidden" id="item-blueprint-mods-data" value='{{ mods|tojson|safe }}'>
+<script src="{{ url_for('static', filename='js/item_blueprints_edit.js') }}"></script>
+{% endblock %} 

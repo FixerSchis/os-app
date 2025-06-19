@@ -1,0 +1,246 @@
+{% extends "_template.html" %}
+
+{% block title %}Enter Pack Contents - {{ character.name }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>Enter Pack Contents - {{ character.name }}</h1>
+    
+    <form method="POST">
+        <!-- Energy Chits -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Energy Chits</h5>
+            </div>
+            <div class="card-body">
+                <div class="form-group">
+                    <label for="energy_chits">Total Value of Energy Chits</label>
+                    <input type="number" class="form-control" id="energy_chits" name="energy_chits" 
+                           value="{{ pack.energy_credits }}" min="0">
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Left Column -->
+            <div class="col-md-6">
+                <!-- Items -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">Items</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label for="items">Select Items</label>
+                            <select class="form-control select2" id="items" name="items[]" multiple>
+                                {% for item in items %}
+                                <option value="{{ item.id }}" {% if item.id|string in pack.items %}selected{% endif %}>
+                                    {{ item.blueprint.name }} ({{ item.full_code }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Exotic Substances -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">Exotic Substances</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label for="exotics">Select Exotic Substances</label>
+                            <select class="form-control select2" id="exotics" name="exotic_ids[]" multiple>
+                                {% for exotic in exotics %}
+                                <option value="{{ exotic.id }}" 
+                                    {% if exotic.id|string in pack.exotic_substances|map(attribute='id')|list %}selected{% endif %}>
+                                    {{ exotic.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div id="exotic_amounts">
+                            {% for exotic in exotics %}
+                            <div class="form-group exotic-amount" data-exotic-id="{{ exotic.id }}" style="display: none;">
+                                <label for="exotic_amount_{{ exotic.id }}">Amount of {{ exotic.name }}</label>
+                                <input type="number" class="form-control" id="exotic_amount_{{ exotic.id }}" 
+                                       name="exotic_amount_{{ exotic.id }}" min="1"
+                                       value="{{ pack.exotic_substances|selectattr('id', 'equalto', exotic.id|string)|map(attribute='amount')|first|default(1) }}">
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cybernetics -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">Cybernetics</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label for="cybernetics">Select Cybernetics</label>
+                            <select class="form-control select2-cybernetics" id="cybernetics" name="cybernetics[]" multiple>
+                                {% for cyber in cybernetics %}
+                                <option value="{{ cyber.id }}" {% if cyber.id|string in pack.cybernetics %}selected{% endif %}>
+                                    {{ cyber.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column -->
+            <div class="col-md-6">
+                <!-- Conditions -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Conditions</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label for="conditions">Select Conditions</label>
+                            <select class="form-control select2" id="conditions" name="condition_ids[]" multiple>
+                                {% for condition in conditions %}
+                                <option value="{{ condition.id }}" 
+                                    {% if condition.id|string in pack.conditions|map(attribute='id')|list %}selected{% endif %}>
+                                    {{ condition.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div id="condition_durations">
+                            {% for condition in conditions %}
+                            <div class="form-group condition-duration" data-condition-id="{{ condition.id }}" style="display: none;">
+                                <label for="condition_duration_{{ condition.id }}">Remaining Duration of {{ condition.name }}</label>
+                                <input type="number" class="form-control" id="condition_duration_{{ condition.id }}" 
+                                       name="condition_duration_{{ condition.id }}" min="0"
+                                       value="{{ pack.conditions|selectattr('id', 'equalto', condition.id|string)|map(attribute='duration')|first|default(condition.stages[0].duration if condition.stages else 0) }}">
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Samples -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Samples</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label for="samples">Select Samples</label>
+                            <select class="form-control select2" id="samples" name="samples[]" multiple>
+                                {% for sample in samples %}
+                                <option value="{{ sample.id }}" {% if sample.id|string in pack.samples %}selected{% endif %}>
+                                    {{ sample.name }}
+                                </option>
+                                {% endfor %}
+                                <option value="new">+ Add a new sample</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Research Teams -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">Research Teams</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label for="research_teams">Select Research Teams</label>
+                            <select class="form-control select2" id="research_teams" name="research_teams[]" multiple>
+                                {% for faction in factions %}
+                                <option value="{{ faction.id }}" {% if faction.id|string in pack.research_teams %}selected{% endif %}>
+                                    {{ faction.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Submit Section -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <button type="submit" class="btn btn-primary">Save Pack Contents</button>
+                    <div class="form-check">
+                        <input type="checkbox" class="form-check-input" id="confirm_complete" name="confirm_complete">
+                        <label class="form-check-label" for="confirm_complete">Confirm pack contents are complete</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- New Sample Modal -->
+<div class="modal fade" id="newSampleModal" tabindex="-1" aria-labelledby="newSampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="newSampleModalLabel">Add New Sample</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="newSampleForm">
+                    <div class="form-group">
+                        <label for="sample_name">Sample Name</label>
+                        <input type="text" class="form-control" id="sample_name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="sample_type">Sample Type</label>
+                        <select class="form-control" id="sample_type" required>
+                            <option value="">Select a type...</option>
+                            {% for type in ScienceType %}
+                            <option value="{{ type.value }}">{{ type.value }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="sample_tags">Sample Tags</label>
+                        <select class="form-control select2" id="sample_tags" multiple>
+                            {% for tag in sample_tags %}
+                            <option value="{{ tag.id }}">{{ tag.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="saveNewSample">Save Sample</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<link href="{{ url_for('static', filename='external/css/select2.min.css') }}" rel="stylesheet" />
+<style>
+    .select2-container {
+        width: 100% !important;
+    }
+    .sample-entry {
+        position: relative;
+    }
+    .remove-sample {
+        position: absolute;
+        right: 0;
+        top: 0;
+    }
+</style>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script src="{{ url_for('static', filename='js/downtime/enter_pack_contents.js') }}"></script>
+{% endblock %} 

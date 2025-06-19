@@ -1,0 +1,158 @@
+{% extends '_template.html' %}
+{% from "macros/wiki.html" import wiki_page_select %}
+
+{% block title %}Research - Admin - Orion Sphere LRP{% endblock %}
+
+{% block content %}
+<h1>{{ research and 'Edit' or 'Create' }} Research Project</h1>
+<form method="post">
+    <div class="mb-3">
+        <label for="project_name" class="form-label">Project Name</label>
+        <input type="text" class="form-control" id="project_name" name="project_name" value="{{ research.project_name if research else '' }}" required>
+    </div>
+    <div class="mb-3">
+        <label for="type" class="form-label">Type</label>
+        <select class="form-select" id="type" name="type" required onchange="toggleArtefactItem()">
+            {% for value, label in ResearchType.descriptions().items() %}
+            <option value="{{ value }}" {% if research and research.type.value == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="mb-3" id="artefact-item-group" style="display: none;">
+        <label class="form-label">Artefact Item</label>
+        <div>
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="artefact_option" id="select_existing" value="existing" checked>
+                <label class="form-check-label" for="select_existing">Select Existing Item</label>
+            </div>
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="artefact_option" id="create_new" value="new">
+                <label class="form-check-label" for="create_new">Create New Artefact Item</label>
+            </div>
+        </div>
+        <div id="existing-item-select" class="mt-2">
+            <select class="form-select" id="item_id" name="item_id">
+                <option value="">-- Select Item --</option>
+                {% for item in items %}
+                <option value="{{ item.id }}" {% if research and research.item_id == item.id %}selected{% endif %}>{{ item.blueprint.name }} ({{ item.full_code }})</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div id="new-item-type-select" class="mt-2" style="display: none;">
+            <select class="form-select" id="item_type_id" name="item_type_id">
+                <option value="">-- Select Item Type --</option>
+                {% for item_type in item_types %}
+                <option value="{{ item_type.id }}">{{ item_type.name }} ({{ item_type.id_prefix }})</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+    <div class="mb-3">
+        <label for="description" class="form-label">Description</label>
+        <textarea class="form-control" id="description" name="description" rows="3">{{ research.description if research else '' }}</textarea>
+    </div>
+
+    <h2 class="mt-4">Stages</h2>
+    <div id="stages-container"></div>
+    <div class="mb-4">
+        <button type="button" id="add-stage" class="btn btn-outline-primary">
+            <i class="fas fa-plus"></i> Add Stage
+        </button>
+    </div>
+
+    <input type="hidden" id="stages-json" name="stages_json">
+    
+    <button type="submit" class="btn btn-primary">{{ research and 'Save Changes' or 'Create Project' }}</button>
+    <a href="{{ url_for('research.research_list') }}" class="btn btn-secondary">Cancel</a>
+</form>
+
+<script>
+function toggleArtefactItem() {
+    var type = document.getElementById('type').value;
+    var group = document.getElementById('artefact-item-group');
+    group.style.display = (type === 'artefact') ? 'block' : 'none';
+}
+// Set initial display on page load
+window.addEventListener('DOMContentLoaded', function() {
+    toggleArtefactItem();
+    // Toggle between existing and new item
+    function toggleArtefactOption() {
+        var existing = document.getElementById('existing-item-select');
+        var createNew = document.getElementById('new-item-type-select');
+        var selected = document.querySelector('input[name="artefact_option"]:checked').value;
+        if (selected === 'existing') {
+            existing.style.display = 'block';
+            createNew.style.display = 'none';
+        } else {
+            existing.style.display = 'none';
+            createNew.style.display = 'block';
+        }
+    }
+    var radios = document.querySelectorAll('input[name="artefact_option"]');
+    radios.forEach(function(radio) {
+        radio.addEventListener('change', toggleArtefactOption);
+    });
+    toggleArtefactOption();
+});
+</script>
+
+<script>
+window.REQUIREMENT_TYPE_OPTIONS_HTML = `{% for value, label in ResearchRequirementType.descriptions().items() %}<option value="{{ value }}">{{ label }}</option>{% endfor %}`;
+window.ITEM_TYPE_OPTIONS_HTML = `{% for item_type in item_types %}<option value="{{ item_type.id }}">{{ item_type.name }} ({{ item_type.id_prefix }})</option>{% endfor %}`;
+window.EXOTIC_TYPE_OPTIONS_HTML = `{% for exotic in exotics %}<option value="{{ exotic.id }}">{{ exotic.name }}</option>{% endfor %}`;
+window.SCIENCE_TYPE_OPTIONS_HTML = `{% for value, label in ScienceType.descriptions().items() %}<option value="{{ value }}">{{ label }}</option>{% endfor %}`;
+window.SAMPLE_TAG_OPTIONS_HTML = `{% for tag in sample_tags %}<option value="{{ tag.name }}">{{ tag.name }}</option>{% endfor %}`;
+</script>
+{% if research %}
+<input type="hidden" id="initial-stages-json" value='{{ research.stages_to_json()|tojson|safe }}'>
+{% else %}
+<input type="hidden" id="initial-stages-json" value='[{"stage_number": 1, "name": "Stage 1", "description": "", "unlock_requirements": []}]'>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script src="{{ url_for('static', filename='js/wiki_page_autocomplete.js') }}"></script>
+<script src="{{ url_for('static', filename='js/research_stages.js') }}"></script>
+<script>
+$(document).ready(function() {
+    // Show/hide artefact item group based on type
+    function toggleArtefactItem() {
+        if ($('#type').val() === 'artefact') {
+            $('#artefact-item-group').show();
+        } else {
+            $('#artefact-item-group').hide();
+        }
+    }
+    $('#type').on('change', toggleArtefactItem);
+    toggleArtefactItem();
+
+    // Show/hide selects based on radio
+    function toggleArtefactOption() {
+        if ($('input[name="artefact_option"]:checked').val() === 'existing') {
+            $('#existing-item-select').show();
+            $('#new-item-type-select').hide();
+        } else {
+            $('#existing-item-select').hide();
+            $('#new-item-type-select').show();
+        }
+    }
+    $('input[name="artefact_option"]').on('change', toggleArtefactOption);
+    toggleArtefactOption();
+
+    // Restore Select2
+    $('#item_id').select2({
+        theme: 'bootstrap-5',
+        width: '100%',
+        placeholder: 'Select an item',
+        allowClear: true
+    });
+    $('#item_type_id').select2({
+        theme: 'bootstrap-5',
+        width: '100%',
+        placeholder: 'Select an item type',
+        allowClear: true
+    });
+});
+</script>
+{% endblock %} 

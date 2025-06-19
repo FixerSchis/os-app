@@ -1,0 +1,18 @@
+Orion Sphere LRP - Downtime Completed
+
+Hello {{ user.first_name }},
+
+A downtime period that you had a pack for has been marked as completed.
+
+Your downtime activities have been processed and any rewards or consequences have been applied to your character.
+
+View your character at: {{ url_for('characters.edit', character_id=character.id, _external=True) }}
+
+If you have any questions about the results, please contact the game administrators.
+
+Best regards,
+The Orion Sphere LRP Team
+
+---
+This is an automated notification from Orion Sphere LRP.
+You can manage your notification preferences in your account settings. 

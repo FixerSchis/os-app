@@ -1,0 +1,72 @@
+{% extends "_template.html" %}
+
+{% block title %}{% if condition %}Edit{% else %}Create{% endif %} Condition - Orion Sphere LRP{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="rules-management">
+        <h1>{% if condition %}Edit{% else %}Create{% endif %} Condition</h1>
+        
+        <form method="POST" action="{% if condition %}{{ url_for('conditions.edit', id=condition.id) }}{% else %}{{ url_for('conditions.create') }}{% endif %}">
+            <div class="form-group mb-4">
+                <label for="name">Name</label>
+                <input type="text" class="form-control" id="name" name="name" value="{{ condition.name if condition else '' }}" required>
+            </div>
+            
+            <div id="stages-container">
+                <input type="hidden" id="stage-count" value="{{ condition.stages|length if condition and condition.stages else 0 }}">
+                {% if condition and condition.stages %}
+                    {% for stage in condition.stages %}
+                    <div class="stage-section card mb-4">
+                        <div class="card-body">
+                            <h5 class="card-title">Stage {{ stage.stage_number }}</h5>
+                            <input type="hidden" name="stages" value="{{ stage.stage_number }}">
+                            
+                            <div class="form-group mb-3">
+                                <label for="rp_effect_{{ stage.stage_number }}">RP Effect</label>
+                                <textarea class="form-control" id="rp_effect_{{ stage.stage_number }}" name="rp_effect_{{ stage.stage_number }}" rows="3" required>{{ stage.rp_effect }}</textarea>
+                            </div>
+                            
+                            <div class="form-group mb-3">
+                                <label for="diagnosis_{{ stage.stage_number }}">Diagnosis</label>
+                                <textarea class="form-control" id="diagnosis_{{ stage.stage_number }}" name="diagnosis_{{ stage.stage_number }}" rows="3" required>{{ stage.diagnosis }}</textarea>
+                            </div>
+                            
+                            <div class="form-group mb-3">
+                                <label for="cure_{{ stage.stage_number }}">Cure</label>
+                                <textarea class="form-control" id="cure_{{ stage.stage_number }}" name="cure_{{ stage.stage_number }}" rows="3" required>{{ stage.cure }}</textarea>
+                            </div>
+                            
+                            <div class="form-group mb-3">
+                                <label for="duration_{{ stage.stage_number }}">Duration (events)</label>
+                                <input type="number" class="form-control" id="duration_{{ stage.stage_number }}" name="duration_{{ stage.stage_number }}" value="{{ stage.duration }}" min="0" required>
+                            </div>
+                        </div>
+                        <div class="card-footer">
+                            <button type="button" class="btn btn-outline-danger remove-stage" data-stage="{{ stage.stage_number }}">
+                                <i class="fas fa-trash"></i> Remove Stage
+                            </button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% endif %}
+            </div>
+            
+            <div class="mb-4">
+                <button type="button" id="add-stage" class="btn btn-outline-primary">
+                    <i class="fas fa-plus"></i> Add Stage
+                </button>
+            </div>
+            
+            <div class="form-group">
+                <button type="submit" class="btn btn-primary">{% if condition %}Save Changes{% else %}Create{% endif %}</button>
+                <a href="{{ url_for('conditions.list') }}" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/conditions.js') }}"></script>
+{% endblock %} 

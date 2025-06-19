@@ -1,0 +1,32 @@
+Orion Sphere LRP - Event Ticket Assigned
+
+Hello {{ user.first_name }},
+
+An event ticket has been assigned/purchased for your character {{ character.name }}.
+
+Event Details:
+- Event Number: {{ event.event_number }}
+- Event Name: {{ event.name }}
+- Start Date: {{ event.start_date.strftime('%Y-%m-%d %H:%M') if event.start_date else 'TBD' }}
+- End Date: {{ event.end_date.strftime('%Y-%m-%d %H:%M') if event.end_date else 'TBD' }}
+- Location: {{ event.location or 'TBD' }}
+
+Ticket Details:
+- Ticket Type: {{ event_ticket.ticket_type.value if event_ticket.ticket_type else event_ticket.ticket_type }}
+- Price Paid: {{ event_ticket.price_paid }}
+- Meal Ticket: {{ 'Yes' if event_ticket.meal_ticket else 'No' }}
+- Requires Bunk: {{ 'Yes' if event_ticket.requires_bunk else 'No' }}
+- Character: {{ character.name }}
+
+You're all set for this event! Make sure to review the event details and prepare accordingly.
+
+View event details at: {{ url_for('events.view', event_id=event.id, _external=True) }}
+
+If you have any questions about the event or your ticket, please contact the event organizers.
+
+Best regards,
+The Orion Sphere LRP Team
+
+---
+This is an automated notification from Orion Sphere LRP.
+You can manage your notification preferences in your account settings. 

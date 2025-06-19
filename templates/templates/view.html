@@ -1,0 +1,124 @@
+{% extends "_template.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>{{ title }}</h1>
+        <div>
+            {% if current_user.is_authenticated and current_user.has_role('admin') %}
+            <button class="btn btn-primary print-btn" data-template-type="{{ template.type.value }}" data-id="{{ character.id if character else item.id }}">
+                <i class="fas fa-print"></i> Print
+            </button>
+            {% endif %}
+            {% if edit_url %}
+                <a href="{{ edit_url }}" class="btn btn-primary">Edit</a>
+            {% endif %}
+            <a href="{{ back_url }}" class="btn btn-secondary">Back to List</a>
+        </div>
+    </div>
+
+    <!-- Hidden fields for template dimensions -->
+    <input type="hidden" id="template-width" value="{{ template.width_mm }}">
+    <input type="hidden" id="template-height" value="{{ template.height_mm }}">
+
+    <div class="preview-container">
+        <div class="template-dimension-container template-dimension-container-{{ template.type.value if template else 'character_sheet' }}" data-template-type="{{ template.type.value if template else 'character_sheet' }}">
+            <div class="template-preview-row">
+                <div class="template-preview-item">
+                    <div class="template-content" id="frontPreview"
+                        data-width-mm="{{ template.width_mm }}"
+                        data-height-mm="{{ template.height_mm }}"
+                        data-css-b64="{{ css_b64 }}">
+                        {{ front_rendered | safe }}
+                    </div>
+                </div>
+                {% if template and template.has_back_side %}
+                <div class="template-preview-item">
+                    <div class="template-content template-content-back" id="backPreview"
+                        data-width-mm="{{ template.width_mm }}"
+                        data-height-mm="{{ template.height_mm }}"
+                        data-css-b64="{{ css_b64 }}">
+                        {{ back_rendered | safe }}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.template-content').forEach(function(el) {
+        const cssB64 = el.getAttribute('data-css-b64');
+        if (cssB64) {
+            const css = atob(cssB64);
+            const style = document.createElement('style');
+            style.textContent = css;
+            el.insertBefore(style, el.firstChild);
+        }
+    });
+});
+</script>
+{% endblock %}
+
+{% block styles %}
+{{ super() }}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/templates.css') }}">
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+$(document).ready(function() {
+    $('.print-btn').on('click', function() {
+        const templateType = $(this).data('template-type');
+        const id = $(this).data('id');
+        let endpoint;
+        
+        if (templateType === 'character_sheet') {
+            endpoint = `/templates/print/character/${id}`;
+        } else if (templateType === 'item_card') {
+            endpoint = `/templates/print/item/${id}`;
+        } else {
+            console.error('Unknown template type:', templateType);
+            return;
+        }
+        
+        fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                alert(data.error);
+                return;
+            }
+            // Open PDF in new window
+            const byteCharacters = atob(data.pdf_base64);
+            const byteNumbers = new Array(byteCharacters.length);
+            for (let i = 0; i < byteCharacters.length; i++) {
+                byteNumbers[i] = byteCharacters.charCodeAt(i);
+            }
+            const byteArray = new Uint8Array(byteNumbers);
+            const blob = new Blob([byteArray], { type: 'application/pdf' });
+            const pdfUrl = URL.createObjectURL(blob);
+            const newWindow = window.open(pdfUrl, '_blank');
+            newWindow.addEventListener('load', () => {
+                setTimeout(() => {
+                    URL.revokeObjectURL(pdfUrl);
+                }, 1000);
+            });
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Failed to generate PDF');
+        });
+    });
+});
+</script>
+{% endblock %}

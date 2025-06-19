@@ -1,0 +1,29 @@
+Orion Sphere LRP - Wiki Version Published
+
+Hello {{ user.first_name }},
+
+A new version of the wiki has been published and is now available.
+
+Change Details:
+- Change Message: {{ changelog.message }}
+- Changed By: {{ changelog.user.first_name if changelog.user else 'Unknown' }}
+- Pages Updated: {{ changelog.versions|length }} page(s)
+
+{% if changelog.versions %}
+Updated Pages:
+{% for version in changelog.versions %}- {{ version.page_slug }} (v{{ version.version_number }})
+{% endfor %}
+{% endif %}
+
+Check out the latest updates to the game rules and lore in the wiki.
+
+View wiki at: {{ url_for('wiki.index', _external=True) }}
+
+If you have any questions about the wiki updates, please contact the game administrators.
+
+Best regards,
+The Orion Sphere LRP Team
+
+---
+This is an automated notification from Orion Sphere LRP.
+You can manage your notification preferences in your account settings. 

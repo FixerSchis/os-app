@@ -1,0 +1,162 @@
+{% extends "_template.html" %}
+
+{% block title %}{{ 'Edit' if group else 'Create' }} Group - Admin - Orion Sphere LRP{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="groups-management">
+        <h1>{{ 'Edit' if group else 'Create' }} Group - Admin</h1>
+        
+        <div class="card mb-4">
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('groups.edit_group_admin', group_id=group.id) if group else url_for('groups.create_group_admin') }}">
+                    <div class="form-group">
+                        <label for="name">Group Name</label>
+                        <input type="text" class="form-control" id="name" name="name" value="{{ group.name if group else '' }}" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="type">Group Type</label>
+                        <select class="form-control" id="type" name="type" required>
+                            {% for type in GroupType.values() %}
+                            <option value="{{ type }}" {% if group and type == group.type %}selected{% endif %}>
+                                {{ GroupType.descriptions()[type] }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="bank_account">Bank Account</label>
+                        <input type="number" class="form-control" id="bank_account" name="bank_account" value="{{ group.bank_account if group else 0 }}" required>
+                    </div>
+                    
+                    {% if not group %}
+                    <div class="form-group">
+                        <label for="character_id">Initial Member</label>
+                        <select class="form-control" id="character_id" name="character_id">
+                            <option value="">Select a character...</option>
+                            {% for character in available_characters %}
+                            <option value="{{ character.id }}">{{ character.name }} ({{ character.faction.name }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="form-group">
+                        <label for="sample_ids">Group Samples</label>
+                        <select class="form-control select2" id="sample_ids" name="sample_ids" multiple>
+                            {% for sample in all_samples %}
+                            <option value="{{ sample.id }}" {% if sample.group_id == group.id %}selected{% endif %}>{{ sample.name }} ({{ sample.id }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="mt-4">
+                        <button type="submit" class="btn btn-primary">{{ 'Update' if group else 'Create' }} Group</button>
+                        <a href="{{ url_for('groups.group_list') }}" class="btn btn-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        {% if group %}
+        <div class="card">
+            <div class="card-header">
+                <h2>Group Members</h2>
+            </div>
+            <div class="card-body">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Faction</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for member in group.characters %}
+                        <tr>
+                            <td>{{ member.name }}</td>
+                            <td>{{ member.faction.name }}</td>
+                            <td>
+                                {% if group.characters|length > 1 %}
+                                <form method="POST" action="{{ url_for('groups.remove_character', group_id=group.id, character_id=member.id) }}" style="display: inline;">
+                                    <button type="submit" class="btn btn-danger btn-sm">Remove</button>
+                                </form>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                
+                <div class="mt-4">
+                    <h3>Add Member</h3>
+                    <form method="POST" action="{{ url_for('groups.add_character_admin', group_id=group.id) }}" class="form-inline">
+                        <div class="form-group mr-2">
+                            <select class="form-control" name="character_id" required>
+                                <option value="">Select a character...</option>
+                                {% for character in available_characters %}
+                                <option value="{{ character.id }}">{{ character.name }} ({{ character.faction.name }})</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-success">Add Member</button>
+                    </form>
+                </div>
+                
+                <div class="mt-4">
+                    <button type="button" class="btn btn-danger disband-btn" data-disband-url="{{ url_for('groups.disband_group', group_id=group.id) }}" data-warning="This action is not reversible and cannot be recovered.">Disband Group</button>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Disband Modal -->
+<div class="modal fade" id="disbandModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm Disband</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="disbandWarning" class="alert alert-warning">This action is not reversible and cannot be recovered.</div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="disbandForm" method="POST" style="display: inline;">
+                    <button type="submit" class="btn btn-danger">Disband Group</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+$(document).ready(function() {
+    $('#sample_ids').select2({
+        width: '100%',
+        placeholder: 'Select samples...'
+    });
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    const disbandButtons = document.querySelectorAll('.disband-btn');
+    const disbandModal = new bootstrap.Modal(document.getElementById('disbandModal'));
+    const disbandForm = document.getElementById('disbandForm');
+    disbandButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            disbandForm.action = this.dataset.disbandUrl;
+            disbandModal.show();
+        });
+    });
+});
+</script>
+{% endblock %} 

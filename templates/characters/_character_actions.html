@@ -1,0 +1,34 @@
+{% if character.character_id is not none %}
+    {% if user_is_admin %}
+    <a href="{{ url_for('characters.view', character_id=character.id) }}" class="btn btn-info btn-sm">View</a>
+    {% endif %}
+    {% if admin_context %}
+        <a href="{{ url_for('characters.edit', character_id=character.id, admin_context=1) }}" class="btn btn-primary btn-sm">Edit</a>
+    {% else %}
+        <a href="{{ url_for('characters.edit', character_id=character.id) }}" class="btn btn-primary btn-sm">Edit</a>
+    {% endif %}
+    {% if character.status == 'active' %}
+        {% if user_is_owner or user_is_admin %}
+            <button type="button" class="btn btn-warning btn-sm action-btn" data-action-url="{{ url_for('characters.retire_character', player_id=character.player_id, character_id=character.character_id, admin_context=1 if admin_context else None) }}" data-action-label="Retire {{ character.name }}?" data-warning="This action is not reversible without admin intervention, and even then, restoration is not guaranteed.">Retire</button>
+        {% endif %}
+        {% if user_is_admin %}
+            <button type="button" class="btn btn-danger btn-sm action-btn" data-action-url="{{ url_for('characters.kill_character', player_id=character.player_id, character_id=character.character_id, admin_context=1 if admin_context else None) }}" data-action-label="Mark {{ character.name }} as Dead?" data-warning="This action is not reversible without admin intervention, and even then, restoration is not guaranteed.">Mark Dead</button>
+        {% endif %}
+    {% elif character.status in ['retired', 'dead'] and user_is_admin and not has_active %}
+        <form method="POST" action="{{ url_for('characters.restore_character', player_id=character.player_id, character_id=character.character_id) }}" class="d-inline-block">
+            {% if admin_context %}<input type="hidden" name="admin_context" value="1">{% endif %}
+            <button type="submit" class="btn btn-success btn-sm">Restore</button>
+        </form>
+    {% endif %}
+{% else %}
+    {% if not has_active and (user_is_owner or user_is_admin) %}
+        <button type="button" class="btn btn-success btn-sm action-btn" data-action-url="{{ url_for('characters.activate_character', character_id=character.id) }}" data-action-label="Activate {{ character.name }}?" data-warning="Activating this character will make it your only active character. You can only have one active character at a time. Activation will spend any required character points and assign a character ID.">Activate</button>
+    {% endif %}
+    {% if admin_context %}
+        <a href="{{ url_for('characters.edit', character_id=character.id, admin_context=1) }}" class="btn btn-primary btn-sm">Edit</a>
+        <button type="button" class="btn btn-danger btn-sm action-btn" data-action-url="{{ url_for('characters.delete_character', character_id=character.id, admin_context=1) }}" data-action-label="Delete {{ character.name }}?" data-warning="This action is not reversible and cannot be recovered.">Delete</button>
+    {% else %}
+        <a href="{{ url_for('characters.edit', character_id=character.id) }}" class="btn btn-primary btn-sm">Edit</a>
+        <button type="button" class="btn btn-danger btn-sm action-btn" data-action-url="{{ url_for('characters.delete_character', character_id=character.id) }}" data-action-label="Delete {{ character.name }}?" data-warning="This action is not reversible and cannot be recovered.">Delete</button>
+    {% endif %}
+{% endif %} 

@@ -1,0 +1,38 @@
+{% extends "_template.html" %}
+
+{% from "macros/wiki.html" import wiki_page_select %}
+
+{% block title %}{% if medicament %}Edit{% else %}Create{% endif %} Medicament - Orion Sphere LRP{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="rules-management">
+        <h1>{% if medicament %}Edit{% else %}Create{% endif %} Medicament</h1>
+        
+        <form method="POST">
+            <div class="form-group">
+                <label for="name">Name</label>
+                <input type="text" class="form-control" id="name" name="name" value="{{ medicament.name if medicament else '' }}" required>
+            </div>
+            
+            {{ wiki_page_select(
+                input_id='wiki_page_autocomplete',
+                select_name='wiki_slug',
+                initial_slug=medicament.wiki_slug if medicament else '',
+                initial_title=initial_title,
+                required=true
+            ) }}
+            
+            <div class="form-group">
+                <button type="submit" class="btn btn-primary">{% if medicament %}Save Changes{% else %}Create{% endif %}</button>
+                <a href="{{ url_for('medicaments.list') }}" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script src="{{ url_for('static', filename='js/wiki_page_autocomplete.js') }}"></script>
+{% endblock %} 

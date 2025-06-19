@@ -1,0 +1,167 @@
+{% extends "_template.html" %}
+
+{% block title %}Banking - Orion Sphere LRP{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="banking-management">
+        <h1>Banking</h1>
+        
+        <div class="row">
+            <!-- Character Balance -->
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h2>Character Balance</h2>
+                    </div>
+                    <div class="card-body">
+                        {% if current_user.has_role('user_admin') %}
+                            <div class="form-group mb-3">
+                                <label for="character_select">Select Character</label>
+                                <select class="form-control select2" id="character_select">
+                                    <option value="">Select a character...</option>
+                                    {% for char in all_characters %}
+                                    <option value="{{ char.id }}" {% if selected_character and selected_character.id == char.id %}selected{% endif %}>
+                                        {{ char.name }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        {% endif %}
+                        
+                        {% if selected_character or active_character %}
+                            {% set character = selected_character or active_character %}
+                            <div class="balance-display">
+                                <h3>{{ character.name }}</h3>
+                                {% if current_user.has_role('user_admin') %}
+                                    <form method="POST" action="{{ url_for('banking.update_balance') }}" class="form-inline">
+                                        <input type="hidden" name="account_type" value="character">
+                                        <input type="hidden" name="account_id" value="{{ character.id }}">
+                                        <div class="input-group">
+                                            <input type="number" step="1" class="form-control" name="balance" value="{{ character.bank_account }}" required>
+                                            <div class="input-group-append">
+                                                <button type="submit" class="btn btn-primary">Update</button>
+                                            </div>
+                                        </div>
+                                    </form>
+                                {% else %}
+                                    <h4>Balance: {{ character.bank_account }}</h4>
+                                {% endif %}
+                            </div>
+                        {% else %}
+                            <p>No character selected</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Group Balance -->
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h2>Group Balance</h2>
+                    </div>
+                    <div class="card-body">
+                        {% if current_user.has_role('user_admin') %}
+                            <div class="form-group mb-3">
+                                <label for="group_select">Select Group</label>
+                                <select class="form-control select2" id="group_select">
+                                    <option value="">Select a group...</option>
+                                    {% for group in all_groups %}
+                                    <option value="{{ group.id }}" {% if selected_group and selected_group.id == group.id %}selected{% endif %}>
+                                        {{ group.name }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        {% endif %}
+                        
+                        {% if selected_group or (active_character and active_character.group) %}
+                            {% set group = selected_group or active_character.group %}
+                            <div class="balance-display">
+                                <h3>{{ group.name }}</h3>
+                                {% if current_user.has_role('user_admin') %}
+                                    <form method="POST" action="{{ url_for('banking.update_balance') }}" class="form-inline">
+                                        <input type="hidden" name="account_type" value="group">
+                                        <input type="hidden" name="account_id" value="{{ group.id }}">
+                                        <div class="input-group">
+                                            <input type="number" step="1" class="form-control" name="balance" value="{{ group.bank_account }}" required>
+                                            <div class="input-group-append">
+                                                <button type="submit" class="btn btn-primary">Update</button>
+                                            </div>
+                                        </div>
+                                    </form>
+                                {% else %}
+                                    <h4>Balance: {{ group.bank_account }}</h4>
+                                {% endif %}
+                            </div>
+                        {% else %}
+                            <p>No group selected</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Transfer Form -->
+        {% if source_accounts %}
+        <div class="card">
+            <div class="card-header">
+                <h2>Transfer Money</h2>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('banking.transfer') }}">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label for="source_type">From</label>
+                                <select class="form-control" id="source_type" name="source_type" required>
+                                    <option value="">Select source...</option>
+                                    {% for account in source_accounts %}
+                                    <option value="{{ account.type }}" data-id="{{ account.id }}" data-balance="{{ account.balance }}">
+                                        {{ account.name }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label for="amount">Amount</label>
+                                <input type="number" step="1" class="form-control" id="amount" name="amount" required min="1">
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label for="target_type">To</label>
+                                <select class="form-control select2" id="target_type" name="target_type" required>
+                                    <option value="">Select target...</option>
+                                    {% for account in target_accounts %}
+                                    <option value="{{ account.type }}" data-id="{{ account.id }}">
+                                        {{ account.name }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label>&nbsp;</label>
+                                <button type="submit" class="btn btn-primary btn-block">Transfer</button>
+                            </div>
+                        </div>
+                    </div>
+                    <input type="hidden" name="source_id" id="source_id">
+                    <input type="hidden" name="target_id" id="target_id">
+                </form>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script src="{{ url_for('static', filename='js/banking.js') }}"></script>
+{% endblock %} 

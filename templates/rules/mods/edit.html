@@ -1,0 +1,57 @@
+{% extends "_template.html" %}
+
+{% from "macros/wiki.html" import wiki_page_select %}
+
+{% block title %}{% if mod %}Edit{% else %}Create{% endif %} Mod - Orion Sphere LRP{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="rules-management">
+        <h1>{% if mod %}Edit{% else %}Create{% endif %} Mod</h1>
+        
+        <form method="POST">
+            <div class="form-group">
+                <label for="name">Name</label>
+                <input type="text" class="form-control" id="name" name="name" value="{{ mod.name if mod else '' }}" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="item_types">Type Restrictions</label>
+                <select class="form-select" id="item_types" name="item_types" multiple>
+                    {% for item_type in item_types %}
+                    <option value="{{ item_type.id }}" {% if mod and item_type in mod.item_types %}selected{% endif %}>{{ item_type.name }}</option>
+                    {% endfor %}
+                </select>
+                <small class="form-text text-muted">Select one or more item types this mod can be applied to.</small>
+            </div>
+            
+            {{ wiki_page_select(
+                input_id='wiki_page_autocomplete',
+                select_name='wiki_slug',
+                initial_slug=mod.wiki_slug if mod else '',
+                required=true
+            ) }}
+            
+            <div class="form-group">
+                <button type="submit" class="btn btn-primary">{% if mod %}Save Changes{% else %}Create{% endif %}</button>
+                <a href="{{ url_for('mods.list') }}" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script src="{{ url_for('static', filename='js/wiki_page_autocomplete.js') }}"></script>
+<script>
+window.addEventListener('DOMContentLoaded', function() {
+    $('#item_types').select2({
+        theme: 'bootstrap-5',
+        width: '100%',
+        placeholder: 'Select item types',
+        allowClear: true
+    });
+});
+</script>
+{% endblock %} 

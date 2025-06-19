@@ -1,0 +1,281 @@
+{% extends "_template.html" %}
+
+{% block title %}{{ 'Edit' if skill else 'Create' }} Skill - Orion Sphere LRP{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="skill-management">
+        <h1>{{ 'Edit' if skill else 'Create' }} Skill</h1>
+        
+        <form method="POST" class="settings-form">
+            <div class="form-group">
+                <label for="name">Skill Name *</label>
+                <input type="text" class="form-control" id="name" name="name" value="{{ skill.name if skill else '' }}" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="description">Description *</label>
+                <textarea class="form-control" id="description" name="description" rows="3" required>{{ skill.description if skill else '' }}</textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="skill_type">Skill Type *</label>
+                {% set type_names = [] %}
+                {% for type in skill_types %}
+                    {% set _ = type_names.append(type[0]) %}
+                {% endfor %}
+                <select class="form-control" id="skill_type" name="skill_type" required>
+                    {% if skill and skill.skill_type and skill.skill_type not in type_names %}
+                        <option value="{{ skill.skill_type }}" selected>{{ skill.skill_type }}</option>
+                    {% endif %}
+                    {% for type in skill_types %}
+                        <option value="{{ type[0] }}" {% if skill and skill.skill_type == type[0] %}selected{% endif %}>{{ type[0] }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="adds_engineering_mods">Adds Engineering Mods</label>
+                <input type="number" class="form-control" id="adds_engineering_mods" name="adds_engineering_mods" value="{{ skill.adds_engineering_mods if skill else 0 }}" min="0">
+            </div>
+
+            <div class="form-group">
+                <label for="adds_engineering_downtime">Adds Engineering Downtime</label>
+                <input type="number" class="form-control" id="adds_engineering_downtime" name="adds_engineering_downtime" value="{{ skill.adds_engineering_downtime if skill else 0 }}" min="0">
+            </div>
+
+            <div class="form-group">
+                <label for="adds_science_downtime">Adds Science Downtime</label>
+                <input type="number" class="form-control" id="adds_science_downtime" name="adds_science_downtime" value="{{ skill.adds_science_downtime if skill else 0 }}" min="0">
+            </div>
+
+            <div class="form-group">
+                <label for="science_type" class="form-label">Science Type</label>
+                <select class="form-control w-100" id="science_type" name="science_type">
+                    <option value="">None</option>
+                    {% for type in science_types %}
+                    <option value="{{ type }}" {% if skill and skill.science_type == type %}selected{% endif %}>{{ type|title }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="base_cost">Base Cost *</label>
+                <input type="number" class="form-control" id="base_cost" name="base_cost" value="{{ skill.base_cost if skill else 0 }}" required min="0">
+            </div>
+
+            <table style="width:100%; border: none; margin-bottom: 1.5rem;">
+              <tr>
+                <td style="width: 1.5em; vertical-align: middle;">
+                  <input class="form-check-input" type="checkbox" id="can_purchase_multiple" name="can_purchase_multiple" {% if skill and skill.can_purchase_multiple %}checked{% endif %}>
+                </td>
+                <td>
+                  <label class="form-check-label" for="can_purchase_multiple">Can be purchased multiple times</label>
+                </td>
+              </tr>
+              <tr>
+                <td style="width: 1.5em; vertical-align: middle;">
+                  <input class="form-check-input" type="checkbox" id="cost_increases" name="cost_increases" {% if skill and skill.cost_increases %}checked{% endif %}>
+                </td>
+                <td>
+                  <label class="form-check-label" for="cost_increases">Cost increases with each purchase</label>
+                </td>
+              </tr>
+            </table>
+
+            <div class="form-group">
+                <label for="required_skill_id">Required Skill</label>
+                <select class="form-control" id="required_skill_id" name="required_skill_id">
+                    <option value="">None</option>
+                    {% for s in skills_list %}
+                    {% if not skill or s.id != skill.id %}
+                    <option value="{{ s.id }}" {% if skill and skill.required_skill_id == s.id %}selected{% endif %}>{{ s.name }}</option>
+                    {% endif %}
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="required_factions">Required Factions</label>
+                <select class="form-control select2-multiple" id="required_factions" name="required_factions" multiple>
+                    {% for faction in factions %}
+                        <option value="{{ faction.id }}" {% if skill and (faction.id|string) in skill.required_factions_list %}selected{% endif %}>
+                            {{ faction.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="required_species">Required Species</label>
+                <select class="form-control select2-multiple" id="required_species" name="required_species" multiple>
+                    {% for s in species_list %}
+                    <option value="{{ s.id }}" {% if skill and s.id|string in skill.required_species_list %}selected{% endif %}>
+                        {{ s.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="required_tags">Required Tags</label>
+                <select class="form-control select2-multiple" id="required_tags" name="required_tags" multiple>
+                    {% for tag in tags %}
+                    <option value="{{ tag.id }}" {% if skill and tag.id|string in skill.required_tags_list %}selected{% endif %}>
+                        {{ tag.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Character Sheet Values</label>
+                <div id="character-sheet-values-container" data-initial-count="{{ skill.character_sheet_values_list|length if skill and skill.character_sheet_values_list else 0 }}">
+                    {% if skill and skill.character_sheet_values_list %}
+                        {% for value in skill.character_sheet_values_list %}
+                        <div class="character-sheet-value-row" style="display: flex; gap: 10px; margin-bottom: 10px; align-items: end;">
+                            <div style="flex: 1;">
+                                <label>ID</label>
+                                <input type="text" class="form-control" name="character_sheet_values[{{ loop.index0 }}][id]" value="{{ value.id }}" placeholder="e.g., strength, agility">
+                            </div>
+                            <div style="flex: 2;">
+                                <label>Description</label>
+                                <input type="text" class="form-control" name="character_sheet_values[{{ loop.index0 }}][description]" value="{{ value.description }}" placeholder="e.g., Physical strength modifier">
+                            </div>
+                            <div style="flex: 1;">
+                                <label>Value</label>
+                                <input type="number" class="form-control" name="character_sheet_values[{{ loop.index0 }}][value]" value="{{ value.value }}" placeholder="0">
+                            </div>
+                            <div style="display: flex; align-items: end;">
+                                <button type="button" class="btn btn-danger remove-character-sheet-value" style="margin-top: 24px;">Remove</button>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% endif %}
+                </div>
+                <button type="button" class="btn btn-secondary" id="add-character-sheet-value">Add Character Sheet Value</button>
+            </div>
+            
+            <div class="form-group">
+                <button type="submit" class="btn btn-primary">{{ 'Save Changes' if skill else 'Create Skill' }}</button>
+                <a href="{{ url_for('skills.skills_list') }}" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+$(document).ready(function() {
+    $('.select2-multiple').select2({
+        theme: 'bootstrap-5',
+        width: '100%',
+        placeholder: 'Select options...',
+        allowClear: true
+    });
+
+    $('.select2-single').select2({
+        theme: 'bootstrap-5',
+        width: '100%',
+        placeholder: 'Select an option...',
+        allowClear: true
+    });
+
+    // Initialize Select2 for required_factions, required_skill_id, and required_tags
+    $('#required_factions').select2({
+        theme: 'bootstrap-5',
+        width: '100%',
+        placeholder: 'Select required factions...',
+        allowClear: true
+    });
+    $('#required_skill_id').select2({
+        theme: 'bootstrap-5',
+        width: '100%',
+        placeholder: 'Select a required skill...',
+        allowClear: true
+    });
+    $('#required_tags').select2({
+        theme: 'bootstrap-5',
+        width: '100%',
+        placeholder: 'Select required character tags...',
+        allowClear: true,
+        tags: true,
+        createTag: function(params) {
+            return {
+                id: params.term,
+                text: params.term,
+                newTag: true
+            }
+        }
+    });
+
+    // Initialize skill type with tag creation enabled
+    $('#skill_type').select2({
+        theme: 'bootstrap-5',
+        width: '100%',
+        placeholder: 'Select or create a skill type...',
+        allowClear: true,
+        tags: true,
+        createTag: function(params) {
+            return {
+                id: params.term,
+                text: params.term,
+                newTag: true
+            }
+        }
+    });
+
+    const scienceDowntimeInput = document.getElementById('adds_science_downtime');
+    const scienceTypeGroup = document.getElementById('science_type_group');
+    const scienceTypeSelect = document.getElementById('science_type');
+
+    function toggleScienceType() {
+        if (parseInt(scienceDowntimeInput.value) > 0) {
+            scienceTypeGroup.style.display = 'block';
+            scienceTypeSelect.required = true;
+        } else {
+            scienceTypeGroup.style.display = 'none';
+            scienceTypeSelect.required = false;
+            scienceTypeSelect.value = '';
+        }
+    }
+
+    scienceDowntimeInput.addEventListener('change', toggleScienceType);
+    toggleScienceType(); // Initial state
+
+    // Character sheet values functionality
+    let characterSheetValueIndex = parseInt($('#character-sheet-values-container').data('initial-count')) || 0;
+    
+    $('#add-character-sheet-value').click(function() {
+        const container = $('#character-sheet-values-container');
+        const newRow = $(`
+            <div class="character-sheet-value-row" style="display: flex; gap: 10px; margin-bottom: 10px; align-items: end;">
+                <div style="flex: 1;">
+                    <label>ID</label>
+                    <input type="text" class="form-control" name="character_sheet_values[${characterSheetValueIndex}][id]" placeholder="e.g., strength, agility">
+                </div>
+                <div style="flex: 2;">
+                    <label>Description</label>
+                    <input type="text" class="form-control" name="character_sheet_values[${characterSheetValueIndex}][description]" placeholder="e.g., Physical strength modifier">
+                </div>
+                <div style="flex: 1;">
+                    <label>Value</label>
+                    <input type="number" class="form-control" name="character_sheet_values[${characterSheetValueIndex}][value]" placeholder="0">
+                </div>
+                <div style="display: flex; align-items: end;">
+                    <button type="button" class="btn btn-danger remove-character-sheet-value" style="margin-top: 24px;">Remove</button>
+                </div>
+            </div>
+        `);
+        container.append(newRow);
+        characterSheetValueIndex++;
+    });
+    
+    $(document).on('click', '.remove-character-sheet-value', function() {
+        $(this).closest('.character-sheet-value-row').remove();
+    });
+});
+</script>
+{% endblock %} 

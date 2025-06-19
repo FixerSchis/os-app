@@ -1,0 +1,28 @@
+Orion Sphere LRP - Event Details Updated
+
+Hello {{ user.first_name }},
+
+The details for an event you have a ticket for have been updated.
+
+Event Details:
+- Event Number: {{ event.event_number }}
+- Event Name: {{ event.name }}
+- Event Type: {{ event.event_type.value if event.event_type else event.event_type }}
+- Start Date: {{ event.start_date.strftime('%Y-%m-%d %H:%M') if event.start_date else 'TBD' }}
+- End Date: {{ event.end_date.strftime('%Y-%m-%d %H:%M') if event.end_date else 'TBD' }}
+- Location: {{ event.location or 'TBD' }}
+- Early Booking Deadline: {{ event.early_booking_deadline.strftime('%Y-%m-%d %H:%M') if event.early_booking_deadline else 'N/A' }}
+- Character: {{ character.name }}
+
+Please review the updated event information to ensure you have the latest details for planning and preparation.
+
+View updated event details at: {{ url_for('events.view', event_id=event.id, _external=True) }}
+
+If you have any questions about the updated event details, please contact the event organizers.
+
+Best regards,
+The Orion Sphere LRP Team
+
+---
+This is an automated notification from Orion Sphere LRP.
+You can manage your notification preferences in your account settings. 

@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Event Ticket Assigned</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background-color: #ffc107; color: #212529; padding: 20px; text-align: center; }
+        .content { background-color: #f8f9fa; padding: 20px; }
+        .footer { text-align: center; padding: 20px; color: #6c757d; font-size: 12px; }
+        .btn { display: inline-block; padding: 10px 20px; background-color: #ffc107; color: #212529; text-decoration: none; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Orion Sphere LRP</h1>
+            <h2>Event Ticket Assigned</h2>
+        </div>
+        
+        <div class="content">
+            <p>Hello {{ user.first_name }},</p>
+            
+            <p>An event ticket has been assigned/purchased for your character <strong>{{ character.name }}</strong>.</p>
+            
+            <p><strong>Event Details:</strong></p>
+            <ul>
+                <li><strong>Event Number:</strong> {{ event.event_number }}</li>
+                <li><strong>Event Name:</strong> {{ event.name }}</li>
+                <li><strong>Start Date:</strong> {{ event.start_date.strftime('%Y-%m-%d %H:%M') if event.start_date else 'TBD' }}</li>
+                <li><strong>End Date:</strong> {{ event.end_date.strftime('%Y-%m-%d %H:%M') if event.end_date else 'TBD' }}</li>
+                <li><strong>Location:</strong> {{ event.location or 'TBD' }}</li>
+            </ul>
+            
+            <p><strong>Ticket Details:</strong></p>
+            <ul>
+                <li><strong>Ticket Type:</strong> {{ event_ticket.ticket_type.value if event_ticket.ticket_type else event_ticket.ticket_type }}</li>
+                <li><strong>Price Paid:</strong> {{ event_ticket.price_paid }}</li>
+                <li><strong>Meal Ticket:</strong> {{ 'Yes' if event_ticket.meal_ticket else 'No' }}</li>
+                <li><strong>Requires Bunk:</strong> {{ 'Yes' if event_ticket.requires_bunk else 'No' }}</li>
+                <li><strong>Character:</strong> {{ character.name }}</li>
+            </ul>
+            
+            <p>You're all set for this event! Make sure to review the event details and prepare accordingly.</p>
+            
+            <p style="text-align: center; margin: 30px 0;">
+                <a href="{{ url_for('events.view', event_id=event.id, _external=True) }}" class="btn">View Event Details</a>
+            </p>
+            
+            <p>If you have any questions about the event or your ticket, please contact the event organizers.</p>
+            
+            <p>Best regards,<br>The Orion Sphere LRP Team</p>
+        </div>
+        
+        <div class="footer">
+            <p>This is an automated notification from Orion Sphere LRP.</p>
+            <p>You can manage your notification preferences in your account settings.</p>
+        </div>
+    </div>
+</body>
+</html> 

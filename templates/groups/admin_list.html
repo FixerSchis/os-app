@@ -1,0 +1,97 @@
+{% extends "_template.html" %}
+
+{% block title %}Groups - Admin - Orion Sphere LRP{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="groups-management">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>Groups - Admin View</h1>
+            <a href="{{ url_for('groups.create_group_admin') }}" class="btn btn-primary">Create Group</a>
+        </div>
+        
+        <div class="card">
+            <div class="card-body">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Type</th>
+                            <th>Bank Account</th>
+                            <th>Members</th>
+                            <th>Samples</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for group in groups %}
+                        <tr>
+                            <td>{{ group.name }}</td>
+                            <td>{{ GroupType.descriptions()[group.type] }}</td>
+                            <td>{{ group.bank_account }}</td>
+                            <td>
+                                <ul class="list-unstyled">
+                                    {% for character in group.characters %}
+                                    <li>{{ character.name }} ({{ character.faction.name }})</li>
+                                    {% endfor %}
+                                </ul>
+                            </td>
+                            <td>
+                                {% if group.samples.count() > 0 %}
+                                    {% for sample in group.samples %}
+                                        <span class="badge bg-info text-dark mr-1">{{ sample.name }}</span>
+                                    {% endfor %}
+                                {% else %}
+                                    <span class="text-muted">No samples</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{{ url_for('groups.edit_group_admin', group_id=group.id) }}" class="btn btn-primary btn-sm">Edit</a>
+                                <button type="button" class="btn btn-danger btn-sm disband-btn" data-disband-url="{{ url_for('groups.disband_group', group_id=group.id) }}" data-warning="This action is not reversible and cannot be recovered.">Disband</button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Disband Modal -->
+<div class="modal fade" id="disbandModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm Disband</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="disbandWarning" class="alert alert-warning">This action is not reversible and cannot be recovered.</div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="disbandForm" method="POST" style="display: inline;">
+                    <button type="submit" class="btn btn-danger">Disband</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const disbandButtons = document.querySelectorAll('.disband-btn');
+    const disbandModal = new bootstrap.Modal(document.getElementById('disbandModal'));
+    const disbandForm = document.getElementById('disbandForm');
+    disbandButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            disbandForm.action = this.dataset.disbandUrl;
+            disbandModal.show();
+        });
+    });
+});
+</script>
+{% endblock %} 

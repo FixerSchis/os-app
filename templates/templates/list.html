@@ -1,0 +1,41 @@
+{% extends "_template.html" %}
+
+{% block title %}Templates{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1>Templates</h1>
+            </div>
+
+            <div class="row">
+                {% for template in templates %}
+                <div class="col-md-6 mb-4">
+                    <div class="card h-100" data-template-type="{{ template.type.value }}" data-template-id="{{ template.id }}">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">{{ PrintTemplateType.descriptions()[template.type.value] }}</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-flex justify-content-end gap-2">
+                                <a href="{{ url_for('templates.template_layout', template_id=template.id) }}" class="btn btn-outline-primary">
+                                    <i class="fas fa-cog"></i> Layout Settings
+                                </a>
+                                <a href="{{ url_for('templates.template_edit', template_id=template.id) }}" class="btn btn-primary">
+                                    <i class="fas fa-edit"></i> Edit Template
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/templates.js') }}"></script>
+{% endblock %} 

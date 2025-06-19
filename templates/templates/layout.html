@@ -1,0 +1,230 @@
+{% extends "_template.html" %}
+
+{% block title %}Layout Settings - {{ PrintTemplateType.descriptions()[template.type.value] }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Layout Settings - {{ PrintTemplateType.descriptions()[template.type.value] }}</h1>
+        <div>
+            <button type="button" class="btn btn-outline-secondary preview-btn" data-template-id="{{ template.id }}">
+                <i class="fas fa-print"></i> Print Preview
+            </button>
+            <a href="{{ url_for('templates.template_list') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Templates
+            </a>
+        </div>
+    </div>
+
+    <form method="POST" id="layoutForm">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Page Settings</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="is_landscape" name="is_landscape" {% if template.is_landscape %}checked{% endif %}>
+                            <label class="form-check-label" for="is_landscape">
+                                Landscape Orientation
+                            </label>
+                        </div>
+
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="has_back_side" name="has_back_side" {% if template.has_back_side %}checked{% endif %}>
+                            <label class="form-check-label" for="has_back_side">
+                                Double-Sided
+                            </label>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label for="width_mm">Item Width (mm)</label>
+                                    <input type="number" class="form-control" id="width_mm" name="width_mm" 
+                                           value="{{ template.width_mm }}" min="1" step="0.1" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label for="height_mm">Item Height (mm)</label>
+                                    <input type="number" class="form-control" id="height_mm" name="height_mm" 
+                                           value="{{ template.height_mm }}" min="1" step="0.1" required>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label for="items_per_row">Items per Row</label>
+                                    <input type="number" class="form-control" id="items_per_row" name="items_per_row" 
+                                           value="{{ template.items_per_row }}" min="1" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label for="items_per_column">Items per Column</label>
+                                    <input type="number" class="form-control" id="items_per_column" name="items_per_column" 
+                                           value="{{ template.items_per_column }}" min="1" required>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Margins and Spacing</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label for="margin_top_mm">Top Margin (mm)</label>
+                                    <input type="number" class="form-control" id="margin_top_mm" name="margin_top_mm" 
+                                           value="{{ template.margin_top_mm }}" min="0" step="0.1" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label for="margin_bottom_mm">Bottom Margin (mm)</label>
+                                    <input type="number" class="form-control" id="margin_bottom_mm" name="margin_bottom_mm" 
+                                           value="{{ template.margin_bottom_mm }}" min="0" step="0.1" required>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label for="margin_left_mm">Left Margin (mm)</label>
+                                    <input type="number" class="form-control" id="margin_left_mm" name="margin_left_mm" 
+                                           value="{{ template.margin_left_mm }}" min="0" step="0.1" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label for="margin_right_mm">Right Margin (mm)</label>
+                                    <input type="number" class="form-control" id="margin_right_mm" name="margin_right_mm" 
+                                           value="{{ template.margin_right_mm }}" min="0" step="0.1" required>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label for="gap_horizontal_mm">Horizontal Gap (mm)</label>
+                                    <input type="number" class="form-control" id="gap_horizontal_mm" name="gap_horizontal_mm" 
+                                           value="{{ template.gap_horizontal_mm }}" min="0" step="0.1" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label for="gap_vertical_mm">Vertical Gap (mm)</label>
+                                    <input type="number" class="form-control" id="gap_vertical_mm" name="gap_vertical_mm" 
+                                           value="{{ template.gap_vertical_mm }}" min="0" step="0.1" required>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-end">
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-save"></i> Save Layout Settings
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('layoutForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = {
+        is_landscape: document.getElementById('is_landscape').checked,
+        has_back_side: document.getElementById('has_back_side').checked,
+        width_mm: parseFloat(document.getElementById('width_mm').value),
+        height_mm: parseFloat(document.getElementById('height_mm').value),
+        items_per_row: parseInt(document.getElementById('items_per_row').value),
+        items_per_column: parseInt(document.getElementById('items_per_column').value),
+        margin_top_mm: parseFloat(document.getElementById('margin_top_mm').value),
+        margin_bottom_mm: parseFloat(document.getElementById('margin_bottom_mm').value),
+        margin_left_mm: parseFloat(document.getElementById('margin_left_mm').value),
+        margin_right_mm: parseFloat(document.getElementById('margin_right_mm').value),
+        gap_horizontal_mm: parseFloat(document.getElementById('gap_horizontal_mm').value),
+        gap_vertical_mm: parseFloat(document.getElementById('gap_vertical_mm').value)
+    };
+
+    fetch(window.location.pathname, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            throw new Error(data.error);
+        }
+        window.location.href = "{{ url_for('templates.template_list') }}";
+    })
+    .catch(error => {
+        console.error('Error saving layout settings:', error);
+        alert('Error saving layout settings: ' + error.message);
+    });
+});
+
+// Print preview functionality
+document.querySelector('.preview-btn').addEventListener('click', function() {
+    const templateId = this.dataset.templateId;
+    const formData = {
+        is_landscape: document.getElementById('is_landscape').checked,
+        has_back_side: document.getElementById('has_back_side').checked,
+        width_mm: parseFloat(document.getElementById('width_mm').value),
+        height_mm: parseFloat(document.getElementById('height_mm').value),
+        items_per_row: parseInt(document.getElementById('items_per_row').value),
+        items_per_column: parseInt(document.getElementById('items_per_column').value),
+        margin_top_mm: parseFloat(document.getElementById('margin_top_mm').value),
+        margin_bottom_mm: parseFloat(document.getElementById('margin_bottom_mm').value),
+        margin_left_mm: parseFloat(document.getElementById('margin_left_mm').value),
+        margin_right_mm: parseFloat(document.getElementById('margin_right_mm').value),
+        gap_horizontal_mm: parseFloat(document.getElementById('gap_horizontal_mm').value),
+        gap_vertical_mm: parseFloat(document.getElementById('gap_vertical_mm').value)
+    };
+
+    fetch(`/templates/api/${templateId}/print_preview`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            throw new Error(data.error);
+        }
+        // Open PDF in new window
+        const pdfData = data.pdf;
+        const blob = new Blob([Uint8Array.from(atob(pdfData), c => c.charCodeAt(0))], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+        window.open(url, '_blank');
+    })
+    .catch(error => {
+        console.error('Error generating print preview:', error);
+        alert('Error generating print preview: ' + error.message);
+    });
+});
+</script>
+{% endblock %}

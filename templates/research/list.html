@@ -1,0 +1,41 @@
+{% extends '_template.html' %}
+
+{% block title %}Research - Orion Sphere LRP{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Research Projects</h1>
+        {% if current_user.has_role('rules_team') %}
+        <a href="{{ url_for('research.research_create') }}" class="btn btn-primary">New Research</a>
+        {% endif %}
+    </div>
+    <div class="table-responsive">
+        <table class="table table-striped table-hover align-middle">
+            <thead>
+                <tr>
+                    <th>Project Name</th>
+                    <th>Type</th>
+                    <th>Number of Stages</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for research in researches %}
+                <tr>
+                    <td>{{ research.project_name }} ({{ research.public_id }})</td>
+                    <td>{{ research.type.value|capitalize }}</td>
+                    <td>{{ research.stages|length }}</td>
+                    <td>
+                        <a href="{{ url_for('research.research_edit', research_id=research.id) }}" class="btn btn-sm btn-primary">Edit</a>
+                        {% if research.stages|length > 0 %}
+                        <a href="{{ url_for('research.assignees', research_id=research.id) }}" class="btn btn-sm btn-info">Assignees</a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %} 

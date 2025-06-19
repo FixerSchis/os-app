@@ -1,0 +1,121 @@
+{% extends "_template.html" %}
+
+{% block title %}{% if show_previous %}Previous{% else %}Upcoming{% endif %} Events{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1>{% if show_previous %}Previous{% else %}Upcoming{% endif %} Events</h1>
+            {% if current_user.is_authenticated and current_user.has_role('user_admin') %}
+            <div class="form-check mt-2">
+                <input class="form-check-input" type="checkbox" id="show-previous" {% if show_previous %}checked{% endif %}>
+                <label class="form-check-label" for="show-previous">
+                    Show previous events
+                </label>
+            </div>
+            {% endif %}
+        </div>
+        {% if current_user.is_authenticated and current_user.has_role('user_admin') %}
+        <a href="{{ url_for('events.create_event') }}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> Create Event
+        </a>
+        {% endif %}
+    </div>
+
+    <div class="row">
+        {% for event in events %}
+        <div class="col-md-6 col-lg-4 mb-4">
+            <div class="card h-100">
+                <div class="card-body position-relative">
+                    <div class="position-absolute top-0 end-0 p-3">
+                        <span class="badge bg-primary mb-2">{{ EventType.descriptions()[event.event_type.value] }}</span>
+                        {% if event.bunks_available %}
+                        <div><span class="badge bg-success">Bunks Available</span></div>
+                        {% endif %}
+                    </div>
+                    <h5 class="card-title pe-5">Event {{ event.event_number }} - {{ event.name }}</h5>
+                    <p class="card-text">{{ event.description[:200] }}{% if event.description|length > 200 %}...{% endif %}</p>
+                    
+                    <div class="mb-3">
+                        <strong>Dates:</strong><br>
+                        {{ event.start_date.strftime('%d %b %Y') }} - {{ event.end_date.strftime('%d %b %Y') }}
+                    </div>
+
+                    {% if event.is_early_booking_available() %}
+                    <div class="mb-3">
+                        <span class="text-success">Early booking available until {{ event.early_booking_deadline.strftime('%d %b %Y') }}</span>
+                    </div>
+                    {% endif %}
+
+                    <div class="mb-3">
+                        <strong>Location:</strong><br>
+                        {{ event.location }}
+                        {% if event.google_maps_link %}
+                        <a href="{{ event.google_maps_link }}" target="_blank" class="ms-2" title="View on Google Maps">
+                            <i class="fas fa-map-marker-alt"></i>
+                        </a>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <strong>Ticket Prices:</strong>
+                        <div>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    {% if event.is_early_booking_available() %}
+                                        <span class="text-success">Early Booking: £{{ '%.2f'|format(event.early_booking_ticket_price) }}</span>
+                                    {% else %}
+                                        <span>Adult: £{{ '%.2f'|format(event.standard_ticket_price) }}</span>
+                                    {% endif %}
+                                </div>
+                                {% if event.meal_ticket_available %}
+                                <div class="text-end">
+                                    <span>Meal Ticket: £{{ '%.2f'|format(event.meal_ticket_price) }}</span>
+                                </div>
+                                {% endif %}
+                            </div>
+                            <div>Child (12-15): {% if event.child_ticket_price_12_15 == 0 %}Free{% else %}£{{ '%.2f'|format(event.child_ticket_price_12_15) }}{% endif %}</div>
+                            <div>Child (7-11): {% if event.child_ticket_price_7_11 == 0 %}Free{% else %}£{{ '%.2f'|format(event.child_ticket_price_7_11) }}{% endif %}</div>
+                            <div>Child (under 7): {% if event.child_ticket_price_under_7 == 0 %}Free{% else %}£{{ '%.2f'|format(event.child_ticket_price_under_7) }}{% endif %}</div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-2 mt-3">
+                        {% if not show_previous %}
+                        <a href="{{ url_for('events.purchase_ticket', event_id=event.id) }}" class="btn btn-success btn-sm">Purchase</a>
+                        {% endif %}
+                        {% if current_user.is_authenticated and current_user.has_role('user_admin') %}
+                        <a href="{{ url_for('events.view_attendees', event_id=event.id) }}" class="btn btn-info btn-sm">View Attendees</a>
+                        {% endif %}
+                        {% if current_user.is_authenticated and current_user.has_role('user_admin') %}
+                        <a href="{{ url_for('events.edit_event', event_id=event.id) }}" class="btn btn-primary btn-sm">Edit</a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="col-12">
+            <div class="alert alert-info">
+                No {% if show_previous %}previous{% else %}upcoming{% endif %} events found.
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+$(document).ready(function() {
+    $('#show-previous').change(function() {
+        const showPrevious = $(this).is(':checked');
+        const currentUrl = new URL(window.location.href);
+        currentUrl.searchParams.set('show_previous', showPrevious);
+        window.location.href = currentUrl.toString();
+    });
+});
+</script>
+{% endblock %} 

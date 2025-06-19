@@ -1,0 +1,131 @@
+{% set user_is_admin = current_user.has_role('user_admin') %}
+{% set has_active = false %}
+{% for c in characters %}
+    {% if c.status == 'active' and c.player_id == c.player_id %}
+        {% set has_active = true %}
+    {% endif %}
+{% endfor %}
+
+{% if characters %}
+    <div class="characters-section">
+        <!-- Desktop Table View -->
+        <div class="table-responsive d-none d-md-block">
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Faction - Species</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if admin_context %}<input type="hidden" name="admin_context" value="1">{% endif %}
+                    {% for character in characters %}
+                    {% set user_is_owner = character.player_id == current_user.player_id %}
+                    <tr>
+                        <td>{{ character.player_id }}.{{ character.character_id if character.character_id is not none else 0 }} - {{ character.name }}</td>
+                        <td>
+                            {{ character.faction.name if character.faction else 'No Faction' }}
+                            -
+                            {{ character.species.name if character.species else '' }}
+                        </td>
+                        <td>
+                            <span class="status-badge status-{{ character.status }}">{{ CharacterStatus.descriptions()[character.status] }}</span>
+                        </td>
+                        <td class="text-nowrap">
+                            <div class="btn-group btn-group-sm">
+                                {% include 'characters/_character_actions.html' %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Mobile Card View -->
+        <div class="character-cards d-md-none">
+            {% for character in characters %}
+            {% set user_is_owner = character.player_id == current_user.player_id %}
+            <div class="character-card">
+                <div class="character-card-header">
+                    <h3 class="character-name">{{ character.player_id }}.{{ character.character_id if character.character_id is not none else 0 }} - {{ character.name }}</h3>
+                    <span class="status-badge status-{{ character.status }}">{{ CharacterStatus.descriptions()[character.status] }}</span>
+                </div>
+                <div class="character-card-body">
+                    <div class="character-info">
+                        <div class="info-row">
+                            <span class="info-label">Faction:</span>
+                            <span class="info-value">{{ character.faction.name if character.faction else 'No Faction' }}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Species:</span>
+                            <span class="info-value">{{ character.species.name if character.species else 'None' }}</span>
+                        </div>
+                    </div>
+                    <div class="character-actions">
+                        {% include 'characters/_character_actions.html' %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+{% else %}
+    <div class="alert alert-info">
+        No characters found.
+    </div>
+{% endif %}
+
+<!-- Action Confirmation Modal -->
+<div class="modal fade" id="actionModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm Action</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <span id="actionLabel"></span>
+                <div id="actionWarning" class="alert alert-warning mt-3 d-none"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="actionForm" method="POST" style="display: inline;">
+                    <button type="submit" class="btn btn-danger">Confirm</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const actionButtons = document.querySelectorAll('.action-btn');
+    const actionModal = new bootstrap.Modal(document.getElementById('actionModal'));
+    const actionForm = document.getElementById('actionForm');
+    const actionLabel = document.getElementById('actionLabel');
+    const actionWarning = document.getElementById('actionWarning');
+
+    actionButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const url = this.dataset.actionUrl;
+            const label = this.dataset.actionLabel;
+            const warning = this.dataset.warning;
+            actionLabel.textContent = label;
+            actionForm.action = url;
+            if (warning) {
+                actionWarning.textContent = warning;
+                actionWarning.classList.remove('d-none');
+            } else {
+                actionWarning.textContent = '';
+                actionWarning.classList.add('d-none');
+            }
+            actionModal.show();
+        });
+    });
+});
+</script>
+{% endblock %} 

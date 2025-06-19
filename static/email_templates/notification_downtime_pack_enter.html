@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Downtime Pack Status Update</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background-color: #007bff; color: white; padding: 20px; text-align: center; }
+        .content { background-color: #f8f9fa; padding: 20px; }
+        .footer { text-align: center; padding: 20px; color: #6c757d; font-size: 12px; }
+        .btn { display: inline-block; padding: 10px 20px; background-color: #007bff; color: white; text-decoration: none; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Orion Sphere LRP</h1>
+            <h2>Downtime</h2>
+        </div>
+        
+        <div class="content">
+            <p>Hello {{ user.first_name }},</p>
+            
+            <p>Your character <strong>{{ character.name }}</strong>'s downtime form has been made available.</p>
+            
+            <p>You can now enter your downtime activities for this pack. Please log into your account to manage your downtime.</p>
+            
+            <p style="text-align: center; margin: 30px 0;">
+                <a href="{{ url_for('downtime.index', _external=True) }}" class="btn">View Downtime</a>
+            </p>
+            
+            <p>If you have any questions, please contact the game administrators.</p>
+            
+            <p>Best regards,<br>The Orion Sphere LRP Team</p>
+        </div>
+        
+        <div class="footer">
+            <p>This is an automated notification from Orion Sphere LRP.</p>
+            <p>You can manage your notification preferences in your account settings.</p>
+        </div>
+    </div>
+</body>
+</html> 

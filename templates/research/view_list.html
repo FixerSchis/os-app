@@ -1,0 +1,70 @@
+{% extends '_template.html' %}
+
+{% block title %}Research Projects - Orion Sphere LRP{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>Research Projects</h1>
+    
+    {% if research_by_character %}
+        {% for character, research_list in research_by_character.items() %}
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">{{ character.name }}'s Research Projects</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Project Name</th>
+                                    <th>Type</th>
+                                    <th>Current Stage</th>
+                                    <th>Progress</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for cr in research_list %}
+                                    <tr>
+                                        <td>{{ cr.research.project_name }} ({{ cr.research.public_id }})</td>
+                                        <td>{{ cr.research.type.value|capitalize }}</td>
+                                        <td>
+                                            {% if cr.current_stage_id %}
+                                                {% set current_stage = cr.research.stages|selectattr('id', 'eq', cr.current_stage_id)|first %}
+                                                {{ current_stage.name }}
+                                            {% else %}
+                                                Not started
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if cr.current_stage_id %}
+                                                {% set stage_progress = cr.progress|selectattr('stage_id', 'eq', cr.current_stage_id)|first %}
+                                                {% if stage_progress and stage_progress.stage_completed %}
+                                                    Completed
+                                                {% else %}
+                                                    In Progress
+                                                {% endif %}
+                                            {% else %}
+                                                -
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <a href="{{ url_for('research.view_research_project', research_id=cr.research.id) }}" 
+                                               class="btn btn-sm btn-primary">View Details</a>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    {% else %}
+        <div class="alert alert-info">
+            You have no research projects assigned to your characters.
+        </div>
+    {% endif %}
+</div>
+{% endblock %} 

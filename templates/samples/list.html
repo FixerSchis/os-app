@@ -1,0 +1,93 @@
+{% extends "_template.html" %}
+
+{% block title %}Samples - Orion Sphere LRP{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Samples</h1>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Type</th>
+                            <th>Tags</th>
+                            <th>Group</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for sample in samples %}
+                        <tr>
+                            <td>{{ sample.name }}</td>
+                            <td>{{ sample.type.value }}</td>
+                            <td>
+                                {% for tag in sample.tags %}
+                                    <span class="badge bg-info text-dark me-1">{{ tag.name }}</span>
+                                {% endfor %}
+                            </td>
+                            <td>{{ sample.group.name if sample.group else 'No Group' }}</td>
+                            <td>{{ 'Researched' if sample.is_researched else 'Not Researched' }}</td>
+                            <td>
+                                <button class="btn btn-primary btn-sm print-sample-btn" data-sample-id="{{ sample.id }}">
+                                    <i class="fas fa-print"></i> Print Sheet
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+$(document).ready(function() {
+    $('.print-sample-btn').on('click', function() {
+        const sampleId = $(this).data('sample-id');
+        fetch(`/templates/print/sample/${sampleId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                alert(data.error);
+                return;
+            }
+            // Open PDF in new window
+            const byteCharacters = atob(data.pdf_base64);
+            const byteNumbers = new Array(byteCharacters.length);
+            for (let i = 0; i < byteCharacters.length; i++) {
+                byteNumbers[i] = byteCharacters.charCodeAt(i);
+            }
+            const byteArray = new Uint8Array(byteNumbers);
+            const blob = new Blob([byteArray], { type: 'application/pdf' });
+            const pdfUrl = URL.createObjectURL(blob);
+            const newWindow = window.open(pdfUrl, '_blank');
+            newWindow.addEventListener('load', () => {
+                setTimeout(() => {
+                    URL.revokeObjectURL(pdfUrl);
+                }, 1000);
+            });
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Failed to generate PDF');
+        });
+    });
+});
+</script>
+{% endblock %} 

@@ -1,0 +1,12 @@
+Hello {{ user.first_name }},
+
+Thank you for registering with Orion Sphere LRP. Please verify your email by clicking on the link below:
+
+{{ verification_url }}
+
+This link will expire in 24 hours.
+
+If you did not register for Orion Sphere LRP, please ignore this email.
+
+Best regards,
+The Orion Sphere LRP Team 

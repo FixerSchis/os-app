@@ -1,0 +1,74 @@
+<div class="main-content">
+    <table>
+       <tr>
+          <td class="header">Character ID</td>
+          <td colspan="3">{{ character.user_id }}.{{ character.character_id }} {{ character.user.first_name }} {{ character.user.surname }}</td>
+       </tr>
+       <tr>
+          <td class="header">Character Name</td>
+          <td>{{ character.name }}</td>
+          <td class="header">Faction</td>
+          <td>{{ character.faction.name }}</td>
+       </tr>
+       <tr>
+          <td class="header">Species</td>
+          <td>{{ character.species.name }}</td>
+          <td class="header">Group</td>
+          <td>
+             {% if character.group %}{{ character.group.name }}{% endif %}
+          </td>
+       </tr>
+       <tr>
+          <td class="header">Body Hits</td>
+          <td>{{ character.species.body_hits }}</td>
+          <td class="header">Death Count</td>
+          <td>{{ character.species.death_count }}</td>
+       </tr>
+       <tr>
+          {% for value in character.get_character_sheet_values().values() %}
+          <td class="header">{{ value.name }}</td>
+          <td>{{ value.value }}</td>
+          {% if loop.index % 2 == 0 %}
+       </tr>
+       <tr>
+          {% endif %}
+          {% endfor %}
+          {% if character.get_character_sheet_values()|length % 2 == 1 %}
+          <td class="header"></td>
+          <td></td>
+          {% endif %}
+       </tr>
+       <tr>
+          <td class="header">CP Unspent</td>
+          <td>{{ character.get_available_character_points() }}</td>
+          <td class="header">CP Spent</td>
+          <td>{{ character.get_total_skill_cost() }}</td>
+       </tr>
+    </table>
+    <div>
+       <span class="section-title">Species Abilities:</span><br>
+       {% for ability in character.species.abilities %}
+       <strong>{{ ability.name }}: </strong>{{ ability.description }}
+       {% endfor %}
+    </div>
+    <div>
+       <span class="section-title">Species Keywords:</span><br>
+       TODO
+    </div>
+    <div>
+       <span class="section-title">Skills:</span><br>
+       {% for skill in character.skills %}
+       {{ skill.skill.name }}{% if loop.index != character.skills|length %}, {% endif %}
+       {% endfor %}
+    </div>
+    <div>
+       <span class="section-title">Earned Reputation:</span> {{ character.get_total_reputation() }}
+    </div>
+ </div>
+ <div class="affix-box">
+    <div class="affix-content">
+        <strong>Affix: Exotic Substance</strong>
+        <br><br>
+        After Project: Use on your character profile. If hung outside storage, bring it off-site with you, but must be handed in at the end of the event.
+    </div>
+ </div>

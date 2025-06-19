@@ -1,0 +1,47 @@
+{% macro wiki_page_select(input_id, select_name, initial_slug='', initial_title='', required=false, placeholder='Search for a wiki page...', help_text='The wiki page this item is documented on') %}
+<div class="form-group">
+    <label for="{{ input_id }}">Wiki Page {% if required %}*{% endif %}</label>
+    <select id="{{ input_id }}" name="{{ select_name }}" class="form-control select2-wiki" {% if required %}required{% endif %} style="width: 100%;">
+        {% if initial_slug and initial_title %}
+            <option value="{{ initial_slug }}" selected>{{ initial_title }} ({{ initial_slug }})</option>
+        {% elif initial_slug %}
+            <option value="{{ initial_slug }}" selected>{{ initial_slug }}</option>
+        {% endif %}
+    </select>
+    <small class="form-text text-muted">{{ help_text }}</small>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Initializing Select2 for', '#{{ input_id }}');
+    $('#{{ input_id }}').select2({
+        tags: true,
+        placeholder: '{{ placeholder }}',
+        allowClear: true,
+        width: '100%',
+        theme: 'bootstrap-5',
+        ajax: {
+            url: '/wiki/_internal_pages',
+            dataType: 'json',
+            delay: 250,
+            processResults: function (data) {
+                console.log('Select2 wiki AJAX data:', data);
+                return { results: data };
+            },
+            cache: true
+        },
+        createTag: function(params) {
+            var term = $.trim(params.term);
+            if (term === '') {
+                return null;
+            }
+            return {
+                id: term,
+                text: term,
+                newTag: true
+            };
+        }
+    });
+});
+</script>
+{% endmacro %} 

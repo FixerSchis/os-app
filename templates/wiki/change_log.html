@@ -1,0 +1,64 @@
+{% extends "wiki/_template.html" %}
+{% block title %}Wiki Change Log - Orion Sphere LRP{% endblock %}
+{% block wiki_content %}
+<div class="container">
+    <h1>Wiki Change Log</h1>
+    {% if logs %}
+    <ul class="list-group">
+        {% for log in logs %}
+        <li class="list-group-item" style="margin-bottom: 20px;">
+            <div><strong>Date:</strong> {{ log.timestamp.strftime('%Y-%m-%d %H:%M') if log.timestamp else '' }}</div>
+            <div><strong>By:</strong> 
+                {% if log.user %}
+                    {{ log.user.first_name }}{% if log.user.surname %} {{ log.user.surname }}{% endif %}
+                    {% if not log.user.first_name and not log.user.surname %}{{ log.user.email }}{% endif %}
+                {% else %}
+                    Unknown
+                {% endif %}
+            </div>
+            <div><strong>Change Log:</strong> <div class="wiki-changelog-message">{{ log.message|safe }}</div></div>
+            <div><strong>Changed Pages:</strong>
+                <ul>
+                {% for version in log.versions %}
+                    <li>
+                        <a href="{{ url_for('wiki.wiki_view', slug=version.page_slug, version=version.id) }}">{{ version.page.title }}</a> (v{{ version.version_number }})
+                        <button class="btn btn-sm btn-outline-secondary toggle-diff-btn" data-target="diff-{{ version.id }}">Show Diff</button>
+                        <div class="diff" id="diff-{{ version.id }}" style="display: none;">
+                            {% for line in (version.diff or '').splitlines() %}
+                                {% if line.startswith('+') %}
+                                    <div class="diff-add">{{ line }}</div>
+                                {% elif line.startswith('-') %}
+                                    <div class="diff-remove">{{ line }}</div>
+                                {% else %}
+                                    <div class="diff-context">{{ line }}</div>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                    </li>
+                {% endfor %}
+                </ul>
+            </div>
+        </li>
+        {% endfor %}
+    </ul>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      document.querySelectorAll('.toggle-diff-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          var target = document.getElementById(btn.getAttribute('data-target'));
+          if (target.style.display === 'none') {
+            target.style.display = 'block';
+            btn.textContent = 'Hide Diff';
+          } else {
+            target.style.display = 'none';
+            btn.textContent = 'Show Diff';
+          }
+        });
+      });
+    });
+    </script>
+    {% else %}
+    <p>No change logs yet.</p>
+    {% endif %}
+</div>
+{% endblock %} 

@@ -1,0 +1,355 @@
+/* Template-specific styles */
+.template-preview {
+    border: 1px solid #ddd;
+    padding: 20px;
+    background: #fff;
+    min-height: 200px;
+}
+
+.template-preview.character-sheet {
+    width: 148mm;
+    height: 210mm;
+    margin: 0 auto;
+}
+
+.template-preview.item-card {
+    width: 85.6mm;
+    height: 53.98mm;
+    margin: 0 auto;
+}
+
+.template-preview.medicament-card,
+.template-preview.condition-card {
+    width: 63.5mm;
+    height: 88.9mm;
+    margin: 0 auto;
+}
+
+.template-preview.exotic-substance-label {
+    width: 25mm;
+    height: 10mm;
+    margin: 0 auto;
+    font-size: 8px;
+}
+
+/* Template preview container with white background resistant to dark mode */
+.template-preview-container {
+    background: #f8f9fa;
+    border-radius: 4px;
+    padding: 15px;
+    margin-bottom: 20px;
+}
+
+.template-preview-container .template-preview {
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid #dee2e6;
+    background: white;
+    padding: 10px;
+    margin-top: 5px;
+}
+
+.template-preview-container .template-preview-placeholder {
+    min-height: 120px;
+    max-height: 200px;
+}
+
+/* Template dimension container - dark grey background with white template inside */
+.template-dimension-container {
+    background: #6c757d;
+    border: 2px solid #495057;
+    border-radius: 8px;
+    margin: 10px 0;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 200px;
+}
+
+/* Template type-specific dimension containers */
+.template-dimension-container[data-template-type="character_sheet"] {
+    min-height: 250px;
+}
+
+.template-dimension-container[data-template-type="character_id"] {
+    min-height: 120px;
+}
+
+.template-dimension-container[data-template-type="item_card"] {
+    min-height: 120px;
+}
+
+.template-dimension-container[data-template-type="medicament_card"],
+.template-dimension-container[data-template-type="condition_card"] {
+    min-height: 150px;
+}
+
+.template-dimension-container[data-template-type="exotic_substance_label"] {
+    min-height: 80px;
+}
+
+/* Side-by-side preview layout */
+.template-preview-row {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+    justify-content: center;
+    width: 100%;
+}
+
+.template-preview-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* Template content styling */
+.template-content {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 10px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    position: relative;
+}
+
+.template-content-back {
+    background: #f8f9fa;
+    border-color: #adb5bd;
+}
+
+/* Template type badges and indicators */
+.template-type-badge {
+    font-size: 0.8em;
+    padding: 0.25em 0.5em;
+    border-radius: 0.25rem;
+    font-weight: 500;
+}
+
+.template-type-badge[data-type="character_sheet"] {
+    background-color: #007bff;
+    color: white;
+}
+
+.template-type-badge[data-type="character_id"] {
+    background-color: #007bff;
+    color: white;
+}
+
+.template-type-badge[data-type="item_card"] {
+    background-color: #28a745;
+    color: white;
+}
+
+.template-type-badge[data-type="medicament_card"] {
+    background-color: #ffc107;
+    color: #212529;
+}
+
+.template-type-badge[data-type="condition_card"] {
+    background-color: #dc3545;
+    color: white;
+}
+
+.template-type-badge[data-type="exotic_substance_label"] {
+    background-color: #6f42c1;
+    color: white;
+}
+
+/* Monaco Editor styles */
+.monaco-editor {
+    border-radius: 0.375rem;
+    overflow: hidden;
+}
+
+.monaco-editor .monaco-editor-background {
+    background: #ffffff;
+}
+
+.monaco-editor .margin {
+    background: #f8f9fa;
+}
+
+.monaco-editor .monaco-editor-background,
+.monaco-editor .inputarea {
+    background: #ffffff;
+}
+
+/* Dark mode support for Monaco Editor */
+@media (prefers-color-scheme: dark) {
+    .monaco-editor .monaco-editor-background {
+        background: #1e1e1e;
+    }
+    
+    .monaco-editor .margin {
+        background: #252526;
+    }
+    
+    .monaco-editor .monaco-editor-background,
+    .monaco-editor .inputarea {
+        background: #1e1e1e;
+    }
+}
+
+/* CodeMirror styles (if used) */
+.CodeMirror {
+    border: 1px solid #ced4da;
+    border-radius: 0.375rem;
+    font-family: 'Fira Code', 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.CodeMirror-gutters {
+    background: #f8f9fa;
+    border-right: 1px solid #dee2e6;
+}
+
+.CodeMirror-linenumber {
+    color: #6c757d;
+    padding: 0 8px;
+}
+
+/* CodeMirror active line highlighting */
+.CodeMirror-activeline-background {
+    background: rgba(0, 123, 255, 0.1);
+}
+
+/* CodeMirror search highlighting */
+.CodeMirror-selected {
+    background: rgba(0, 123, 255, 0.3);
+}
+
+/* CodeMirror hint styling */
+.CodeMirror-hints {
+    background: #ffffff;
+    border: 1px solid #ced4da;
+    border-radius: 0.375rem;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    font-family: 'Fira Code', 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 14px;
+}
+
+.CodeMirror-hint {
+    padding: 8px 12px;
+    border-bottom: 1px solid #f8f9fa;
+}
+
+.CodeMirror-hint-active {
+    background: #007bff;
+    color: #ffffff;
+}
+
+/* Responsive CodeMirror */
+@media (max-width: 768px) {
+    .CodeMirror {
+        min-height: 300px;
+        font-size: 13px;
+    }
+}
+
+/* Template variables help */
+.template-variables {
+    background: #e9ecef;
+    border-left: 4px solid #007bff;
+    padding: 10px;
+    margin: 10px 0;
+    font-size: 0.9em;
+}
+
+.template-variables code {
+    background: #fff;
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-size: 0.85em;
+}
+
+/* Preview error states */
+.preview-error {
+    border: 2px dashed #dc3545;
+    background: #f8d7da;
+    color: #721c24;
+    padding: 15px;
+    border-radius: 4px;
+}
+
+.preview-loading {
+    border: 2px dashed #ffc107;
+    background: #fff3cd;
+    color: #856404;
+    padding: 15px;
+    border-radius: 4px;
+    text-align: center;
+}
+
+/* Auto-update indicator */
+.auto-update-indicator {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 10px 15px;
+    border-radius: 4px;
+    color: white;
+    font-size: 0.9em;
+    z-index: 1050;
+    opacity: 0;
+    transform: translateY(-10px);
+    transition: all 0.3s ease;
+}
+
+.auto-update-indicator.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.auto-update-indicator.bg-success {
+    background-color: #28a745;
+}
+
+.auto-update-indicator.bg-warning {
+    background-color: #ffc107;
+    color: #212529;
+}
+
+.auto-update-indicator.bg-danger {
+    background-color: #dc3545;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .template-preview-row {
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .template-dimension-container {
+        padding: 15px;
+        min-height: 150px;
+    }
+    
+    .template-content {
+        padding: 8px;
+    }
+}
+
+/* Print styles */
+@media print {
+    .template-dimension-container {
+        background: white !important;
+        border: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+    
+    .template-content {
+        border: none !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+    }
+    
+    .template-content-back {
+        background: white !important;
+    }
+} 

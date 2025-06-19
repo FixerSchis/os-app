@@ -1,0 +1,18 @@
+Orion Sphere LRP - Downtime
+
+Hello {{ user.first_name }},
+
+Your character {{ character.name }}'s downtime form has been made available.
+
+You can now enter your downtime activities for this pack. Please log into your account to manage your downtime.
+
+View your downtime at: {{ url_for('downtime.index', _external=True) }}
+
+If you have any questions, please contact the game administrators.
+
+Best regards,
+The Orion Sphere LRP Team
+
+---
+This is an automated notification from Orion Sphere LRP.
+You can manage your notification preferences in your account settings. 

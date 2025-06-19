@@ -1,0 +1,144 @@
+{% extends "_template.html" %}
+
+{% from "macros/wiki.html" import wiki_page_select %}
+
+{% block title %}{{ 'Edit' if species else 'Create' }} Species - Orion Sphere LRP{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="character-management">
+        <h1>{{ 'Edit' if species else 'Create' }} Species</h1>
+        
+        <form method="POST" class="settings-form">
+            <div class="form-group">
+                <label for="name">Species Name *</label>
+                <input type="text" class="form-control" id="name" name="name" value="{{ species.name if species else '' }}" required>
+            </div>
+            
+            {{ wiki_page_select(
+                input_id='wiki_page_autocomplete',
+                select_name='wiki_page',
+                initial_slug=species.wiki_page if species else '',
+                required=true,
+                placeholder='Start typing to search...'
+            ) }}
+            
+            <div class="form-group">
+                <label for="body_hits_type">Body Hits Type *</label>
+                <select class="form-control" id="body_hits_type" name="body_hits_type" required>
+                    {% for hit_type in BodyHitsType %}
+                    <option value="{{ hit_type.value }}" {% if species and species.body_hits_type == hit_type.value %}selected{% endif %}>
+                        {{ BodyHitsType.descriptions()[hit_type.value] }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="body_hits">Body Hits *</label>
+                <input type="number" class="form-control" id="body_hits" name="body_hits" value="{{ species.body_hits if species else 0 }}" required min="0">
+            </div>
+
+            <div class="form-group">
+                <label for="death_count">Death Count *</label>
+                <input type="number" class="form-control" id="death_count" name="death_count" value="{{ species.death_count if species else 0 }}" required min="0">
+            </div>
+            
+            <div class="form-group">
+                <label for="keywords">Keywords</label>
+                <select name="keywords" class="form-control select2-multiple" id="keywords" multiple>
+                    {% if species and species.keywords_list %}
+                        {% for keyword in species.keywords_list %}
+                            <option value="{{ keyword }}" selected>{{ keyword }}</option>
+                        {% endfor %}
+                    {% endif %}
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="permitted_factions">Permitted Factions *</label>
+                <select name="permitted_factions" class="form-control select2-multiple" id="permitted_factions" multiple>
+                    {% for faction in factions %}
+                        <option value="{{ faction.id }}" {% if species and faction.id in species.permitted_factions_list %}selected{% endif %}>
+                            {{ faction.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <h3>Abilities</h3>
+            <div id="abilities-list">
+                {% for ability in (species.abilities if species else []) %}
+                {% set ability_type_value = ability.type.value if ability.type is not string else ability.type %}
+                {% set is_starting_skills = ability.type == AbilityType.STARTING_SKILLS %}
+                {% set is_skill_discounts = ability.type == AbilityType.SKILL_DISCOUNTS %}
+                <div class="ability-block card mb-3 p-3">
+                    <div class="form-row mb-2">
+                        <div class="col-md-4 mb-2">
+                            <label>Name *</label>
+                            <input type="text" class="form-control" name="ability_name_{{ loop.index0 }}" value="{{ ability.name }}" required>
+                        </div>
+                        <div class="col-md-4 mb-2">
+                            <label>Type *</label>
+                            <select class="form-control ability-type-select" name="ability_type_{{ loop.index0 }}" data-selected="{{ ability_type_value }}" required>
+                                <!-- Options will be filled by JS -->
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-2">
+                            <button type="button" class="btn btn-danger remove-ability">Remove</button>
+                        </div>
+                    </div>
+                    <div class="form-group mb-2">
+                        <label>Description *</label>
+                        <textarea class="form-control" name="ability_description_{{ loop.index0 }}" required>{{ ability.description }}</textarea>
+
+                    </div>
+                    <div class="form-group mb-2 ability-extra ability-starting-skills" {% if not is_starting_skills %}style="display:none;"{% endif %}>
+                        <label>Starting Skills</label>
+                        <select class="form-control select2-multiple" name="ability_starting_skills_{{ loop.index0 }}[]" multiple>
+                            {% for skill in skills_list %}
+                            <option value="{{ skill.id }}" {% if is_starting_skills and (skill.id|string) in ability.starting_skills_list %}selected{% endif %}>{{ skill.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group mb-2 ability-extra ability-skill-discounts" {% if not is_skill_discounts %}style="display:none;"{% endif %}>
+                        <label>Skill Discounts</label>
+                        <div class="mb-2">
+                            <label>Discounted Skills</label>
+                            <select class="form-control select2-multiple" name="ability_discount_skills_{{ loop.index0 }}[]" multiple>
+                                {% for skill in skills_list %}
+                                <option value="{{ skill.id }}" {% if is_skill_discounts and (skill.id|string) in ability.skill_discounts_dict.keys() %}selected{% endif %}>{{ skill.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-2">
+                            <label>Discount Value</label>
+                            <input type="number" class="form-control" name="ability_discount_value_{{ loop.index0 }}" value="{% if is_skill_discounts and ability.skill_discounts_dict %}{{ ability.skill_discounts_dict.values()|list|first }}{% endif %}" placeholder="Discount">
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            <button type="button" class="btn btn-primary mb-3" id="add-ability">Add Ability</button>
+            
+            <div class="form-group">
+                <button type="submit" class="btn btn-primary">{{ 'Save Changes' if species else 'Create Species' }}</button>
+                <a href="{{ url_for('species.species_list') }}" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Ability type options template, rendered ONCE -->
+<template id="ability-type-options-template">{% for t in AbilityType %}<option value="{{ t.value }}">{{ AbilityType.descriptions()[t.value] }}</option>{% endfor %}</template>
+
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script src="{{ url_for('static', filename='js/wiki_page_autocomplete.js') }}"></script>
+<script src="{{ url_for('static', filename='js/species_edit.js') }}"></script>
+<script>
+window.ABILITY_TYPE_OPTIONS_HTML = document.getElementById('ability-type-options-template').innerHTML;
+</script>
+{% endblock %} 

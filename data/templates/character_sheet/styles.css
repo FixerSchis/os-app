@@ -1,0 +1,58 @@
+body {
+	display: flex;
+	flex-direction: column;
+	font-family: Arial, sans-serif;
+	font-size: 3mm;
+	margin: 0;
+	padding: 0;
+	max-width: 148mm;  /* A5 width */
+	overflow: hidden;
+}
+
+.main-content {
+	padding: 5mm;
+	flex: 1;
+}
+
+.affix-box {
+	border: 0.2mm solid black;
+	border-radius: 1mm;
+	margin: 2mm;
+	padding: 2mm;
+	font-size: 3mm;
+	box-sizing: border-box;
+	text-align: center;
+	min-height: 25mm;
+}
+
+.affix-content {
+	text-align: center;
+	white-space: pre-line;
+	line-height: 1.4;
+	width: 100%;
+}
+
+table {
+	width: 100%;
+	border-collapse: collapse;
+	margin-bottom: 3mm;
+}
+
+td,
+th {
+	border: 0.2mm solid black;
+	padding: 1mm;
+	vertical-align: top;
+}
+
+.header {
+	font-weight: bold;
+	font-size: 3.2mm;
+}
+
+.section-title {
+	font-weight: bold;
+	margin-top: 2mm;
+	margin-bottom: 1mm;
+	font-size: 3.2mm;
+}

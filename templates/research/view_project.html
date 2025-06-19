@@ -1,0 +1,125 @@
+{% extends '_template.html' %}
+
+{% block title %}{{ research.project_name }} - Research Project{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>{{ research.project_name }}</h1>
+        <a href="{{ url_for('research.view_research_list') }}" class="btn btn-secondary">Back to List</a>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Project Details</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Project ID:</strong> {{ research.public_id }}</p>
+                    <p><strong>Type:</strong> {{ research.type.value|capitalize }}</p>
+                    {% if research.description %}
+                        <p><strong>Description:</strong> {{ research.description }}</p>
+                    {% endif %}
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Character:</strong> {{ character_research.character.name }}</p>
+                    <p><strong>Current Stage:</strong> 
+                        {% if current_stage %}
+                            {{ current_stage.stage.name }}
+                        {% else %}
+                            Not started
+                        {% endif %}
+                    </p>
+                    <p><strong>Progress:</strong>
+                        {% if current_stage %}
+                            {% if current_stage.stage_completed %}
+                                Completed
+                            {% else %}
+                                In Progress
+                            {% endif %}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">Research Stages</h5>
+        </div>
+        <div class="card-body">
+            {% for stage_data in stages %}
+                {% set stage = stage_data.stage %}
+                {% set progress = stage_data.progress %}
+                <div class="card mb-3 {% if stage.id == character_research.current_stage_id %}border-primary{% endif %}">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0">{{ stage.name }}</h6>
+                        {% if progress %}
+                            {% if progress.stage_completed %}
+                                <span class="badge bg-success">Completed</span>
+                            {% else %}
+                                <span class="badge bg-warning">In Progress</span>
+                            {% endif %}
+                        {% else %}
+                            <span class="badge bg-secondary">Not Started</span>
+                        {% endif %}
+                    </div>
+                    {% if progress %}
+                    <div class="card-body">
+                            {% if stage.description %}
+                                <p>{{ stage.description }}</p>
+                            {% endif %}
+                            
+                            {% if stage.unlock_requirements %}
+                                <h6>Requirements:</h6>
+                                <ul class="list-unstyled">
+                                    {% for req in stage.unlock_requirements %}
+                                        {% set req_progress = progress.requirement_progress|selectattr('requirement_id', 'eq', req.id)|list %}
+                                        <li>
+                                            {% if req.requirement_type.value == 'science' %}
+                                                {% if req_progress %}
+                                                    {{ req_progress[0].progress }}/{{ req.amount }} {{ ScienceType.descriptions()[req.science_type.value] }} Science
+                                                {% else %}
+                                                    0/{{ req.amount }} {{ ScienceType.descriptions()[req.science_type.value] }} Science
+                                                {% endif %}
+                                            {% elif req.requirement_type.value == 'item' %}
+                                                {% if req_progress %}
+                                                    {{ req_progress[0].progress }}/{{ req.amount }} {{ req.item_type.name }} Items
+                                                {% else %}
+                                                    0/{{ req.amount }} {{ req.item_type.name }} Items
+                                                {% endif %}
+                                            {% elif req.requirement_type.value == 'exotic' %}
+                                                {% if req_progress %}
+                                                    {{ req_progress[0].progress }}/{{ req.amount }} {{ req.exotic_substance.name }}
+                                                {% else %}
+                                                    0/{{ req.amount }} {{ req.exotic_substance.name }}
+                                                {% endif %}
+                                            {% elif req.requirement_type.value == 'sample' %}
+                                                {% if req_progress %}
+                                                    {{ req_progress[0].progress }}/{{ req.amount }} Samples
+                                                {% else %}
+                                                    0/{{ req.amount }} Samples
+                                                {% endif %}
+                                                {% if req.sample_tag %}
+                                                    with tag: {{ req.sample_tag }}
+                                                {% endif %}
+                                                {% if req.requires_researched %}
+                                                    (must be researched)
+                                                {% endif %}
+                                            {% endif %}
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                            {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %} 

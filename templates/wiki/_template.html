@@ -1,0 +1,174 @@
+{% extends "_template.html" %}
+{% block title %}{{ page.title }} - Wiki - Orion Sphere LRP{% endblock %}
+{% block head %}
+{{ super() }}
+<link rel="stylesheet" href="{{ url_for('static', filename='external/css/bootstrap-icons.min.css') }}">
+<style>
+.input-group-sm .form-control,
+.input-group-sm .btn {
+    height: 2rem;
+    font-size: 1rem;
+    border-radius: 0.25rem;
+}
+.input-group-sm .btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding-top: 0;
+    padding-bottom: 0;
+}
+.input-group-sm .btn i {
+    font-size: 1.1rem;
+    line-height: 1;
+}
+.editor-banner {
+    margin-bottom: 1rem;
+}
+.editor-banner .btn {
+    margin: 0.25rem;
+}
+@media (max-width: 768px) {
+    .editor-banner {
+        flex-direction: column;
+        align-items: stretch !important;
+    }
+    .editor-banner > div {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+    }
+    .editor-banner form {
+        width: 100%;
+    }
+    .wiki-search-group {
+        width: 100% !important;
+    }
+    .btn {
+        flex: 0 1 auto;
+        white-space: nowrap;
+    }
+}
+</style>
+{% endblock %}
+{% block content %}
+<div class="container">
+    <div class="editor-banner d-flex justify-content-between align-items-center">
+        <div class="d-flex flex-wrap gap-2">
+            <a href="{{ url_for('wiki.wiki_view', slug='index') }}" class="btn btn-secondary btn-sm">Wiki Home</a>
+            <a href="{{ url_for('wiki.wiki_change_log') }}" class="btn btn-info btn-sm">Change Log</a>
+            <a href="{{ url_for('wiki.wiki_list') }}" class="btn btn-primary btn-sm">Index</a>
+            {% if current_user.is_authenticated and current_user.has_role("plot_team") %}
+            <a href="{{ url_for('wiki.wiki_pending_changes') }}" class="btn btn-info btn-sm">Pending Changes</a>
+            <a href="{{ url_for('wiki.wiki_new') }}" class="btn btn-primary btn-sm">New Page</a>
+            {% if not is_version_view %}
+                {% if page and not is_list_page %}
+                    <a href="{{ url_for('wiki.wiki_edit', slug=page.slug) }}" class="btn btn-primary btn-sm">Edit</a>
+                    {% if page.slug != 'index' %}
+                        {% if version and not version.deleted %}
+                            <form method="POST" action="{{ url_for('wiki.wiki_delete', slug=page.slug) }}" class="d-inline-block">
+                                <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                            </form>
+                        {% elif version %}
+                            <form method="POST" action="{{ url_for('wiki.wiki_restore', slug=page.slug) }}" class="d-inline-block">
+                                <button type="submit" class="btn btn-warning btn-sm">Restore</button>
+                            </form>
+                        {% endif %}
+                    {% endif %}
+                {% endif %}
+            {% endif %}
+            {% endif %}
+        </div>
+        <form method="GET" action="{{ url_for('wiki.wiki_search') }}" class="d-flex flex-grow-1 justify-content-end" id="wiki-search-form" autocomplete="off">
+            <div class="input-group input-group-sm wiki-search-group" style="max-width: 300px;">
+                <input type="text" class="form-control" id="wiki-search-input" name="q" placeholder="Search wiki..." autocomplete="off">
+                <button type="submit" class="btn btn-outline-secondary search-button">
+                    <i class="bi bi-search"></i>
+                </button>
+                <div id="wiki-search-dropdown" class="dropdown-menu" style="width: 100%; max-height: 300px; overflow-y: auto; position: absolute; top: 100%; left: 0; z-index: 1000; display: none;"></div>
+            </div>
+        </form>
+    </div>
+    {% block wiki_content %}{% endblock %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+$(function() {
+    var $input = $('#wiki-search-input');
+    var $dropdown = $('#wiki-search-dropdown');
+    var typingTimer;
+    var lastResults = [];
+    var highlightedIndex = -1;
+
+    function renderDropdown(results) {
+        $dropdown.empty();
+        if (!results.length) {
+            $dropdown.hide();
+            highlightedIndex = -1;
+            return;
+        }
+        results.forEach(function(result, i) {
+            var tags = result.tags && result.tags.length ?
+                ' <span style="font-size:0.9em; color:#888;">[' + result.tags.join(', ') + ']</span>' : '';
+            var item = $('<a class="dropdown-item" href="/wiki/' + result.slug + '">' +
+                $('<div>').text(result.title).html() + tags + '</a>');
+            if (i === highlightedIndex) item.addClass('active');
+            $dropdown.append(item);
+        });
+        $dropdown.show();
+    }
+
+    $input.on('input', function() {
+        clearTimeout(typingTimer);
+        var val = $input.val();
+        highlightedIndex = -1;
+        if (!val) {
+            $dropdown.hide();
+            return;
+        }
+        typingTimer = setTimeout(function() {
+            $.getJSON('/wiki/live_search', {q: val}, function(results) {
+                lastResults = results;
+                renderDropdown(results);
+            });
+        }, 200);
+    });
+
+    $input.on('focus', function() {
+        if (lastResults.length) $dropdown.show();
+    });
+    $input.on('blur', function() {
+        setTimeout(function() { $dropdown.hide(); }, 200);
+    });
+
+    $dropdown.on('mousedown', 'a', function(e) {
+        window.location.href = $(this).attr('href');
+        e.preventDefault();
+    });
+
+    $input.on('keydown', function(e) {
+        if (!$dropdown.is(':visible') || !lastResults.length) return;
+        if (e.key === 'ArrowDown') {
+            highlightedIndex = (highlightedIndex + 1) % lastResults.length;
+            renderDropdown(lastResults);
+            e.preventDefault();
+        } else if (e.key === 'ArrowUp') {
+            highlightedIndex = (highlightedIndex - 1 + lastResults.length) % lastResults.length;
+            renderDropdown(lastResults);
+            e.preventDefault();
+        } else if (e.key === 'Enter') {
+            if (highlightedIndex >= 0 && highlightedIndex < lastResults.length) {
+                window.location.href = '/wiki/' + lastResults[highlightedIndex].slug;
+                e.preventDefault();
+            }
+        }
+    });
+
+    // On form submit, just let the form submit as normal (for full search)
+});
+</script>
+{% endblock %}

@@ -1,0 +1,94 @@
+{% extends "_template.html" %}
+
+{% block title %}Character Skills - {{ character.name }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="character-skills">
+        <h1>Skills for {{ character.name }}</h1>
+        
+        <div class="mb-3">
+            <a href="{{ url_for('characters.edit', character_id=character.id) }}" class="btn btn-secondary">Back to Edit</a>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <span class="h5 mb-0">Available CP: <strong>{{ (character.base_character_points + current_user.character_points) - character.get_total_skill_cost() }}</strong></span>
+            <span class="h5 mb-0">Spent CP: <strong>{{ character.get_total_skill_cost() }}</strong></span>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-striped w-100">
+                <thead>
+                    <tr>
+                        <th style="width: 80%">Skill</th>
+                        <th style="width: 10%">Cost</th>
+                        <th style="width: 10%">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for skill_type, group in skills|groupby('skill_type') %}
+                        <tr class="bg-skilltype">
+                            <td colspan="3" class="fw-bold">
+                                <strong>{{ skill_type|capitalize }}</strong>
+                            </td>
+                        </tr>
+                        {% for skill in group %}
+                        {% set character_skill = character.skills|selectattr('skill_id', 'equalto', skill.id)|first %}
+                        {% set cost = character.get_skill_cost(skill) %}
+                        {% set can_afford = (character.base_character_points + current_user.character_points - character.get_total_skill_cost()) >= cost %}
+                        {% set can_refund = current_user.has_role('user_admin') or character.status == 'developing' %}
+                        <tr>
+                            <td class="ps-4" style="padding-left: 2em;">
+                                <div><strong>{{ skill.name }}</strong></div>
+                                <div class="text-muted small">{{ skill.description }}</div>
+                            </td>
+                            <td class="text-center">
+                                {{ cost }} CP
+                            </td>
+                            <td class="text-center">
+                                {% if skill.can_purchase_multiple %}
+                                    <div class="d-flex align-items-center justify-content-center gap-2" style="min-width:120px;">
+                                        <form method="POST" action="{{ url_for('character_skills.refund_skill', character_id=character.id) }}" style="display:inline;">
+                                            <input type="hidden" name="skill_id" value="{{ skill.id }}">
+                                            <button type="submit" class="btn btn-outline-primary btn-sm"
+                                                {% if not character_skill or character_skill.times_purchased == 0 or not can_refund %}disabled{% endif %}>
+                                                <i class="fas fa-minus"></i>
+                                            </button>
+                                        </form>
+                                        <span class="text-center" style="width:2em;">{{ character_skill.times_purchased if character_skill else 0 }}</span>
+                                        <form method="POST" action="{{ url_for('character_skills.purchase_skill', character_id=character.id) }}" style="display:inline;">
+                                            <input type="hidden" name="skill_id" value="{{ skill.id }}">
+                                            <button type="submit" class="btn btn-outline-primary btn-sm"
+                                                {% if not can_afford %}disabled{% endif %}>
+                                                <i class="fas fa-plus"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                {% else %}
+                                    {% if character_skill %}
+                                        <form method="POST" action="{{ url_for('character_skills.refund_skill', character_id=character.id) }}" class="d-inline">
+                                            <input type="hidden" name="skill_id" value="{{ skill.id }}">
+                                            <button type="submit" class="btn btn-danger btn-sm" {% if not can_refund %}disabled{% endif %}>Refund</button>
+                                        </form>
+                                    {% else %}
+                                        <form method="POST" action="{{ url_for('character_skills.purchase_skill', character_id=character.id) }}" class="d-inline">
+                                            <input type="hidden" name="skill_id" value="{{ skill.id }}">
+                                            <button type="submit" class="btn btn-primary btn-sm" {% if not can_afford %}disabled{% endif %}>Buy</button>
+                                        </form>
+                                    {% endif %}
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <style>
+            .bg-skilltype {
+                background-color: var(--bs-table-bg) !important;
+            }
+        </style>
+    </div>
+</div>
+{% endblock %} 

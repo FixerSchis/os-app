@@ -1,0 +1,215 @@
+{% extends "_template.html" %}
+
+{% block title %}Items - Orion Sphere LRP{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col">
+            <h1>Item Database</h1>
+        </div>
+        <div class="col text-end">
+            <a href="{{ url_for('items.create') }}" class="btn btn-primary">Create New Item</a>
+        </div>
+    </div>
+
+    <!-- Filters and Search -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <!-- Hidden field for expiry only -->
+                <input type="hidden" name="expiry" value="{{ expiry_filter }}">
+
+                <!-- Search -->
+                <div class="col-md-3">
+                    <label for="search" class="form-label">Search Item ID</label>
+                    <input type="text" class="form-control" id="search" name="search" value="{{ search }}" placeholder="e.g. W0001-001">
+                </div>
+
+                <!-- Item Type Filter -->
+                <div class="col-md-3">
+                    <label for="item_type_id" class="form-label">Item Type</label>
+                    <select class="form-select" id="item_type_id" name="item_type_id">
+                        <option value="">All Types</option>
+                        {% for type in item_types %}
+                        <option value="{{ type.id }}" {% if item_type_id == type.id %}selected{% endif %}>{{ type.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Blueprint Filter -->
+                <div class="col-md-3">
+                    <label for="blueprint_id" class="form-label">Blueprint</label>
+                    <select class="form-select" id="blueprint_id" name="blueprint_id">
+                        <option value="">All Blueprints</option>
+                        {% for bp in blueprints.values() %}
+                        <option value="{{ bp.id }}" {% if blueprint_id == bp.id %}selected{% endif %}>{{ bp.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Mod Filter -->
+                <div class="col-md-3">
+                    <label for="mod_id" class="form-label">Mod</label>
+                    <select class="form-select" id="mod_id" name="mod_id">
+                        <option value="">All Mods</option>
+                        {% for mod in mods %}
+                        <option value="{{ mod.id }}" {% if mod_id == mod.id %}selected{% endif %}>{{ mod.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Expiry Filter -->
+                <div class="col-md-3">
+                    <label for="expiry" class="form-label">Expiry Status</label>
+                    <select class="form-select" id="expiry" name="expiry" disabled>
+                        <option value="all" {% if expiry_filter == 'all' %}selected{% endif %}>All</option>
+                        <option value="active" {% if expiry_filter == 'active' %}selected{% endif %}>Active</option>
+                        <option value="expired" {% if expiry_filter == 'expired' %}selected{% endif %}>Expired</option>
+                        <option value="none" {% if expiry_filter == 'none' %}selected{% endif %}>No Expiry</option>
+                    </select>
+                    <div class="form-text text-muted">(Filtering by expiry is currently disabled)</div>
+                </div>
+
+                <!-- Sort Controls -->
+                <div class="col-md-3">
+                    <label for="sort_by" class="form-label">Sort By</label>
+                    <select class="form-select" id="sort_by" name="sort_by">
+                        <option value="item_id" {% if sort_by == 'item_id' %}selected{% endif %}>Item ID</option>
+                        <option value="blueprint" {% if sort_by == 'blueprint' %}selected{% endif %}>Blueprint</option>
+                        <option value="expiry" {% if sort_by == 'expiry' %}selected{% endif %}>Expiry</option>
+                    </select>
+                </div>
+
+                <div class="col-md-3">
+                    <label for="sort_order" class="form-label">Sort Order</label>
+                    <select class="form-select" id="sort_order" name="sort_order">
+                        <option value="asc" {% if sort_order == 'asc' %}selected{% endif %}>Ascending</option>
+                        <option value="desc" {% if sort_order == 'desc' %}selected{% endif %}>Descending</option>
+                    </select>
+                </div>
+
+                <!-- Filter Buttons -->
+                <div class="col-md-3 d-flex align-items-end">
+                    <div class="d-grid gap-2 w-100">
+                        <button type="submit" class="btn btn-primary">Apply Filters</button>
+                        <a href="{{ url_for('items.list') }}" class="btn btn-secondary">Reset</a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Results Table -->
+    <div class="table-responsive">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Item ID</th>
+                    <th>Blueprint</th>
+                    <th>Mods Applied</th>
+                    <th>Base Cost</th>
+                    <th>Expiry</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                <tr>
+                    <td>{{ item.full_code }}</td>
+                    <td>{{ blueprints[item.blueprint_id].name }}</td>
+                    <td>
+                        {% set bp_mod_counts = mod_instances_by_blueprint[item.blueprint_id] %}
+                        {% set mod_counts = mod_instances_by_item[item.id] %}
+                        {% set combined_mods = {} %}
+                        {% for mod, count in bp_mod_counts %}
+                            {% set _ = combined_mods.update({mod.id: (mod, count)}) %}
+                        {% endfor %}
+                        {% for mod, count in mod_counts %}
+                            {% if mod.id in combined_mods %}
+                                {% set base_count = combined_mods[mod.id][1] %}
+                                {% set _ = combined_mods.update({mod.id: (mod, base_count + count)}) %}
+                            {% else %}
+                                {% set _ = combined_mods.update({mod.id: (mod, count)}) %}
+                            {% endif %}
+                        {% endfor %}
+                        {% if combined_mods %}
+                            {% for mod, count in combined_mods.values() %}
+                                <span class="badge bg-primary me-1">{{ mod.name }} ({{ count }})</span>
+                            {% endfor %}
+                        {% else %}
+                            None
+                        {% endif %}
+                    </td>
+                    <td>{{ item.base_cost_calc(0) if item.base_cost_calc(0) is not none else '-' }}</td>
+                    <td>
+                        {% if item.expiry is not none %}
+                            E{{ item.expiry }}
+                        {% else %}
+                            <span class="text-muted">No expiry</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{{ url_for('items.view', id=item.id) }}" class="btn btn-sm btn-info">View</a>
+                        <a href="{{ url_for('items.edit', id=item.id) }}" class="btn btn-sm btn-primary">Edit</a>
+                        <button type="button" class="btn btn-sm btn-danger delete-btn"
+                                data-delete-url="{{ url_for('items.delete', id=item.id) }}"
+                                data-item-code="{{ item.full_code }}">
+                            Delete
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm Delete</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                Are you sure you want to delete <span id="itemCode"></span>?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="deleteForm" method="POST" style="display: inline;">
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const deleteButtons = document.querySelectorAll('.delete-btn');
+    const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+    const deleteForm = document.getElementById('deleteForm');
+    const itemCode = document.getElementById('itemCode');
+
+    deleteButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const url = this.dataset.deleteUrl;
+            const code = this.dataset.itemCode;
+            itemCode.textContent = code;
+            deleteForm.action = url;
+            deleteModal.show();
+        });
+    });
+    // Explicitly hide modal on cancel/close to fix lingering fade
+    document.querySelectorAll('[data-bs-dismiss="modal"]').forEach(btn => {
+        btn.addEventListener('click', function() {
+            deleteModal.hide();
+        });
+    });
+});
+</script>
+{% endblock %}
+{% endblock %} 

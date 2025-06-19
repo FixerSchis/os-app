@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{% endblock %} - Orion Sphere LRP</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/errors.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/templates.css') }}">
+    <link href="{{ url_for('static', filename='external/css/select2.min.css') }}" rel="stylesheet" />
+    <link href="{{ url_for('static', filename='external/css/select2-bootstrap-5-theme.min.css') }}" rel="stylesheet" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='external/css/font-awesome.min.css') }}">
+    <link href="{{ url_for('static', filename='external/css/bootstrap.min.css') }}" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='external/css/bootstrap-icons.min.css') }}">
+    <style>
+        .dropdown {
+            position: relative;
+            display: inline-block;
+        }
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            background-color: #f9f9f9;
+            min-width: 160px;
+            box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+            z-index: 2000 !important;
+        }
+        .dropdown-content a {
+            color: black;
+            padding: 12px 16px;
+            text-decoration: none;
+            display: block;
+        }
+        .dropdown-content a:hover {
+            background-color: #f1f1f1;
+        }
+        .dropdown:hover .dropdown-content {
+            display: block;
+        }
+        .dropdown:hover .dropbtn {
+            background-color: #3e8e41;
+        }
+        
+        /* CKEditor Styles */
+        .ck-editor__editable {
+            min-height: 200px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .ck.ck-editor {
+            margin-bottom: 1rem;
+        }
+        
+        .ck.ck-editor__main > .ck-editor__editable {
+            background-color: #fff;
+            border: 1px solid #ccc;
+            border-radius: 0 0 4px 4px;
+        }
+        
+        .ck.ck-editor__top .ck-sticky-panel .ck-toolbar {
+            border: 1px solid #ccc;
+            border-radius: 4px 4px 0 0;
+            background-color: #f8f9fa;
+        }
+        
+        /* Wiki Pages Dropdown Styles */
+        .ck-wiki-pages-dropdown .ck-button {
+            background-color: #007bff;
+            color: white;
+            border: 1px solid #0056b3;
+        }
+        
+        .ck-wiki-pages-dropdown .ck-button:hover {
+            background-color: #0056b3;
+        }
+        
+        /* Wiki Pages Modal Styles */
+        .ck-wiki-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .ck-wiki-modal-content {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            width: 90%;
+            max-width: 500px;
+            max-height: 80vh;
+            overflow: hidden;
+        }
+        
+        .ck-wiki-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 20px;
+            border-bottom: 1px solid #ddd;
+            background-color: #f8f9fa;
+        }
+        
+        .ck-wiki-modal-header h3 {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 600;
+        }
+        
+        .ck-wiki-modal-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #666;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .ck-wiki-modal-close:hover {
+            color: #333;
+        }
+        
+        .ck-wiki-modal-body {
+            padding: 20px;
+        }
+        
+        .ck-wiki-search-input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+            margin-bottom: 16px;
+            box-sizing: border-box;
+        }
+        
+        .ck-wiki-search-input:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+        }
+        
+        .ck-wiki-pages-list {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        
+        .ck-wiki-page-item {
+            padding: 12px 16px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.2s;
+        }
+        
+        .ck-wiki-page-item:last-child {
+            border-bottom: none;
+        }
+        
+        .ck-wiki-page-item:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .ck-wiki-page-item-selected {
+            background-color: #007bff !important;
+            color: white !important;
+        }
+        
+        .ck-wiki-loading,
+        .ck-wiki-no-results,
+        .ck-wiki-error {
+            padding: 16px;
+            text-align: center;
+            color: #6c757d;
+            font-style: italic;
+        }
+        
+        .ck-wiki-error {
+            color: #dc3545;
+        }
+    </style>
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <nav>
+        <div class="nav-wrapper">
+            <a href="{{ url_for('index') }}" class="brand-logo">Orion Sphere LRP</a>
+            <ul class="right">
+                <li><a href="{{ url_for('wiki.wiki_view', slug='index') }}">Home</a></li>
+                <li><a href="{{ url_for('events.event_list') }}">Events</a></li>
+                <li class="dropdown">
+                    <a href="#" class="dropbtn">Database <i class="fas fa-caret-down"></i></a>
+                    <div class="dropdown-content">
+                        {% if current_user.is_authenticated and current_user.has_role('user_admin') %}
+                            <a href="{{ url_for('user_management.user_management') }}">Users</a>
+                        {% endif %}
+                        <a href="{{ url_for('factions.faction_list') }}">Factions</a>
+                        <a href="{{ url_for('species.species_list') }}">Species</a>
+                        <a href="{{ url_for('skills.skills_list') }}">Skills</a>
+                        <hr>
+                        {% if current_user.is_authenticated and current_user.has_role('rules_team') %}
+                            <a href="{{ url_for('item_types.list') }}">Item Types</a>
+                        {% endif %}
+                        <a href="{{ url_for('item_blueprints.list') }}">Base Items</a>
+                        {% if current_user.is_authenticated and current_user.has_role('rules_team') %}
+                            <a href="{{ url_for('items.list') }}">Item Database</a>
+                            <hr>
+                            <a href="{{ url_for('conditions.list') }}">Conditions</a>
+                            <a href="{{ url_for('cybernetics.list') }}">Cybernetics</a>
+                        {% else %}
+                            <hr>
+                        {% endif %}
+                        <a href="{{ url_for('exotic_substances.list') }}">Exotic Substances</a>
+                        <a href="{{ url_for('medicaments.list') }}">Medicaments</a>
+                        <a href="{{ url_for('mods.list') }}">Mods</a>
+                    </div>
+                </li>
+                {% if current_user.is_authenticated %}
+                <li class="dropdown">
+                    <a href="#" class="dropbtn">Tools <i class="fas fa-caret-down"></i></a>
+                    <div class="dropdown-content">
+                        <a href="{{ url_for('characters.character_list') }}">Characters</a>
+                        {% if current_user.has_role('user_admin') or current_user.has_active_character() %}
+                        <a href="{{ url_for('groups.group_list') }}">Groups</a>
+                        <a href="{{ url_for('banking.bank') }}">Bank</a>
+                        {% endif %}
+                        {% if current_user.has_role('npc') or current_user.has_active_character() %}
+                        <a href="{{ url_for('messages.messages') }}">SMS</a>
+                        {% endif %}
+                        {% if current_user.has_role('downtime_team') or has_enter_downtime_packs %}
+                        <a href="{{ url_for('downtime.index') }}">Downtime</a>
+                        {% endif %}
+                        {% if current_user.has_role('rules_team') or has_research_projects %}
+                        <a href="{{ url_for('research.research_list') if current_user.has_role('rules_team') else url_for('research.view_research_list') }}">Research</a>
+                        {% endif %}
+                    </div>
+                </li>
+                {% if current_user.has_role('admin') %}
+                <li><a href="{{ url_for('templates.template_list') }}">Templates</a></li>
+                {% endif %}
+                <li><a href="{{ url_for('settings.settings') }}">Settings</a></li>
+                <li><a href="{{ url_for('auth.logout') }}">Logout</a></li>
+                {% else %}
+                <li><a href="{{ url_for('auth.login') }}">Login</a></li>
+                <li><a href="{{ url_for('auth.register') }}">Register</a></li>
+                {% endif %}
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container">
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="flash-message">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        
+        {% block content %}{% endblock %}
+    </div>
+
+    <script src="{{ url_for('static', filename='external/js/jquery-3.6.0.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='external/js/select2.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='external/js/bootstrap.bundle.min.js') }}"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html> 

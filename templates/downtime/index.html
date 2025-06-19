@@ -1,0 +1,179 @@
+{% extends "_template.html" %}
+
+{% block title %}Downtime{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>Downtime</h1>
+    
+    {% if current_user.has_role('downtime_team') %}
+        <!-- Downtime Team View -->
+        {% if not active_period %}
+            <div class="row mb-4">
+                <div class="col">
+                    <form action="{{ url_for('downtime.start_downtime') }}" method="POST" id="start-downtime-form">
+                        <div class="mb-3">
+                            <label for="event-select" class="form-label">Select Event for Downtime</label>
+                            <select class="form-select select2" id="event-select" name="event_id" required>
+                                <option value="">Select an event...</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Start New Downtime</button>
+                    </form>
+                </div>
+            </div>
+        {% else %}
+            <!-- Add Process Downtime button if all tasks are complete -->
+            {% if DowntimeTaskStatus.COMPLETED.value in packs_by_status and packs_by_status|length == 1 %}
+                <div class="row mb-4">
+                    <div class="col">
+                        <form action="{{ url_for('downtime.process_downtime', period_id=active_period.id) }}" method="POST">
+                            <button type="submit" class="btn btn-success">Process Downtime</button>
+                        </form>
+                    </div>
+                </div>
+            {% endif %}
+            <div class="row mb-4">
+                <div class="col">
+                    <h2>Character Packs</h2>
+                    <div class="mb-3">
+                        <label for="status-filter" class="form-label">Filter by Status:</label>
+                        <select class="form-select" id="status-filter">
+                            {% for status in DowntimeTaskStatus %}
+                                {% if status.value in packs_by_status %}
+                                    <option value="{{ status.value }}" {% if status.value == default_status %}selected{% endif %}>
+                                        {{ DowntimeTaskStatus.descriptions()[status.value] }}
+                                    </option>
+                                {% endif %}
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Character</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for status in DowntimeTaskStatus %}
+                                {% if status.value in packs_by_status %}
+                                    {% for pack in packs_by_status[status.value] %}
+                                        <tr class="status-row" data-status="{{ status.value }}" {% if status.value != default_status %}style="display: none;"{% endif %}>
+                                            <td>{{ pack.character.name }}</td>
+                                            <td>{{ DowntimeTaskStatus.descriptions()[status.value] }}</td>
+                                            <td>
+                                                {% if status == DowntimeTaskStatus.ENTER_PACK %}
+                                                    <a href="{{ url_for('downtime.enter_pack_contents', period_id=active_period.id, character_id=pack.character.id) }}" 
+                                                       class="btn btn-primary btn-sm">Edit Pack</a>
+                                                {% elif status == DowntimeTaskStatus.ENTER_DOWNTIME %}
+                                                    <a href="{{ url_for('downtime.enter_downtime', period_id=active_period.id, character_id=pack.character.id) }}" 
+                                                       class="btn btn-primary btn-sm">Enter Downtime</a>
+                                                {% elif status == DowntimeTaskStatus.MANUAL_REVIEW %}
+                                                    <a href="{{ url_for('downtime.manual_review', period_id=active_period.id, character_id=pack.character.id) }}" 
+                                                       class="btn btn-primary btn-sm">Review</a>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                {% endif %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        {% endif %}
+    {% else %}
+        <!-- Player View -->
+        <div class="row">
+            <div class="col">
+                <h2>Your Downtime Packs</h2>
+                {% if active_period %}
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Character</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for pack in user_packs %}
+                                <tr>
+                                    <td>{{ pack.character.name }}</td>
+                                    <td>{{ DowntimeTaskStatus.descriptions()[pack.status.value] }}</td>
+                                    <td>
+                                        <a href="{{ url_for('downtime.enter_downtime', period_id=active_period.id, character_id=pack.character.id) }}" 
+                                           class="btn btn-primary btn-sm">Enter Downtime</a>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% else %}
+                    <p>No active downtime period.</p>
+                {% endif %}
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+{% if current_user.has_role('downtime_team') %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const statusFilter = document.getElementById('status-filter');
+    const statusRows = document.querySelectorAll('.status-row');
+    
+    statusFilter.addEventListener('change', function() {
+        const selectedStatus = this.value;
+        
+        statusRows.forEach(row => {
+            if (row.dataset.status === selectedStatus) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    });
+});
+</script>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+$(document).ready(function() {
+    // Initialize Select2
+    $('#event-select').select2({
+        theme: 'bootstrap4',
+        placeholder: 'Select an event...',
+        allowClear: true
+    });
+
+    // Load available events
+    $.get('{{ url_for("events.get_events") }}', {
+        has_finished: true,
+        has_downtime: false,
+        event_type: '{{ EventType.MAINLINE.value }}'
+    }, function(data) {
+        const events = data.events;
+        const select = $('#event-select');
+        
+        events.forEach(function(event) {
+            const option = new Option(
+                `Event ${event.event_number} - ${event.name} (Ended: ${event.end_date})`,
+                event.id,
+                false,
+                false
+            );
+            select.append(option);
+        });
+        
+        // Trigger change to update Select2
+        select.trigger('change');
+    });
+});
+</script>
+{% endblock %} 

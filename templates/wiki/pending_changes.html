@@ -1,0 +1,59 @@
+{% extends "wiki/_template.html" %}
+{% block title %}Pending Wiki Changes - Orion Sphere LRP{% endblock %}
+{% block wiki_content %}
+<div class="container">
+    <h1>Pending Wiki Changes</h1>
+    {% if pending_pages %}
+    <form method="POST">
+        <div class="form-group">
+            <label for="changelog"><strong>Change Log (required):</strong></label>
+            <textarea id="changelog" name="changelog" class="form-control richtext" rows="4"></textarea>
+        </div>
+        <div class="form-group">
+            <button type="submit" class="btn btn-success" id="publish-btn" disabled>Publish Selected Changes</button>
+            <button type="button" class="btn btn-sm btn-secondary" id="toggle-select-all">Select All</button>
+        </div>
+        <hr>
+        {% for page in pending_pages %}
+        <div class="card mb-4">
+            <div class="card-header d-flex align-items-center">
+                <input type="checkbox" name="selected_pages" value="{{ page.slug }}" class="mr-2 page-checkbox">
+                <a href="{{ url_for('wiki.wiki_edit', slug=page.slug) }}"><strong>{{ page.title }}</strong></a>
+                <span class="ml-3">Version: {{ page.version_number }}</span>
+                <span class="ml-3">Last Edited: {{ page.created_at.strftime('%Y-%m-%d %H:%M') if page.created_at else '' }}</span>
+                <button type="button" class="btn btn-sm btn-outline-secondary ml-auto toggle-section-btn" data-target="section-{{ loop.index }}">Show Changes</button>
+            </div>
+            <div class="card-body section-collapse" id="section-{{ loop.index }}" style="display: none;">
+                {% for d in page.diffs %}
+                <div class="wiki-section-review mb-3">
+                    <h4>{{ d.section.title or 'Untitled Section' }}</h4>
+                    <div class="diff">
+                      {% for line in d.diff %}
+                        {% if line.startswith('+') %}
+                          <div class="diff-add">{{ line }}</div>
+                        {% elif line.startswith('-') %}
+                          <div class="diff-remove">{{ line }}</div>
+                        {% else %}
+                          <div class="diff-context">{{ line }}</div>
+                        {% endif %}
+                      {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+    </form>
+    {% else %}
+    <p>No pending changes.</p>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+{% if pending_pages %}
+<script src="{{ url_for('static', filename='external/js/ckeditor.js') }}"></script>
+<script src="{{ url_for('static', filename='js/wiki_pending_changes.js') }}"></script>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,388 @@
+{% extends "_template.html" %}
+
+{% block title %}{{ 'Edit' if character else 'Create' }} Character - Orion Sphere LRP{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+    <div class="character-management">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="h2 mb-0">{{ 'Edit' if character else 'Create' }} Character</h1>
+            {% if character %}
+            <div class="d-flex gap-2">
+                <a href="{{ url_for('characters.audit_log', character_id=character.id) }}" class="btn btn-outline-info">
+                    <i class="fas fa-history me-1"></i> View Audit Log
+                </a>
+                <a href="{{ url_for('character_skills.character_skills', character_id=character.id) }}" class="btn btn-outline-primary">
+                    <i class="fas fa-graduation-cap me-1"></i> Manage Skills
+                </a>
+            </div>
+            {% endif %}
+        </div>
+        
+        <form method="POST" class="settings-form w-100">
+            {% if admin_context %}
+            <input type="hidden" name="admin_context" value="1">
+            {% endif %}
+            
+            <div class="row g-4">
+                <!-- Basic Information -->
+                <div class="col-lg-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Basic Information</h5>
+                        </div>
+                        <div class="card-body">
+                            {% if player_id %}
+                            <div class="form-group">
+                                <label for="player_id" class="form-label">Player ID</label>
+                                <input type="text" id="player_id" name="player_id" class="form-control" value="{{ player_id }}" readonly>
+                            </div>
+                            {% endif %}
+                            {% set is_readonly = character and character.status in ['retired', 'dead'] and not current_user.has_role('user_admin') %}
+                            <div class="form-group mb-3">
+                                <label for="name" class="form-label">Character Name *</label>
+                                <input type="text" class="form-control" id="name" name="name" value="{{ character.name if character else '' }}" required {% if is_readonly %}readonly{% endif %}>
+                            </div>
+
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">Pronouns (subject)</label>
+                                    <input type="text" 
+                                           id="pronouns_subject" 
+                                           name="pronouns_subject" 
+                                           class="form-control"
+                                           placeholder="e.g., they"
+                                           value="{{ character.pronouns_subject if character else '' }}" 
+                                           {% if is_readonly %}readonly{% endif %}>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Pronouns (object)</label>
+                                    <input type="text" 
+                                           id="pronouns_object" 
+                                           name="pronouns_object" 
+                                           class="form-control"
+                                           placeholder="e.g., them"
+                                           value="{{ character.pronouns_object if character else '' }}" 
+                                           {% if is_readonly %}readonly{% endif %}>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Affiliation -->
+                <div class="col-lg-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Affiliation</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="form-group">
+                                <label for="faction" class="form-label">Faction *</label>
+                                {% set can_edit_faction = (current_user.has_role('user_admin') or (character and character.status != 'active' and character.player_id == current_user.player_id) or (not character)) and not is_readonly %}
+                                {% set owner = user if user is defined else current_user %}
+                                {% set show_megacorps = owner.has_role('npc') %}
+                                {% if can_edit_faction %}
+                                <select id="faction" name="faction" class="form-select" required>
+                                    <option value="">Select a faction...</option>
+                                    {% for faction in factions %}
+                                        {% if faction.allow_player_characters or current_user.has_role('npc') or current_user.has_role('user_admin') %}
+                                            <option value="{{ faction.id }}" {% if character and character.faction_id == faction.id %}selected{% endif %}>
+                                                {{ faction.name }}
+                                            </option>
+                                        {% endif %}
+                                    {% endfor %}
+                                </select>
+                                {% else %}
+                                <input type="text" class="form-control" value="{{ character.faction.name if character and character.faction else '' }}" readonly>
+                                <input type="hidden" name="faction" value="{{ character.faction.id if character and character.faction else '' }}">
+                                {% endif %}
+                            </div>
+                            
+                            <div class="form-group mb-0">
+                                <label for="species_id" class="form-label">Species *</label>
+                                {% set user_is_admin = current_user.has_role('user_admin') %}
+                                {% set user_is_npc = current_user.has_role('npc') %}
+                                {% set can_edit_species = (user_is_admin or user_is_npc or (character and character.status != 'active' and character.player_id == current_user.player_id) or (not character)) and not is_readonly %}
+                                {% if can_edit_species %}
+                                <select id="species_id" name="species_id" class="form-select select2-species" style="width: 100%;" data-placeholder="Select species..." required {% if is_readonly %}disabled{% endif %}>
+                                    <option value="">Select a species</option>
+                                    {% for species in species_list %}
+                                    <option value="{{ species.id }}" data-factions="{{ species.permitted_factions_list|tojson }}" {% if character and character.species_id == species.id %}selected{% endif %}>{{ species.name }}</option>
+                                    {% endfor %}
+                                </select>
+                                {% else %}
+                                <p class="mb-0">{{ character.species.name if character and character.species else 'No species selected' }}</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {% if character %}
+                <!-- Cybernetics -->
+                {% if current_user.has_role('user_admin') or character.cybernetics %}
+                <div class="col-lg-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Cybernetics</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="form-group mb-0">
+                                {% if current_user.has_role('user_admin') %}
+                                <select id="cybernetic_ids" name="cybernetic_ids[]" class="form-select select2-cybernetics" multiple style="width: 100%;" data-placeholder="Select cybernetics...">
+                                    {% for cyber in all_cybernetics %}
+                                    <option value="{{ cyber.id }}" {% if character and cyber in character.cybernetics %}selected{% endif %}>{{ cyber.name }}</option>
+                                    {% endfor %}
+                                </select>
+                                <div class="form-text text-muted mt-2">Add or remove cybernetics for this character.</div>
+                                {% else %}
+                                <div class="cybernetics-list">
+                                    {% for cyber in character.cybernetics %}
+                                        <a href="{{ url_for('wiki.wiki_view', slug=cyber.wiki_slug) }}" class="badge bg-info text-dark text-decoration-none" target="_blank">
+                                            <i class="fas fa-microchip me-1"></i>{{ cyber.name }}
+                                        </a>
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Active Conditions -->
+                {% if current_user.has_role('user_admin') or character.active_conditions %}
+                <div class="col-lg-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Active Conditions</h5>
+                        </div>
+                        <div class="card-body">
+                            {% if current_user.has_role('user_admin') %}
+                                <input type="hidden" id="all-conditions-json" value='{{ all_conditions|tojson|safe }}'>
+                                <div class="table-responsive mb-3">
+                                    <table class="table table-bordered align-middle mb-0">
+                                        <thead>
+                                            <tr>
+                                                <th>Condition</th>
+                                                <th style="width: 150px;">Current Stage</th>
+                                                <th style="width: 150px;">Advances In</th>
+                                                <th style="width: 100px;">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for ac in character.active_conditions %}
+                                            <tr>
+                                                <td>{{ ac.condition.name }}</td>
+                                                <td>
+                                                    <select name="active_condition_stage_{{ ac.id }}" class="form-select form-select-sm">
+                                                        {% for stage in ac.condition.stages|sort(attribute='stage_number') %}
+                                                        <option value="{{ stage.stage_number }}" {% if ac.current_stage == stage.stage_number %}selected{% endif %}>Stage {{ stage.stage_number }}</option>
+                                                        {% endfor %}
+                                                    </select>
+                                                </td>
+                                                <td>
+                                                    <input type="number" name="active_condition_events_{{ ac.id }}" class="form-control form-control-sm" value="{{ ac.events_remaining }}">
+                                                </td>
+                                                <td class="text-center">
+                                                    <button type="button" class="btn btn-danger btn-sm remove-condition" data-condition-id="{{ ac.id }}">
+                                                        <i class="fas fa-times"></i>
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div class="row g-2">
+                                    <div class="col-md-6 col-xl-4">
+                                        <select id="new-condition" class="form-select">
+                                            <option value="">Select a condition to add...</option>
+                                            {% for condition in all_conditions %}
+                                            <option value="{{ condition.id }}">{{ condition.name }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="col-auto">
+                                        <button type="button" class="btn btn-primary" id="add-condition">
+                                            <i class="fas fa-plus me-1"></i>Add Condition
+                                        </button>
+                                    </div>
+                                </div>
+                            {% else %}
+                                <div class="table-responsive">
+                                    <table class="table mb-0">
+                                        <thead>
+                                            <tr>
+                                                <th>Condition</th>
+                                                <th style="width: 150px;">Current Stage</th>
+                                                <th style="width: 150px;">Events Remaining</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for ac in character.active_conditions %}
+                                            <tr>
+                                                <td>{{ ac.condition.name }}</td>
+                                                <td>Stage {{ ac.current_stage }}</td>
+                                                <td>{{ ac.events_remaining }}</td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Tags -->
+                {% if current_user.has_role('user_admin') or character.tags.all() %}
+                <div class="col-lg-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Tags</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="form-group mb-0">
+                                {% if current_user.has_role('user_admin') %}
+                                <select name="tag_ids[]" class="form-select select2-tags" multiple style="width: 100%;" data-placeholder="Add tags...">
+                                    {% for tag in character.tags %}
+                                    <option value="{{ tag.id }}" selected>{{ tag.name }}</option>
+                                    {% endfor %}
+                                </select>
+                                {% else %}
+                                <div class="tag-list">
+                                    {% for tag in character.tags %}
+                                        <span class="badge bg-secondary">{{ tag.name }}</span>
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if current_user.has_role('user_admin') %}
+                <!-- Character Points -->
+                <div class="col-lg-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Character Points</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="form-group mb-0">
+                                <label for="base_character_points" class="form-label">Base Character Points</label>
+                                <input type="number" id="base_character_points" name="base_character_points" class="form-control" 
+                                       value="{{ character.base_character_points if character else (30 if current_user.has_role('npc') else 10) }}" 
+                                       min="0" {% if is_readonly %}readonly{% endif %}>
+                                <div class="form-text text-muted">Default is 10 CP, or 30 CP for NPCs</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Faction Reputation -->
+                <div class="col-lg-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Faction Reputation</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-sm align-middle mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>Faction</th>
+                                            <th style="width: 120px;">Reputation</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for faction in factions %}
+                                        <tr>
+                                            <td>{{ faction.name }}</td>
+                                            <td>
+                                                {% if current_user.has_role('user_admin') %}
+                                                <input type="number" 
+                                                       class="form-control form-control-sm" 
+                                                       name="reputation_{{ faction.id }}" 
+                                                       value="{{ character.get_reputation(faction.id) }}">
+                                                {% else %}
+                                                <span class="badge bg-secondary">{{ character.get_reputation(faction.id) }}</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="mt-4">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save me-1"></i>Save Changes
+                </button>
+                <a href="{{ url_for('characters.character_list') }}" class="btn btn-secondary">
+                    <i class="fas fa-times me-1"></i>Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script id="js-variables" type="application/json">
+  {{ {'userIsAdmin': current_user.has_role('user_admin'), 'userIsNpc': current_user.has_role('npc')} | tojson | safe }}
+</script>
+
+{% if current_user.has_role('user_admin') %}
+<link href="{{ url_for('static', filename='external/css/select2.min.css') }}" rel="stylesheet" />
+<link href="{{ url_for('static', filename='css/select2-custom.css') }}" rel="stylesheet" />
+<script src="{{ url_for('static', filename='js/tag-select.js') }}"></script>
+{% endif %}
+
+<script src="{{ url_for('static', filename='js/character_species_filter.js') }}"></script>
+{% if character and current_user.has_role('user_admin') %}
+<script src="{{ url_for('static', filename='js/character_conditions.js') }}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.body.addEventListener('click', function(event) {
+        var btn = event.target.closest('.stage-details-toggle');
+        if (!btn) return;
+        var icon = btn.querySelector('i.fas');
+        var targetId = btn.getAttribute('data-details-target');
+        var target = document.querySelector(targetId);
+        console.log('Details button clicked:', btn, 'Target:', target);
+        if (!target) return;
+        if (target.style.display === 'none' || target.style.display === '') {
+            target.style.display = 'block';
+            icon.classList.remove('fa-chevron-down');
+            icon.classList.add('fa-chevron-up');
+        } else {
+            target.style.display = 'none';
+            icon.classList.remove('fa-chevron-up');
+            icon.classList.add('fa-chevron-down');
+        }
+    });
+});
+</script>
+{% endif %}
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.progress-bar').forEach(function(bar) {
+        var percent = parseInt(bar.getAttribute('data-progress'));
+        bar.style.width = percent + '%';
+    });
+});
+</script>
+{% endblock %}

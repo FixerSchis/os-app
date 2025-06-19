@@ -1,0 +1,140 @@
+{% extends "_template.html" %}
+
+{% block title %}Settings - Orion Sphere LRP{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="settings-container">
+        <h1>Orion Sphere LRP Account Settings</h1>
+
+        <div class="settings-section">
+            <h2>Account Information</h2>
+            <div class="info-group">
+                <label>Player ID:</label>
+                <span>{{ current_user.player_id or 'Not set' }}</span>
+            </div>
+            <div class="info-group">
+                <label>Character Points:</label>
+                <span>{{ current_user.character_points }}</span>
+            </div>
+            <div class="info-group email-group">
+                <div class="email-label-value">
+                    <label>Email:</label>
+                    <span>{{ current_user.email }}</span>
+                </div>
+                <div class="email-actions">
+                    <a href="{{ url_for('settings.change_email') }}" class="btn btn-sm btn-outline-primary">Change Email</a>
+                    {% if not current_user.email_verified %}
+                    <div class="verification-status">
+                        <span class="badge bg-warning text-dark">Not Verified</span>
+                        <a href="{{ url_for('auth.resend_verification') }}" class="btn btn-sm btn-warning">Resend Verification</a>
+                    </div>
+                    {% else %}
+                    <span class="badge bg-success">Verified</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="settings-section">
+            <h2>Profile Information</h2>
+            <form method="POST" action="{{ url_for('settings.settings') }}" class="settings-form">
+                <div class="form-group">
+                    <label for="first_name">First Name:</label>
+                    <input type="text" id="first_name" name="first_name" value="{{ current_user.first_name }}" required class="form-control">
+                </div>
+
+                <div class="form-group">
+                    <label for="surname">Surname:</label>
+                    <input type="text" id="surname" name="surname" value="{{ current_user.surname or '' }}" class="form-control">
+                </div>
+
+                <div class="form-group">
+                    <label for="pronouns_subject">Pronouns (subject):</label>
+                    <input type="text" id="pronouns_subject" name="pronouns_subject" 
+                           value="{{ current_user.pronouns_subject or '' }}" 
+                           placeholder="e.g., they" class="form-control">
+                </div>
+
+                <div class="form-group">
+                    <label for="pronouns_object">Pronouns (object):</label>
+                    <input type="text" id="pronouns_object" name="pronouns_object" 
+                           value="{{ current_user.pronouns_object or '' }}" 
+                           placeholder="e.g., them" class="form-control">
+                </div>
+
+                <button type="submit" class="btn btn-primary">Update Profile</button>
+            </form>
+        </div>
+
+        <div class="settings-section">
+            <h2>Notification Preferences</h2>
+            <form method="POST" action="{{ url_for('settings.settings') }}" class="settings-form">
+                <input type="hidden" name="form_type" value="notifications">
+                
+                <div class="notification-group">
+                    <div class="form-check">
+                        <input type="checkbox" id="notify_downtime_pack_enter" name="notify_downtime_pack_enter" 
+                               value="1" {% if current_user.notify_downtime_pack_enter %}checked{% endif %} class="form-check-input">
+                        <label for="notify_downtime_pack_enter" class="form-check-label">
+                            When one of my character downtime packs is set to enter_downtime status
+                        </label>
+                    </div>
+                </div>
+
+                <div class="notification-group">
+                    <div class="form-check">
+                        <input type="checkbox" id="notify_downtime_completed" name="notify_downtime_completed" 
+                               value="1" {% if current_user.notify_downtime_completed %}checked{% endif %} class="form-check-input">
+                        <label for="notify_downtime_completed" class="form-check-label">
+                            When a Downtime (not pack) that I had a pack for is marked as "completed" status
+                        </label>
+                    </div>
+                </div>
+
+                <div class="notification-group">
+                    <div class="form-check">
+                        <input type="checkbox" id="notify_new_event" name="notify_new_event" 
+                               value="1" {% if current_user.notify_new_event %}checked{% endif %} class="form-check-input">
+                        <label for="notify_new_event" class="form-check-label">
+                            When a new event is created
+                        </label>
+                    </div>
+                </div>
+
+                <div class="notification-group">
+                    <div class="form-check">
+                        <input type="checkbox" id="notify_event_ticket_assigned" name="notify_event_ticket_assigned" 
+                               value="1" {% if current_user.notify_event_ticket_assigned %}checked{% endif %} class="form-check-input">
+                        <label for="notify_event_ticket_assigned" class="form-check-label">
+                            When one of my characters have a ticket assigned/purchased for an event
+                        </label>
+                    </div>
+                </div>
+
+                <div class="notification-group">
+                    <div class="form-check">
+                        <input type="checkbox" id="notify_event_details_updated" name="notify_event_details_updated" 
+                               value="1" {% if current_user.notify_event_details_updated %}checked{% endif %} class="form-check-input">
+                        <label for="notify_event_details_updated" class="form-check-label">
+                            When an event I have a ticket for has the details updated
+                        </label>
+                    </div>
+                </div>
+
+                <div class="notification-group">
+                    <div class="form-check">
+                        <input type="checkbox" id="notify_wiki_published" name="notify_wiki_published" 
+                               value="1" {% if current_user.notify_wiki_published %}checked{% endif %} class="form-check-input">
+                        <label for="notify_wiki_published" class="form-check-label">
+                            When a wiki version is published
+                        </label>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary">Update Notification Preferences</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %} 

@@ -1,0 +1,41 @@
+{% extends "_template.html" %}
+
+{% block title %}Cybernetics - Orion Sphere LRP{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Cybernetics</h1>
+        <a href="{{ url_for('cybernetics.create') }}" class="btn btn-primary">Create Cybernetic</a>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-striped table-hover align-middle">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Neural Shock Value</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for cyber in cybernetics %}
+                <tr>
+                    <td><a href="{{ url_for('wiki.wiki_view', slug=cyber.wiki_slug) }}">{{ cyber.name }}</a></td>
+                    <td>{{ cyber.neural_shock_value }}</td>
+                    <td>
+                        <a href="{{ url_for('cybernetics.edit', id=cyber.id) }}" class="btn btn-sm btn-outline-primary">Edit</a>
+                        <form method="POST" action="{{ url_for('cybernetics.delete', id=cyber.id) }}" style="display:inline;">
+                            <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete this cybernetic?');">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="3" class="text-center text-muted">No cybernetics found.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %} 

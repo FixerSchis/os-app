@@ -1,0 +1,179 @@
+{% extends "_template.html" %}
+
+{% block title %}Assign Tickets - Event {{ event.event_number }} - {{ event.name }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>Assign Ticket for Event {{ event.event_number }} - {{ event.name }}</h1>
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">Event Details</h5>
+                    <p class="card-text">{{ event.description }}</p>
+                    <p>
+                        <strong>Location:</strong> {{ event.location }}
+                        {% if event.google_maps_link %}
+                        <a href="{{ event.google_maps_link }}" target="_blank" class="ms-2" title="View on Google Maps">
+                            <i class="fas fa-map-marker-alt"></i>
+                        </a>
+                        {% endif %}
+                    </p>
+                    <p><strong>Dates:</strong> {{ event.start_date.strftime('%d %B %Y') }} - {{ event.end_date.strftime('%d %B %Y') }}</p>
+                </div>
+            </div>
+
+            <form method="POST">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Assign Ticket</h5>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="character" class="form-label">Character ID (user_id.character_id)</label>
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" id="character" name="character" 
+                                               pattern="\d+\.\d+" placeholder="e.g. 1.1" required>
+                                        <span class="input-group-text" id="character_id_status">
+                                            <i class="fas fa-question text-muted"></i>
+                                        </span>
+                                    </div>
+                                    <div id="character_name" class="form-text text-success" style="display: none;"></div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="ticket_type" class="form-label">Ticket Type</label>
+                                    <select class="form-select" id="ticket_type" name="ticket_type" required>
+                                        {% for ticket_type in TicketType.values() %}
+                                        <option value="{{ ticket_type }}">{{ TicketType.descriptions()[ticket_type] }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                {% if event.meal_ticket_available %}
+                                <div class="mb-3 form-check">
+                                    <input type="checkbox" class="form-check-input" id="meal_ticket" name="meal_ticket">
+                                    <label class="form-check-label" for="meal_ticket">Include Meal Ticket</label>
+                                </div>
+                                {% endif %}
+
+                                {% if event.bunks_available %}
+                                <div class="mb-3 form-check">
+                                    <input type="checkbox" class="form-check-input" id="requires_bunk" name="requires_bunk">
+                                    <label class="form-check-label" for="requires_bunk">Requires Bunk</label>
+                                </div>
+                                {% endif %}
+
+                                <div class="mb-3">
+                                    <label for="price_paid" class="form-label">Price Paid</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">£</span>
+                                        <input type="number" class="form-control" id="price_paid" name="price_paid" 
+                                               step="0.01" min="0" value="0" required>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-4">
+                            <button type="submit" class="btn btn-primary">Assign Ticket</button>
+                            <a href="{{ url_for('events.event_list') }}" class="btn btn-secondary">Cancel</a>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<input type="hidden" id="event_id" value="{{ event.id }}">
+{% endblock %}
+
+{% block scripts %}
+<script>
+let validationTimeout = null;
+const eventId = document.getElementById('event_id').value;
+
+document.getElementById('character').addEventListener('input', function(e) {
+    const characterId = e.target.value;
+    const statusElement = document.getElementById('character_id_status');
+    const nameElement = document.getElementById('character_name');
+    // Clear any existing timeout
+    if (validationTimeout) {
+        clearTimeout(validationTimeout);
+    }
+    // Reset status
+    statusElement.innerHTML = '<i class="fas fa-question text-muted"></i>';
+    nameElement.style.display = 'none';
+    // Check if the input matches the pattern
+    if (!/^\d+\.\d+$/.test(characterId)) {
+        statusElement.innerHTML = '<i class="fas fa-times text-danger"></i>';
+        return;
+    }
+    // Set a timeout to validate after the user stops typing
+    validationTimeout = setTimeout(() => {
+        fetch(`{{ url_for('characters.validate_user_id_character_id') }}?character_id=${characterId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    statusElement.innerHTML = '<i class="fas fa-check text-success"></i>';
+                    nameElement.textContent = data.character_name;
+                    nameElement.style.display = 'block';
+                    fetchAndApplyCharacterTicket(characterId);
+                } else {
+                    statusElement.innerHTML = '<i class="fas fa-times text-danger"></i>';
+                    nameElement.style.display = 'none';
+                }
+            })
+            .catch(error => {
+                statusElement.innerHTML = '<i class="fas fa-times text-danger"></i>';
+                nameElement.style.display = 'none';
+            });
+    }, 500); // 500ms debounce
+});
+
+function fetchAndApplyCharacterTicket(characterId) {
+    if (!characterId) return;
+    fetch(`{{ url_for('events.get_character_ticket') }}?event_id=${eventId}&character_id=${encodeURIComponent(characterId)}`)
+        .then(response => response.json())
+        .then(data => {
+            if (!data.success) return;
+            const ticket = data.ticket;
+            if (!ticket) {
+                document.getElementById('existing_ticket_info')?.remove();
+                document.getElementById('price_paid').value = 0;
+                return;
+            }
+            // Pre-select fields
+            document.getElementById('ticket_type').value = ticket.ticket_type;
+            if (document.getElementById('meal_ticket')) {
+                if (ticket.meal_ticket) {
+                    document.getElementById('meal_ticket').setAttribute('checked', 'checked');
+                } else {
+                    document.getElementById('meal_ticket').removeAttribute('checked');
+                }
+            }
+            if (document.getElementById('requires_bunk')) {
+                if (ticket.requires_bunk) {
+                    document.getElementById('requires_bunk').setAttribute('checked', 'checked');
+                } else {
+                    document.getElementById('requires_bunk').removeAttribute('checked');
+                }
+            }
+            document.getElementById('price_paid').value = ticket.price_paid;
+        });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const prefillCharId = urlParams.get('character_id');
+    if (prefillCharId) {
+        const charInput = document.getElementById('character');
+        charInput.value = prefillCharId;
+        // Trigger input event for validation and ticket info
+        charInput.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+});
+</script>
+{% endblock %} 

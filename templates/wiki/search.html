@@ -1,0 +1,60 @@
+{% extends "wiki/_template.html" %}
+
+{% block title %}Search Results - Wiki - Orion Sphere LRP{% endblock %}
+
+{% block wiki_content %}
+<div class="container">
+    <h1>Wiki Search</h1>
+    
+    <form method="GET" action="{{ url_for('wiki.wiki_search') }}" class="mb-4">
+        <div class="input-group">
+            <input type="text" name="q" class="form-control" placeholder="Search wiki..." value="{{ query }}" required>
+            <button type="submit" class="btn btn-primary">Search</button>
+        </div>
+    </form>
+
+    {% if query %}
+        {% if results %}
+            <h2>Search Results for "{{ query }}"</h2>
+            {% for result in results %}
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h3 class="mb-0">
+                            <a href="{{ url_for('wiki.wiki_view', slug=result.page.slug) }}">
+                                {{ result.highlighted_title|safe }}
+                            </a>
+                            {% if result.page.tags %}
+                                {% for tag in result.page.tags %}
+                                    <span class="badge bg-info text-dark" style="margin-left: 4px;">{{ tag.name }}</span>
+                                {% endfor %}
+                            {% endif %}
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        {% for section in result.sections %}
+                            <div class="mb-3">
+                                <h4>{{ section.title|safe }}</h4>
+                                <div class="excerpt">
+                                    {{ section.excerpt|safe }}
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <div class="alert alert-info">
+                No results found for "{{ query }}"
+            </div>
+        {% endif %}
+    {% endif %}
+</div>
+
+<style>
+    mark {
+        background-color: #ffd700;
+        padding: 0 2px;
+        border-radius: 2px;
+    }
+</style>
+{% endblock %} 

@@ -1,0 +1,89 @@
+{% extends "_template.html" %}
+
+{% from "macros/wiki.html" import wiki_page_select %}
+
+{% block title %}{% if cyber %}Edit{% else %}Create{% endif %} Cybernetic - Orion Sphere LRP{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="rules-management">
+        <h1>{% if cyber %}Edit{% else %}Create{% endif %} Cybernetic</h1>
+        <form method="POST">
+            <div class="form-group mb-3">
+                <label for="name">Name</label>
+                <input type="text" class="form-control" id="name" name="name" value="{{ cyber.name if cyber else '' }}" required>
+            </div>
+            <div class="form-group mb-3">
+                <label for="neural_shock_value">Neural Shock Value</label>
+                <input type="number" class="form-control" id="neural_shock_value" name="neural_shock_value" value="{{ cyber.neural_shock_value if cyber else '' }}" required min="0">
+            </div>
+            
+            <div class="form-group mb-3">
+                <label for="adds_engineering_mods">Adds Engineering Mods</label>
+                <input type="number" class="form-control" id="adds_engineering_mods" name="adds_engineering_mods" value="{{ cyber.adds_engineering_mods if cyber else 0 }}" min="0">
+            </div>
+
+            <div class="form-group mb-3">
+                <label for="adds_engineering_downtime">Adds Engineering Downtime</label>
+                <input type="number" class="form-control" id="adds_engineering_downtime" name="adds_engineering_downtime" value="{{ cyber.adds_engineering_downtime if cyber else 0 }}" min="0">
+            </div>
+
+            <div class="form-group mb-3">
+                <label for="adds_science_downtime">Adds Science Downtime</label>
+                <input type="number" class="form-control" id="adds_science_downtime" name="adds_science_downtime" value="{{ cyber.adds_science_downtime if cyber else 0 }}" min="0">
+            </div>
+
+            <div class="form-group mb-3" id="science_type_group" {% if not cyber or not cyber.adds_science_downtime %}style="display:none;"{% endif %}>
+                <label for="science_type">Science Type</label>
+                <select class="form-control" id="science_type" name="science_type">
+                    <option value="">None</option>
+                    {% for type in science_types %}
+                    <option value="{{ type }}" {% if cyber and cyber.science_type and cyber.science_type.value == type %}selected{% endif %}>{{ type|title }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            {{ wiki_page_select(
+                input_id='wiki_page_autocomplete',
+                select_name='wiki_slug',
+                initial_slug=cyber.wiki_slug if cyber else '',
+                initial_title=initial_title,
+                required=true,
+                placeholder='Start typing to search...',
+                help_text='e.g. cybernetics/neural-interface'
+            ) }}
+            
+            <div class="form-group">
+                <button type="submit" class="btn btn-primary">Save</button>
+                <a href="{{ url_for('cybernetics.list') }}" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script src="{{ url_for('static', filename='js/wiki_page_autocomplete.js') }}"></script>
+<script>
+$(document).ready(function() {
+    const scienceDowntimeInput = document.getElementById('adds_science_downtime');
+    const scienceTypeGroup = document.getElementById('science_type_group');
+    const scienceTypeSelect = document.getElementById('science_type');
+
+    function toggleScienceType() {
+        if (parseInt(scienceDowntimeInput.value) > 0) {
+            scienceTypeGroup.style.display = 'block';
+            scienceTypeSelect.required = true;
+        } else {
+            scienceTypeGroup.style.display = 'none';
+            scienceTypeSelect.required = false;
+            scienceTypeSelect.value = '';
+        }
+    }
+
+    scienceDowntimeInput.addEventListener('change', toggleScienceType);
+    toggleScienceType(); // Initial state
+});
+</script>
+{% endblock %} 

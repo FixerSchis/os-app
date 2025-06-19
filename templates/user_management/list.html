@@ -1,0 +1,47 @@
+{% extends "_template.html" %}
+
+{% block title %}User Management - Orion Sphere LRP{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="user-management">
+        <h1>User Management</h1>
+        <div class="users-section">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th>Email</th>
+                            <th>Name</th>
+                            <th>Player ID</th>
+                            <th>Character Points</th>
+                            <th>Roles</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in users %}
+                        <tr>
+                            <td>{{ user.email }}</td>
+                            <td>{{ user.first_name }} {{ user.surname }}</td>
+                            <td>{{ user.player_id or 'Not Set' }}</td>
+                            <td>{{ user.character_points }}</td>
+                            <td>
+                                <div class="d-flex flex-wrap gap-1 align-items-center">
+                                    {% for role in user.roles.split(',') if role %}
+                                    <span class="badge bg-secondary">{{ Role.descriptions()[role] }}</span>
+                                    {% endfor %}
+                                </div>
+                            </td>
+                            <td>
+                                <a href="{{ url_for('user_management.user_management_edit_user', user_id=user.id) }}" class="btn btn-sm btn-outline-primary">Edit</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

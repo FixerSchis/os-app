@@ -1,0 +1,41 @@
+{% extends "_template.html" %}
+
+{% block title %}Change Email - Orion Sphere LRP{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h3>Change Email Address</h3>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        <div class="mb-3">
+                            <label for="current_email" class="form-label">Current Email</label>
+                            <input type="email" class="form-control" id="current_email" value="{{ current_user.email }}" readonly>
+                        </div>
+                        <div class="mb-3">
+                            <label for="new_email" class="form-label">New Email Address</label>
+                            <input type="email" class="form-control" id="new_email" name="new_email" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="password" class="form-label">Confirm Password</label>
+                            <input type="password" class="form-control" id="password" name="password" required>
+                            <small class="text-muted">Please enter your current password to confirm the change.</small>
+                        </div>
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i> A verification email will be sent to your new address. You must click the link in that email to complete the change.
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('settings.settings') }}" class="btn btn-secondary">Cancel</a>
+                            <button type="submit" class="btn btn-primary">Request Email Change</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

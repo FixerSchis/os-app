@@ -1,0 +1,45 @@
+{% extends "_template.html" %}
+
+{% block title %}Email Verification Required - Orion Sphere LRP{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-warning text-white">
+                    <h3>Email Verification Required</h3>
+                </div>
+                <div class="card-body">
+                    <p class="lead">
+                        Your email address needs to be verified before you can access all features of the site.
+                    </p>
+                    <p>
+                        We've sent a verification link to <strong>{{ current_user.email }}</strong>. 
+                        Please check your inbox and click on the verification link to complete the process.
+                    </p>
+                    <p>
+                        If you didn't receive the email, you can:
+                    </p>
+                    <ul>
+                        <li>Check your spam folder</li>
+                        <li>Make sure you entered the correct email address</li>
+                        <li><a href="{{ url_for('auth.resend_verification') }}">Click here to resend the verification email</a></li>
+                    </ul>
+                    <hr>
+                    <p>
+                        Until your email is verified, you can still access:
+                    </p>
+                    <ul>
+                        <li><a href="{{ url_for('wiki.wiki_view', slug='index') }}">Wiki Pages</a></li>
+                        <li><a href="{{ url_for('settings.settings') }}">Account Settings</a></li>
+                    </ul>
+                    <div class="mt-4">
+                        <a href="{{ url_for('auth.logout') }}" class="btn btn-secondary">Logout</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

@@ -1,0 +1,22 @@
+{% extends "_template.html" %}
+
+{% block title %}Characters - Orion Sphere LRP{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Your Characters</h1>
+        {% if not has_developing %}
+            <a href="{{ url_for('characters.create_character') }}" class="btn btn-primary">Create Character</a>
+        {% endif %}
+    </div>
+
+    {% if needs_player_id %}
+        <div class="alert alert-warning">
+            You need a player ID to create characters. Please contact an administrator.
+        </div>
+    {% else %}
+        {% include 'characters/_character_list.html' with context %}
+    {% endif %}
+</div>
+{% endblock %} 

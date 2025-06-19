@@ -1,0 +1,488 @@
+{% extends "_template.html" %}
+
+{% block title %}Enter Downtime Activities - {{ character.name }}{% endblock %}
+
+{% block content %}
+<link href="{{ url_for('static', filename='external/css/select2.min.css') }}" rel="stylesheet" />
+<link href="{{ url_for('static', filename='external/css/select2-bootstrap4.min.css') }}" rel="stylesheet" />
+<style>
+    .select2-container {
+        width: 100% !important;
+    }
+    .mod-list .form-group {
+        margin-bottom: 1rem;
+    }
+    .mod-forget-group {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-left: 1rem;
+        white-space: nowrap;
+    }
+    .mod-select {
+        margin-bottom: 0.75rem;
+    }
+    .eng-slot-card { border: 1px solid #dee2e6; border-radius: 0.25rem; padding: 1rem; margin-bottom: 1.5rem; background: #23272b; }
+    .eng-slot-header { font-weight: bold; margin-bottom: 0.5rem; }
+    .eng-slot-row { display: flex; gap: 1rem; align-items: center; margin-bottom: 0.5rem; }
+    .eng-slot-label { min-width: 120px; }
+    .btn-toggle-group .btn { min-width: 120px; }
+    .is-invalid {
+        border-color: #dc3545 !important;
+        background-color: #f8d7da !important;
+        color: #dc3545 !important;
+    }
+</style>
+
+<div class="container">
+    <h1>Enter Downtime Activities - {{ character.name }}</h1>    
+    <div class="row mb-4">
+        <div class="col">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Available Slots</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% if character.get_available_engineering_slots() > 0 %}
+                        <div class="col-md-6">
+                            <h6>Engineering</h6>
+                            <p>{{ character.get_available_engineering_slots() }} slots available</p>
+                        </div>
+                        {% endif %}
+                        {% if character.get_available_science_slots() > 0 %}
+                        <div class="col-md-6">
+                            <h6>Science</h6>
+                            <ul class="list-unstyled">
+                                {% for type in ScienceType %}
+                                <li>{{ ScienceType.descriptions()[type.value] }}: {{ character.get_available_science_slots(type) }} slots</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6"><strong>Your Bank Balance:</strong> {{ bank_balance }} ec</div>
+                        {% if group_bank_balance %}
+                        <div class="col-md-6"><strong>Group Bank Balance:</strong> {{ group_bank_balance }} ec</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Stepper Bar with Navigation -->
+    <div class="d-flex align-items-center mb-4" id="downtime-stepper-row">
+        <div class="flex-shrink-0 me-3">
+            <button type="button" class="btn btn-secondary btn-sm prev-step" style="min-width:40px;">
+                &#8592;
+            </button>
+        </div>
+        <div class="flex-grow-1 d-flex justify-content-center">
+            <ul class="nav nav-pills" id="downtime-steps-list">
+                <li class="nav-item"><a class="nav-link" data-step="purchase" href="#">Purchases <span class="step-status-icon"></span></a></li>
+                <li class="nav-item"><a class="nav-link" data-step="modifications" href="#" data-has-slots="{{ character.get_available_engineering_mod_slots() > 0 }}">Modifications <span class="step-status-icon"></span></a></li>
+                <li class="nav-item"><a class="nav-link" data-step="engineering" href="#" data-has-slots="{{ character.get_available_engineering_slots() > 0 }}">Engineering <span class="step-status-icon"></span></a></li>
+                <li class="nav-item"><a class="nav-link" data-step="science" href="#" data-has-slots="{{ character.get_available_science_slots() > 0 }}">Science <span class="step-status-icon"></span></a></li>
+                <li class="nav-item"><a class="nav-link" data-step="research" href="#">Research <span class="step-status-icon"></span></a></li>
+                <li class="nav-item"><a class="nav-link" data-step="reputation" href="#" data-has-slots="{{ character.get_factions_with_reputation()|length > 0 }}">Reputation <span class="step-status-icon"></span></a></li>
+                <!-- Add more steps as needed, e.g. Science, Reputation, etc. -->
+            </ul>
+        </div>
+        <div class="flex-shrink-0 ms-3">
+            <button type="button" class="btn btn-primary btn-sm next-step" style="min-width:40px;">
+                &#8594;
+            </button>
+        </div>
+    </div>
+    <form method="POST" id="downtime-form"
+          data-mod-slots='{{ character.get_available_engineering_mod_slots() }}'
+          data-eng-slots='{{ character.get_available_engineering_slots() }}'
+          data-bank-balance='{{ bank_balance }}'
+          data-group-bank-balance='{{ group_bank_balance if group_bank_balance is not none else 0 }}'
+          data-character-id='{{ character.id }}'
+          data-player-id='{{ character.player_id }}'
+          data-pack-purchases='{{ pack_purchases|tojson|safe }}'
+          data-pack-modifications='{{ pack_modifications|tojson|safe }}'
+          data-pack-engineering='{{ pack_engineering|tojson|safe }}'
+          data-pack-science='{{ pack_science|tojson|safe }}'
+          data-pack-research='{{ pack_research|tojson|safe }}'
+          data-pack-reputation='{{ pack_reputation|tojson|safe }}'>
+        <div id="downtime-steps-container">
+            <!-- Purchase Blueprints Step -->
+            <div class="downtime-step" data-step="purchase">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Purchase Items</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="purchase-blueprints-list"></div>
+                        <button type="button" class="btn btn-outline-primary btn-sm" id="add-blueprint-row">Add Item</button>
+                        <div class="mt-3"><strong>Total Cost:</strong> <span id="purchase-total-cost">0 ec</span></div>
+                        <div class="text-danger mt-2" id="purchase-error" style="display:none;"></div>
+                    </div>
+                </div>
+            </div>
+            <!-- Modifications Step -->
+            <div class="downtime-step" data-step="modifications">
+                <div class="card mb-4">
+                    <div class="card-body mod-list">
+                        <ul class="list-unstyled">
+                            {% for mod in character.get_known_modifications() %}
+                            <li class="form-group d-flex align-items-center">
+                                <input type="text" class="form-control" value="{{ mod.name }}" disabled>
+                                <div class="mod-forget-group">
+                                    <input type="checkbox" class="form-check-input" id="forget_mod_{{ mod.id }}" name="forget_mods[]" value="{{ mod.id }}"
+                                        {% if pack_modifications and pack_modifications|selectattr('mod_id', 'equalto', mod.id|string)|selectattr('type', 'equalto', 'forgetting')|list %}checked{% endif %}>
+                                    <label class="form-check-label" for="forget_mod_{{ mod.id }}">Forget</label>
+                                </div>
+                            </li>
+                            {% endfor %}
+                            {% set available_slots = character.get_available_engineering_mod_slots() - character.known_modifications|length %}
+                            {% set learning_mods = pack_modifications | selectattr('type', 'equalto', 'learning') | list %}
+                            {% for i in range(available_slots) %}
+                            <li class="form-group">
+                                <select class="form-control select2 mod-select" name="mod_learning[]">
+                                    <option value="">Select a modification</option>
+                                    {% for mod in all_mods %}
+                                    <option value="{{ mod.id }}"
+                                        {% if learning_mods|length > i and learning_mods[i].mod_id|string == mod.id|string %}selected{% endif %}
+                                        {% if mod.id in character.known_modifications %}disabled{% endif %}>
+                                        {{ mod.name }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <!-- Engineering Step -->
+            <div class="downtime-step" data-step="engineering" style="display:none;">
+                <div class="card mb-4">
+                    <div class="card-body">
+                        {% if engineering_slots is defined %}
+                        {% for slot in engineering_slots %}
+                        {% set eng_data = pack_engineering[loop.index0] if pack_engineering|length > loop.index0 else None %}
+                        <div class="eng-slot-card">
+                            <div class="eng-slot-header">
+                                Engineering
+                                <small class="text-muted">({{ slot.source }})</small>
+                            </div>
+                            <div class="eng-slot-row">
+                                <label class="eng-slot-label">Action:</label>
+                                <select name="eng_action_{{ loop.index0 }}" class="form-control eng-action-select" data-slot="{{ loop.index0 }}">
+                                    <option value="">Select an action</option>
+                                    <option value="maintain" {% if eng_data and eng_data.action == 'maintain' %}selected{% endif %}>Maintain</option>
+                                    <option value="modify" {% if eng_data and eng_data.action == 'modify' %}selected{% endif %}>Modify</option>
+                                </select>
+                            </div>
+                            <div class="eng-slot-row">
+                                <label class="eng-slot-label">Item Source:</label>
+                                <div class="btn-group btn-toggle-group" role="group" aria-label="Item Source">
+                                    <button type="button" class="btn btn-outline-primary {% if not eng_data or eng_data.source == 'own' %}active{% endif %}" data-toggle-source="own" data-slot="{{ loop.index0 }}">Your Pack</button>
+                                    <button type="button" class="btn btn-outline-primary {% if eng_data and eng_data.source == 'group' %}active{% endif %}" data-toggle-source="group" data-slot="{{ loop.index0 }}">Group Packs</button>
+                                    <button type="button" class="btn btn-outline-primary {% if eng_data and eng_data.source == 'manual' %}active{% endif %}" data-toggle-source="manual" data-slot="{{ loop.index0 }}">Enter ID</button>
+                                </div>
+                            </div>
+                            <div class="eng-slot-row eng-item-row" data-source="own" data-slot="{{ loop.index0 }}" {% if eng_data and eng_data.source != 'own' %}style="display:none;"{% endif %}>
+                                <label class="eng-slot-label">Item:</label>
+                                <select name="eng_item_own_{{ loop.index0 }}" class="form-control select2 eng-item-own-select" data-slot="{{ loop.index0 }}">
+                                    <option value="">Select an item</option>
+                                    {% for item in pack_items %}
+                                    <option value="{{ item.id }}" {% if eng_data and eng_data.source == 'own' and eng_data.item_id and eng_data.item_id|string == item.id|string %}selected{% endif %}>{{ item.name }} ({{ item.full_code }})</option>
+                                    {% endfor %}
+                                    {% if eng_data and eng_data.source == 'own' and eng_data.blueprint_id %}
+                                    <option value="purchased-{{ eng_data.blueprint_id }}-1" selected>Purchased Blueprint (ID {{ eng_data.blueprint_id }})</option>
+                                    {% endif %}
+                                </select>
+                            </div>
+                            <div class="eng-slot-row eng-item-row" data-source="group" data-slot="{{ loop.index0 }}" {% if not eng_data or eng_data.source != 'group' %}style="display:none;"{% endif %}>
+                                <label class="eng-slot-label">Item:</label>
+                                <select name="eng_item_group_{{ loop.index0 }}" class="form-control select2 eng-item-group-select" data-slot="{{ loop.index0 }}">
+                                    <option value="">Select an item</option>
+                                    {% for item in group_items %}
+                                    <option value="{{ item.id }}" {% if eng_data and eng_data.source == 'group' and eng_data.item_id and eng_data.item_id|string == item.id|string %}selected{% endif %}>{{ item.name }} ({{ item.full_code }})</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="eng-slot-row eng-item-row" data-source="manual" data-slot="{{ loop.index0 }}" {% if not eng_data or eng_data.source != 'manual' %}style="display:none;"{% endif %}>
+                                <label class="eng-slot-label">Item ID:</label>
+                                <input type="text" name="eng_item_manual_{{ loop.index0 }}" class="form-control eng-item-manual" data-slot="{{ loop.index0 }}" placeholder="e.g. WP0001-001" style="width: 180px;" value="{% if eng_data and eng_data.source == 'manual' %}{{ eng_data.full_code or eng_data.item_id }}{% endif %}">
+                                <span class="manual-item-status" data-slot="{{ loop.index0 }}" style="margin-left: 1em;"></span>
+                                <input type="hidden" class="manual-item-id" data-slot="{{ loop.index0 }}" name="eng_item_manual_id_{{ loop.index0 }}" value="{% if eng_data and eng_data.source == 'manual' and eng_data.item_id %}{{ eng_data.item_id }}{% endif %}">
+                            </div>
+                            <div class="eng-slot-row eng-maintain-row" style="display:none;">
+                                <label class="eng-slot-label">Maintenance Cost:</label>
+                                <span class="eng-maintain-cost" data-slot="{{ loop.index0 }}"></span>
+                            </div>
+                            <div class="eng-slot-row eng-modify-row" style="display:none;">
+                                <label class="eng-slot-label">Modification:</label>
+                                <select name="eng_mod_{{ loop.index0 }}" class="form-control select2 eng-mod-select" data-slot="{{ loop.index0 }}">
+                                    <option value="">Select a modification</option>
+                                    {% for mod in all_mods %}
+                                    <option value="{{ mod.id }}" {% if eng_data and eng_data.mod_id and eng_data.mod_id|string == mod.id|string %}selected{% endif %}>{{ mod.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="eng-slot-row eng-modify-row" style="display:none;">
+                                <label class="eng-slot-label">Modification Cost:</label>
+                                <span class="eng-modify-cost" data-slot="{{ loop.index0 }}"></span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <!-- Science Step -->
+            <div class="downtime-step" data-step="science" style="display:none;">
+                <div class="card mb-4">
+                    <div class="card-body">
+                        {% for science_type in ScienceType %}
+                        {% set slots = science_slots|selectattr('type', 'equalto', science_type)|list %}
+                        {% if slots %}
+                        <div class="mb-3">
+                            <h6>{{ ScienceType.descriptions()[science_type.value] }} Science</h6>
+                            {% for slot in slots %}
+                            {% set sci_data = pack_science[loop.index0] if pack_science|length > loop.index0 else None %}
+                            <div class="science-slot-card mb-3 p-3 border rounded bg-light" data-science-type="{{ science_type.value }}" data-slot="{{ science_type.value }}-{{ loop.index0 }}">
+                                <div class="mb-2">
+                                    <strong>{{ ScienceType.descriptions()[science_type.value] }} Science</strong>
+                                    {% if slot.source %}<small class="text-muted">({{ slot.source }})</small>{% endif %}
+                                </div>
+                                <div class="mb-2">
+                                    <label>Action:</label>
+                                    <select name="science_action_{{ science_type.value }}_{{ loop.index0 }}" class="form-control science-action-select" data-science-type="{{ science_type.value }}" data-slot="{{ loop.index0 }}">
+                                        <option value="synthesize" {% if sci_data and sci_data.action == 'synthesize' %}selected{% endif %}>Synthesize Exotics</option>
+                                        {% if science_type.value == 'generic' %}
+                                        <option value="theorise" {% if sci_data and sci_data.action == 'theorise' %}selected{% endif %}>Theorise an Invention</option>
+                                        <option value="teach_invention" {% if sci_data and sci_data.action == 'teach_invention' %}selected{% endif %}>Teach Invention</option>
+                                        {% endif %}
+                                        <option value="research_sample" {% if sci_data and sci_data.action == 'research_sample' %}selected{% endif %}>Research a Sample</option>
+                                        <option value="research_project" {% if sci_data and sci_data.action == 'research_project' %}selected{% endif %}>Research a Project</option>
+                                    </select>
+                                </div>
+                                <div class="science-theorise-fields" style="display:none;">
+                                    <div class="mb-2">
+                                        <label>Name of Invention:</label>
+                                        <input type="text" class="form-control" name="science_theorise_name_{{ science_type.value }}_{{ loop.index0 }}" value="{% if sci_data and sci_data.action == 'theorise' %}{{ sci_data.theorise_name }}{% endif %}">
+                                    </div>
+                                    <div class="mb-2">
+                                        <label>Description:</label>
+                                        <textarea class="form-control" name="science_theorise_desc_{{ science_type.value }}_{{ loop.index0 }}" rows="2">{% if sci_data and sci_data.action == 'theorise' %}{{ sci_data.theorise_desc }}{% endif %}</textarea>
+                                    </div>
+                                </div>
+                                <div class="science-research-sample-fields" style="display:none;">
+                                    <div class="mb-2">
+                                        <label>Sample:</label>
+                                        <select class="form-control select2 science-sample-select" name="science_sample_{{ science_type.value }}_{{ loop.index0 }}" data-science-type="{{ science_type.value }}">
+                                            <option value="">Select a sample</option>
+                                            {% for sample in available_samples %}
+                                            <option value="{{ sample.id }}" {% if sci_data and sci_data.action == 'research_sample' and sci_data.sample_id == sample.id %}selected{% endif %}>{{ sample.name }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="science-research-project-fields" style="display:none;">
+                                    <div class="mb-2">
+                                        <label>Project Source:</label>
+                                        <div class="btn-group btn-toggle-project-source" role="group">
+                                            <button type="button" class="btn btn-outline-primary active" data-project-source="my">My Projects</button>
+                                            {% if group_members %}
+                                            <button type="button" class="btn btn-outline-primary" data-project-source="group">Group Projects</button>
+                                            {% endif %}
+                                            <button type="button" class="btn btn-outline-primary" data-project-source="id">Enter ID</button>
+                                        </div>
+                                    </div>
+                                    <div class="project-select-row" data-project-source="my">
+                                        <div class="mb-2">
+                                            <label>Project:</label>
+                                            <select class="form-control select2 science-project-select" name="science_project_my_{{ science_type.value }}_{{ loop.index0 }}" data-project-source="my">
+                                                <option value="">Select a project</option>
+                                                {% for project in my_projects %}
+                                                <option value="{{ project.research_id }}" {% if sci_data and sci_data.action == 'research_project' and sci_data.project_source == 'my' and sci_data.project_id == project.research_id %}selected{% endif %}>{{ project.project_name }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="project-select-row" data-project-source="group" style="display:none;">
+                                        <div class="mb-2">
+                                            <label>Project:</label>
+                                            <select class="form-control select2 science-project-select" name="science_project_group_{{ science_type.value }}_{{ loop.index0 }}" data-project-source="group">
+                                                <option value="">Select a project</option>
+                                                {% for project in group_projects %}
+                                                <option value="{{ project.research_id }}" {% if sci_data and sci_data.action == 'research_project' and sci_data.project_source == 'group' and sci_data.project_id == project.research_id %}selected{% endif %}>{{ project.project_name }} ({{ project.character_name }})</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="project-select-row" data-project-source="id" style="display:none;">
+                                        <div class="mb-2">
+                                            <label>Project ID:</label>
+                                            <input type="text" class="form-control science-project-id-input" name="science_project_id_{{ science_type.value }}_{{ loop.index0 }}" placeholder="Enter project ID" value="{% if sci_data and sci_data.action == 'research_project' and sci_data.project_source == 'id' %}{{ sci_data.project_id }}{% endif %}">
+                                            <span class="science-project-id-status"></span>
+                                        </div>
+                                    </div>
+                                    <div class="mb-2">
+                                        <label>Research For:</label>
+                                        <div class="btn-group btn-toggle-research-for" role="group">
+                                            <button type="button" class="btn btn-outline-primary active" data-research-for="self">Yourself</button>
+                                            {% if group_members %}
+                                            <button type="button" class="btn btn-outline-primary" data-research-for="group">Group Member</button>
+                                            {% endif %}
+                                            <button type="button" class="btn btn-outline-primary" data-research-for="other">Enter ID</button>
+                                        </div>
+                                    </div>
+                                    {% if group_members %}
+                                    <div class="science-research-for-group-select" style="display:none;">
+                                        <div class="mb-2">
+                                            <label>Group Member:</label>
+                                            <select class="form-control select2 science-research-for-group-select" name="science_research_for_group_{{ science_type.value }}_{{ loop.index0 }}">
+                                                <option value="">Select a group member</option>
+                                                {% for member in group_members %}
+                                                <option value="{{ member.id }}" {% if sci_data and sci_data.action == 'research_project' and sci_data.research_for == 'group' and sci_data.research_for_id == member.id %}selected{% endif %}>{{ member.name }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                    <div class="science-research-for-id-input" style="display:none;">
+                                        <div class="mb-2">
+                                            <label>Character ID:</label>
+                                            <input type="text" class="form-control" name="science_research_for_id_{{ science_type.value }}_{{ loop.index0 }}" placeholder="Enter PlayerID.CharacterID" value="{% if sci_data and sci_data.action == 'research_project' and sci_data.research_for == 'other' %}{{ sci_data.research_for_id }}{% endif %}">
+                                            <span class="science-research-for-status"></span>
+                                        </div>
+                                    </div>
+                                    <div class="science-project-science-type-row" style="display:none;">
+                                        <div class="mb-2">
+                                            <label>Science Type:</label>
+                                            <select class="form-control select2 science-project-science-type-select" name="science_project_science_type_{{ science_type.value }}_{{ loop.index0 }}">
+                                                <option value="">Select a science type</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="science-project-error text-danger" style="display:none;"></div>
+                                </div>
+                                <div class="science-teach-invention-fields" style="display:none;">
+                                    <div class="mb-2">
+                                        <label>Project:</label>
+                                        <select class="form-control select2 science-teach-project-select" name="science_teach_project_{{ science_type.value }}_{{ loop.index0 }}">
+                                            <option value="">Select a project</option>
+                                            {% for project in my_projects %}
+                                            <option value="{{ project.research_id }}" {% if sci_data and sci_data.action == 'teach_invention' and sci_data.project_id == project.research_id %}selected{% endif %}>{{ project.project_name }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="mb-2">
+                                        <label>Teach To:</label>
+                                        <div class="btn-group btn-toggle-teach-to" role="group">
+                                            <button type="button" class="btn btn-outline-primary active" data-teach-to="group">Group Member</button>
+                                            <button type="button" class="btn btn-outline-primary" data-teach-to="other">Other Character</button>
+                                        </div>
+                                    </div>
+                                    <div class="science-teach-to-group-select">
+                                        <div class="mb-2">
+                                            <label>Group Member:</label>
+                                            <select class="form-control select2 science-teach-to-group-select" name="science_teach_to_group_{{ science_type.value }}_{{ loop.index0 }}">
+                                                <option value="">Select a group member</option>
+                                                {% for member in group_members %}
+                                                <option value="{{ member.id }}" {% if sci_data and sci_data.action == 'teach_invention' and sci_data.teach_to == 'group' and sci_data.teach_to_id == member.id %}selected{% endif %}>{{ member.name }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="science-teach-to-id-input" style="display:none;">
+                                        <div class="mb-2">
+                                            <label>Character ID:</label>
+                                            <input type="text" class="form-control" name="science_teach_to_id_{{ science_type.value }}_{{ loop.index0 }}" placeholder="Enter PlayerID.CharacterID" value="{% if sci_data and sci_data.action == 'teach_invention' and sci_data.teach_to == 'other' %}{{ sci_data.teach_to_id }}{% endif %}">
+                                            <span class="science-teach-to-status"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            <!-- Research Assistance Step -->
+            <div class="downtime-step" data-step="research" style="display:none;">
+              <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                  <h5 class="card-title mb-0">Assist with Research Projects</h5>
+                  <button type="button" class="btn btn-outline-primary btn-sm" id="add-research-project">Add Project</button>
+                </div>
+                <div class="card-body" id="research-projects-list">
+                  <!-- Research assist cards will be dynamically added here -->
+                </div>
+              </div>
+            </div>
+            <!-- Reputation Step -->
+            <div class="downtime-step" data-step="reputation" style="display:none;">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Reputation Question</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="reputation-faction-select" class="form-label">Select Faction</label>
+                            <select class="form-control" id="reputation-faction-select" name="reputation_faction">
+                                <option value="">-- Select a Faction --</option>
+                                {% for faction in character.get_factions_with_reputation() %}
+                                <option value="{{ faction.id }}">{{ faction.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="reputation-question" class="form-label">Your Question</label>
+                            <textarea class="form-control" id="reputation-question" name="reputation_question" rows="3" maxlength="500" placeholder="Enter your question to the selected faction..."></textarea>
+                        </div>
+                        <div class="form-text">You may submit one question to a faction you have reputation with per downtime.</div>
+                    </div>
+                </div>
+            </div>
+            <!-- Add more steps here as needed, each in a .downtime-step[data-step=...] div -->
+        </div>
+        <!-- Submit Section (final step, always visible) -->
+        <div class="downtime-step" data-step="submit">
+            <div class="card mb-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <button type="submit" class="btn btn-primary">Save Downtime Activities</button>
+                        <span id="total-chit-cost" class="ms-3 fw-bold text-warning"></span>
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" id="confirm_complete" name="confirm_complete">
+                            <label class="form-check-label" for="confirm_complete">Confirm downtime activities are complete</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<input type='hidden' id='blueprints-data' value='{{ blueprints_data|tojson }}'>
+<input type="hidden" id="pack-items-json" value='{{ pack_items|tojson }}'>
+<input type="hidden" id="group-items-json" value='{{ group_items|tojson }}'>
+<input type="hidden" id="available-samples-json" value='{{ available_samples|tojson }}'>
+<input type="hidden" id="pack-exotics-json" value='{{ pack_exotics|tojson }}'>
+<input type="hidden" id="my-projects-data" value='{{ my_projects|tojson }}'>
+<input type="hidden" id="group-projects-data" value='{{ group_projects|tojson }}'>
+<input type="hidden" id="current-character-id" value="{{ character.player_id }}.{{ character.id }}">
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script src="{{ url_for('static', filename='js/downtime/enter_downtime.js') }}"></script>
+<script src="{{ url_for('static', filename='js/downtime/enter_downtime_stepper.js') }}"></script>
+<script src="{{ url_for('static', filename='js/downtime/enter_downtime_purchase.js') }}"></script>
+<script src="{{ url_for('static', filename='js/downtime/enter_downtime_modifications.js') }}"></script>
+<script src="{{ url_for('static', filename='js/downtime/enter_downtime_engineering.js') }}"></script>
+<script src="{{ url_for('static', filename='js/downtime/enter_downtime_science.js') }}"></script>
+<script src="{{ url_for('static', filename='js/downtime/enter_downtime_research.js') }}"></script>
+<script src="{{ url_for('static', filename='js/downtime/enter_downtime_reputation.js') }}"></script>
+{% endblock %} 

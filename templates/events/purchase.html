@@ -1,0 +1,502 @@
+{% extends "_template.html" %}
+
+{% block title %}Purchase Tickets - Event {{ event.event_number }} - {{ event.name }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>Purchase Tickets for Event {{ event.event_number }} - {{ event.name }}</h1>
+    
+    <div class="row">
+        <!-- Event Details and Purchase Form -->
+        <div class="col-lg-8">
+            <div class="card mb-4">
+                <div class="card-body position-relative">
+                    <div class="position-absolute top-0 end-0 p-3">
+                        <span class="badge bg-primary">{{ EventType.descriptions()[event.event_type] }}</span>
+                    </div>
+                    <h5 class="card-title">Event Details</h5>
+                    <p class="card-text">{{ event.description }}</p>
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <p>
+                                <strong>Location:</strong> {{ event.location }}
+                                {% if event.google_maps_link %}
+                                <a href="{{ event.google_maps_link }}" target="_blank" class="ms-2" title="View on Google Maps">
+                                    <i class="fas fa-map-marker-alt"></i>
+                                </a>
+                                {% endif %}
+                            </p>
+                            <p><strong>Dates:</strong> {{ event.start_date.strftime('%d %B %Y') }} - {{ event.end_date.strftime('%d %B %Y') }}</p>
+                        </div>
+                        <div class="ms-4" style="min-width:220px;">
+                            <strong>Ticket Prices:</strong>
+                            <div>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        {% if event.is_early_booking_available() %}
+                                            <span class="text-success">Early Booking: £{{ '%.2f'|format(event.early_booking_ticket_price) }}</span>
+                                        {% else %}
+                                            <span>Adult: £{{ '%.2f'|format(event.standard_ticket_price) }}</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div>Child (12-15): {% if event.child_ticket_price_12_15 == 0 %}Free{% else %}£{{ '%.2f'|format(event.child_ticket_price_12_15) }}{% endif %}</div>
+                                <div>Child (7-11): {% if event.child_ticket_price_7_11 == 0 %}Free{% else %}£{{ '%.2f'|format(event.child_ticket_price_7_11) }}{% endif %}</div>
+                                <div>Child (under 7): {% if event.child_ticket_price_under_7 == 0 %}Free{% else %}£{{ '%.2f'|format(event.child_ticket_price_under_7) }}{% endif %}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <form id="ticketForm" class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Add Tickets</h5>
+                    
+                    <!-- Ticket Recipient Selection -->
+                    <div class="mb-4">
+                        <label class="form-label">Who is this ticket for?</label>
+                        {% if current_user.has_active_character() %}
+                        <div class="btn-group w-100" role="group">
+                            <input type="radio" class="btn-check" name="ticket_for" id="ticket_for_self" value="self" checked>
+                            <label class="btn btn-outline-primary" for="ticket_for_self">Myself</label>
+                            
+                            <input type="radio" class="btn-check" name="ticket_for" id="ticket_for_other" value="other">
+                            <label class="btn btn-outline-primary" for="ticket_for_other">Someone Else</label>
+                        </div>
+                        {% else %}
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i> You need to enter a character ID to purchase tickets.
+                        </div>
+                        <input type="hidden" name="ticket_for" value="other">
+                        {% endif %}
+                        
+                        <!-- Character ID Input (shown if "Someone Else" selected or no active character) -->
+                        <div id="character_id_section" class="mt-3" {% if current_user.has_active_character() %}style="display: none;"{% endif %}>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="character_id" name="character_id" 
+                                       placeholder="Enter character ID (e.g., 1.1)" pattern="^\d+\.\d+$" {% if not current_user.has_active_character() %}required{% endif %}>
+                                <span class="input-group-text" id="character_id_status">
+                                    <i class="fas fa-question text-muted"></i>
+                                </span>
+                            </div>
+                            <div id="character_name" class="mt-1 text-success" style="display: none;"></div>
+                            <div class="form-text">Enter the character ID in the format: user_id.character_id</div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="ticket_type" class="form-label">Ticket Type</label>
+                            <select class="form-select" id="ticket_type" name="ticket_type" required>
+                                {% for ticket_type in TicketType.values() %}
+                                    {% if ticket_type != 'crew' or current_user.has_any_role(['user_admin', 'rules_team', 'wiki_editor', 'npc']) %}
+                                    <option value="{{ ticket_type }}">{{ TicketType.descriptions()[ticket_type] }}</option>
+                                    {% endif %}
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Bunking Option -->
+                    {% if event.bunks_available %}
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="requires_bunk" name="requires_bunk">
+                            <label class="form-check-label" for="requires_bunk">
+                                Requires Bunk
+                            </label>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% if event.meal_ticket_available %}
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="has_meal_ticket" name="has_meal_ticket">
+                            <label class="form-check-label" for="has_meal_ticket">
+                                Include Meal Ticket (£{{ "%.2f"|format(event.meal_ticket_price) }})
+                            </label>
+                        </div>
+                    </div>
+                    {% endif %}
+                    <button type="button" class="btn btn-primary" onclick="addToCart()">Add to Cart</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Shopping Cart -->
+        <div class="col-lg-4">
+            <div class="card sticky-top" style="top: 1rem;">
+                <div class="card-body">
+                    <h5 class="card-title">Shopping Cart</h5>
+                    <div id="cartItems" class="mb-3">
+                        <!-- Cart items will be added here dynamically -->
+                    </div>
+                    <hr>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>Subtotal:</span>
+                        <span id="subtotal">£0.00</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-3">
+                        <span>Total:</span>
+                        <span id="total" class="fw-bold">£0.00</span>
+                    </div>
+                    <form method="POST" id="checkoutForm">
+                        <input type="hidden" id="cart" name="cart" value="">
+                        <button type="submit" class="btn btn-success w-100" id="checkoutBtn" disabled>
+                            Proceed to Checkout
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Hidden inputs for prices -->
+<input type="hidden" id="adult_price" value="{{ event.early_booking_ticket_price if event.is_early_booking_available() else event.standard_ticket_price }}">
+<input type="hidden" id="child_12_15_price" value="{{ event.child_ticket_price_12_15 }}">
+<input type="hidden" id="child_7_11_price" value="{{ event.child_ticket_price_7_11 }}">
+<input type="hidden" id="child_under_7_price" value="{{ event.child_ticket_price_under_7 }}">
+<input type="hidden" id="meal_ticket_price" value="{{ event.meal_ticket_price if event.meal_ticket_available else 0 }}">
+
+<input type="hidden" id="event_id" value="{{ event.id }}">
+<input type="hidden" id="has_active_character" value="{{ 'true' if current_user.has_active_character() else 'false' }}">
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Store prices as constants
+const PRICES = {
+    adult: parseFloat(document.getElementById('adult_price').value),
+    child_12_15: parseFloat(document.getElementById('child_12_15_price').value),
+    child_7_11: parseFloat(document.getElementById('child_7_11_price').value),
+    child_under_7: parseFloat(document.getElementById('child_under_7_price').value),
+    meal_ticket: parseFloat(document.getElementById('meal_ticket_price').value),
+    crew: 0 // Crew tickets are always free
+};
+
+// Cart data structure
+let cart = [];
+let validationTimeout = null;
+const eventId = document.getElementById('event_id').value;
+const hasActiveCharacter = document.getElementById('has_active_character').value === 'true';
+let lastFetchedTicket = null;
+
+fetchAndApplyCharacterTicket('{{ current_user.id }}.{{ current_user.get_active_character().character_id if current_user.has_active_character() else "" }}');
+
+function formatPrice(price) {
+    return '£' + price.toFixed(2);
+}
+
+function getTicketPrice(ticketType) {
+    switch(ticketType) {
+        case '{{ TicketType.ADULT.value }}': return PRICES.adult;
+        case '{{ TicketType.CHILD_12_15.value }}': return PRICES.child_12_15;
+        case '{{ TicketType.CHILD_7_11.value }}': return PRICES.child_7_11;
+        case '{{ TicketType.CHILD_UNDER_7.value }}': return PRICES.child_under_7;
+        case '{{ TicketType.MEAL_TICKET_ONLY.value }}': return PRICES.meal_ticket;
+        case '{{ TicketType.CREW.value }}': return 0;
+        default: return 0;
+    }
+}
+
+// Handle ticket recipient selection
+document.querySelectorAll('input[name="ticket_for"]').forEach(radio => {
+    radio.addEventListener('change', function() {
+        const characterIdSection = document.getElementById('character_id_section');
+        characterIdSection.style.display = this.value === 'other' ? 'block' : 'none';
+        if (this.value === 'other') {
+            document.getElementById('character_id').required = true;
+        } else {
+            document.getElementById('character_id').required = false;
+            document.getElementById('character_name').style.display = 'none';
+            document.getElementById('character_id_status').innerHTML = '<i class="fas fa-question text-muted"></i>';
+        }
+    });
+});
+
+// Handle character ID validation
+document.getElementById('character_id').addEventListener('input', function() {
+    const characterId = this.value.trim();
+    const statusElement = document.getElementById('character_id_status');
+    const nameElement = document.getElementById('character_name');
+    
+    // Clear previous timeout
+    if (validationTimeout) {
+        clearTimeout(validationTimeout);
+    }
+    
+    // Reset status
+    statusElement.innerHTML = '<i class="fas fa-question text-muted"></i>';
+    nameElement.style.display = 'none';
+    
+    // Validate format
+    if (!/^\d+\.\d+$/.test(characterId)) {
+        statusElement.innerHTML = '<i class="fas fa-times text-danger"></i>';
+        return;
+    }
+    
+    // Set loading state
+    statusElement.innerHTML = '<i class="fas fa-spinner fa-spin text-muted"></i>';
+    
+    // Debounce validation
+    validationTimeout = setTimeout(() => {
+        fetch(`{{ url_for('characters.validate_user_id_character_id') }}?character_id=${encodeURIComponent(characterId)}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    statusElement.innerHTML = '<i class="fas fa-check text-success"></i>';
+                    nameElement.textContent = data.character_name;
+                    nameElement.style.display = 'block';
+                } else {
+                    statusElement.innerHTML = '<i class="fas fa-times text-danger"></i>';
+                    nameElement.style.display = 'none';
+                }
+            })
+            .catch(error => {
+                statusElement.innerHTML = '<i class="fas fa-times text-danger"></i>';
+                nameElement.style.display = 'none';
+            });
+    }, 500); // 500ms debounce
+});
+
+function showExistingTicketInfo(ticket) {
+    let infoBox = document.getElementById('existing_ticket_info');
+    if (!infoBox) {
+        infoBox = document.createElement('div');
+        infoBox.id = 'existing_ticket_info';
+        infoBox.className = 'alert alert-info mt-2';
+        document.getElementById('ticketForm').prepend(infoBox);
+    }
+    infoBox.innerHTML = `<strong>Existing Ticket:</strong><br>
+        Type: ${ticket.ticket_type}<br>
+        Meal Ticket: ${ticket.meal_ticket ? 'Yes' : 'No'}<br>
+        Requires Bunk: ${ticket.requires_bunk ? 'Yes' : 'No'}<br>
+        Price Paid: £${parseFloat(ticket.price_paid).toFixed(2)}`;
+}
+
+function hideExistingTicketInfo() {
+    document.getElementById('existing_ticket_info')?.remove();
+}
+
+function fetchAndApplyCharacterTicket(characterId) {
+    if (!characterId) return;
+    fetch(`{{ url_for('events.get_character_ticket') }}?event_id=${eventId}&character_id=${encodeURIComponent(characterId)}`)
+        .then(response => response.json())
+        .then(data => {
+            if (!data.success) return;
+            const ticket = data.ticket;
+            lastFetchedTicket = ticket;
+            if (!ticket) {
+                // Reset disables and warnings
+                document.getElementById('has_meal_ticket')?.removeAttribute('disabled');
+                document.getElementById('has_meal_ticket')?.removeAttribute('title');
+                document.getElementById('ticket_type').querySelectorAll('option').forEach(opt => {
+                    opt.removeAttribute('disabled');
+                    opt.removeAttribute('title');
+                });
+                document.getElementById('requires_bunk')?.removeAttribute('disabled');
+                document.getElementById('requires_bunk')?.removeAttribute('title');
+                hideExistingTicketInfo();
+                return;
+            }
+            // Pre-select fields
+            document.getElementById('ticket_type').value = ticket.ticket_type;
+            if (document.getElementById('has_meal_ticket')) {
+                if (ticket.meal_ticket) {
+                    document.getElementById('has_meal_ticket').setAttribute('checked', 'checked');
+                } else {
+                    document.getElementById('has_meal_ticket').removeAttribute('checked');
+                }
+            }
+            if (document.getElementById('requires_bunk')) {
+                if (ticket.requires_bunk) {
+                    document.getElementById('requires_bunk').setAttribute('checked', 'checked');
+                } else {
+                    document.getElementById('requires_bunk').removeAttribute('checked');
+                }
+            }
+            // Disable meal ticket if already purchased
+            if (ticket.meal_ticket) {
+                document.getElementById('has_meal_ticket')?.setAttribute('disabled', 'disabled');
+                document.getElementById('has_meal_ticket')?.setAttribute('title', 'Meal ticket already purchased. For refunds, contact event organisers.');
+            } else {
+                document.getElementById('has_meal_ticket')?.removeAttribute('disabled');
+                document.getElementById('has_meal_ticket')?.removeAttribute('title');
+            }
+            // Prevent downgrading ticket type
+            const ticketTypeSelect = document.getElementById('ticket_type');
+            let foundCurrent = false;
+            ticketTypeSelect.querySelectorAll('option').forEach(opt => {
+                if (opt.value === ticket.ticket_type) {
+                    foundCurrent = true;
+                    opt.removeAttribute('disabled');
+                    opt.removeAttribute('title');
+                } else if (foundCurrent) {
+                    // Cheaper ticket
+                    opt.setAttribute('disabled', 'disabled');
+                    opt.setAttribute('title', 'Cannot downgrade ticket. For refunds, contact event organisers.');
+                } else {
+                    opt.removeAttribute('disabled');
+                    opt.removeAttribute('title');
+                }
+            });
+            showExistingTicketInfo(ticket);
+        });
+}
+
+// Call fetchAndApplyCharacterTicket when character changes
+function onCharacterChange() {
+    let characterId = null;
+    if (document.getElementById('ticket_for_self')?.checked) {
+        characterId = '{{ current_user.id }}.{{ current_user.get_active_character().player_id if current_user.has_active_character() else "" }}';
+    } else {
+        characterId = document.getElementById('character_id').value.trim();
+    }
+    fetchAndApplyCharacterTicket(characterId);
+}
+
+document.getElementById('character_id').addEventListener('change', onCharacterChange);
+document.getElementById('ticket_for_self')?.addEventListener('change', onCharacterChange);
+document.getElementById('ticket_for_other')?.addEventListener('change', onCharacterChange);
+
+function addToCart() {
+    const ticketType = document.getElementById('ticket_type').value;
+    const ticketType_name = document.getElementById('ticket_type').options[document.getElementById('ticket_type').selectedIndex].text;
+    const mealTicket = document.getElementById('has_meal_ticket')?.checked || false;
+    const requiresBunk = document.getElementById('requires_bunk')?.checked || false;
+    let ticketFor = 'self';
+    if (document.getElementById('ticket_for_other')?.checked || !hasActiveCharacter) {
+        ticketFor = 'other';
+    }
+    const characterId = ticketFor === 'other' ? document.getElementById('character_id').value.trim() : null;
+
+    // Calculate price for this ticket (including add-ons)
+    let price = 0;
+    if (ticketType === 'crew') {
+        price = 0;
+    } else {
+        price = getTicketPrice(ticketType);
+        if (mealTicket) {
+            price += PRICES.meal_ticket;
+        }
+    }
+    let discount = 0;
+    if (lastFetchedTicket && lastFetchedTicket.price_paid) {
+        discount = parseFloat(lastFetchedTicket.price_paid);
+        price = Math.max(0, price - discount);
+    }
+
+    cart.push({
+        ticketType,
+        ticketType_name,
+        mealTicket,
+        requiresBunk,
+        ticketFor,
+        characterId,
+        price,
+        discount,
+        previousPayment: lastFetchedTicket ? lastFetchedTicket.price_paid : 0
+    });
+    updateCartDisplay();
+    resetForm();
+}
+
+function removeFromCart(index) {
+    cart.splice(index, 1);
+    updateCartDisplay();
+}
+
+function resetForm() {
+    document.getElementById('ticket_type').value = '{{ TicketType.ADULT.value }}';
+    if (document.getElementById('has_meal_ticket')) {
+        document.getElementById('has_meal_ticket').checked = false;
+    }
+    if (document.getElementById('requires_bunk')) {
+        document.getElementById('requires_bunk').checked = false;
+    }
+    if (hasActiveCharacter) {
+        document.getElementById('ticket_for_self').checked = true;
+        document.getElementById('character_id_section').style.display = 'none';
+    }
+    document.getElementById('character_id').value = '';
+    document.getElementById('character_id').required = !hasActiveCharacter;
+    document.getElementById('character_name').style.display = 'none';
+    document.getElementById('character_id_status').innerHTML = '<i class="fas fa-question text-muted"></i>';
+}
+
+function updateCartDisplay() {
+    const cartItems = document.getElementById('cartItems');
+    const subtotalElement = document.getElementById('subtotal');
+    const totalElement = document.getElementById('total');
+    const checkoutBtn = document.getElementById('checkoutBtn');
+    const cartDataInput = document.getElementById('cart');
+
+    // Clear current cart display
+    cartItems.innerHTML = '';
+
+    if (cart.length === 0) {
+        cartItems.innerHTML = '<p class="text-muted">Your cart is empty</p>';
+        subtotalElement.textContent = formatPrice(0);
+        totalElement.textContent = formatPrice(0);
+        checkoutBtn.disabled = true;
+        cartDataInput.value = '';
+        return;
+    }
+
+    // Calculate totals
+    let subtotal = 0;
+    cart.forEach((item, index) => {
+        subtotal += item.price;
+        
+        // Create cart item element
+        const itemElement = document.createElement('div');
+        itemElement.className = 'd-flex justify-content-between align-items-center mb-2';
+        
+        itemElement.innerHTML = `
+            <div>
+                <div>${item.ticketType_name}${item.mealTicket ? ' + Meal' : ''}${item.requiresBunk ? ' + Bunk' : ''}</div>
+                <small class="text-muted">
+                    ${formatPrice(item.price)} each
+                    <br>
+                    For: ${item.ticketFor === 'other' ? item.characterName : 'Self'}
+                </small>
+            </div>
+            <div class="d-flex align-items-center">
+                <span class="me-2">${formatPrice(item.price)}</span>
+                <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeFromCart(${index})">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        `;
+        cartItems.appendChild(itemElement);
+    });
+
+    // Update totals
+    subtotalElement.textContent = formatPrice(subtotal);
+    totalElement.textContent = formatPrice(subtotal);
+    
+    // Enable checkout and store cart data
+    checkoutBtn.disabled = false;
+    cartDataInput.value = JSON.stringify(cart);
+}
+
+// Initialize cart display
+updateCartDisplay();
+
+function updatePrice() {
+    const ticketType = document.getElementById('ticket_type').value;
+    const hasMealTicket = document.getElementById('has_meal_ticket')?.checked || false;
+    
+    let price = PRICES[ticketType];
+    if (hasMealTicket) {
+        price += PRICES.meal_ticket;
+    }
+    
+    document.getElementById('total_price').textContent = `£${price.toFixed(2)}`;
+    document.getElementById('price_paid').value = price;
+}
+</script>
+{% endblock %} 

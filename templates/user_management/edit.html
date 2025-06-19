@@ -1,0 +1,102 @@
+{% extends "_template.html" %}
+
+{% block title %}Edit User - Orion Sphere LRP{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="user-management">
+        <h1>Edit User</h1>
+        
+        <div class="user-details">
+            <h2>{{ user.email }}</h2>
+            
+            <form method="POST" action="{{ url_for('user_management.user_management_edit_user', user_id=user.id) }}" class="edit-form">
+                <div class="form-group">
+                    <label for="email">Email:</label>
+                    <input type="email" id="email" name="email" value="{{ user.email }}" class="form-control" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="first_name">First Name:</label>
+                    <input type="text" id="first_name" name="first_name" value="{{ user.first_name }}" class="form-control" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="surname">Surname:</label>
+                    <input type="text" id="surname" name="surname" value="{{ user.surname or '' }}" class="form-control">
+                </div>
+
+                <div class="form-group">
+                    <label for="pronouns_subject">Pronouns (subject):</label>
+                    <input type="text" id="pronouns_subject" name="pronouns_subject" 
+                           value="{{ user.pronouns_subject or '' }}" 
+                           placeholder="e.g., they" class="form-control">
+                </div>
+
+                <div class="form-group">
+                    <label for="pronouns_object">Pronouns (object):</label>
+                    <input type="text" id="pronouns_object" name="pronouns_object" 
+                           value="{{ user.pronouns_object or '' }}" 
+                           placeholder="e.g., them" class="form-control">
+                </div>
+
+                <div class="form-group">
+                    <label for="player_id">Player ID:</label>
+                    <input type="number" id="player_id" name="player_id" value="{{ user.player_id or '' }}" class="form-control">
+                </div>
+
+                <div class="form-group">
+                    <label for="character_points">Character Points:</label>
+                    <input type="number" id="character_points" name="character_points" value="{{ user.character_points }}" class="form-control" step="0.5" min="0">
+                </div>
+
+                <button type="submit" name="update_user" class="btn btn-primary">Update User</button>
+            </form>
+
+            <div class="roles-section">
+                <h3>Roles</h3>
+                <div class="current-roles" style="display: flex; flex-wrap: wrap; gap: 0.5em; align-items: center;">
+                    <h4>Current Roles</h4>
+                    {% for role in user.roles.split(',') if role %}
+                    <div class="role-item">
+                        <span class="role-badge">
+                            {{ Role.descriptions()[role] }}
+                            {% if role != 'owner' and (role != 'admin' or current_user.has_role('owner')) and (role != 'wiki_editor' or current_user.has_role('admin')) %}
+                            <form method="POST" action="{{ url_for('user_management.user_management_edit_user', user_id=user.id) }}" class="role-form" style="display: inline;">
+                                <input type="hidden" name="role" value="{{ role }}">
+                                <button type="submit" name="remove_role" class="btn-remove">&times;</button>
+                            </form>
+                            {% endif %}
+                        </span>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <div class="add-role">
+                    <h4>Add Role</h4>
+                    <form method="POST" action="{{ url_for('user_management.user_management_edit_user', user_id=user.id) }}" class="role-form">
+                        <select name="role" class="form-control">
+                            {% for role in roles %}
+                            {% if role != 'owner' and (role != 'admin' or current_user.has_role('owner')) and (role != 'wiki_editor' or current_user.has_role('admin')) %}
+                            <option value="{{ role }}">{{ Role.descriptions()[role] }}</option>
+                            {% endif %}
+                            {% endfor %}
+                        </select>
+                        <button type="submit" name="add_role" class="btn btn-primary">Add Role</button>
+                    </form>
+                </div>
+            </div>
+
+            {% if user.player_id %}
+            <div class="characters-section">
+                <h2>Characters</h2>
+                <div class="mb-3">
+                    <a href="{{ url_for('characters.create_for_player', player_id=user.player_id) }}" class="btn btn-success">Create Character</a>
+                </div>
+                {% include 'characters/_character_list.html' with context %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %} 

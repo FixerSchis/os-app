@@ -1,0 +1,97 @@
+{% extends "_template.html" %}
+
+{% block title %}Item Types - Orion Sphere LRP{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Item Types</h1>
+        {% if can_edit %}
+        <a href="{{ url_for('item_types.create') }}" class="btn btn-primary">Create Item Type</a>
+        {% endif %}
+    </div>
+    <div class="table-responsive">
+        <table class="table table-striped table-hover align-middle">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>ID Prefix</th>
+                    {% if can_edit %}
+                    <th>Actions</th>
+                    {% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for item_type in item_types %}
+                <tr>
+                    <td>{{ item_type.name }}</td>
+                    <td>{{ item_type.id_prefix }}####-###</td>
+                    {% if can_edit %}
+                    <td>
+                        <div class="btn-group">
+                            <a href="{{ url_for('item_types.edit', id=item_type.id) }}" class="btn btn-sm btn-outline-primary">Edit</a>
+                            <button type="button" class="btn btn-sm btn-outline-danger delete-btn" 
+                                    data-delete-url="{{ url_for('item_types.delete', id=item_type.id) }}"
+                                    data-item-name="{{ item_type.name }}">
+                                Delete
+                            </button>
+                        </div>
+                    </td>
+                    {% endif %}
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="{% if can_edit %}3{% else %}2{% endif %}" class="text-center text-muted">No item types found.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+{% if can_edit %}
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteModalLabel">Confirm Delete</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                Are you sure you want to delete <span id="itemName"></span>?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="deleteForm" method="POST" style="display: inline;">
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if can_edit %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const deleteButtons = document.querySelectorAll('.delete-btn');
+    const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+    const deleteForm = document.getElementById('deleteForm');
+    const itemNameSpan = document.getElementById('itemName');
+
+    deleteButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const deleteUrl = this.dataset.deleteUrl;
+            const itemName = this.dataset.itemName;
+            deleteForm.action = deleteUrl;
+            itemNameSpan.textContent = itemName;
+            deleteModal.show();
+        });
+    });
+});
+</script>
+{% endif %}
+{% endblock %} 

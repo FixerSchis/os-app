@@ -1,0 +1,46 @@
+{% extends "_template.html" %}
+
+{% block title %}Skills{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Skills</h1>
+        {% if current_user.is_authenticated and current_user.has_role('rules_team') %}
+        <a href="{{ url_for('skills.new_skill') }}" class="btn btn-primary">Create New Skill</a>
+        {% endif %}
+    </div>
+
+    {% for skill_type, skills in skills_by_type.items() %}
+    <div class="mb-5">
+        <h2 class="mb-3">{{ type_friendly_names[skill_type] }}</h2>
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th class="col-6">Name</th>
+                        <th class="col-3">CP Cost</th>
+                        {% if current_user.is_authenticated and current_user.has_role('rules_team') %}
+                        <th class="col-3">Actions</th>
+                        {% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for skill in skills %}
+                    <tr>
+                        <td class="col-6">{{ skill.name }}</td>
+                        <td class="col-3">{{ skill.base_cost }}</td>
+                        {% if current_user.is_authenticated and current_user.has_role('rules_team') %}
+                        <td class="col-3">
+                            <a href="{{ url_for('skills.edit_skill', skill_id=skill.id) }}" class="btn btn-sm btn-primary">Edit</a>
+                        </td>
+                        {% endif %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %} 

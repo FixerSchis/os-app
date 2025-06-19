@@ -1,0 +1,117 @@
+{% extends "_template.html" %}
+
+{% block title %}Spacer Messaging System{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Spacer Messaging System</h2>
+    
+    <!-- Send Message Form -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h4>Send Message</h4>
+        </div>
+        <div class="card-body">
+            <form action="{{ url_for('messages.send_message') }}" method="POST">
+                <div class="mb-3">
+                    <label for="sender_id" class="form-label">From Character</label>
+                    <select class="form-select" id="sender_id" name="sender_id" required>
+                        <option value="">Select a character...</option>
+                        {% for character in characters %}
+                            <option value="{{ character.id }}">{{ character.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label for="recipient_name" class="form-label">Recipient Name</label>
+                    <input type="text" class="form-control" id="recipient_name" name="recipient_name" required>
+                </div>
+                <div class="mb-3">
+                    <label for="content" class="form-label">Message Content</label>
+                    <textarea class="form-control" id="content" name="content" rows="4" required></textarea>
+                </div>
+                <div class="d-flex align-items-center gap-3">
+                    <button type="submit" class="btn btn-primary">Send Message</button>
+                    <div class="form-check mb-0">
+                        <input type="checkbox" class="form-check-input" id="paid_in_cash" name="paid_in_cash" value="true">
+                        <label class="form-check-label" for="paid_in_cash">Character has paid in cash</label>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Messages List -->
+    <div class="card">
+        <div class="card-header">
+            <h4>Pending Messages</h4>
+        </div>
+        <div class="card-body">
+            {% if messages %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>From</th>
+                                <th>To</th>
+                                <th>Sent</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for message in messages %}
+                                <tr>
+                                    <td>{{ message.sender.name }}</td>
+                                    <td>{{ message.recipient_name }}</td>
+                                    <td>{{ message.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                    <td>
+                                        <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#responseModal{{ message.id }}">
+                                            Respond
+                                        </button>
+                                    </td>
+                                </tr>
+
+                                <!-- Response Modal -->
+                                <div class="modal fade" id="responseModal{{ message.id }}" tabindex="-1" aria-labelledby="responseModalLabel{{ message.id }}" aria-hidden="true">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title" id="responseModalLabel{{ message.id }}">Respond to Message</h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <div class="mb-3">
+                                                    <strong>From:</strong> {{ message.sender.name }}
+                                                </div>
+                                                <div class="mb-3">
+                                                    <strong>To:</strong> {{ message.recipient_name }}
+                                                </div>
+                                                <div class="mb-3">
+                                                    <strong>Original Message:</strong>
+                                                    <p class="mt-2">{{ message.content }}</p>
+                                                </div>
+                                                <form action="{{ url_for('messages.respond_to_message', message_id=message.id) }}" method="POST">
+                                                    <div class="mb-3">
+                                                        <label for="response{{ message.id }}" class="form-label">Your Response</label>
+                                                        <textarea class="form-control" id="response{{ message.id }}" name="response" rows="4" required></textarea>
+                                                    </div>
+                                                    <div class="modal-footer">
+                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                                        <button type="submit" class="btn btn-primary">Send Response</button>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p class="text-muted">No pending messages.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %} 

@@ -1,0 +1,106 @@
+{% extends "_template.html" %}
+
+{% block title %}Research - Orion Sphere LRP{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>Research Assignees - {{ research.project_name }}</h1>
+    
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Add Assignee</h5>
+        </div>
+        <div class="card-body">
+            <form action="{{ url_for('research.add_assignee', research_id=research.id) }}" method="POST">
+                <div class="form-group">
+                    <label for="character_id">Select Character</label>
+                    <select class="form-control select2" id="character_id" name="character_id" required>
+                        <option value="">Choose a character...</option>
+                        {% for character in available_characters %}
+                        <option value="{{ character.id }}">{{ character.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary">Add Assignee</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">Current Assignees</h5>
+        </div>
+        <div class="card-body">
+            {% if assignees %}
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Character</th>
+                            <th>Current Stage</th>
+                            <th>Progress</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for assignee in assignees %}
+                        <tr>
+                            <td>{{ assignee.character.name }}</td>
+                            <td>{{ assignee.current_stage.name if assignee.current_stage else 'Complete' }}</td>
+                            <td>
+                                {% if assignee.current_stage_id is none %}
+                                    <div class="progress">
+                                        <div class="progress-bar bg-success" data-progress="100">Complete</div>
+                                    </div>
+                                {% elif assignee.current_stage_progress %}
+                                    <div class="progress">
+                                        <div class="progress-bar" role="progressbar" data-progress="{{ assignee.current_stage_progress.progress_percent }}">
+                                            {{ assignee.current_stage_progress.progress_percent }}%
+                                        </div>
+                                    </div>
+                                {% else %}
+                                    <div class="progress">
+                                        <div class="progress-bar" role="progressbar" data-progress="0">0%</div>
+                                    </div>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <form action="{{ url_for('research.remove_assignee', research_id=research.id, character_id=assignee.character.id) }}" 
+                                      method="POST" class="d-inline">
+                                    <a href="{{ url_for('research.edit_progress', research_id=research.id, character_id=assignee.character.id) }}" 
+                                       class="btn btn-primary btn-sm">Edit Progress</a>
+                                    <button type="submit" class="btn btn-danger btn-sm">Remove</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-muted">No characters assigned to this research project.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize Select2
+    $('.select2').select2({
+        theme: 'bootstrap-5',
+        width: '100%',
+        placeholder: 'Choose a character...',
+        allowClear: true
+    });
+
+    // Initialize progress bars
+    document.querySelectorAll('.progress-bar').forEach(function(bar) {
+        var percent = parseInt(bar.getAttribute('data-progress'));
+        bar.style.width = percent + '%';
+    });
+});
+</script>
+{% endblock %}
+{% endblock %} 

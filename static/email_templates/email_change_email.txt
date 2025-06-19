@@ -1,0 +1,14 @@
+Hello {{ user.first_name }},
+
+You have requested to change your email address from {{ user.email }} to {{ new_email }}.
+
+To confirm this change, please click on the link below:
+
+{{ verification_url }}
+
+This link will expire in 24 hours.
+
+If you did not request this change, please ignore this email and contact an administrator immediately.
+
+Best regards,
+The Orion Sphere LRP Team 

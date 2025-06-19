@@ -1,0 +1,136 @@
+{% extends "_template.html" %}
+
+{% block title %}{{ 'Edit ' + PrintTemplateType.descriptions()[template.type.value] if template else 'New' }} Template{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1>{{ ('Edit ' + PrintTemplateType.descriptions()[template.type.value]) if template else 'New Template' }}</h1>
+                <a href="{{ url_for('templates.template_list') }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Back to Templates
+                </a>
+            </div>
+
+            <form method="POST" id="templateForm" data-template-id="{{ template.id if template else '' }}" data-template-type="{{ template.type.value if template else 'character_sheet' }}">
+                <input type="hidden" id="jinja_completions" value='{{ completions|tojson }}'>
+                <div class="row">
+                    <div class="col-12">
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <h5 class="card-title mb-0">Template Preview</h5>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="form-check mb-0">
+                                            <input class="form-check-input" type="checkbox" id="autoPreview" checked>
+                                            <label class="form-check-label small" for="autoPreview">
+                                                Auto-update
+                                            </label>
+                                        </div>
+                                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="updatePreview()">
+                                            <i class="fas fa-sync-alt"></i> Refresh
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="printTemplatePreview()">
+                                            <i class="fas fa-print"></i> Print Preview
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card-body">                                
+                                <div class="preview-container">
+                                    <div class="template-dimension-container template-dimension-container-{{ template.type.value if template else 'character_sheet' }}" data-template-type="{{ template.type.value if template else 'character_sheet' }}">
+                                        <div class="template-preview-row">
+                                            <div class="template-preview-item">
+                                                <div class="template-content" id="frontPreview" 
+                                                     data-width-mm="{{ template.width_mm if template else 148.0 }}" 
+                                                     data-height-mm="{{ template.height_mm if template else 210.0 }}"
+                                                     data-template-type="{{ template.type.value if template else 'character_sheet' }}">
+                                                    <div class="text-center text-muted py-5">
+                                                        <i class="fas fa-eye fa-3x mb-3"></i>
+                                                        <p>Front preview will appear here</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            {% if template and template.has_back_side %}
+                                            <div class="template-preview-item">
+                                                <div class="template-content template-content-back" id="backPreview"
+                                                     data-width-mm="{{ template.width_mm if template else 148.0 }}" 
+                                                     data-height-mm="{{ template.height_mm if template else 210.0 }}"
+                                                     data-template-type="{{ template.type.value if template else 'character_sheet' }}">
+                                                    <div class="text-center text-muted py-5">
+                                                        <i class="fas fa-eye fa-3x mb-3"></i>
+                                                        <p>Back preview will appear here</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-12">
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <ul class="nav nav-tabs card-header-tabs" id="monacoTabs" role="tablist">
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link active" id="monaco-front-tab" data-tab="front" type="button" role="tab">
+                                            Front Side
+                                        </button>
+                                    </li>
+                                    {% if template and template.has_back_side %}
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link" id="monaco-back-tab" data-tab="back" type="button" role="tab">
+                                            Back Side
+                                        </button>
+                                    </li>
+                                    {% endif %}
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link" id="monaco-css-tab" data-tab="css" type="button" role="tab">
+                                            CSS Styles
+                                        </button>
+                                    </li>
+                                </ul>
+                            </div>
+                            <div class="card-body">
+                                <div id="monaco-editor-container" style="height: 400px; border: 1px solid #ced4da; border-radius: 0.375rem;"></div>
+                                <!-- Hidden textareas for form submission -->
+                                <textarea id="front_html" name="front_html" style="display:none;">{{ template.front_html if template else '' }}</textarea>
+                                {% if template and template.has_back_side %}
+                                <textarea id="back_html" name="back_html" style="display:none;">{{ template.back_html if template else '' }}</textarea>
+                                {% endif %}
+                                <textarea id="css_styles" name="css_styles" style="display:none;">{{ template.css_styles if template else '' }}</textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-12">
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('templates.template_list') }}" class="btn btn-secondary">
+                                Cancel
+                            </a>
+                            <div>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save"></i> {{ 'Update' if template else 'Create' }} Template
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='external/js/monaco-loader.js') }}"></script>
+<script src="{{ url_for('static', filename='js/templates.js') }}"></script>
+{% endblock %} 
