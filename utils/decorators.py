@@ -9,8 +9,8 @@ def email_verified_required(f):
     """
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        # if current_user.is_authenticated and not current_user.email_verified:
-        #     flash('Please verify your email address to access this page.')
-        #     return redirect(url_for('auth.verification_required'))
+        if current_user.is_authenticated and not current_user.email_verified:
+            flash('Please verify your email address to access this page.')
+            return redirect(url_for('auth.verification_required'))
         return f(*args, **kwargs)
     return decorated_function
