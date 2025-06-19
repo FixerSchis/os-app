@@ -137,4 +137,4 @@ if __name__ == '__main__':
         pass
     
     app = create_app(config)
-    app.run(debug=True, port=config.DEFAULT_PORT)
+    app.run(debug=True, host='0.0.0.0', port=config.DEFAULT_PORT)
