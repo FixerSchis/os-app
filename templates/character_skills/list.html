@@ -39,7 +39,21 @@
                         {% set can_refund = current_user.has_role('user_admin') or character.status == 'developing' %}
                         <tr>
                             <td class="ps-4" style="padding-left: 2em;">
-                                <div><strong>{{ skill.name }}</strong></div>
+                                <div><strong>
+                                    {{ skill.name }}
+                                    {% set indicators = [] %}
+                                    {% if skill.can_purchase_multiple and not skill.cost_increases %}
+                                        {% set _ = indicators.append('a') %}
+                                    {% elif skill.can_purchase_multiple and skill.cost_increases %}
+                                        {% set _ = indicators.append('+') %}
+                                    {% endif %}
+                                    {% if skill.required_skill or skill.get_required_factions() or skill.get_required_species() or skill.get_required_tags() %}
+                                        {% set _ = indicators.append('*') %}
+                                    {% endif %}
+                                    {% if indicators %}
+                                        <sup>{{ indicators | join('') }}</sup>
+                                    {% endif %}
+                                </strong></div>
                                 <div class="text-muted small">{{ skill.description }}</div>
                             </td>
                             <td class="text-center">
@@ -83,6 +97,13 @@
                     {% endfor %}
                 </tbody>
             </table>
+        </div>
+        <div class="mt-4">
+            <p class="small text-muted">
+                <sup>a</sup> - Can be bought multiple times. Cost does not increase each time.<br>
+                <sup>+</sup> - Can be bought multiple times. Cost increases by 1 point each time.<br>
+                <sup>*</sup> - Prerequisite skill required.
+            </p>
         </div>
         <style>
             .bg-skilltype {
