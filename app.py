@@ -34,18 +34,18 @@ from models.research import CharacterResearch
 from routes.samples import samples_bp
 from routes.events import events_bp
 
-def create_app(config=None):
+def create_app(config_class=None):
     app = Flask("Orion Sphere LRP")
     
-    if config is None:
-        config = Config()
+    if config_class is None:
+        config_class = Config
         try:
             from config.local import LocalConfig
-            config = LocalConfig()
+            config_class = LocalConfig
         except ImportError:
             pass
     
-    app.config.from_object(config)
+    app.config.from_object(config_class())
     init_app(app)
     mail.init_app(app)
 
@@ -65,15 +65,6 @@ def create_app(config=None):
     @app.route('/.well-known/appspecific/com.chrome.devtools.json')
     def chrome_devtools_json():
         return '', 204
-
-    # Handle HTTPS requests in development (redirect to HTTP)
-    @app.before_request
-    def handle_https_redirect():
-        if request.headers.get('X-Forwarded-Proto') == 'https':
-            # If behind a proxy that indicates HTTPS, redirect to HTTP
-            if request.url.startswith('https://'):
-                return redirect(request.url.replace('https://', 'http://', 1), code=301)
-        return None
 
     # Register blueprints
     app.register_blueprint(auth_bp, url_prefix='/auth')
@@ -135,26 +126,11 @@ def create_app(config=None):
     return app
 
 if __name__ == '__main__':
-    # Load base configuration
-    config = Config()
-    
-    # Try to load local configuration
-    try:
-        from config.local import LocalConfig
-        config = LocalConfig()
-    except ImportError:
-        pass
-    
-    app = create_app(config)
-    
-    # Configure SSL if enabled
-    ssl_context = None
-    if config.SSL_ENABLED and config.SSL_CERT_FILE and config.SSL_KEY_FILE:
-        ssl_context = (config.SSL_CERT_FILE, config.SSL_KEY_FILE)
+    app = create_app()
+    config = app.config
     
     app.run(
         debug=True, 
         host='0.0.0.0', 
-        port=config.DEFAULT_PORT,
-        ssl_context=ssl_context
+        port=config.get('DEFAULT_PORT', 5000)
     )
