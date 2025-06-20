@@ -117,16 +117,23 @@ def user_management_edit_user_post(user_id):
         tag_id = request.form.get("tag_id")
         if tag_id:
             tag = CharacterTag.query.get(tag_id)
-            if tag and tag not in user.tags:
-                user.tags.append(tag)
+            # Use the user's active character
+            active_character = user.get_active_character() if hasattr(user, 'get_active_character') else None
+            if not active_character:
+                flash("User has no active character", "error")
+            elif tag and tag not in active_character.tags:
+                active_character.tags.append(tag)
                 db.session.commit()
                 flash("Tag added successfully")
     elif "remove_tag" in request.form:
         tag_id = request.form.get("tag_id")
         if tag_id:
             tag = CharacterTag.query.get(tag_id)
-            if tag and tag in user.tags:
-                user.tags.remove(tag)
+            active_character = user.get_active_character() if hasattr(user, 'get_active_character') else None
+            if not active_character:
+                flash("User has no active character", "error")
+            elif tag and tag in active_character.tags:
+                active_character.tags.remove(tag)
                 db.session.commit()
                 flash("Tag removed successfully")
     elif "update_character_status" in request.form:

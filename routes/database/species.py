@@ -27,7 +27,7 @@ def species_list():
         return ''
 
     # If user is not rules team, filter species
-    if not current_user.is_authenticated or not current_user.has_role(Role.RULES_TEAM):
+    if not current_user.is_authenticated or not current_user.has_role(Role.RULES_TEAM.value):
         # Get user's active character species if they have one
         user_species_id = None
         if current_user.is_authenticated:
@@ -57,15 +57,15 @@ def species_list():
     return render_template('species/list.html', 
                          species=species, 
                          factions=factions,
-                         can_edit=current_user.is_authenticated and current_user.has_role(Role.RULES_TEAM))
+                         can_edit=current_user.is_authenticated and current_user.has_role(Role.RULES_TEAM.value))
 
 @species_bp.route('/<int:species_id>/edit', methods=['GET'])
 @login_required
 @email_verified_required
 def edit_species(species_id):
-    if not current_user.has_role(Role.RULES_TEAM):
+    if not current_user.has_role(Role.RULES_TEAM.value):
         flash('You do not have permission to access this page.', 'error')
-        return redirect(url_for('main.index'))
+        return redirect(url_for('index'))
     
     species = Species.query.get_or_404(species_id)
     skills_list = Skill.query.all()
@@ -76,9 +76,9 @@ def edit_species(species_id):
 @login_required
 @email_verified_required
 def edit_species_post(species_id):
-    if not current_user.has_role(Role.RULES_TEAM):
+    if not current_user.has_role(Role.RULES_TEAM.value):
         flash('You do not have permission to access this page.', 'error')
-        return redirect(url_for('main.index'))
+        return redirect(url_for('index'))
     
     species = Species.query.get_or_404(species_id)
     
@@ -151,9 +151,9 @@ def edit_species_post(species_id):
 @login_required
 @email_verified_required
 def new_species():
-    if not current_user.has_role(Role.RULES_TEAM):
+    if not current_user.has_role(Role.RULES_TEAM.value):
         flash('You do not have permission to access this page.', 'error')
-        return redirect(url_for('main.index'))
+        return redirect(url_for('index'))
     
     skills_list = Skill.query.all()
     return render_template('species/edit.html', BodyHitsType=BodyHitsType, factions=Faction.query.all(), AbilityType=AbilityType, skills_list=skills_list)
@@ -162,9 +162,9 @@ def new_species():
 @login_required
 @email_verified_required
 def new_species_post():
-    if not current_user.has_role(Role.RULES_TEAM):
+    if not current_user.has_role(Role.RULES_TEAM.value):
         flash('You do not have permission to access this page.', 'error')
-        return redirect(url_for('main.index'))
+        return redirect(url_for('index'))
     name = request.form.get('name')
     wiki_page = request.form.get('wiki_page')
     body_hits_type = request.form.get('body_hits_type')

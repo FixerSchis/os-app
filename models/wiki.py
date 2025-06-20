@@ -5,10 +5,6 @@ from sqlalchemy import Enum as SqlEnum
 from .enums import SectionRestrictionType, WikiPageVersionStatus
 from sqlalchemy.orm import relationship
 
-class WikiPageVersionStatus(Enum):
-    PUBLISHED = 'published'
-    PENDING = 'pending'
-
 class WikiPage(db.Model):
     slug = db.Column(db.String(200), primary_key=True)
     title = db.Column(db.String(200), nullable=False)

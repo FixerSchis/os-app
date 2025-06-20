@@ -22,7 +22,7 @@ def messages():
         active_character = current_user.get_active_character()
         if not active_character:
             flash('You need an active character to use the messaging system.', 'error')
-            return redirect(url_for('main.index'))
+            return redirect(url_for('index'))
         
         messages = Message.query.filter_by(sender_id=active_character.id).all()
         return render_template('messages/user_messages.html', messages=messages)
@@ -54,10 +54,10 @@ def send_message():
         return redirect(url_for('messages.messages'))
 
     if not paid_in_cash:
-        if sender.can_afford(10):
+        if not sender.can_afford(10):
             flash('Insufficient funds. Messages cost 10 ec.', 'error')
             return redirect(url_for('messages.messages'))
-        sender.spend_funds(10)
+        sender.spend_funds(10, editor_user_id=current_user.id, reason='Send message')
 
     message = Message(
         sender_id=sender_id,

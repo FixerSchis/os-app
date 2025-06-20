@@ -1,7 +1,7 @@
 from flask import Flask, render_template, redirect, url_for, request, abort
 from models.tools.character import Character
 from models.extensions import db
-from models import init_app
+from models import init_app, create_default_data
 from utils.email import mail
 from config import Config
 from routes.wiki import wiki_bp
@@ -48,6 +48,12 @@ def create_app(config_class=None):
     
     app.config.from_object(config_class())
     init_app(app)
+    
+    # Only create default data if not in testing mode
+    if not app.config.get('TESTING'):
+        with app.app_context():
+            create_default_data()
+    
     mail.init_app(app)
 
     # Error handlers

@@ -89,22 +89,6 @@ def create_group_post():
     flash('Group created successfully', 'success')
     return redirect(url_for('groups.group_list'))
 
-@groups_bp.route('/<int:group_id>/edit', methods=['GET'])
-@login_required
-@email_verified_required
-@has_active_character_required
-def edit_group(group_id):
-    group = Group.query.get_or_404(group_id)
-    active_character = Character.query.filter_by(
-        user_id=current_user.id,
-        status=CharacterStatus.ACTIVE.value
-    ).first()
-    
-    if not current_user.has_role(Role.USER_ADMIN.value) and active_character.group_id != group.id:
-        flash('You do not have permission to edit this group', 'error')
-        return redirect(url_for('groups.group_list'))
-    return render_template('groups/edit.html', group=group)
-
 @groups_bp.route('/<int:group_id>/edit', methods=['POST'])
 @login_required
 @email_verified_required
@@ -296,13 +280,12 @@ def remove_character(group_id, character_id):
     character = Character.query.get_or_404(character_id)
     
     if character.group_id != group.id:
-        flash('Character is not in this group', 'error')
+        flash('Character is not a member of this group', 'error')
         return redirect(url_for('groups.group_list'))
     
     character.group_id = None
     db.session.commit()
-    
-    flash('Character removed from group successfully', 'success')
+    flash('Character removed from group', 'success')
     return redirect(url_for('groups.group_list'))
 
 @groups_bp.route('/create/admin', methods=['GET', 'POST'])
@@ -310,51 +293,37 @@ def remove_character(group_id, character_id):
 @email_verified_required
 @user_admin_required
 def create_group_admin():
-    if request.method == 'POST':
-        name = request.form.get('name')
-        type = request.form.get('type')
-        bank_account = request.form.get('bank_account')
-        character_id = request.form.get('character_id')
-        
-        if not name or not type:
-            flash('Name and type are required', 'error')
-            return redirect(url_for('groups.create_group_admin'))
-        
-        try:
-            bank_account = int(bank_account)
-        except ValueError:
-            flash('Bank account must be a number', 'error')
-            return redirect(url_for('groups.create_group_admin'))
-        
-        group = Group(
-            name=name,
-            type=type,
-            bank_account=bank_account
-        )
-        db.session.add(group)
-        
-        # Add character to group if one was selected
-        if character_id:
-            character = Character.query.get(character_id)
-            if character:
-                if character.group_id:
-                    flash('Selected character is already in a group', 'error')
-                    return redirect(url_for('groups.create_group_admin'))
-                character.group_id = group.id
-        
-        db.session.commit()
-        flash('Group created successfully', 'success')
-        return redirect(url_for('groups.group_list'))
+    if request.method == 'GET':
+        return render_template('groups/admin_edit.html')
     
-    # Get all active characters that aren't in a group
-    available_characters = Character.query.filter_by(
-        status=CharacterStatus.ACTIVE.value,
-        group_id=None
-    ).all()
+    name = request.form.get('name')
+    type = request.form.get('type')
+    bank_account = request.form.get('bank_account')
     
-    return render_template('groups/admin_edit.html',
-                         available_characters=available_characters,
-                         GroupType=GroupType)
+    if not name or not type:
+        flash('Name and type are required', 'error')
+        return redirect(url_for('groups.create_group_admin'))
+
+    if type not in GroupType.values():
+        flash('Invalid group type', 'error')
+        return redirect(url_for('groups.create_group_admin'))
+
+    try:
+        bank_account_int = int(bank_account) if bank_account else 0
+    except ValueError:
+        flash('Bank account must be a number', 'error')
+        return redirect(url_for('groups.create_group_admin'))
+
+    group = Group(
+        name=name,
+        type=type,
+        bank_account=bank_account_int
+    )
+    db.session.add(group)
+    db.session.commit()
+    
+    flash('Group created successfully', 'success')
+    return redirect(url_for('groups.group_list'))
 
 @groups_bp.route('/<int:group_id>/edit/admin', methods=['GET', 'POST'])
 @login_required
@@ -362,49 +331,35 @@ def create_group_admin():
 @user_admin_required
 def edit_group_admin(group_id):
     group = Group.query.get_or_404(group_id)
-    all_samples = Sample.query.order_by(Sample.name).all()
-    if request.method == 'POST':
-        name = request.form.get('name')
-        type = request.form.get('type')
-        bank_account = request.form.get('bank_account')
-        sample_ids = request.form.getlist('sample_ids')
-        
-        if not name or not type:
-            flash('Name and type are required', 'error')
-            return redirect(url_for('groups.edit_group_admin', group_id=group.id))
-        
-        try:
-            bank_account = int(bank_account)
-        except ValueError:
-            flash('Bank account must be a number', 'error')
-            return redirect(url_for('groups.edit_group_admin', group_id=group.id))
-        
-        group.name = name
-        group.type = type
-        group.bank_account = bank_account
-        
-        # Assign/unassign samples
-        for sample in all_samples:
-            if str(sample.id) in sample_ids:
-                sample.group_id = group.id
-            elif sample.group_id == group.id:
-                sample.group_id = None
-
-        db.session.commit()
-        flash('Group updated successfully', 'success')
-        return redirect(url_for('groups.group_list'))
     
-    # Get all active characters that aren't in a group
-    available_characters = Character.query.filter_by(
-        status=CharacterStatus.ACTIVE.value,
-        group_id=None
-    ).all()
+    if request.method == 'GET':
+        return render_template('groups/admin_edit.html', group=group)
     
-    return render_template('groups/admin_edit.html',
-                         group=group,
-                         available_characters=available_characters,
-                         all_samples=all_samples,
-                         GroupType=GroupType)
+    name = request.form.get('name')
+    type = request.form.get('type')
+    bank_account = request.form.get('bank_account')
+    
+    if not name:
+        flash('Name is required', 'error')
+        return redirect(url_for('groups.edit_group_admin', group_id=group.id))
+    
+    if type not in GroupType.values():
+        flash('Invalid group type', 'error')
+        return redirect(url_for('groups.edit_group_admin', group_id=group.id))
+    
+    try:
+        bank_account_int = int(bank_account) if bank_account else 0
+    except ValueError:
+        flash('Bank account must be a number', 'error')
+        return redirect(url_for('groups.edit_group_admin', group_id=group.id))
+    
+    group.name = name
+    group.type = type
+    group.bank_account = bank_account_int
+    
+    db.session.commit()
+    flash('Group updated successfully', 'success')
+    return redirect(url_for('groups.group_list'))
 
 @groups_bp.route('/<int:group_id>/add_character/admin', methods=['POST'])
 @login_required
@@ -416,19 +371,19 @@ def add_character_admin(group_id):
     
     if not character_id:
         flash('Character ID is required', 'error')
-        return redirect(url_for('groups.edit_group_admin', group_id=group.id))
+        return redirect(url_for('groups.group_list'))
     
     character = Character.query.get(character_id)
     if not character:
         flash('Character not found', 'error')
-        return redirect(url_for('groups.edit_group_admin', group_id=group.id))
+        return redirect(url_for('groups.group_list'))
     
     if character.group_id:
         flash('Character is already in a group', 'error')
-        return redirect(url_for('groups.edit_group_admin', group_id=group.id))
+        return redirect(url_for('groups.group_list'))
     
-    character.group_id = group.id
+    character.group_id = group_id
     db.session.commit()
     
-    flash('Character added to group successfully', 'success')
-    return redirect(url_for('groups.edit_group_admin', group_id=group.id)) 
+    flash('Character added to group', 'success')
+    return redirect(url_for('groups.group_list')) 

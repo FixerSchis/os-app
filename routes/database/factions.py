@@ -13,15 +13,15 @@ def faction_list():
     factions = Faction.query.order_by(Faction.name).all()
     return render_template('factions/list.html', 
                          factions=factions,
-                         can_edit=current_user.is_authenticated and current_user.has_role(Role.RULES_TEAM))
+                         can_edit=current_user.is_authenticated and current_user.has_role(Role.RULES_TEAM.value))
 
 @factions_bp.route('/<int:faction_id>/edit', methods=['GET', 'POST'])
 @login_required
 @email_verified_required
 def edit_faction(faction_id):
-    if not current_user.has_role(Role.RULES_TEAM):
+    if not current_user.has_role(Role.RULES_TEAM.value):
         flash('You do not have permission to access this page.', 'error')
-        return redirect(url_for('main.index'))
+        return redirect(url_for('index'))
     
     faction = Faction.query.get_or_404(faction_id)
     
@@ -60,9 +60,9 @@ def edit_faction(faction_id):
 @login_required
 @email_verified_required
 def new_faction():
-    if not current_user.has_role(Role.RULES_TEAM):
+    if not current_user.has_role(Role.RULES_TEAM.value):
         flash('You do not have permission to access this page.', 'error')
-        return redirect(url_for('main.index'))
+        return redirect(url_for('index'))
     
     if request.method == 'POST':
         name = request.form.get('name')

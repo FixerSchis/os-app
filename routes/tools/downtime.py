@@ -406,13 +406,18 @@ def enter_downtime_post(period_id, character_id):
     if pack.status != DowntimeTaskStatus.ENTER_DOWNTIME:
         flash('This pack is not in the correct state for entering downtime activities.', 'error')
         return redirect(url_for('downtime.index'))
-        
-    pack.purchases = [json.loads(p) for p in request.form.getlist('purchases[]')]
-    pack.modifications = [json.loads(m) for m in request.form.getlist('modifications[]')]
-    pack.engineering = [json.loads(e) for e in request.form.getlist('engineering[]')]
-    pack.science = [json.loads(s) for s in request.form.getlist('science[]')]
-    pack.research = [json.loads(r) for r in request.form.getlist('research[]')]
-    pack.reputation = [json.loads(r) for r in request.form.getlist('reputation[]')]
+    
+    # Parse JSON data with error handling
+    try:
+        pack.purchases = [json.loads(p) for p in request.form.getlist('purchases[]')]
+        pack.modifications = [json.loads(m) for m in request.form.getlist('modifications[]')]
+        pack.engineering = [json.loads(e) for e in request.form.getlist('engineering[]')]
+        pack.science = [json.loads(s) for s in request.form.getlist('science[]')]
+        pack.research = [json.loads(r) for r in request.form.getlist('research[]')]
+        pack.reputation = [json.loads(r) for r in request.form.getlist('reputation[]')]
+    except json.JSONDecodeError as e:
+        flash(f'Invalid JSON data provided: {str(e)}', 'error')
+        return redirect(url_for('downtime.enter_downtime', period_id=period_id, character_id=character_id))
     
     # If confirm complete is checked, move to manual review
     if request.form.get('confirm_complete'):

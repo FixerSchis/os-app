@@ -22,7 +22,7 @@ def list():
 def create():
     if not current_user.has_role('rules_team'):
         flash('You do not have permission to access this page', 'error')
-        return redirect(url_for('main.index'))
+        return redirect(url_for('index'))
     
     types = [t for t in ScienceType]
     wiki_pages = [{'title': page.title, 'slug': page.slug} for page in WikiPage.query.order_by(WikiPage.title).all()]
@@ -34,7 +34,7 @@ def create():
 def create_post():
     if not current_user.has_role('rules_team'):
         flash('You do not have permission to access this page', 'error')
-        return redirect(url_for('main.index'))
+        return redirect(url_for('index'))
     
     name = request.form.get('name')
     substance_type = request.form.get('type')
@@ -72,7 +72,7 @@ def create_post():
 def edit(id):
     if not current_user.has_role('rules_team'):
         flash('You do not have permission to access this page', 'error')
-        return redirect(url_for('main.index'))
+        return redirect(url_for('index'))
     
     substance = ExoticSubstance.query.get_or_404(id)
     types = [t for t in ScienceType]
@@ -85,7 +85,7 @@ def edit(id):
 def edit_post(id):
     if not current_user.has_role('rules_team'):
         flash('You do not have permission to access this page', 'error')
-        return redirect(url_for('main.index'))
+        return redirect(url_for('index'))
     
     substance = ExoticSubstance.query.get_or_404(id)
     

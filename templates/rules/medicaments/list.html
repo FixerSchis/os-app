@@ -16,7 +16,7 @@
             <thead>
                 <tr>
                     <th>Name</th>
-                    {% if can_edit or current_user.is_authenticated and current_user.has_role('admin') %}
+                    {% if can_edit or (current_user.is_authenticated and current_user.has_role('admin')) %}
                     <th>Actions</th>
                     {% endif %}
                 </tr>
@@ -29,13 +29,13 @@
                             {{ medicament.name }}
                         </a>
                     </td>
-                    {% if can_edit or current_user.is_authenticated and current_user.has_role('admin') %}
+                    {% if can_edit or (current_user.is_authenticated and current_user.has_role('admin')) %}
                     <td>
                         <div class="btn-group">
                             {% if can_edit %}
                             <a href="{{ url_for('medicaments.edit', id=medicament.id) }}" class="btn btn-sm btn-outline-primary">Edit</a>
                             {% endif %}
-                            {% if current_user.has_role('admin') %}
+                            {% if current_user.is_authenticated and current_user.has_role('admin') %}
                             <button type="button" class="btn btn-sm btn-outline-secondary print-medicament-btn" data-medicament-id="{{ medicament.id }}">Print</button>
                             {% endif %}
                         </div>
@@ -44,7 +44,7 @@
                 </tr>
                 {% else %}
                 <tr>
-                    <td colspan="{% if can_edit or current_user.has_role('admin') %}2{% else %}1{% endif %}" class="text-center text-muted">No medicaments found.</td>
+                    <td colspan="{% if can_edit or (current_user.is_authenticated and current_user.has_role('admin')) %}2{% else %}1{% endif %}" class="text-center text-muted">No medicaments found.</td>
                 </tr>
                 {% endfor %}
             </tbody>

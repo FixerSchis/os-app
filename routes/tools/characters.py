@@ -192,7 +192,7 @@ def edit_post(character_id):
     character.species_id = species_id
     
     # --- Active Conditions Logic (user_admin only) ---
-    from models.character import CharacterCondition
+    from models.tools.character import CharacterCondition
     if current_user.has_role('user_admin'):
         # Remove condition
         remove_condition_id = request.form.get('remove_condition')

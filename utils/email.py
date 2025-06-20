@@ -184,7 +184,7 @@ def send_wiki_published_notification(user, changelog):
 
 def send_notification_to_all_users(notification_type, **kwargs):
     """Send a notification to all users who have enabled the specified notification type."""
-    from models.user import User
+    from models.tools.user import User
     
     users = User.query.filter_by(**{f'notify_{notification_type}': True}).all()
     

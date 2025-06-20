@@ -2,6 +2,7 @@ from functools import wraps
 from flask import redirect, url_for, flash, abort
 from flask_login import current_user
 from models.enums import Role
+from models.tools.character import Character
 
 def roles_required(roles=None, condition_func=None):
     """
@@ -116,7 +117,6 @@ def character_owner_or_user_admin_required(f):
     """
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        from models.character import Character
         character_id = kwargs.get('character_id')
         if not character_id:
             # This should not happen if routes are set up correctly
@@ -139,7 +139,6 @@ def character_owner_or_downtime_team_required(f):
     """
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        from models.character import Character
         character_id = kwargs.get('character_id')
         if not character_id:
             # This should not happen if routes are set up correctly

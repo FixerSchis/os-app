@@ -8,7 +8,7 @@ class DowntimePeriod(db.Model):
     __tablename__ = 'downtime_periods'
     
     id = Column(Integer, primary_key=True)
-    status = Column(Enum(DowntimeStatus), nullable=False)
+    status = db.Column(db.Enum(DowntimeStatus, native_enum=False, values_callable=lambda obj: [e.value for e in obj]), nullable=False)
     event_id = Column(Integer, ForeignKey('events.id'))
     
     packs = relationship('DowntimePack', back_populates='period', cascade='all, delete-orphan')
@@ -27,7 +27,7 @@ class DowntimePack(db.Model):
     id = Column(Integer, primary_key=True)
     period_id = Column(Integer, ForeignKey('downtime_periods.id'), nullable=False)
     character_id = Column(Integer, ForeignKey('character.id'), nullable=False)
-    status = Column(Enum(DowntimeTaskStatus), nullable=False)
+    status = db.Column(db.Enum(DowntimeTaskStatus, native_enum=False, values_callable=lambda obj: [e.value for e in obj]), nullable=False)
 
     # Pack contents
     energy_credits = Column(Integer, default=0)

@@ -7,6 +7,7 @@ from models.database.faction import Faction
 from models.tools.character import CharacterTag
 from models.enums import Role, ScienceType
 from utils.decorators import email_verified_required, rules_team_required
+import re
 
 skills_bp = Blueprint('skills', __name__)
 
@@ -17,13 +18,14 @@ def skills_list():
 
     # Build a mapping of skill_type to friendly name
     skill_types = Skill.get_all_skill_types()
-    type_friendly_names = {t[0]: t[0].replace('_', ' ').title() for t in skill_types}
+    type_friendly_names = {t[0]: t[0].replace('_', ' ').title() for t in skill_types if t[0] is not None}
 
     # Group skills by type
     from collections import defaultdict
     skills_by_type = defaultdict(list)
     for s in skills:
-        skills_by_type[s.skill_type].append(s)
+        skill_type = s.skill_type or 'UNCATEGORIZED'
+        skills_by_type[skill_type].append(s)
 
     # For each type, sort by name, and ensure requirements are after their prerequisites
     sorted_skills_by_type = {}
@@ -56,15 +58,15 @@ def skills_list():
     return render_template('skills/list.html', 
                          skills_by_type=sorted_skills_by_type,
                          type_friendly_names=type_friendly_names,
-                         can_edit=current_user.is_authenticated and current_user.has_role(Role.RULES_TEAM))
+                         can_edit=current_user.is_authenticated and current_user.has_role(Role.RULES_TEAM.value))
 
 @skills_bp.route('/<int:skill_id>/edit', methods=['GET'])
 @login_required
 @email_verified_required
 def edit_skill(skill_id):
-    if not current_user.has_role(Role.RULES_TEAM):
+    if not current_user.has_role(Role.RULES_TEAM.value):
         flash('You do not have permission to access this page.', 'error')
-        return redirect(url_for('main.index'))
+        return redirect(url_for('index'))
     
     skill = Skill.query.get_or_404(skill_id)
     species_list = Species.query.all()
@@ -85,9 +87,9 @@ def edit_skill(skill_id):
 @login_required
 @email_verified_required
 def edit_skill_post(skill_id):
-    if not current_user.has_role(Role.RULES_TEAM):
+    if not current_user.has_role(Role.RULES_TEAM.value):
         flash('You do not have permission to access this page.', 'error')
-        return redirect(url_for('main.index'))
+        return redirect(url_for('index'))
     
     skill = Skill.query.get_or_404(skill_id)
     
@@ -107,19 +109,21 @@ def edit_skill_post(skill_id):
     form_data = request.form.to_dict()
     for key, value in form_data.items():
         if key.startswith('character_sheet_values[') and key.endswith('][id]'):
-            # Extract the index from the key
-            index = key[24:-4]  # Remove 'character_sheet_values[' and '][id]'
+            # Extract the index from the key using regex
+            match = re.match(r'character_sheet_values\[(\d+)\]\[id\]', key)
+            if match:
+                index = match.group(1)
+            else:
+                index = ''
             id_value = value
             description_value = form_data.get(f'character_sheet_values[{index}][description]', '')
             value_value = form_data.get(f'character_sheet_values[{index}][value]', '0')
-            
             # Only add if we have an ID
             if id_value.strip():
                 try:
                     value_value = int(value_value) if value_value else 0
                 except ValueError:
                     value_value = 0
-                
                 character_sheet_values.append({
                     'id': id_value.strip(),
                     'description': description_value.strip(),
@@ -128,7 +132,18 @@ def edit_skill_post(skill_id):
     
     if not all([name, description, skill_type, base_cost]):
         flash('Name, description, skill type, and base cost are required.', 'error')
-        return render_template('skills/edit.html', skill=skill, factions=Faction.query.all())
+        species_list = Species.query.all()
+        skills_list = Skill.query.all()
+        skill_types = Skill.get_all_skill_types()
+        science_types = ScienceType.values()
+        return render_template('skills/edit.html', 
+                             skill=skill, 
+                             factions=Faction.query.all(),
+                             species_list=species_list,
+                             skills_list=skills_list,
+                             skill_types=skill_types,
+                             science_types=science_types,
+                             tags=CharacterTag.query.all())
     
     try:
         # Handle new tags
@@ -165,9 +180,9 @@ def edit_skill_post(skill_id):
 @login_required
 @email_verified_required
 def new_skill():
-    if not current_user.has_role(Role.RULES_TEAM):
+    if not current_user.has_role(Role.RULES_TEAM.value):
         flash('You do not have permission to access this page.', 'error')
-        return redirect(url_for('main.index'))
+        return redirect(url_for('index'))
     
     if request.method == 'POST':
         name = request.form.get('name')
@@ -186,19 +201,21 @@ def new_skill():
         form_data = request.form.to_dict()
         for key, value in form_data.items():
             if key.startswith('character_sheet_values[') and key.endswith('][id]'):
-                # Extract the index from the key
-                index = key[24:-4]  # Remove 'character_sheet_values[' and '][id]'
+                # Extract the index from the key using regex
+                match = re.match(r'character_sheet_values\[(\d+)\]\[id\]', key)
+                if match:
+                    index = match.group(1)
+                else:
+                    index = ''
                 id_value = value
                 description_value = form_data.get(f'character_sheet_values[{index}][description]', '')
                 value_value = form_data.get(f'character_sheet_values[{index}][value]', '0')
-                
                 # Only add if we have an ID
                 if id_value.strip():
                     try:
                         value_value = int(value_value) if value_value else 0
                     except ValueError:
                         value_value = 0
-                    
                     character_sheet_values.append({
                         'id': id_value.strip(),
                         'description': description_value.strip(),
@@ -207,7 +224,18 @@ def new_skill():
         
         if not all([name, description, skill_type, base_cost]):
             flash('Name, description, skill type, and base cost are required.', 'error')
-            return render_template('skills/edit.html', factions=Faction.query.all())
+            species_list = Species.query.all()
+            skills_list = Skill.query.all()
+            skill_types = Skill.get_all_skill_types()
+            science_types = ScienceType.values()
+            return render_template('skills/edit.html', 
+                                 skill=None,
+                                 factions=Faction.query.all(),
+                                 species_list=species_list,
+                                 skills_list=skills_list,
+                                 skill_types=skill_types,
+                                 science_types=science_types,
+                                 tags=CharacterTag.query.all())
         
         try:
             # Handle new tags

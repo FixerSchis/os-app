@@ -2,36 +2,31 @@ from datetime import datetime, timedelta
 import uuid
 import os
 
-from models.event import Event
+from models.enums import BodyHitsType, EventType, PrintTemplateType, ScienceType, WikiPageVersionStatus
 from models.extensions import db, login_manager, migrate
-from sqlalchemy import text
-
-# Import models
-from models.tools.user import User
-from models.database.faction import Faction
-from models.tools.character import Character, CharacterStatus, CharacterAuditLog, CharacterSkill, CharacterTag, setup_relationships
-from models.tools.message import Message
-from models.database.species import Species, Ability
-from models.wiki import (
-    WikiPage,
-    WikiPageVersion,
-    WikiPageVersionStatus,
-    WikiSection,
-    WikiImage,
-    WikiTag,
-)
+from models.wiki import WikiPage, WikiPageVersion, WikiSection, WikiImage, WikiChangeLog, WikiTag, wiki_changelog_versions, wiki_page_tags
+from models.event import Event
 from models.database.skills import Skill
-from models.enums import BodyHitsType, AbilityType, EventType, ScienceType, PrintTemplateType
-from models.tools.group import Group, GroupInvite
-from models.database.item_type import ItemType
-from models.database.mods import Mod
-from models.database.item_blueprint import ItemBlueprint
-from models.database.exotic_substances import ExoticSubstance
-from models.database.medicaments import Medicament
-from models.database.conditions import Condition, ConditionStage
-from models.database.item import Item
+from models.database.species import Ability, Species
+from models.database.faction import Faction
+from models.database.item import Item, item_mods_applied
+from models.database.mods import Mod, mod_type_restrictions
+from models.database.item_blueprint import ItemBlueprint, item_blueprint_mods
+from models.database.conditions import ConditionStage, Condition
 from models.database.cybernetic import Cybernetic, CharacterCybernetic
+from models.database.exotic_substances import ExoticSubstance
+from models.database.item_type import ItemType
+from models.database.medicaments import Medicament
+from models.tools.downtime import DowntimePeriod, DowntimePack
+from models.tools.user import User
+from models.tools.character import CharacterTag, CharacterSkill, Character, CharacterAuditLog, CharacterReputation, CharacterCondition, character_tags, setup_relationships
+from models.tools.role import Role, user_roles
+from models.tools.sample import SampleTag, Sample, sample_sample_tags
+from models.tools.research import Research, ResearchStage, ResearchStageRequirement, CharacterResearch, CharacterResearchStage, CharacterResearchStageRequirement
+from models.tools.group import Group, GroupInvite
+from models.tools.message import Message
 from models.tools.print_template import PrintTemplate
+from models.tools.event_ticket import EventTicket
 
 def init_app(app):
     # Configure database
@@ -42,26 +37,26 @@ def init_app(app):
     login_manager.init_app(app)
     migrate.init_app(app, db)
 
-    # Set up relationships after all models are imported
-    setup_relationships()
-
     # Create database tables
     with app.app_context():
+        setup_relationships()
         db.create_all()
-        create_default_wiki_pages()
-        create_default_factions()
-        create_default_skills()
-        create_default_species()
-        create_default_exotics()
-        create_default_medicaments()
-        create_default_item_types()
-        create_default_mods()
-        create_default_item_blueprints()
-        create_default_items()
-        create_default_conditions()
-        create_default_cybernetics()
-        create_default_events()
-        create_default_templates()
+
+def create_default_data():
+    create_default_wiki_pages()
+    create_default_factions()
+    create_default_skills()
+    create_default_species()
+    create_default_exotics()
+    create_default_medicaments()
+    create_default_item_types()
+    create_default_mods()
+    create_default_item_blueprints()
+    create_default_items()
+    create_default_conditions()
+    create_default_cybernetics()
+    create_default_events()
+    create_default_templates()
 
 
 @login_manager.user_loader
@@ -904,5 +899,6 @@ __all__ = [
     'CharacterTag',
     'Group',
     'GroupInvite',
-    'Sample'
+    'Sample',
+    'setup_relationships'
 ]

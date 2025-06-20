@@ -6,7 +6,7 @@ from utils.email import send_email_change_verification
 
 settings_bp = Blueprint('settings', __name__)
 
-@settings_bp.route('/settings', methods=['GET', 'POST'])
+@settings_bp.route('/', methods=['GET', 'POST'])
 @login_required
 def settings():
     if request.method == 'POST':
@@ -37,7 +37,7 @@ def settings():
         return redirect(url_for('settings.settings'))
     return render_template('settings/settings.html')
 
-@settings_bp.route('/settings/change-email', methods=['GET', 'POST'])
+@settings_bp.route('/change-email', methods=['GET', 'POST'])
 @login_required
 def change_email():
     if request.method == 'POST':
@@ -73,7 +73,7 @@ def change_email():
             
     return render_template('settings/change_email.html')
 
-@settings_bp.route('/settings/change-email/<token>')
+@settings_bp.route('/change-email/<token>')
 @login_required
 def confirm_email_change(token):
     success, old_email = current_user.confirm_email_change(token)

@@ -3,7 +3,9 @@ from models.wiki import (
     WikiPage, WikiPageVersion, WikiSection, WikiTag, WikiImage, WikiChangeLog,
     get_or_create_wiki_page, WikiPageVersionStatus
 )
-from models.enums import SectionRestrictionType
+from models.enums import Role, SectionRestrictionType
+from models.tools.character import CharacterTag
+from routes.wiki import has_access
 
 def test_new_wiki_page_with_version_and_sections(db, new_user):
     """Test creation of a new WikiPage with version and sections."""

@@ -260,6 +260,34 @@ def has_access(section, user):
     return True
 
 
+@wiki_bp.route("/delete/<path:slug>", methods=["POST"])
+@login_required
+@plot_team_required
+def wiki_delete(slug):
+    page = WikiPage.query.get_or_404(slug)
+    version = get_pending_version(page, current_user)
+    if version and not version.deleted:
+        version.deleted = True
+        db.session.commit()
+        flash("Page marked as deleted.")
+    return redirect(url_for("wiki.wiki_view", slug=slug))
+
+
+@wiki_bp.route("/restore/<path:slug>", methods=["POST"])
+@login_required
+@plot_team_required
+def wiki_restore(slug):
+    page = WikiPage.query.get_or_404(slug)
+    version = get_pending_version(page, current_user)
+    if not version:
+        version = get_latest_published_version(page)
+    if version and version.deleted:
+        version.deleted = False
+        db.session.commit()
+        flash("Page restored.")
+    return redirect(url_for("wiki.wiki_view", slug=slug))
+
+
 @wiki_bp.route("/<path:slug>")
 def wiki_view(slug):
     page = WikiPage.query.get_or_404(slug)
@@ -290,7 +318,7 @@ def wiki_view(slug):
     else:
         if is_editor and not current:
             version = get_latest_version(page)
-            is_pending_version = version.status == WikiPageVersionStatus.PENDING
+            is_pending_version = version and version.status == WikiPageVersionStatus.PENDING
         else:
             version = get_latest_published_version(page)
 
@@ -299,11 +327,10 @@ def wiki_view(slug):
 
     if version and version.deleted:
         if not is_editor:
-            return render_template("404.html"), 404
+            return render_template("errors/404.html"), 404
 
     if not version:
-        flash("No published version of this page exists.")
-        return redirect(url_for("wiki.wiki_list"))
+        return render_template("errors/404.html"), 404
 
     visible_sections = [
         {
@@ -321,8 +348,7 @@ def wiki_view(slug):
     ]
 
     if not visible_sections:
-        flash("You do not have access to view this page.")
-        return redirect(url_for("wiki.wiki_view", slug="index"))
+        return render_template("errors/404.html"), 404
 
     return render_template(
         "wiki/view.html",
@@ -603,32 +629,6 @@ def wiki_image(image_id):
     return send_file(
         io.BytesIO(image.data), mimetype=image.mimetype, download_name=image.filename
     )
-
-
-@wiki_bp.route("/delete/<path:slug>", methods=["POST"])
-@login_required
-@plot_team_required
-def wiki_delete(slug):
-    page = WikiPage.query.get_or_404(slug)
-    version = get_pending_version(page, current_user)
-    if version and not version.deleted:
-        version.deleted = True
-        db.session.commit()
-        flash("Page marked as deleted.")
-    return redirect(url_for("wiki.wiki_view", slug=slug))
-
-
-@wiki_bp.route("/restore/<path:slug>", methods=["POST"])
-@login_required
-@plot_team_required
-def wiki_restore(slug):
-    page = WikiPage.query.get_or_404(slug)
-    version = get_pending_version(page, current_user)
-    if version and version.deleted:
-        version.deleted = False
-        db.session.commit()
-        flash("Page restored.")
-    return redirect(url_for("wiki.wiki_view", slug=slug))
 
 
 @wiki_bp.route("/changes/pending", methods=["GET"])

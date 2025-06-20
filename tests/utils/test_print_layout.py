@@ -1,8 +1,8 @@
 import pytest
-from unittest.mock import patch, MagicMock
 from utils.print_layout import PrintLayout
 from models.tools.print_template import PrintTemplate
 from models.enums import PrintTemplateType
+from unittest.mock import patch, MagicMock
 
 @pytest.fixture
 def print_layout():

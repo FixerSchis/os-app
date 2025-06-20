@@ -20,7 +20,7 @@ def list():
 def create():
     if not current_user.has_role('rules_team'):
         flash('You do not have permission to access this page', 'error')
-        return redirect(url_for('main.index'))
+        return redirect(url_for('index'))
     return render_template('rules/medicaments/edit.html', initial_title='')
 
 @medicaments_bp.route('/new', methods=['POST'])
@@ -29,7 +29,7 @@ def create():
 def create_post():
     if not current_user.has_role('rules_team'):
         flash('You do not have permission to access this page', 'error')
-        return redirect(url_for('main.index'))
+        return redirect(url_for('index'))
     name = request.form.get('name')
     wiki_slug = request.form.get('wiki_slug')
     if not all([name, wiki_slug]):
@@ -51,7 +51,7 @@ def create_post():
 def edit(id):
     if not current_user.has_role('rules_team'):
         flash('You do not have permission to access this page', 'error')
-        return redirect(url_for('main.index'))
+        return redirect(url_for('index'))
     medicament = Medicament.query.get_or_404(id)
     initial_title = ''
     if medicament.wiki_slug:
@@ -66,7 +66,7 @@ def edit(id):
 def edit_post(id):
     if not current_user.has_role('rules_team'):
         flash('You do not have permission to access this page', 'error')
-        return redirect(url_for('main.index'))
+        return redirect(url_for('index'))
     medicament = Medicament.query.get_or_404(id)
     name = request.form.get('name')
     wiki_slug = request.form.get('wiki_slug')

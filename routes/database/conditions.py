@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask import Blueprint, render_template, request, redirect, url_for, flash, session
 from flask_login import login_required, current_user
 from models.extensions import db
 from models.database.conditions import Condition, ConditionStage
@@ -10,28 +10,27 @@ conditions_bp = Blueprint('conditions', __name__)
 @conditions_bp.route('/')
 def list():
     conditions = Condition.query.order_by(Condition.name).all()
-    can_edit = current_user.is_authenticated and current_user.has_role(Role.RULES_TEAM)
+    can_edit = current_user.is_authenticated and current_user.has_role(Role.RULES_TEAM.value)
     return render_template('rules/conditions/list.html', conditions=conditions, can_edit=can_edit)
 
 @conditions_bp.route('/new', methods=['GET'])
 @login_required
 @email_verified_required
 def create():
-    if not current_user.has_role(Role.RULES_TEAM):
+    if not current_user.has_role(Role.RULES_TEAM.value):
         flash('You do not have permission to access this page', 'error')
-        return redirect(url_for('main.index'))
+        return redirect(url_for('index'))
     return render_template('rules/conditions/edit.html')
 
 @conditions_bp.route('/new', methods=['POST'])
 @login_required
 @email_verified_required
 def create_post():
-    if not current_user.has_role(Role.RULES_TEAM):
-        flash('You do not have permission to access this page', 'error')
-        return redirect(url_for('main.index'))
-    
     name = request.form.get('name')
     stages_data = request.form.getlist('stages')
+    if not current_user.has_role(Role.RULES_TEAM.value):
+        flash('You do not have permission to access this page', 'error')
+        return redirect(url_for('index'))
     
     if not name:
         flash('Name is required', 'error')
@@ -66,9 +65,9 @@ def create_post():
 @login_required
 @email_verified_required
 def edit(id):
-    if not current_user.has_role(Role.RULES_TEAM):
+    if not current_user.has_role(Role.RULES_TEAM.value):
         flash('You do not have permission to access this page', 'error')
-        return redirect(url_for('main.index'))
+        return redirect(url_for('index'))
     
     condition = Condition.query.get_or_404(id)
     return render_template('rules/conditions/edit.html', condition=condition)
@@ -77,13 +76,15 @@ def edit(id):
 @login_required
 @email_verified_required
 def edit_post(id):
-    if not current_user.has_role(Role.RULES_TEAM):
+    if not current_user.has_role(Role.RULES_TEAM.value):
         flash('You do not have permission to access this page', 'error')
-        return redirect(url_for('main.index'))
+        return redirect(url_for('index'))
     
     condition = Condition.query.get_or_404(id)
     name = request.form.get('name')
     stages_data = request.form.getlist('stages')
+    print('DEBUG edit_post: stages_data:', stages_data)
+    print('DEBUG edit_post: request.form:', dict(request.form))
     
     if not name:
         flash('Name is required', 'error')
@@ -93,9 +94,11 @@ def edit_post(id):
         condition.name = name
         
         # Delete existing stages
+        print('DEBUG edit_post: deleting existing stages, count:', len(condition.stages))
         ConditionStage.query.filter_by(condition_id=condition.id).delete()
         
         # Add new stages
+        print('DEBUG edit_post: adding new stages, count:', len(stages_data))
         for i, stage_data in enumerate(stages_data, 1):
             stage = ConditionStage(
                 condition_id=condition.id,
@@ -106,11 +109,14 @@ def edit_post(id):
                 duration=int(request.form.get(f'duration_{i}', 0))
             )
             db.session.add(stage)
+            print(f'DEBUG edit_post: added stage {i}')
         
         db.session.commit()
+        print('DEBUG edit_post: commit successful, final stage count:', len(condition.stages))
         flash('Condition updated successfully', 'success')
         return redirect(url_for('conditions.list'))
     except Exception as e:
         db.session.rollback()
+        print('DEBUG edit_post: error:', str(e))
         flash(f'Error updating condition: {str(e)}', 'error')
         return render_template('rules/conditions/edit.html', condition=condition) 

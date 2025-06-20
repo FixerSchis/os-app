@@ -2,8 +2,11 @@ import pytest
 from unittest.mock import patch, MagicMock
 from flask import Flask
 from utils.email import (
-    send_email, render_email_template, send_verification_email,
-    send_password_reset_email, send_notification_email
+    send_email,
+    render_email_template,
+    send_verification_email,
+    send_password_reset_email,
+    send_notification_email
 )
 
 @pytest.fixture

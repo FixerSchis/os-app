@@ -13,7 +13,7 @@
                     <h2>Your Group</h2>
                 </div>
                 <div class="card-body">
-                    <form method="POST" action="{{ url_for('groups.edit_group', group_id=character.group.id) }}" class="mb-4">
+                    <form method="POST" action="{{ url_for('groups.edit_group_post', group_id=character.group.id) }}" class="mb-4">
                         <div class="form-group">
                             <label for="name">Group Name</label>
                             <input type="text" class="form-control" id="name" name="name" value="{{ character.group.name }}" required>

@@ -46,7 +46,7 @@
                 </tr>
                 {% else %}
                 <tr>
-                    <td colspan="{% if can_edit or current_user.has_role('admin') %}3{% else %}2{% endif %}" class="text-center text-muted">No exotic substances found.</td>
+                    <td colspan="{% if can_edit or current_user.is_authenticated and current_user.has_role('admin') %}3{% else %}2{% endif %}" class="text-center text-muted">No exotic substances found.</td>
                 </tr>
                 {% endfor %}
             </tbody>

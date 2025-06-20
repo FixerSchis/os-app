@@ -26,7 +26,7 @@ def list():
 def create():
     if not current_user.has_role('rules_team'):
         flash('You do not have permission to access this page', 'error')
-        return redirect(url_for('main.index'))
+        return redirect(url_for('index'))
     
     wiki_pages = [{'title': page.title, 'slug': page.slug} for page in WikiPage.query.order_by(WikiPage.title).all()]
     item_types = ItemType.query.order_by(ItemType.name).all()
@@ -38,7 +38,7 @@ def create():
 def create_post():
     if not current_user.has_role('rules_team'):
         flash('You do not have permission to access this page', 'error')
-        return redirect(url_for('main.index'))
+        return redirect(url_for('index'))
     
     name = request.form.get('name')
     wiki_slug = request.form.get('wiki_slug')
@@ -70,7 +70,7 @@ def create_post():
 def edit(id):
     if not current_user.has_role('rules_team'):
         flash('You do not have permission to access this page', 'error')
-        return redirect(url_for('main.index'))
+        return redirect(url_for('index'))
     
     mod = Mod.query.get_or_404(id)
     wiki_pages = [{'title': page.title, 'slug': page.slug} for page in WikiPage.query.order_by(WikiPage.title).all()]
@@ -83,7 +83,7 @@ def edit(id):
 def edit_post(id):
     if not current_user.has_role('rules_team'):
         flash('You do not have permission to access this page', 'error')
-        return redirect(url_for('main.index'))
+        return redirect(url_for('index'))
     
     mod = Mod.query.get_or_404(id)
     

@@ -3,7 +3,7 @@ from unittest.mock import patch, MagicMock
 from flask import redirect, url_for, flash, abort
 from flask_login import current_user
 from models.enums import Role
-from utils.decorators import roles_required, admin_required, owner_required
+from utils.decorators import roles_required, admin_required, owner_required, user_admin_required, has_active_character_required, email_verified_required
 
 def test_roles_required_with_valid_role():
     """Test roles_required decorator with a user who has the required role."""

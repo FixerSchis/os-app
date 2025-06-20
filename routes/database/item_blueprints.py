@@ -147,7 +147,7 @@ def edit_post(id):
     try:
         blueprint.name = name
         blueprint.item_type_id = item_type_id
-        blueprint.blueprint_id = blueprint_id
+        blueprint.blueprint_id = int(blueprint_id)
         blueprint.base_cost = int(base_cost)
         db.session.flush()
         # Remove all current mods_applied using ORM delete
