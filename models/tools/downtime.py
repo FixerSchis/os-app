@@ -1,8 +1,8 @@
 from datetime import datetime
 from sqlalchemy import Column, Integer, ForeignKey, DateTime, JSON, Enum
 from sqlalchemy.orm import relationship
-from . import db
-from .enums import  DowntimeStatus, DowntimeTaskStatus
+from models.extensions import db
+from models.enums import  DowntimeStatus, DowntimeTaskStatus
 
 class DowntimePeriod(db.Model):
     __tablename__ = 'downtime_periods'

@@ -12,7 +12,7 @@ from flask import (
 from flask_login import login_required, current_user
 from models.enums import PrintTemplateType, Role
 from datetime import datetime
-from models.character import Character, CharacterSkill, CharacterTag
+from models.tools.character import Character, CharacterSkill, CharacterTag
 from models.database.faction import Faction
 from models.database.species import Ability, Species
 from models.database.skills import Skill
@@ -22,19 +22,19 @@ from models.database.item_type import ItemType
 from models.database.medicaments import Medicament
 from models.database.conditions import Condition, ConditionStage
 from models.database.exotic_substances import ExoticSubstance
-from models.user import User
-from models.print_template import PrintTemplate
+from models.tools.user import User
+from models.tools.print_template import PrintTemplate
 from models.extensions import db
-from models.samples.character import get_sample_character
-from models.samples.item import get_sample_item
-from models.samples.medicament import get_sample_medicament
-from models.samples.condition import get_sample_condition
-from models.samples.exotic import get_sample_exotic_substance
+from models.tools.samples.character import get_sample_character
+from models.tools.samples.item import get_sample_item
+from models.tools.samples.medicament import get_sample_medicament
+from models.tools.samples.condition import get_sample_condition
+from models.tools.samples.exotic import get_sample_exotic_substance
 from utils import generate_qr_code, generate_web_qr_code
 from utils.print_layout import PrintLayout
 import base64
 from models.event import Event
-from models.event_ticket import EventTicket
+from models.tools.event_ticket import EventTicket
 from utils.decorators import admin_required
 
 templates_bp = Blueprint("templates", __name__)
@@ -241,7 +241,7 @@ def generate_template_completions(template_type):
     
     if template_type == PrintTemplateType.CHARACTER_SHEET:
         # Import character model and get its fields
-        from models.character import Character
+        from models.tools.character import Character
         from models.database.species import Species
         from models.database.faction import Faction
         
@@ -275,15 +275,18 @@ def generate_template_completions(template_type):
         }
         
     elif template_type == PrintTemplateType.ITEM_CARD:
+        # Import item model and get its fields
         from models.database.item import Item
-        from models.database.item_blueprint import ItemBlueprint
-        from models.database.item_type import ItemType
         
         item_fields = {}
         for column in Item.__table__.columns:
             if column.name not in ['id', 'created_by_user_id']:
-                item_fields[column.name] = f"{column.type} - {column.name}"
+                item_fields[column.name] = str(column.type)
         
+        completions['item'] = item_fields
+        # Also include blueprint and type fields
+        from models.database.item_blueprint import ItemBlueprint
+        from models.database.item_type import ItemType
         blueprint_fields = {}
         for column in ItemBlueprint.__table__.columns:
             if column.name not in ['id']:
@@ -302,12 +305,13 @@ def generate_template_completions(template_type):
         }
         
     elif template_type == PrintTemplateType.MEDICAMENT_CARD:
+        # Import medicament model and get its fields
         from models.database.medicaments import Medicament
         
         medicament_fields = {}
         for column in Medicament.__table__.columns:
             if column.name not in ['id']:
-                medicament_fields[column.name] = f"{column.type} - {column.name}"
+                medicament_fields[column.name] = str(column.type)
         
         completions = {
             'medicament': medicament_fields,
@@ -317,7 +321,8 @@ def generate_template_completions(template_type):
         }
         
     elif template_type == PrintTemplateType.CONDITION_CARD:
-        from models.database.conditions import Condition
+        # Import condition model and get its fields
+        from models.database.conditions import Condition, ConditionStage
         
         condition_fields = {}
         for column in Condition.__table__.columns:
@@ -332,15 +337,16 @@ def generate_template_completions(template_type):
         }
         
     elif template_type == PrintTemplateType.EXOTIC_SUBSTANCE_LABEL:
+        # Import exotic substance model and get its fields
         from models.database.exotic_substances import ExoticSubstance
         
-        substance_fields = {}
+        exotic_fields = {}
         for column in ExoticSubstance.__table__.columns:
             if column.name not in ['id']:
-                substance_fields[column.name] = f"{column.type} - {column.name}"
+                exotic_fields[column.name] = f"{column.type} - {column.name}"
         
         completions = {
-            'substance': substance_fields,
+            'substance': exotic_fields,
             'jinja': get_jinja_completions(),
             'generate_qr_code': 'function - Generate QR code for any data',
             'generate_web_qr_code': 'function - Generate QR code for web route'

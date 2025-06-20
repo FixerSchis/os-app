@@ -1,4 +1,4 @@
-from .extensions import db
+from models.extensions import db
 from models.enums import ResearchType, ResearchRequirementType, ScienceType
 from datetime import datetime
 from models.database.item import Item
@@ -10,7 +10,7 @@ _bip39_wordlist = None
 def get_bip39_wordlist():
     global _bip39_wordlist
     if _bip39_wordlist is None:
-        wordlist_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'bip39_english.txt')
+        wordlist_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'data', 'bip39_english.txt')
         with open(wordlist_path, 'r', encoding='utf-8') as f:
             _bip39_wordlist = [line.strip() for line in f if line.strip()]
     return _bip39_wordlist

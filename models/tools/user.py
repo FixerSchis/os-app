@@ -1,7 +1,7 @@
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
-from .extensions import db, login_manager
-from .enums import Role, CharacterStatus
+from models.extensions import db, login_manager
+from models.enums import Role, CharacterStatus
 import secrets
 from datetime import datetime, timedelta
 
@@ -97,7 +97,7 @@ class User(UserMixin, db.Model):
 
     def has_active_character(self):
         """Check if the user has any active characters."""
-        from .character import Character
+        from models.tools.character import Character
         return Character.query.filter_by(
             user_id=self.id,
             status=CharacterStatus.ACTIVE.value
@@ -105,7 +105,7 @@ class User(UserMixin, db.Model):
     
     def get_active_character(self):
         """Get the user's active character."""
-        from .character import Character
+        from models.tools.character import Character
         return Character.query.filter_by(
             user_id=self.id,
             status=CharacterStatus.ACTIVE.value

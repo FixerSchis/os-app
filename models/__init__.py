@@ -7,10 +7,10 @@ from .extensions import db, login_manager, migrate
 from sqlalchemy import text
 
 # Import models
-from .user import User
+from .tools.user import User
 from .database.faction import Faction
-from .character import Character, CharacterStatus, CharacterAuditLog, CharacterSkill, CharacterTag, setup_relationships
-from .message import Message
+from .tools.character import Character, CharacterStatus, CharacterAuditLog, CharacterSkill, CharacterTag, setup_relationships
+from .tools.message import Message
 from .database.species import Species, Ability
 from .wiki import (
     WikiPage,
@@ -22,7 +22,7 @@ from .wiki import (
 )
 from .database.skills import Skill
 from .enums import BodyHitsType, AbilityType, EventType, ScienceType, PrintTemplateType
-from .group import Group, GroupInvite
+from .tools.group import Group, GroupInvite
 from .database.item_type import ItemType
 from .database.mods import Mod
 from .database.item_blueprint import ItemBlueprint
@@ -31,7 +31,7 @@ from .database.medicaments import Medicament
 from .database.conditions import Condition, ConditionStage
 from .database.item import Item
 from .database.cybernetic import Cybernetic, CharacterCybernetic
-from .print_template import PrintTemplate
+from .tools.print_template import PrintTemplate
 
 def init_app(app):
     # Configure database

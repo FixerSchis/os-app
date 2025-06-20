@@ -1,4 +1,6 @@
-from . import db
+from models.extensions import db
+from sqlalchemy import Column, Integer, String, ForeignKey
+from sqlalchemy.orm import relationship
 
 # Association table for many-to-many relationship between User and Role
 user_roles = db.Table('user_roles',

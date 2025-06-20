@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
 from models.extensions import db
-from models.user import User
+from models.tools.user import User
 from utils.email import send_email_change_verification
 
 settings_bp = Blueprint('settings', __name__)

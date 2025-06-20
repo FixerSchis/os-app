@@ -3,7 +3,7 @@ from datetime import datetime
 import json
 from models.database.faction import Faction
 from models.database.species import Species
-from models.character import CharacterTag
+from models.tools.character import CharacterTag
 from ..enums import ScienceType
 
 class Skill(db.Model):

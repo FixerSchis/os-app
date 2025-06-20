@@ -1,7 +1,7 @@
-from .extensions import db
+from models.extensions import db
 from datetime import datetime
 from models.enums import ScienceType
-from models.group import Group
+from models.tools.group import Group
 
 # Association table for many-to-many relationship between Sample and SampleTag
 sample_sample_tags = db.Table('sample_sample_tags',

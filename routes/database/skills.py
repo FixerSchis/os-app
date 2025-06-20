@@ -1,13 +1,12 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from flask_login import login_required, current_user
 from models.extensions import db
 from models.database.skills import Skill
 from models.database.species import Species
 from models.database.faction import Faction
-from models.character import CharacterTag
+from models.tools.character import CharacterTag
 from models.enums import Role, ScienceType
-from models.database.faction import Faction
-from utils.decorators import email_verified_required
+from utils.decorators import email_verified_required, rules_team_required
 
 skills_bp = Blueprint('skills', __name__)
 

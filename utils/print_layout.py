@@ -1,14 +1,10 @@
-from typing import List, Tuple, Dict
-from models.database.conditions import Condition
-from models.database.exotic_substances import ExoticSubstance
-from models.database.medicaments import Medicament
-from models.print_template import PrintTemplate
+from typing import List, Dict
+from models.tools.print_template import PrintTemplate
 from models.enums import PrintTemplateType
 from utils import generate_qr_code, generate_web_qr_code
 import math
-from weasyprint import HTML, CSS
+from weasyprint import HTML
 from io import BytesIO
-import base64
 
 # A4 dimensions in millimeters
 A4_WIDTH_MM = 210

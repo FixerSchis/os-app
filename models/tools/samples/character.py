@@ -1,9 +1,10 @@
-from models.character import Character, CharacterSkill, CharacterTag
+from models.tools.character import Character, CharacterSkill, CharacterTag
 from models.database.faction import Faction
 from models.database.species import Ability, Species
 from models.database.skills import Skill
-from models.user import User
+from models.tools.user import User
 from datetime import datetime
+from models.enums import CharacterStatus
 
 def get_sample_character():
     user = User(id=1, email="admin@example.com", first_name="Admin", surname="User", pronouns_subject="they", pronouns_object="them", roles="admin", character_points=1, player_id=1)

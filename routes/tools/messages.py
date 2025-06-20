@@ -1,9 +1,9 @@
 from flask import Blueprint, render_template, request, flash, redirect, url_for, jsonify
 from flask_login import login_required, current_user
 from models.enums import CharacterStatus
-from models.message import Message
-from models.character import Character
-from models.role import Role
+from models.tools.message import Message
+from models.tools.character import Character
+from models.tools.role import Role
 from models.extensions import db
 from utils.decorators import npc_required
 

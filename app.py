@@ -1,18 +1,18 @@
 from flask import Flask, render_template, redirect, url_for, request, abort
-from models.character import Character
+from models.tools.character import Character
 from models.extensions import db
 from models import init_app
 from utils.email import mail
 from config import Config
 from routes.wiki import wiki_bp
-from routes.user_management import user_management_bp
+from routes.tools.user_management import user_management_bp
 from routes.settings import settings_bp
 from routes.auth import auth_bp
-from routes.characters import characters_bp
-from routes.character_skills import character_skills_bp
-from routes.groups import groups_bp
-from routes.banking import banking_bp
-from routes.templates import templates_bp
+from routes.tools.characters import characters_bp
+from routes.tools.character_skills import character_skills_bp
+from routes.tools.groups import groups_bp
+from routes.tools.banking import banking_bp
+from routes.tools.templates import templates_bp
 from routes.database.factions import factions_bp
 from routes.database.species import species_bp
 from routes.database.skills import skills_bp
@@ -24,16 +24,16 @@ from routes.database.item_types import item_types_bp
 from routes.database.item_blueprints import item_blueprints_bp
 from routes.database.items import items_bp
 from routes.database.cybernetics import cybernetics_bp
-from routes.research import research_bp
-from routes.downtime import bp as downtime_bp
-from routes.messages import bp as messages_bp
+from routes.tools.research import research_bp
+from routes.tools.downtime import bp as downtime_bp
+from routes.tools.messages import bp as messages_bp
 from flask_login import current_user, login_required
-from models.downtime import DowntimePeriod
+from models.tools.downtime import DowntimePeriod
 from models.enums import DowntimeStatus, DowntimeTaskStatus
-from models.research import CharacterResearch
-from routes.samples import samples_bp
+from models.tools.research import CharacterResearch
+from routes.tools.samples import samples_bp
 from routes.events import events_bp
-from routes.tickets import tickets_bp
+from routes.tools.tickets import tickets_bp
 
 def create_app(config_class=None):
     app = Flask("Orion Sphere LRP")

@@ -22,7 +22,11 @@ from models.wiki import (
     WikiTag,
 )
 from models.enums import Role
-from models import Faction, Species, Skill, CharacterTag, Cybernetic
+from models.database.faction import Faction
+from models.database.species import Species
+from models.database.skills import Skill
+from models.tools.character import CharacterTag
+from models.database.cybernetic import Cybernetic
 from utils.decorators import plot_team_required
 import io
 import difflib

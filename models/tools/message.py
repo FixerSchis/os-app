@@ -1,7 +1,7 @@
 from datetime import datetime
 from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
-from . import db
+from models.extensions import db
 
 class Message(db.Model):
     __tablename__ = 'messages'

@@ -2,13 +2,13 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request,
 from flask_login import login_required, current_user
 from models.extensions import db
 from models.database.item import Item
-from models.research import Research, ResearchStage, ResearchStageRequirement, CharacterResearch, CharacterResearchStage, CharacterResearchStageRequirement
+from models.tools.research import Research, ResearchStage, ResearchStageRequirement, CharacterResearch, CharacterResearchStage, CharacterResearchStageRequirement
 from models.database.item_blueprint import ItemBlueprint
 from models.database.item_type import ItemType
 from models.enums import Role, ResearchType, ScienceType, ResearchRequirementType
 from models.database.exotic_substances import ExoticSubstance
-from models.character import Character
-from models.sample import SampleTag
+from models.tools.character import Character
+from models.tools.sample import SampleTag
 from utils.decorators import rules_team_required
 import json
 

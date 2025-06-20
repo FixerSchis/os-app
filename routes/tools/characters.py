@@ -1,17 +1,17 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from flask_login import login_required, current_user
 from models.extensions import db
-from models.character import Character, CharacterStatus, CharacterAuditLog, CharacterTag
-from models.user import User
+from models.tools.character import Character, CharacterStatus, CharacterAuditLog, CharacterTag
+from models.tools.user import User
 from models.database.species import Species
 from models.database.faction import Faction
-from models.character import assign_character_id
+from models.tools.character import assign_character_id
 from models.enums import Role, CharacterAuditAction, PrintTemplateType
 from utils.decorators import email_verified_required, user_admin_required, character_owner_or_user_admin_required
 from models.database.conditions import Condition
 from models.database.cybernetic import Cybernetic, CharacterCybernetic
-from models.research import CharacterResearch
-from models.print_template import PrintTemplate
+from models.tools.research import CharacterResearch
+from models.tools.print_template import PrintTemplate
 from flask import render_template_string
 from utils import generate_qr_code, generate_web_qr_code
 import re

@@ -1,6 +1,6 @@
 from datetime import datetime
-from .extensions import db
-from .enums import GroupType
+from models.extensions import db
+from models.enums import GroupType
 
 class Group(db.Model):
     id = db.Column(db.Integer, primary_key=True)

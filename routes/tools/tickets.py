@@ -2,7 +2,7 @@ from flask import Blueprint, render_template
 from flask_login import login_required, current_user
 from models.enums import TicketType
 from models.event import Event
-from models.event_ticket import EventTicket
+from models.tools.event_ticket import EventTicket
 from datetime import datetime
 
 tickets_bp = Blueprint('tickets', __name__)

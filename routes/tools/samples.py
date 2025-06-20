@@ -1,9 +1,9 @@
 from flask import Blueprint, request, jsonify, render_template, redirect, url_for, flash
 from flask_login import login_required, current_user
 from models.extensions import db
-from models.sample import Sample, SampleTag
+from models.tools.sample import Sample, SampleTag
 from models.enums import ScienceType, Role
-from models.print_template import PrintTemplate, PrintTemplateType
+from models.tools.print_template import PrintTemplate, PrintTemplateType
 from utils.print_layout import PrintLayout
 from utils.decorators import downtime_or_rules_team_required
 

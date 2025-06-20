@@ -1,11 +1,11 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
 from models.extensions import db
-from models.group import Group, GroupInvite
-from models.character import Character
+from models.tools.group import Group, GroupInvite
+from models.tools.character import Character
 from models.enums import CharacterStatus, Role, GroupType
 from flask_login import login_required, current_user
-from models.sample import Sample
+from models.tools.sample import Sample
 
 from utils.decorators import email_verified_required, has_active_character_required, user_admin_required
 

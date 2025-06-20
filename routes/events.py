@@ -2,9 +2,9 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from flask_login import login_required, current_user
 from models.enums import EventType, Role, TicketType
 from models.event import Event
-from models.event_ticket import EventTicket
-from models.character import Character
-from models.user import User
+from models.tools.event_ticket import EventTicket
+from models.tools.character import Character
+from models.tools.user import User
 from models.extensions import db
 from datetime import datetime, timezone
 import json

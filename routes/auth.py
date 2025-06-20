@@ -2,10 +2,10 @@ from datetime import datetime, timezone
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_user, logout_user, login_required, current_user
 from models.event import Event
-from models.event_ticket import EventTicket
+from models.tools.event_ticket import EventTicket
 from models.extensions import db
-from models.user import User
-from models.character import Character, CharacterSkill
+from models.tools.user import User
+from models.tools.character import Character, CharacterSkill
 from models.database.cybernetic import CharacterCybernetic, Cybernetic
 from models.enums import CharacterStatus, Role, TicketType
 from models.database.faction import Faction

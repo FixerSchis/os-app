@@ -11,8 +11,8 @@ from datetime import datetime
 from models.database.item_type import ItemType
 from sqlalchemy.orm import aliased
 import re
-from models.downtime import DowntimePack
-from models.print_template import PrintTemplate
+from models.tools.downtime import DowntimePack
+from models.tools.print_template import PrintTemplate
 from flask import render_template_string
 from utils import generate_qr_code, generate_web_qr_code
 import base64

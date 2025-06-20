@@ -1,8 +1,8 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, abort
 from flask_login import login_required, current_user
 from models.extensions import db
-from models.character import Character
-from models.character import CharacterSkill
+from models.tools.character import Character
+from models.tools.character import CharacterSkill
 from models.database.skills import Skill
 from models.enums import CharacterStatus, Role
 from utils.decorators import email_verified_required, user_admin_required, character_owner_or_user_admin_required

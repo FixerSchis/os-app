@@ -2,10 +2,10 @@ from sqlalchemy import JSON, event
 
 from models.database.faction import Faction
 from models.database.mods import Mod
-from models.user import User
-from .extensions import db
-from .enums import CharacterStatus, CharacterAuditAction, ScienceType
-from .database.species import Species
+from models.tools.user import User
+from models.extensions import db
+from models.enums import CharacterStatus, CharacterAuditAction, ScienceType
+from models.database.species import Species
 from datetime import datetime
 from models.database.cybernetic import CharacterCybernetic, Cybernetic
 

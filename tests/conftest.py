@@ -2,11 +2,11 @@ import pytest
 from app import create_app
 from models.extensions import db as _db
 from config import TestConfig
-from models.user import User
-from models.character import Character
-from models.downtime import DowntimePeriod, DowntimePack
+from models.tools.user import User
+from models.tools.character import Character
+from models.tools.downtime import DowntimePeriod, DowntimePack
 from models.enums import DowntimeStatus, DowntimeTaskStatus
-from models.research import Research, CharacterResearch
+from models.tools.research import Research, CharacterResearch
 import uuid
 
 @pytest.fixture(scope='session')

@@ -4,7 +4,7 @@ from models.extensions import db
 from models.database.skills import Skill
 from models.database.species import Ability, Species
 from models.database.faction import Faction
-from models.character import Character
+from models.tools.character import Character
 from models.enums import BodyHitsType, Role, AbilityType
 import re
 import traceback

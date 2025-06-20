@@ -1,19 +1,19 @@
 from flask import Blueprint, render_template, flash, redirect, url_for, request, jsonify, abort
 from flask_login import login_required, current_user
-from models.event_ticket import EventTicket
+from models.tools.event_ticket import EventTicket
 from models.extensions import db
-from models.downtime import DowntimePeriod, DowntimePack
-from models.character import Character, CharacterCondition
+from models.tools.downtime import DowntimePeriod, DowntimePack
+from models.tools.character import Character, CharacterCondition
 from models.enums import CharacterStatus, DowntimeStatus, DowntimeTaskStatus, EventType, ResearchRequirementType, ScienceType
 from models.database.item import Item
 from models.database.exotic_substances import ExoticSubstance
 from models.database.conditions import Condition, ConditionStage
 from models.database.mods import Mod
-from models.sample import Sample, SampleTag
+from models.tools.sample import Sample, SampleTag
 from models.database.item_blueprint import ItemBlueprint
 from datetime import datetime, timedelta
 import json
-from models.research import CharacterResearch, CharacterResearchStage, CharacterResearchStageRequirement, Research, ResearchStage, ResearchStageRequirement
+from models.tools.research import CharacterResearch, CharacterResearchStage, CharacterResearchStageRequirement, Research, ResearchStage, ResearchStageRequirement
 from sqlalchemy import inspect
 from models.database.faction import Faction
 from models.database.item_type import ItemType

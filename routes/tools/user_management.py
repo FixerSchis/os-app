@@ -1,8 +1,8 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
 from models.extensions import db
-from models.user import User
-from models.character import Character, CharacterStatus, CharacterTag
+from models.tools.user import User
+from models.tools.character import Character, CharacterStatus, CharacterTag
 from models.enums import Role
 from models.database.faction import Faction
 from utils.decorators import email_verified_required, user_admin_required
