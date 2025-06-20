@@ -1,0 +1,71 @@
+{% extends "_template.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1>My Tickets</h1>
+
+    <div class="card">
+        <div class="card-header">
+            <h2>My Tickets</h2>
+        </div>
+        <div class="card-body">
+            {% if character_tickets %}
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Event</th>
+                            <th>Character</th>
+                            <th>Ticket Type</th>
+                            <th>Event Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for ticket in character_tickets %}
+                            <tr>
+                                <td>{{ ticket.event.name }}</td>
+                                <td>{{ ticket.character.name }}</td>
+                                <td>{{ TicketType.descriptions()[ticket.ticket_type.value] }}</td>
+                                <td>{{ ticket.event.start_date.strftime('%Y-%m-%d') }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p>No tickets found for your characters.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="card mt-4">
+        <div class="card-header">
+            <h2>Tickets I've Purchased</h2>
+        </div>
+        <div class="card-body">
+            {% if assigned_tickets %}
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Event</th>
+                            <th>Character</th>
+                            <th>Ticket Type</th>
+                            <th>Event Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for ticket in assigned_tickets %}
+                            <tr>
+                                <td>{{ ticket.event.name }}</td>
+                                <td>{{ ticket.character.name }}</td>
+                                <td>{{ TicketType.descriptions()[ticket.ticket_type.value] }}</td>
+                                <td>{{ ticket.event.start_date.strftime('%Y-%m-%d') }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p>You have not assigned any tickets.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %} 

@@ -121,9 +121,6 @@ def purchase_ticket(event_id):
 @login_required
 def purchase_ticket_post(event_id):
     event = Event.query.get_or_404(event_id)
-    if not current_user.has_active_character():
-        flash('You need an active character to purchase tickets.', 'error')
-        return redirect(url_for('events.event_list'))
 
     cart_data = request.form.get('cart')
     if not cart_data:

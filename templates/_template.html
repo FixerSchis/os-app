@@ -238,6 +238,7 @@
                         <a href="{{ url_for('groups.group_list') }}">Groups</a>
                         <a href="{{ url_for('banking.bank') }}">Bank</a>
                         {% endif %}
+                        <a href="{{ url_for('tickets.list_tickets') }}">Tickets</a>
                         {% if current_user.has_role('npc') or current_user.has_active_character() %}
                         <a href="{{ url_for('messages.messages') }}">SMS</a>
                         {% endif %}

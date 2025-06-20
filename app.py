@@ -33,6 +33,7 @@ from models.enums import DowntimeStatus, DowntimeTaskStatus
 from models.research import CharacterResearch
 from routes.samples import samples_bp
 from routes.events import events_bp
+from routes.tickets import tickets_bp
 
 def create_app(config_class=None):
     app = Flask("Orion Sphere LRP")
@@ -77,6 +78,7 @@ def create_app(config_class=None):
     app.register_blueprint(samples_bp, url_prefix='/samples')
     app.register_blueprint(settings_bp, url_prefix='/settings')
     app.register_blueprint(templates_bp, url_prefix='/templates')
+    app.register_blueprint(tickets_bp, url_prefix='/tickets')
     app.register_blueprint(user_management_bp, url_prefix='/users')
     app.register_blueprint(wiki_bp, url_prefix='/wiki')
 
