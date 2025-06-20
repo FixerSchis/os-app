@@ -122,6 +122,7 @@ class CharacterAuditAction(Enum):
     STATUS_CHANGE = "status_change"
     SKILL_CHANGE = "skill_change"
     REPUTATION_CHANGE = "reputation_change"
+    FUNDS_SPENT = "funds_spent"
 
     @classmethod
     def descriptions(cls):
@@ -131,6 +132,7 @@ class CharacterAuditAction(Enum):
             cls.STATUS_CHANGE.value: "Status Changed",
             cls.SKILL_CHANGE.value: "Skills Modified",
             cls.REPUTATION_CHANGE.value: "Reputation Changed",
+            cls.FUNDS_SPENT.value: "Funds Spent",
         }
 
 class GroupType(Enum):

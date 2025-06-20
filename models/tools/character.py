@@ -349,27 +349,55 @@ class Character(db.Model):
         return [link.cybernetic for link in self.cybernetics_link]
 
     def get_available_science_slots(self, science_type=None):
-        """Get the number of available science slots for a given type."""
-        if science_type is None:
-            skill_slots = sum(skill.skill.adds_science_downtime * skill.times_purchased for skill in self.skills if skill.skill.adds_science_downtime > 0 if skill.character_meets_requirements(self))
-            cybernetic_slots = sum(cybernetic.cybernetic.adds_science_downtime for cybernetic in self.cybernetics_link if cybernetic.cybernetic.adds_science_downtime > 0)
-            return skill_slots + cybernetic_slots
-        else:
-            skill_slots = sum(skill.skill.adds_science_downtime * skill.times_purchased for skill in self.skills if skill.skill.adds_science_downtime > 0 and skill.skill.science_type == science_type and skill.character_meets_requirements(self))
-            cybernetic_slots = sum(cybernetic.cybernetic.adds_science_downtime for cybernetic in self.cybernetics_link if cybernetic.cybernetic.adds_science_downtime > 0 and cybernetic.cybernetic.science_type == science_type)
-            return skill_slots + cybernetic_slots
-        return 0
+        """Get the available science slots for the character."""
+        skill_slots = 0
+        cybernetic_slots = 0
+        st_value = science_type.value if science_type and isinstance(science_type, ScienceType) else science_type
+
+        # Calculate slots from skills
+        for skill_link in self.skills:
+            skill = skill_link.skill
+            if not (skill.adds_science_downtime > 0 and skill.character_meets_requirements(self)):
+                continue
+
+            if st_value:
+                skill_st = skill.science_type
+                if st_value == ScienceType.GENERIC.value:
+                    if skill_st is None:
+                        skill_slots += skill.adds_science_downtime * skill_link.times_purchased
+                elif skill_st and skill_st.value == st_value:
+                    skill_slots += skill.adds_science_downtime * skill_link.times_purchased
+            else:
+                skill_slots += skill.adds_science_downtime * skill_link.times_purchased
+        
+        # Calculate slots from cybernetics
+        for cyber_link in self.cybernetics_link:
+            cyber = cyber_link.cybernetic
+            if not cyber.adds_science_downtime > 0:
+                continue
+
+            if st_value:
+                cyber_st = cyber.science_type
+                if st_value == ScienceType.GENERIC.value:
+                    if cyber_st is None:
+                        cybernetic_slots += cyber.adds_science_downtime
+                elif cyber_st and cyber_st.value == st_value:
+                    cybernetic_slots += cyber.adds_science_downtime
+            else:
+                cybernetic_slots += cyber.adds_science_downtime
+
+        return skill_slots + cybernetic_slots
 
     def get_available_engineering_slots(self):
-        """Get the number of available engineering maintenance slots."""
-        skill_slots = sum(skill.skill.adds_engineering_downtime * skill.times_purchased for skill in self.skills if skill.skill.adds_engineering_downtime > 0)
-        cybernetic_slots = sum(cybernetic.cybernetic.adds_engineering_downtime for cybernetic in self.cybernetics_link if cybernetic.cybernetic.adds_engineering_downtime > 0)
+        """Get the available engineering slots for the character."""
+        skill_slots = sum(skill.skill.adds_engineering_downtime * skill.times_purchased for skill in self.skills if skill.skill.adds_engineering_downtime > 0 if skill.skill.character_meets_requirements(self))
+        cybernetic_slots = sum(cyber.cybernetic.adds_engineering_downtime for cyber in self.cybernetics_link if cyber.cybernetic.adds_engineering_downtime > 0)
         return skill_slots + cybernetic_slots
-    
+
     def get_available_engineering_mod_slots(self):
-        """Get the number of available engineering mod slots."""
-        skill_slots = sum(skill.skill.adds_engineering_mods * skill.times_purchased for skill in self.skills if skill.skill.adds_engineering_mods > 0)
-        cybernetic_slots = sum(cybernetic.cybernetic.adds_engineering_mods for cybernetic in self.cybernetics_link if cybernetic.cybernetic.adds_engineering_mods > 0)
+        """Get the available engineering mod slots for the character."""
+        skill_slots = sum(skill.skill.adds_engineering_mods * skill.times_purchased for skill in self.skills if skill.skill.adds_engineering_mods > 0 if skill.skill.character_meets_requirements(self))
+        cybernetic_slots = sum(cyber.cybernetic.adds_engineering_mods for cyber in self.cybernetics_link if cyber.cybernetic.adds_engineering_mods > 0)
         return skill_slots + cybernetic_slots
 
     def get_character_sheet_values(self):
@@ -390,27 +418,22 @@ class Character(db.Model):
         return self.bank_account + (self.group.bank_account if self.group else 0)
     
     def can_afford(self, amount):
-        """Check if the character can afford an amount."""
         return self.get_available_funds() >= amount
-    
-    def spend_funds(self, amount):
-        """Spend funds for the character."""
+
+    def spend_funds(self, amount, editor_user_id, reason):
         if not self.can_afford(amount):
-            return
-        # Remove funds from the character account first
-        if self.bank_account >= amount:
-            self.bank_account -= amount
-            amount = 0
-        else:
-            amount -= self.bank_account
-            self.bank_account = 0
+            raise ValueError("Not enough funds")
         
-        # If there's still more to pay, remove from the group account
-        if amount > 0 and self.group:
-            if self.group.bank_account >= amount:
-                self.group.bank_account -= amount
-            else:
-                self.group.bank_account = 0
+        self.bank_account -= amount
+        
+        # Create an audit log for the expenditure
+        audit_log = CharacterAuditLog(
+            character_id=self.id,
+            editor_user_id=editor_user_id,
+            action=CharacterAuditAction.FUNDS_SPENT,
+            changes=f"Spent {amount} on {reason}"
+        )
+        db.session.add(audit_log)
 
 def assign_character_id(player_id):
     """Assign a new character ID for a player."""

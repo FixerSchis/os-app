@@ -5,8 +5,11 @@ from config import TestConfig
 from models.tools.user import User
 from models.tools.character import Character
 from models.tools.downtime import DowntimePeriod, DowntimePack
-from models.enums import DowntimeStatus, DowntimeTaskStatus
+from models.enums import DowntimeStatus, DowntimeTaskStatus, CharacterStatus
 from models.tools.research import Research, CharacterResearch
+from models.database.skills import Skill
+from models.database.species import Species
+from models.database.faction import Faction
 import uuid
 
 @pytest.fixture(scope='session')
@@ -63,12 +66,13 @@ def admin_user(db, authenticated_user):
     return authenticated_user
 
 @pytest.fixture(scope='function')
-def character(db, new_user):
+def character(db, new_user, species):
     """Fixture for creating a character for the new_user."""
     c = Character(
         user_id=new_user.id,
         name='Test Character',
-        status='Active'
+        status=CharacterStatus.ACTIVE.value,
+        species_id=species.id
     )
     db.session.add(c)
     db.session.commit()
@@ -111,4 +115,38 @@ def character_research(db, character, research_project):
     )
     db.session.add(cr)
     db.session.commit()
-    return cr 
+    return cr
+
+@pytest.fixture(scope='function')
+def skill(db):
+    """Fixture for creating a basic skill."""
+    unique_id = uuid.uuid4().hex
+    s = Skill(name=f'Test Skill {unique_id}', description='A skill for testing', base_cost=5)
+    db.session.add(s)
+    db.session.commit()
+    return s
+
+@pytest.fixture(scope='function')
+def species(db, faction):
+    """Fixture for creating a basic species."""
+    unique_id = uuid.uuid4().hex
+    s = Species(
+        name=f'Test Species {unique_id}', 
+        wiki_page=f'test-species-{unique_id}',
+        permitted_factions=f'[{faction.id}]',
+        body_hits_type='locational',
+        body_hits=5,
+        death_count=3
+    )
+    db.session.add(s)
+    db.session.commit()
+    return s
+
+@pytest.fixture(scope='function')
+def faction(db):
+    """Fixture for creating a basic faction."""
+    unique_id = uuid.uuid4().hex
+    f = Faction(name=f'Test Faction {unique_id}', wiki_slug=f'test-faction-{unique_id}', allow_player_characters=True)
+    db.session.add(f)
+    db.session.commit()
+    return f 

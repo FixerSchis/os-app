@@ -153,13 +153,12 @@ class User(UserMixin, db.Model):
             self.new_email):
             
             # Update email address
-            old_email = self.email
             self.email = self.new_email
             self.new_email = None
             self.email_change_token = None
             self.email_change_token_expires = None
-            return True, old_email
-        return False, None
+            return True
+        return False
     
     def generate_reset_token(self):
         """Generate a password reset token."""

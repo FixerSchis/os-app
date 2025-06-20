@@ -24,9 +24,4 @@ dependencies = [
 ]
 
 [tool.setuptools]
-py-modules = ["app", "wsgi"]
-
-[tool.pytest.ini_options]
-pythonpath = [
-  "."
-] 
+py-modules = ["app", "wsgi"] 

@@ -3,16 +3,16 @@ import uuid
 import os
 
 from models.event import Event
-from .extensions import db, login_manager, migrate
+from models.extensions import db, login_manager, migrate
 from sqlalchemy import text
 
 # Import models
-from .tools.user import User
-from .database.faction import Faction
-from .tools.character import Character, CharacterStatus, CharacterAuditLog, CharacterSkill, CharacterTag, setup_relationships
-from .tools.message import Message
-from .database.species import Species, Ability
-from .wiki import (
+from models.tools.user import User
+from models.database.faction import Faction
+from models.tools.character import Character, CharacterStatus, CharacterAuditLog, CharacterSkill, CharacterTag, setup_relationships
+from models.tools.message import Message
+from models.database.species import Species, Ability
+from models.wiki import (
     WikiPage,
     WikiPageVersion,
     WikiPageVersionStatus,
@@ -20,18 +20,18 @@ from .wiki import (
     WikiImage,
     WikiTag,
 )
-from .database.skills import Skill
-from .enums import BodyHitsType, AbilityType, EventType, ScienceType, PrintTemplateType
-from .tools.group import Group, GroupInvite
-from .database.item_type import ItemType
-from .database.mods import Mod
-from .database.item_blueprint import ItemBlueprint
-from .database.exotic_substances import ExoticSubstance
-from .database.medicaments import Medicament
-from .database.conditions import Condition, ConditionStage
-from .database.item import Item
-from .database.cybernetic import Cybernetic, CharacterCybernetic
-from .tools.print_template import PrintTemplate
+from models.database.skills import Skill
+from models.enums import BodyHitsType, AbilityType, EventType, ScienceType, PrintTemplateType
+from models.tools.group import Group, GroupInvite
+from models.database.item_type import ItemType
+from models.database.mods import Mod
+from models.database.item_blueprint import ItemBlueprint
+from models.database.exotic_substances import ExoticSubstance
+from models.database.medicaments import Medicament
+from models.database.conditions import Condition, ConditionStage
+from models.database.item import Item
+from models.database.cybernetic import Cybernetic, CharacterCybernetic
+from models.tools.print_template import PrintTemplate
 
 def init_app(app):
     # Configure database
