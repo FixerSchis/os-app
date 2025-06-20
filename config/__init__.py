@@ -7,15 +7,15 @@ class Config:
     
     # Database configuration
     basedir = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))  # Project root
-    DATABASE_PATH = "/tmp/oslrp_db"
+    DATABASE_PATH = os.path.join(basedir, 'db')
     DATABASE_FILE_NAME = "oslrp.db"
     SQLALCHEMY_DATABASE_URI = f'sqlite:///{os.path.join(DATABASE_PATH, DATABASE_FILE_NAME)}'
     
     # Server configuration
     DEFAULT_PORT = 5000
-    SSL_ENABLED = False
-    SSL_CERT_FILE = None
-    SSL_KEY_FILE = None
+    SSL_ENABLED = True
+    SSL_CERT_FILE = os.path.join(basedir, 'data', 'ssl', 'cert.pem')
+    SSL_KEY_FILE = os.path.join(basedir, 'data', 'ssl', 'key.pem')
     
     # Email configuration
     MAIL_SERVER = 'smtp.example.com'
@@ -26,4 +26,4 @@ class Config:
     MAIL_DEFAULT_SENDER = 'Orion Sphere LRP <no-reply@example.com>'
     
     # Application configuration
-    BASE_URL = 'http://localhost:5000'  # Used for generating verification links 
+    BASE_URL = 'https://fixer-mc.ddns.net'  # Used for generating verification links 
