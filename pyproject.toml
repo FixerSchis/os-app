@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "os-app"
+version = "0.0.1"
+requires-python = ">=3.8"
+dependencies = [
+    "Flask==3.0.2",
+    "Flask-SQLAlchemy==3.1.1",
+    "Flask-Login==0.6.3",
+    "Flask-WTF==1.2.1",
+    "Flask-Migrate==4.0.5",
+    "Flask-Mail==0.9.1",
+    "email-validator==2.1.0.post1",
+    "python-dotenv==1.0.1",
+    "Werkzeug==3.0.1",
+    "qrcode[pil]==7.4.2",
+    "WeasyPrint==62.1",
+    "cryptography==42.0.8",
+    "pyOpenSSL==24.1.0",
+    "pytest"
+]
+
+[tool.setuptools]
+py-modules = ["app", "wsgi"]
+
+[tool.pytest.ini_options]
+pythonpath = [
+  "."
+] 

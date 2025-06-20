@@ -1,4 +1,4 @@
-from flask import Flask, render_template, redirect, url_for, request
+from flask import Flask, render_template, redirect, url_for, request, abort
 from models.character import Character
 from models.extensions import db
 from models import init_app
@@ -27,7 +27,7 @@ from routes.database.cybernetics import cybernetics_bp
 from routes.research import research_bp
 from routes.downtime import bp as downtime_bp
 from routes.messages import bp as messages_bp
-from flask_login import current_user
+from flask_login import current_user, login_required
 from models.downtime import DowntimePeriod
 from models.enums import DowntimeStatus, DowntimeTaskStatus
 from models.research import CharacterResearch
@@ -124,6 +124,23 @@ def create_app(config_class=None):
             has_enter_downtime_packs=has_enter_downtime_packs,
             has_research_projects=has_research_projects
         )
+
+    if app.config.get('TESTING'):
+        @app.route('/test-page')
+        def test_page():
+            return render_template('test_page.html')
+
+        @app.route('/protected')
+        @login_required
+        def protected_route():
+            return "Protected content"
+        
+        @app.route('/admin-only')
+        @login_required
+        def admin_only_route():
+            if not current_user.has_role('admin'):
+                abort(403)
+            return "Admin content"
 
     return app
 

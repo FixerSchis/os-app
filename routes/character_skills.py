@@ -5,7 +5,7 @@ from models.character import Character
 from models.character import CharacterSkill
 from models.database.skills import Skill
 from models.enums import CharacterStatus, Role
-from utils.decorators import email_verified_required
+from utils.decorators import email_verified_required, user_admin_required, character_owner_or_user_admin_required
 from models.database.faction import Faction
 
 character_skills_bp = Blueprint('character_skills', __name__)
@@ -13,11 +13,9 @@ character_skills_bp = Blueprint('character_skills', __name__)
 @character_skills_bp.route('/characters/<int:character_id>/skills')
 @login_required
 @email_verified_required
+@character_owner_or_user_admin_required
 def character_skills(character_id):
     character = Character.query.get_or_404(character_id)
-    if not (character.player_id == current_user.player_id or current_user.has_role(Role.USER_ADMIN.value)):
-        flash('You do not have permission to view this character\'s skills.', 'error')
-        return redirect(url_for('characters.character_list'))
     
     # Get all skills and filter out those the character cannot access
     all_skills = Skill.query.all()
@@ -59,10 +57,9 @@ def character_skills(character_id):
 @character_skills_bp.route('/characters/<int:character_id>/skills/cost')
 @login_required
 @email_verified_required
+@character_owner_or_user_admin_required
 def get_skill_cost(character_id):
     character = Character.query.get_or_404(character_id)
-    if not current_user.has_role('user_admin') and character.player_id != current_user.player_id:
-        abort(403)
     
     skill_id = request.args.get('skill_id', type=int)
     if not skill_id:
@@ -137,11 +134,9 @@ def get_skill_cost(character_id):
 @character_skills_bp.route('/characters/<int:character_id>/skills/purchase', methods=['POST'])
 @login_required
 @email_verified_required
+@character_owner_or_user_admin_required
 def purchase_skill(character_id):
     character = Character.query.get_or_404(character_id)
-    if not current_user.has_role('user_admin') and character.player_id != current_user.player_id:
-        flash('You do not have permission to modify this character\'s skills.', 'error')
-        return redirect(url_for('characters.character_list'))
     
     skill_id = request.form.get('skill_id', type=int)
     if not skill_id:
@@ -167,11 +162,8 @@ def purchase_skill(character_id):
 @character_skills_bp.route('/characters/<int:character_id>/skills/refund', methods=['POST'])
 @login_required
 @email_verified_required
+@user_admin_required
 def refund_skill(character_id):
-    if not current_user.has_role('user_admin'):
-        flash('Only admins can refund skills.', 'error')
-        return redirect(url_for('character_skills.character_skills', character_id=character_id))
-    
     character = Character.query.get_or_404(character_id)
     skill_id = request.form.get('skill_id', type=int)
     

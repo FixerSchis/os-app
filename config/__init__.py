@@ -27,3 +27,10 @@ class Config:
     
     # Application configuration
     BASE_URL = 'https://fixer-mc.ddns.net'  # Used for generating verification links 
+
+class TestConfig(Config):
+    TESTING = True
+    SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
+    WTF_CSRF_ENABLED = False
+    LOGIN_DISABLED = False
+    SSL_ENABLED = False 

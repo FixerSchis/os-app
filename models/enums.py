@@ -5,7 +5,8 @@ class Role(Enum):
     ADMIN = "admin"
     USER_ADMIN = "user_admin"
     RULES_TEAM = "rules_team"
-    WIKI_EDITOR = "wiki_editor"
+    PLOT_TEAM = "plot_team"
+    DOWNTIME_TEAM = "downtime_team"
     NPC = "npc"
 
     @classmethod
@@ -19,7 +20,8 @@ class Role(Enum):
             cls.ADMIN.value: "Admin",
             cls.USER_ADMIN.value: "User Admin",
             cls.RULES_TEAM.value: "Rules Team",
-            cls.WIKI_EDITOR.value: "Wiki Editor",
+            cls.PLOT_TEAM.value: "Plot Team",
+            cls.DOWNTIME_TEAM.value: "Downtime Team",
             cls.NPC.value: "NPC",
         }
 

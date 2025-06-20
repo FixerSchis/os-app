@@ -90,7 +90,7 @@
                             <label for="ticket_type" class="form-label">Ticket Type</label>
                             <select class="form-select" id="ticket_type" name="ticket_type" required>
                                 {% for ticket_type in TicketType.values() %}
-                                    {% if ticket_type != 'crew' or current_user.has_any_role(['user_admin', 'rules_team', 'wiki_editor', 'npc']) %}
+                                    {% if ticket_type != 'crew' or current_user.has_any_role(['user_admin', 'rules_team', 'plot_team', 'npc']) %}
                                     <option value="{{ ticket_type }}">{{ TicketType.descriptions()[ticket_type] }}</option>
                                     {% endif %}
                                 {% endfor %}

@@ -35,41 +35,33 @@ from utils.print_layout import PrintLayout
 import base64
 from models.event import Event
 from models.event_ticket import EventTicket
+from utils.decorators import admin_required
 
 templates_bp = Blueprint("templates", __name__)
 
 
 @templates_bp.route("/list")
 @login_required
+@admin_required
 def template_list():
     """List all available templates"""
-    if not current_user.has_role("admin"):
-        flash("Access denied. Admin role required.", "error")
-        return redirect(url_for("index"))
-    
     templates = PrintTemplate.query.all()
     return render_template("templates/list.html", templates=templates, PrintTemplateType=PrintTemplateType)
 
 
 @templates_bp.route("/templates/new", methods=["GET"])
 @login_required
+@admin_required
 def template_new():
     """Create a new template"""
-    if not current_user.has_role("admin"):
-        flash("Access denied. Admin role required.", "error")
-        return redirect(url_for("index"))
-    
     return render_template("templates/edit.html", template=None, PrintTemplateType=PrintTemplateType)
 
 
 @templates_bp.route("/templates/new", methods=["POST"])
 @login_required
+@admin_required
 def template_new_post():
     """Handle new template creation"""
-    if not current_user.has_role("admin"):
-        flash("Access denied. Admin role required.", "error")
-        return redirect(url_for("index"))
-    
     # TODO: Implement template creation logic when model is created
     flash("Template creation not yet implemented.", "info")
     return redirect(url_for("templates.template_list"))
@@ -77,12 +69,9 @@ def template_new_post():
 
 @templates_bp.route("/templates/<int:template_id>/edit", methods=["GET"])
 @login_required
+@admin_required
 def template_edit(template_id):
     """Edit an existing template"""
-    if not current_user.has_role("admin"):
-        flash("Access denied. Admin role required.", "error")
-        return redirect(url_for("index"))
-    
     template = PrintTemplate.query.get(template_id)
     if not template:
         flash("Template not found.", "error")
@@ -96,12 +85,9 @@ def template_edit(template_id):
 
 @templates_bp.route("/templates/<int:template_id>/edit", methods=["POST"])
 @login_required
+@admin_required
 def template_edit_post(template_id):
     """Handle template editing"""
-    if not current_user.has_role("admin"):
-        flash("Access denied. Admin role required.", "error")
-        return redirect(url_for("index"))
-    
     template = PrintTemplate.query.get(template_id)
     if not template:
         flash("Template not found.", "error")
@@ -118,11 +104,9 @@ def template_edit_post(template_id):
 
 @templates_bp.route("/api/<int:template_id>/render", methods=["POST"])
 @login_required
+@admin_required
 def render_template_preview(template_id):
     """API endpoint to render a template preview with sample data"""
-    if not current_user.has_role("admin"):
-        return jsonify({"error": "Access denied"}), 403
-    
     template = PrintTemplate.query.get(template_id)
     if not template:
         return jsonify({"error": "Template not found"}), 404
@@ -367,11 +351,9 @@ def generate_template_completions(template_type):
 
 @templates_bp.route("/api/<int:template_id>/print_preview", methods=["POST"])
 @login_required
+@admin_required
 def print_template_preview(template_id):
     """Generate a full page preview PDF of the template with sample data."""
-    if not current_user.has_role("admin"):
-        return jsonify({"error": "Access denied"}), 403
-    
     template = PrintTemplate.query.get(template_id)
     if not template:
         return jsonify({"error": "Template not found"}), 404
@@ -478,12 +460,9 @@ def get_jinja_completions():
 
 @templates_bp.route("/<int:template_id>/layout", methods=["GET", "POST"])
 @login_required
+@admin_required
 def template_layout(template_id):
     """Edit layout settings for a template"""
-    if not current_user.has_role("admin"):
-        flash("Access denied. Admin role required.", "error")
-        return redirect(url_for("index"))
-    
     template = PrintTemplate.query.get_or_404(template_id)
     
     if request.method == "POST":

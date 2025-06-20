@@ -7,7 +7,7 @@ from models.enums import CharacterStatus, Role, GroupType
 from flask_login import login_required, current_user
 from models.sample import Sample
 
-from utils.decorators import email_verified_required
+from utils.decorators import email_verified_required, has_active_character_required, user_admin_required
 
 
 groups_bp = Blueprint('groups', __name__)
@@ -56,6 +56,7 @@ def create_group():
 @groups_bp.route('/create', methods=['POST'])
 @login_required
 @email_verified_required
+@has_active_character_required
 def create_group_post():
     name = request.form.get('name')
     type = request.form.get('type')
@@ -72,10 +73,6 @@ def create_group_post():
         user_id=current_user.id,
         status=CharacterStatus.ACTIVE.value
     ).first()
-
-    if not active_character:
-        flash('You need an active character to create a group', 'error')
-        return redirect(url_for('characters.character_list'))
     
     group = Group(
         name=name,
@@ -95,16 +92,13 @@ def create_group_post():
 @groups_bp.route('/<int:group_id>/edit', methods=['GET'])
 @login_required
 @email_verified_required
+@has_active_character_required
 def edit_group(group_id):
     group = Group.query.get_or_404(group_id)
     active_character = Character.query.filter_by(
         user_id=current_user.id,
         status=CharacterStatus.ACTIVE.value
     ).first()
-    
-    if not active_character:
-        flash('You need an active character to edit a group', 'error')
-        return redirect(url_for('characters.character_list'))
     
     if not current_user.has_role(Role.USER_ADMIN.value) and active_character.group_id != group.id:
         flash('You do not have permission to edit this group', 'error')
@@ -143,16 +137,13 @@ def edit_group_post(group_id):
 @groups_bp.route('/<int:group_id>/invite', methods=['POST'])
 @login_required
 @email_verified_required
+@has_active_character_required
 def invite_character(group_id):
     group = Group.query.get_or_404(group_id)
     active_character = Character.query.filter_by(
         user_id=current_user.id,
         status=CharacterStatus.ACTIVE.value
     ).first()
-    
-    if not active_character:
-        flash('You need an active character to invite to a group', 'error')
-        return redirect(url_for('characters.character_list'))
     
     if active_character.group_id != group.id:
         flash('You must be a member of the group to invite others', 'error')
@@ -195,16 +186,13 @@ def invite_character(group_id):
 @groups_bp.route('/invite/<int:invite_id>/accept', methods=['POST'])
 @login_required
 @email_verified_required
+@has_active_character_required
 def accept_invite(invite_id):
     invite = GroupInvite.query.get_or_404(invite_id)
     active_character = Character.query.filter_by(
         user_id=current_user.id,
         status=CharacterStatus.ACTIVE.value
     ).first()
-    
-    if not active_character:
-        flash('You need an active character to accept an invite', 'error')
-        return redirect(url_for('characters.character_list'))
     
     if active_character.id != invite.character_id:
         flash('This invite is not for your character', 'error')
@@ -227,16 +215,13 @@ def accept_invite(invite_id):
 @groups_bp.route('/invite/<int:invite_id>/decline', methods=['POST'])
 @login_required
 @email_verified_required
+@has_active_character_required
 def decline_invite(invite_id):
     invite = GroupInvite.query.get_or_404(invite_id)
     active_character = Character.query.filter_by(
         user_id=current_user.id,
         status=CharacterStatus.ACTIVE.value
     ).first()
-    
-    if not active_character:
-        flash('You need an active character to decline an invite', 'error')
-        return redirect(url_for('characters.character_list'))
     
     if active_character.id != invite.character_id:
         flash('This invite is not for your character', 'error')
@@ -252,6 +237,7 @@ def decline_invite(invite_id):
 @groups_bp.route('/<int:group_id>/leave', methods=['POST'])
 @login_required
 @email_verified_required
+@has_active_character_required
 def leave_group(group_id):
     group = Group.query.get_or_404(group_id)
     character = Character.query.filter_by(
@@ -259,7 +245,7 @@ def leave_group(group_id):
         status=CharacterStatus.ACTIVE.value
     ).first()
     
-    if not character or character.group_id != group_id:
+    if character.group_id != group_id:
         flash('You are not a member of this group', 'error')
         return redirect(url_for('groups.group_list'))
     
@@ -271,6 +257,7 @@ def leave_group(group_id):
 @groups_bp.route('/<int:group_id>/disband', methods=['POST'])
 @login_required
 @email_verified_required
+@has_active_character_required
 def disband_group(group_id):
     group = Group.query.get_or_404(group_id)
     character = Character.query.filter_by(
@@ -278,7 +265,7 @@ def disband_group(group_id):
         status=CharacterStatus.ACTIVE.value
     ).first()
     
-    if not character or character.group_id != group_id:
+    if character.group_id != group_id:
         flash('You are not a member of this group', 'error')
         return redirect(url_for('groups.group_list'))
     
@@ -303,13 +290,10 @@ def disband_group(group_id):
 @groups_bp.route('/<int:group_id>/remove/<int:character_id>', methods=['POST'])
 @login_required
 @email_verified_required
+@user_admin_required
 def remove_character(group_id, character_id):
     group = Group.query.get_or_404(group_id)
     character = Character.query.get_or_404(character_id)
-    
-    if not current_user.has_role(Role.USER_ADMIN.value):
-        flash('You do not have permission to remove characters from groups', 'error')
-        return redirect(url_for('groups.group_list'))
     
     if character.group_id != group.id:
         flash('Character is not in this group', 'error')
@@ -324,11 +308,8 @@ def remove_character(group_id, character_id):
 @groups_bp.route('/create/admin', methods=['GET', 'POST'])
 @login_required
 @email_verified_required
+@user_admin_required
 def create_group_admin():
-    if not current_user.has_role(Role.USER_ADMIN.value):
-        flash('You do not have permission to access this page', 'error')
-        return redirect(url_for('groups.group_list'))
-    
     if request.method == 'POST':
         name = request.form.get('name')
         type = request.form.get('type')
@@ -378,11 +359,8 @@ def create_group_admin():
 @groups_bp.route('/<int:group_id>/edit/admin', methods=['GET', 'POST'])
 @login_required
 @email_verified_required
+@user_admin_required
 def edit_group_admin(group_id):
-    if not current_user.has_role(Role.USER_ADMIN.value):
-        flash('You do not have permission to access this page', 'error')
-        return redirect(url_for('groups.group_list'))
-    
     group = Group.query.get_or_404(group_id)
     all_samples = Sample.query.order_by(Sample.name).all()
     if request.method == 'POST':
@@ -431,11 +409,8 @@ def edit_group_admin(group_id):
 @groups_bp.route('/<int:group_id>/add_character/admin', methods=['POST'])
 @login_required
 @email_verified_required
+@user_admin_required
 def add_character_admin(group_id):
-    if not current_user.has_role(Role.USER_ADMIN.value):
-        flash('You do not have permission to add characters to groups', 'error')
-        return redirect(url_for('groups.group_list'))
-    
     group = Group.query.get_or_404(group_id)
     character_id = request.form.get('character_id')
     

@@ -61,7 +61,7 @@
                     <div class="role-item">
                         <span class="role-badge">
                             {{ Role.descriptions()[role] }}
-                            {% if role != 'owner' and (role != 'admin' or current_user.has_role('owner')) and (role != 'wiki_editor' or current_user.has_role('admin')) %}
+                            {% if role != 'owner' and (role != 'admin' or current_user.has_role('owner')) and (role != 'plot_team' or current_user.has_role('admin')) %}
                             <form method="POST" action="{{ url_for('user_management.user_management_edit_user', user_id=user.id) }}" class="role-form" style="display: inline;">
                                 <input type="hidden" name="role" value="{{ role }}">
                                 <button type="submit" name="remove_role" class="btn-remove">&times;</button>
@@ -77,7 +77,7 @@
                     <form method="POST" action="{{ url_for('user_management.user_management_edit_user', user_id=user.id) }}" class="role-form">
                         <select name="role" class="form-control">
                             {% for role in roles %}
-                            {% if role != 'owner' and (role != 'admin' or current_user.has_role('owner')) and (role != 'wiki_editor' or current_user.has_role('admin')) %}
+                            {% if role != 'owner' and (role != 'admin' or current_user.has_role('owner')) and (role != 'plot_team' or current_user.has_role('admin')) %}
                             <option value="{{ role }}">{{ Role.descriptions()[role] }}</option>
                             {% endif %}
                             {% endfor %}

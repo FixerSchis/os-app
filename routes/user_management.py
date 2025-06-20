@@ -5,31 +5,23 @@ from models.user import User
 from models.character import Character, CharacterStatus, CharacterTag
 from models.enums import Role
 from models.database.faction import Faction
-from utils.decorators import email_verified_required
+from utils.decorators import email_verified_required, user_admin_required
 
 user_management_bp = Blueprint("user_management", __name__)
 
 @user_management_bp.route("/user-management")
 @login_required
 @email_verified_required
+@user_admin_required
 def user_management():
-    if not current_user.is_authenticated or not current_user.has_role(
-        Role.USER_ADMIN.value
-    ):
-        flash("Access denied")
-        return redirect(url_for("index"))
     users = User.query.all()
     return render_template("user_management/list.html", users=users, Role=Role, CharacterStatus=CharacterStatus)
 
 @user_management_bp.route("/user-management/user/<int:user_id>", methods=["GET"])
 @login_required
 @email_verified_required
+@user_admin_required
 def user_management_edit_user(user_id):
-    if not current_user.is_authenticated or not current_user.has_role(
-        Role.USER_ADMIN.value
-    ):
-        flash("Access denied")
-        return redirect(url_for("index"))
     user = User.query.get_or_404(user_id)
     
     roles = [
@@ -59,12 +51,8 @@ def user_management_edit_user(user_id):
 @user_management_bp.route("/user-management/user/<int:user_id>", methods=["POST"])
 @login_required
 @email_verified_required
+@user_admin_required
 def user_management_edit_user_post(user_id):
-    if not current_user.is_authenticated or not current_user.has_role(
-        Role.USER_ADMIN.value
-    ):
-        flash("Access denied")
-        return redirect(url_for("index"))
     user = User.query.get_or_404(user_id)
     
     if "update_user" in request.form:

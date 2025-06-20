@@ -5,29 +5,23 @@ from models.sample import Sample, SampleTag
 from models.enums import ScienceType, Role
 from models.print_template import PrintTemplate, PrintTemplateType
 from utils.print_layout import PrintLayout
+from utils.decorators import downtime_or_rules_team_required
 
 samples_bp = Blueprint('samples', __name__)
 
 @samples_bp.route('/')
 @login_required
+@downtime_or_rules_team_required
 def sample_list():
     """List all samples."""
-    if not current_user.has_role('user_admin'):
-        flash('You do not have permission to view samples.', 'error')
-        return redirect(url_for('index'))
-    
     samples = Sample.query.order_by(Sample.name).all()
     return render_template('samples/list.html', samples=samples)
 
 @samples_bp.route('/create', methods=['POST'])
 @login_required
+@downtime_or_rules_team_required
 def create_sample():
     """Create a new sample."""
-    if not (current_user.has_role('downtime_team') or 
-            current_user.has_role('rules_team') or 
-            current_user.has_role('user_admin')):
-        return jsonify({'error': 'Unauthorized'}), 403
-    
     name = request.form.get('name')
     type_str = request.form.get('type')
     description = request.form.get('description', '')

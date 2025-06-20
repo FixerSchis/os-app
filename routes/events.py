@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify
 from flask_login import login_required, current_user
-from models.enums import EventType, TicketType
+from models.enums import EventType, Role, TicketType
 from models.event import Event
 from models.event_ticket import EventTicket
 from models.character import Character
@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 import json
 
 from utils.email import send_event_details_updated_notification, send_event_ticket_assigned_notification_to_user, send_new_event_notification_to_all
+from utils.decorators import user_admin_required
 
 events_bp = Blueprint('events', __name__)
 
@@ -29,19 +30,14 @@ def event_list():
 
 @events_bp.route('/new', methods=['GET'])
 @login_required
+@user_admin_required
 def create_event():
-    if not current_user.has_role('user_admin'):
-        flash('You do not have permission to access this page.', 'error')
-        return redirect(url_for('events.event_list'))
     return render_template('events/edit.html', EventType=EventType)
 
 @events_bp.route('/new', methods=['POST'])
 @login_required
+@user_admin_required
 def create_event_post():
-    if not current_user.has_role('user_admin'):
-        flash('You do not have permission to access this page.', 'error')
-        return redirect(url_for('events.event_list'))
-
     event = Event(
         event_number=request.form['event_number'],
         name=request.form['name'],
@@ -69,21 +65,15 @@ def create_event_post():
 
 @events_bp.route('/<int:event_id>/edit', methods=['GET'])
 @login_required
+@user_admin_required
 def edit_event(event_id):
-    if not current_user.has_role('user_admin'):
-        flash('You do not have permission to access this page.', 'error')
-        return redirect(url_for('events.event_list'))
-
     event = Event.query.get_or_404(event_id)
     return render_template('events/edit.html', event=event, EventType=EventType)
 
 @events_bp.route('/<int:event_id>/edit', methods=['POST'])
 @login_required
+@user_admin_required
 def edit_event_post(event_id):
-    if not current_user.has_role('user_admin'):
-        flash('You do not have permission to access this page.', 'error')
-        return redirect(url_for('events.event_list'))
-
     event = Event.query.get_or_404(event_id)
     event.event_number = request.form['event_number']
     event.name = request.form['name']
@@ -162,7 +152,7 @@ def purchase_ticket_post(event_id):
         character = Character.query.get_or_404(character_id)
 
         # Crew ticket permission check
-        if ticket_type == 'crew' and not current_user.has_any_role(['user_admin', 'rules_team', 'wiki_editor', 'npc']):
+        if ticket_type == 'crew' and not current_user.has_any_role([Role.USER_ADMIN.value, Role.RULES_TEAM.value, Role.PLOT_TEAM.value, Role.NPC.value]):
             continue
 
         price_paid = float(item.get('price', 0))
@@ -199,21 +189,15 @@ def purchase_ticket_post(event_id):
 
 @events_bp.route('/<int:event_id>/assign', methods=['GET'])
 @login_required
+@user_admin_required
 def assign_ticket(event_id):
-    if not current_user.has_role('user_admin'):
-        flash('You do not have permission to access this page.', 'error')
-        return redirect(url_for('events.event_list'))
-
     event = Event.query.get_or_404(event_id)
     return render_template('events/assign.html', event=event, TicketType=TicketType)
 
 @events_bp.route('/<int:event_id>/assign', methods=['POST'])
 @login_required
+@user_admin_required
 def assign_ticket_post(event_id):
-    if not current_user.has_role('user_admin'):
-        flash('You do not have permission to access this page.', 'error')
-        return redirect(url_for('events.event_list'))
-
     event = Event.query.get_or_404(event_id)
     user_id, character_id = request.form['character'].split('.')
     character = Character.query.filter_by(user_id=user_id, character_id=character_id).first_or_404()
@@ -248,10 +232,8 @@ def assign_ticket_post(event_id):
 
 @events_bp.route('/<int:event_id>/attendees', methods=['GET'])
 @login_required
+@user_admin_required
 def view_attendees(event_id):
-    if not current_user.has_role('user_admin'):
-        flash('You do not have permission to view attendees.', 'error')
-        return redirect(url_for('events.event_list'))
     event = Event.query.get_or_404(event_id)
     tickets = (
         EventTicket.query

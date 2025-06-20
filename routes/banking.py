@@ -4,7 +4,7 @@ from models.extensions import db
 from models.character import Character
 from models.group import Group
 from models.enums import CharacterStatus
-from utils.decorators import email_verified_required
+from utils.decorators import email_verified_required, user_admin_required
 
 banking_bp = Blueprint('banking', __name__)
 
@@ -104,11 +104,8 @@ def bank():
 @banking_bp.route('/update-balance', methods=['POST'])
 @login_required
 @email_verified_required
+@user_admin_required
 def update_balance():
-    if not current_user.has_role('user_admin'):
-        flash('Only admins can update balances', 'error')
-        return redirect(url_for('banking.bank'))
-    
     account_type = request.form.get('account_type')
     account_id = request.form.get('account_id')
     new_balance = request.form.get('balance')

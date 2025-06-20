@@ -20,6 +20,7 @@ from models.database.item_type import ItemType
 from models.database.cybernetic import Cybernetic, CharacterCybernetic
 from models.event import Event
 from utils.email import send_downtime_completed_notification, send_downtime_pack_enter_notification
+from utils.decorators import downtime_team_required, character_owner_or_downtime_team_required
 
 bp = Blueprint('downtime', __name__)
 
@@ -140,12 +141,9 @@ def index():
 
 @bp.route('/start', methods=['POST'])
 @login_required
+@downtime_team_required
 def start_downtime():
     """Start a new downtime period."""
-    if not current_user.has_role('downtime_team'):
-        flash('You do not have permission to start downtime.', 'error')
-        return redirect(url_for('downtime.index'))
-    
     if DowntimePeriod.query.filter_by(status=DowntimeStatus.PENDING).first():
         flash('There is already an active downtime period.', 'error')
         return redirect(url_for('downtime.index'))
@@ -177,12 +175,9 @@ def start_downtime():
 
 @bp.route('/enter-pack-contents/<int:period_id>/<int:character_id>', methods=['GET'])
 @login_required
+@downtime_team_required
 def enter_pack_contents(period_id, character_id):
     """Display the pack contents entry page."""
-    if not current_user.has_role('downtime_team'):
-        flash('You do not have permission to enter pack contents.', 'error')
-        return redirect(url_for('downtime.index'))
-    
     pack = DowntimePack.query.filter_by(
         period_id=period_id,
         character_id=character_id
@@ -217,12 +212,9 @@ def enter_pack_contents(period_id, character_id):
 
 @bp.route('/enter-pack-contents/<int:period_id>/<int:character_id>', methods=['POST'])
 @login_required
+@downtime_team_required
 def enter_pack_contents_post(period_id, character_id):
     """Handle pack contents entry submission."""
-    if not current_user.has_role('downtime_team'):
-        flash('You do not have permission to enter pack contents.', 'error')
-        return redirect(url_for('downtime.index'))
-    
     pack = DowntimePack.query.filter_by(
         period_id=period_id,
         character_id=character_id
@@ -299,13 +291,10 @@ def enter_pack_contents_post(period_id, character_id):
 
 @bp.route('/enter-downtime/<int:period_id>/<int:character_id>', methods=['GET'])
 @login_required
+@character_owner_or_downtime_team_required
 def enter_downtime(period_id, character_id):
     """Display the downtime activity entry page."""
     character = Character.query.get_or_404(character_id)
-    
-    # Check if user has permission to view this character's downtime
-    if character.user_id != current_user.id and not current_user.has_role('downtime_team'):
-        abort(403)
     
     pack = DowntimePack.query.filter_by(
         period_id=period_id,
@@ -404,13 +393,10 @@ def enter_downtime(period_id, character_id):
 
 @bp.route('/enter-downtime/<int:period_id>/<int:character_id>', methods=['POST'])
 @login_required
+@character_owner_or_downtime_team_required
 def enter_downtime_post(period_id, character_id):
     """Handle downtime activity entry submission."""
     character = Character.query.get_or_404(character_id)
-    
-    # Check if user has permission to view this character's downtime
-    if character.user_id != current_user.id and not current_user.has_role('downtime_team'):
-        abort(403)
     
     pack = DowntimePack.query.filter_by(
         period_id=period_id,
@@ -438,12 +424,9 @@ def enter_downtime_post(period_id, character_id):
 
 @bp.route('/manual-review/<int:period_id>/<int:character_id>', methods=['GET'])
 @login_required
+@downtime_team_required
 def manual_review(period_id, character_id):
     """Display the manual review page for downtime activities."""
-    if not current_user.has_role('downtime_team'):
-        flash('You do not have permission to review downtime activities.', 'error')
-        return redirect(url_for('downtime.index'))
-    
     character = Character.query.get_or_404(character_id)
     pack = DowntimePack.query.filter_by(
         period_id=period_id,
@@ -504,12 +487,9 @@ def manual_review(period_id, character_id):
 
 @bp.route('/manual-review/<int:period_id>/<int:character_id>', methods=['POST'])
 @login_required
+@downtime_team_required
 def manual_review_post(period_id, character_id):
     """Handle manual review submission."""
-    if not current_user.has_role('downtime_team'):
-        flash('You do not have permission to review downtime activities.', 'error')
-        return redirect(url_for('downtime.index'))
-    
     pack = DowntimePack.query.filter_by(
         period_id=period_id,
         character_id=character_id
@@ -556,12 +536,9 @@ def manual_review_post(period_id, character_id):
 
 @bp.route('/process/<int:period_id>', methods=['POST'])
 @login_required
+@downtime_team_required
 def process_downtime(period_id):
     """Process a completed downtime period."""
-    if not current_user.has_role('downtime_team'):
-        flash('You do not have permission to process downtime.', 'error')
-        return redirect(url_for('downtime.index'))
-
     period = DowntimePeriod.query.get_or_404(period_id)
     if not period.event:
         flash('This downtime period is not associated with an event.', 'error')

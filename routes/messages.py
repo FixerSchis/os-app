@@ -5,6 +5,7 @@ from models.message import Message
 from models.character import Character
 from models.role import Role
 from models.extensions import db
+from utils.decorators import npc_required
 
 bp = Blueprint('messages', __name__)
 
@@ -71,11 +72,8 @@ def send_message():
     return redirect(url_for('messages.messages'))
 
 @bp.route('/messages/<int:message_id>/respond', methods=['POST'])
+@npc_required
 def respond_to_message(message_id):
-    if not current_user.has_role('npc'):
-        flash('You do not have permission to respond to messages.', 'error')
-        return redirect(url_for('messages.messages'))
-    
     message = Message.query.get_or_404(message_id)
     response_text = request.form.get('response')
     

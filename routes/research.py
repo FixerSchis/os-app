@@ -9,6 +9,7 @@ from models.enums import Role, ResearchType, ScienceType, ResearchRequirementTyp
 from models.database.exotic_substances import ExoticSubstance
 from models.character import Character
 from models.sample import SampleTag
+from utils.decorators import rules_team_required
 import json
 
 research_bp = Blueprint('research', __name__)
@@ -45,19 +46,15 @@ def req_to_dict(req):
 
 @research_bp.route('/')
 @login_required
+@rules_team_required
 def research_list():
-    if not current_user.has_role(Role.RULES_TEAM.value):
-        flash('You do not have permission to access this page', 'error')
-        return redirect(url_for('index'))
     researches = Research.query.order_by(Research.project_name).all()
     return render_template('research/list.html', researches=researches)
 
 @research_bp.route('/create', methods=['GET'])
 @login_required
+@rules_team_required
 def research_create():
-    if not current_user.has_role(Role.RULES_TEAM.value):
-        flash('You do not have permission to access this page', 'error')
-        return redirect(url_for('index'))
     items = Item.query.join(ItemBlueprint).order_by(ItemBlueprint.name).all()
     blueprints = ItemBlueprint.query.order_by(ItemBlueprint.name).all()
     item_types = ItemType.query.order_by(ItemType.name).all()
@@ -66,10 +63,8 @@ def research_create():
 
 @research_bp.route('/create', methods=['POST'])
 @login_required
+@rules_team_required
 def research_create_post():
-    if not current_user.has_role(Role.RULES_TEAM.value):
-        flash('You do not have permission to access this page', 'error')
-        return redirect(url_for('index'))
     project_name = request.form.get('project_name')
     type_value = request.form.get('type')
     description = request.form.get('description')
@@ -162,10 +157,8 @@ def research_create_post():
 
 @research_bp.route('/<int:research_id>/edit', methods=['GET'])
 @login_required
+@rules_team_required
 def research_edit(research_id):
-    if not current_user.has_role(Role.RULES_TEAM.value):
-        flash('You do not have permission to access this page', 'error')
-        return redirect(url_for('index'))
     research = Research.query.get_or_404(research_id)
     items = Item.query.join(ItemBlueprint).order_by(ItemBlueprint.name).all()
     blueprints = ItemBlueprint.query.order_by(ItemBlueprint.name).all()
@@ -176,10 +169,8 @@ def research_edit(research_id):
 
 @research_bp.route('/<int:research_id>/edit', methods=['POST'])
 @login_required
+@rules_team_required
 def research_edit_post(research_id):
-    if not current_user.has_role(Role.RULES_TEAM.value):
-        flash('You do not have permission to access this page', 'error')
-        return redirect(url_for('index'))
     research = Research.query.get_or_404(research_id)
     description = request.form.get('description')
     artefact_option = request.form.get('artefact_option')
@@ -353,9 +344,8 @@ def research_edit_post(research_id):
 
 @research_bp.route('/api/blueprints')
 @login_required
+@rules_team_required
 def api_blueprints():
-    if not current_user.has_role(Role.RULES_TEAM.value):
-        return jsonify({'results': []})
     q = request.args.get('q', '').strip().lower()
     query = ItemBlueprint.query
     if q:
@@ -369,9 +359,8 @@ def api_blueprints():
 
 @research_bp.route('/api/exotics')
 @login_required
+@rules_team_required
 def api_exotics():
-    if not current_user.has_role(Role.RULES_TEAM.value):
-        return jsonify({'results': []})
     q = request.args.get('q', '').strip().lower()
     query = ExoticSubstance.query
     if q:
@@ -385,11 +374,8 @@ def api_exotics():
 
 @research_bp.route('/<int:research_id>/assignees')
 @login_required
+@rules_team_required
 def assignees(research_id):
-    if not current_user.has_role(Role.RULES_TEAM.value):
-        flash('You do not have permission to access this page', 'error')
-        return redirect(url_for('index'))
-    
     research = Research.query.get_or_404(research_id)
     if not research.stages:
         flash('Cannot assign characters to research without stages', 'error')
@@ -413,11 +399,8 @@ def assignees(research_id):
 
 @research_bp.route('/<int:research_id>/assignees/add', methods=['POST'])
 @login_required
+@rules_team_required
 def add_assignee(research_id):
-    if not current_user.has_role(Role.RULES_TEAM.value):
-        flash('You do not have permission to perform this action', 'error')
-        return redirect(url_for('index'))
-    
     research = Research.query.get_or_404(research_id)
     if not research.stages:
         flash('Cannot assign characters to research without stages', 'error')
@@ -453,11 +436,8 @@ def add_assignee(research_id):
 
 @research_bp.route('/<int:research_id>/assignees/<int:character_id>/remove', methods=['POST'])
 @login_required
+@rules_team_required
 def remove_assignee(research_id, character_id):
-    if not current_user.has_role(Role.RULES_TEAM.value):
-        flash('You do not have permission to perform this action', 'error')
-        return redirect(url_for('index'))
-    
     character_research = CharacterResearch.query.filter_by(
         research_id=research_id,
         character_id=character_id
@@ -471,11 +451,8 @@ def remove_assignee(research_id, character_id):
 
 @research_bp.route('/<int:research_id>/assignees/<int:character_id>/progress', methods=['GET'])
 @login_required
+@rules_team_required
 def edit_progress(research_id, character_id):
-    if not current_user.has_role(Role.RULES_TEAM.value):
-        flash('You do not have permission to access this page', 'error')
-        return redirect(url_for('index'))
-    
     character_research = CharacterResearch.query.filter_by(
         research_id=research_id,
         character_id=character_id
@@ -498,11 +475,8 @@ def edit_progress(research_id, character_id):
 
 @research_bp.route('/<int:research_id>/assignees/<int:character_id>/progress', methods=['POST'])
 @login_required
+@rules_team_required
 def edit_progress_post(research_id, character_id):
-    if not current_user.has_role(Role.RULES_TEAM.value):
-        flash('You do not have permission to perform this action', 'error')
-        return redirect(url_for('index'))
-    
     character_research = CharacterResearch.query.filter_by(
         research_id=research_id,
         character_id=character_id

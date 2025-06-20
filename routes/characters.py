@@ -7,7 +7,7 @@ from models.database.species import Species
 from models.database.faction import Faction
 from models.character import assign_character_id
 from models.enums import Role, CharacterAuditAction, PrintTemplateType
-from utils.decorators import email_verified_required
+from utils.decorators import email_verified_required, user_admin_required, character_owner_or_user_admin_required
 from models.database.conditions import Condition
 from models.database.cybernetic import Cybernetic, CharacterCybernetic
 from models.research import CharacterResearch
@@ -118,6 +118,7 @@ def create_character_post():
 @characters_bp.route('/<int:character_id>/edit', methods=['GET'])
 @login_required
 @email_verified_required
+@character_owner_or_user_admin_required
 def edit(character_id):
     character = Character.query.get_or_404(character_id)
     admin_context = request.args.get('admin_context') == '1'
@@ -156,13 +157,11 @@ def edit(character_id):
 @characters_bp.route('/<int:character_id>/edit', methods=['POST'])
 @login_required
 @email_verified_required
+@character_owner_or_user_admin_required
 def edit_post(character_id):
     character = Character.query.get_or_404(character_id)
     admin_context = request.form.get('admin_context') == '1'
     user = User.query.filter_by(player_id=character.player_id).first() if admin_context else None
-    if character.player_id != current_user.player_id and not current_user.has_role('user_admin'):
-        flash('You do not have permission to edit this character', 'error')
-        return redirect(url_for('characters.character_list'))
     
     name = request.form.get('name')
     pronouns_subject = request.form.get('pronouns_subject')
@@ -277,18 +276,13 @@ def edit_post(character_id):
         return redirect(url_for('user_management.user_management_edit_user', user_id=user.id))
     return redirect(url_for('characters.character_list'))
 
-def can_edit_character(character):
-    return character.player_id == current_user.player_id or current_user.has_role('user_admin')
-
 @characters_bp.route('/<int:character_id>/retire', methods=['POST'])
 @login_required
 @email_verified_required
+@character_owner_or_user_admin_required
 def retire_character(character_id):
     character = Character.query.get_or_404(character_id)
     admin_context = request.form.get('admin_context') == '1'
-    if not can_edit_character(character):
-        flash('You do not have permission to retire this character.', 'error')
-        return redirect(url_for('characters.character_list'))
     if character.status != CharacterStatus.ACTIVE.value:
         flash('Only active characters can be retired.', 'error')
         return redirect(url_for('characters.character_list'))
@@ -313,12 +307,10 @@ def retire_character(character_id):
 @characters_bp.route('/<int:character_id>/kill', methods=['POST'])
 @login_required
 @email_verified_required
+@user_admin_required
 def kill_character(character_id):
     character = Character.query.get_or_404(character_id)
     admin_context = request.form.get('admin_context') == '1'
-    if not current_user.has_role('user_admin'):
-        flash('Only user admins can kill characters.', 'error')
-        return redirect(url_for('characters.character_list'))
     if character.status != CharacterStatus.ACTIVE.value:
         flash('Only active characters can be killed.', 'error')
         return redirect(url_for('characters.character_list'))
@@ -334,11 +326,9 @@ def kill_character(character_id):
 @characters_bp.route('/<int:character_id>/restore', methods=['POST'])
 @login_required
 @email_verified_required
+@user_admin_required
 def restore_character(character_id):
     character = Character.query.get_or_404(character_id)
-    if not current_user.has_role('user_admin'):
-        flash('Only user admins can restore characters.', 'error')
-        return redirect(url_for('characters.character_list'))
     if character.status not in [CharacterStatus.RETIRED.value, CharacterStatus.DEAD.value]:
         flash('Only retired or dead characters can be restored.', 'error')
         return redirect(url_for('characters.character_list'))
@@ -374,14 +364,12 @@ def restore_character(character_id):
 @characters_bp.route('/<int:character_id>/delete', methods=['POST'])
 @login_required
 @email_verified_required
+@character_owner_or_user_admin_required
 def delete_character(character_id):
     character = Character.query.get_or_404(character_id)
     admin_context = request.form.get('admin_context') == '1'
     if not current_user.has_role('user_admin') and character.status != CharacterStatus.DEVELOPING.value:
         flash('Only developing characters can be deleted.', 'error')
-        return redirect(url_for('characters.character_list'))
-    if character.player_id != current_user.player_id and not current_user.has_role('user_admin'):
-        flash('You do not have permission to delete this character.', 'error')
         return redirect(url_for('characters.character_list'))
     for audit_log in CharacterAuditLog.query.filter_by(character_id=character.id).all():
         db.session.delete(audit_log)
@@ -397,11 +385,9 @@ def delete_character(character_id):
 @characters_bp.route('/<int:character_id>/activate', methods=['POST'])
 @login_required
 @email_verified_required
+@character_owner_or_user_admin_required
 def activate_character(character_id):
     character = Character.query.get_or_404(character_id)
-    if character.player_id != current_user.player_id and not current_user.has_role('user_admin'):
-        flash('You do not have permission to activate this character.', 'error')
-        return redirect(url_for('characters.character_list'))
     if character.status != CharacterStatus.DEVELOPING.value:
         flash('Only developing characters can be activated.', 'error')
         return redirect(url_for('characters.character_list'))
@@ -437,10 +423,8 @@ def activate_character(character_id):
 @characters_bp.route('/new/<int:player_id>', methods=['GET'])
 @login_required
 @email_verified_required
+@user_admin_required
 def create_for_player(player_id):
-    if not current_user.has_role('user_admin'):
-        flash('Only user admins can create characters for other players.', 'error')
-        return redirect(url_for('characters.character_list'))
     user = User.query.filter_by(player_id=player_id).first()
     if not user:
         flash('Player not found.', 'error')
@@ -453,10 +437,8 @@ def create_for_player(player_id):
 @characters_bp.route('/new/<int:player_id>', methods=['POST'])
 @login_required
 @email_verified_required
+@user_admin_required
 def create_for_player_post(player_id):
-    if not current_user.has_role('user_admin'):
-        flash('Only user admins can create characters for other players.', 'error')
-        return redirect(url_for('characters.character_list'))
     user = User.query.filter_by(player_id=player_id).first()
     if not user:
         flash('Player not found.', 'error')
@@ -521,60 +503,12 @@ def create_for_player_post(player_id):
 @characters_bp.route('/<int:character_id>/audit-log')
 @login_required
 @email_verified_required
+@character_owner_or_user_admin_required
 def audit_log(character_id):
     character = Character.query.get_or_404(character_id)
-    if not (character.player_id == current_user.player_id or current_user.has_role(Role.USER_ADMIN.value)):
-        flash('You do not have permission to view this character\'s audit log.', 'error')
-        return redirect(url_for('characters.character_list'))
     
     audit_logs = CharacterAuditLog.query.filter_by(character_id=character_id).order_by(CharacterAuditLog.timestamp.desc()).all()
     return render_template('characters/audit_log.html', character=character, audit_logs=audit_logs, CharacterAuditAction=CharacterAuditAction)
-
-@characters_bp.route('/<int:character_id>/reputation', methods=['GET'])
-@login_required
-@email_verified_required
-def view_reputation(character_id):
-    character = Character.query.get_or_404(character_id)
-    if not (character.player_id == current_user.player_id or current_user.has_role(Role.USER_ADMIN.value)):
-        flash('You do not have permission to view this character\'s reputation.', 'error')
-        return redirect(url_for('characters.character_list'))
-    
-    factions = Faction.query.all()
-    reputations = {faction.id: character.get_reputation(faction.id) for faction in factions}
-    
-    return render_template(
-        'characters/reputation.html',
-        character=character,
-        factions=factions,
-        reputations=reputations,
-        can_edit=current_user.has_role(Role.USER_ADMIN.value)
-    )
-
-@characters_bp.route('/<int:character_id>/reputation', methods=['POST'])
-@login_required
-@email_verified_required
-def update_reputation(character_id):
-    if not current_user.has_role(Role.USER_ADMIN.value):
-        flash('Only user admins can modify character reputation.', 'error')
-        return redirect(url_for('characters.character_list'))
-    
-    character = Character.query.get_or_404(character_id)
-    faction_id = request.form.get('faction_id')
-    value = request.form.get('value')
-    
-    if not faction_id or value is None:
-        flash('Faction and value are required.', 'error')
-        return redirect(url_for('characters.view_reputation', character_id=character_id))
-    
-    try:
-        value = int(value)
-    except ValueError:
-        flash('Reputation value must be a number.', 'error')
-        return redirect(url_for('characters.view_reputation', character_id=character_id))
-    
-    character.set_reputation(faction_id, value, current_user.id)
-    flash('Reputation updated successfully.', 'success')
-    return redirect(url_for('characters.view_reputation', character_id=character_id))
 
 @characters_bp.route('/api/validate_user_id_character_id')
 @login_required
@@ -611,29 +545,12 @@ def validate_user_id_character_id():
         })
 
 @characters_bp.route('/<int:character_id>/view')
+@login_required
+@email_verified_required
+@character_owner_or_user_admin_required
 def view(character_id):
     character = Character.query.get_or_404(character_id)
-    
-    # Check access permissions
-    can_view = False
-    if current_user.is_authenticated:
-        # Character owner can view
-        if character.player_id == current_user.player_id:
-            can_view = True
-        # Users with specific roles can view
-        elif current_user.has_role(Role.USER_ADMIN.value):
-            can_view = True
-        elif current_user.has_role(Role.RULES_TEAM.value):
-            can_view = True
-        elif current_user.has_role(Role.WIKI_EDITOR.value):
-            can_view = True
-        elif current_user.has_role(Role.NPC.value):
-            can_view = True
-    
-    if not can_view:
-        flash('You do not have permission to view this character.', 'error')
-        return redirect(url_for('characters.character_list'))
-    
+        
     # Get the character sheet template
     template = PrintTemplate.query.filter_by(type=PrintTemplateType.CHARACTER_SHEET.value).first()
     

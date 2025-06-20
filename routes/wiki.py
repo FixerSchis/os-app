@@ -23,6 +23,7 @@ from models.wiki import (
 )
 from models.enums import Role
 from models import Faction, Species, Skill, CharacterTag, Cybernetic
+from utils.decorators import plot_team_required
 import io
 import difflib
 import json
@@ -384,10 +385,8 @@ def api_wiki_pages():
 
 @wiki_bp.route("/<path:slug>/edit", methods=["GET"])
 @login_required
+@plot_team_required
 def wiki_edit(slug):
-    if not current_user.is_authenticated or not current_user.has_role("plot_team"):
-        flash("Only plot team members can edit wiki pages.", "error")
-        return redirect(url_for("wiki.wiki_view", slug=slug))
     page = WikiPage.query.get_or_404(slug)
     role_descriptions = Role.descriptions()
     available_roles = [
@@ -439,10 +438,8 @@ def wiki_edit(slug):
 
 @wiki_bp.route("/<path:slug>/edit", methods=["POST"])
 @login_required
+@plot_team_required
 def wiki_edit_post(slug):
-    if not current_user.is_authenticated or not current_user.has_role("plot_team"):
-        flash("Only plot team members can edit wiki pages.", "error")
-        return redirect(url_for("wiki.wiki_view", slug=slug))
     page = WikiPage.query.get_or_404(slug)
     version = get_pending_version(page, current_user)
     if request.is_json:
@@ -482,10 +479,8 @@ def wiki_edit_post(slug):
 
 @wiki_bp.route("/new", methods=["GET"])
 @login_required
+@plot_team_required
 def wiki_new():
-    if not current_user.is_authenticated or not current_user.has_role("plot_team"):
-        flash("Access denied")
-        return redirect(url_for("wiki.wiki_list"))
     role_descriptions = Role.descriptions()
     available_roles = [
         {"value": v, "label": role_descriptions[v]} for v in Role.values()
@@ -520,10 +515,8 @@ def wiki_new():
 
 @wiki_bp.route("/new", methods=["POST"])
 @login_required
+@plot_team_required
 def wiki_new_post():
-    if not current_user.is_authenticated or not current_user.has_role("plot_team"):
-        flash("Access denied")
-        return redirect(url_for("wiki.wiki_view", slug="index"))
     if request.is_json:
         data = request.get_json()
         if (
@@ -583,9 +576,8 @@ def wiki_new_post():
 
 @wiki_bp.route("/upload_image", methods=["POST"])
 @login_required
+@plot_team_required
 def wiki_upload_image():
-    if not current_user.is_authenticated or not current_user.has_role("plot_team"):
-        return {"error": "Access denied"}, 403
     file = request.files.get("file")
     if not file:
         return {"error": "No file uploaded"}, 400
@@ -611,11 +603,9 @@ def wiki_image(image_id):
 
 @wiki_bp.route("/delete/<path:slug>", methods=["POST"])
 @login_required
+@plot_team_required
 def wiki_delete(slug):
     page = WikiPage.query.get_or_404(slug)
-    if not current_user.is_authenticated or not current_user.has_role("plot_team"):
-        flash("Access denied")
-        return redirect(url_for("wiki.wiki_view", slug=slug))
     version = get_pending_version(page, current_user)
     if version and not version.deleted:
         version.deleted = True
@@ -626,11 +616,9 @@ def wiki_delete(slug):
 
 @wiki_bp.route("/restore/<path:slug>", methods=["POST"])
 @login_required
+@plot_team_required
 def wiki_restore(slug):
     page = WikiPage.query.get_or_404(slug)
-    if not current_user.is_authenticated or not current_user.has_role("plot_team"):
-        flash("Access denied")
-        return redirect(url_for("wiki.wiki_view", slug=slug))
     version = get_pending_version(page, current_user)
     if version and version.deleted:
         version.deleted = False
@@ -641,10 +629,8 @@ def wiki_restore(slug):
 
 @wiki_bp.route("/changes/pending", methods=["GET"])
 @login_required
+@plot_team_required
 def wiki_pending_changes():
-    if not current_user.is_authenticated or not current_user.has_role("plot_team"):
-        flash("Access denied", "error")
-        return redirect(url_for("wiki.wiki_view", slug="index"))
     pages = WikiPage.query.order_by(WikiPage.title).all()
     pending_pages = []
     for page in pages:
@@ -732,10 +718,8 @@ def wiki_pending_changes():
 
 @wiki_bp.route("/changes/pending", methods=["POST"])
 @login_required
+@plot_team_required
 def wiki_pending_changes_post():
-    if not current_user.is_authenticated or not current_user.has_role("plot_team"):
-        flash("Access denied", "error")
-        return redirect(url_for("wiki.wiki_view", slug="index"))
     selected_slugs = request.form.getlist("selected_pages")
     changelog = request.form.get("changelog", "").strip()
     if not changelog:
@@ -956,25 +940,28 @@ def wiki_search():
     return render_template("wiki/search.html", results=results, query=query)
 
 
-@wiki_bp.route('/tags', methods=['GET', 'POST'])
+@wiki_bp.route('/tags', methods=['GET'])
 def wiki_tags():
-    if request.method == 'POST':
-        name = request.json.get('name', '').strip()
-        if not name:
-            return jsonify({'error': 'No tag name provided'}), 400
-        tag = WikiTag.query.filter_by(name=name).first()
-        if not tag:
-            tag = WikiTag(name=name)
-            db.session.add(tag)
-            db.session.commit()
-        return jsonify({'id': tag.id, 'text': tag.name})
-    else:
-        q = request.args.get('q', '').strip()
-        tags = WikiTag.query
-        if q:
-            tags = tags.filter(WikiTag.name.ilike(f'%{q}%'))
-        tags = tags.order_by(WikiTag.name).all()
-        return jsonify({'results': [{'id': t.id, 'text': t.name} for t in tags]})
+    q = request.args.get('q', '').strip()
+    tags = WikiTag.query
+    if q:
+        tags = tags.filter(WikiTag.name.ilike(f'%{q}%'))
+    tags = tags.order_by(WikiTag.name).all()
+    return jsonify({'results': [{'id': t.id, 'text': t.name} for t in tags]})
+
+@wiki_bp.route('/tags', methods=['POST'])
+@login_required
+@plot_team_required
+def wiki_tags_post():
+    name = request.json.get('name', '').strip()
+    if not name:
+        return jsonify({'error': 'No tag name provided'}), 400
+    tag = WikiTag.query.filter_by(name=name).first()
+    if not tag:
+        tag = WikiTag(name=name)
+        db.session.add(tag)
+        db.session.commit()
+    return jsonify({'id': tag.id, 'text': tag.name})
 
 
 @wiki_bp.route('/live_search')
