@@ -162,6 +162,8 @@ def purchase_ticket_post(event_id):
                 continue
             character_id = character.id
 
+        character = Character.query.get_or_404(character_id)
+
         # Crew ticket permission check
         if ticket_type == 'crew' and not current_user.has_any_role(['user_admin', 'rules_team', 'wiki_editor', 'npc']):
             continue
@@ -188,7 +190,7 @@ def purchase_ticket_post(event_id):
                 assigned_at=datetime.utcnow()
             )
             db.session.add(ticket)
-            send_event_ticket_assigned_notification_to_user(ticket.character.user, ticket, event, ticket.character)
+            send_event_ticket_assigned_notification_to_user(character.user, ticket, event, character)
         tickets_created += 1
 
     db.session.commit()
