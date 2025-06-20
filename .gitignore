@@ -58,7 +58,8 @@ logs/
 log/
 
 # Flask specific
-instance/
+instance/*
+!instance/.gitkeep
 .webassets-cache
 
 # OS specific
@@ -133,4 +134,11 @@ yarn-error.log*
 
 # Backup files
 *.orig
-*.rej 
+*.rej
+
+# Local configuration - Sensitive information
+config/local.py
+
+# SSL certificates
+data/ssl/cert.local.pem
+data/ssl/key.local.pem 
