@@ -6,6 +6,7 @@ from models.character import CharacterSkill
 from models.database.skills import Skill
 from models.enums import CharacterStatus, Role
 from utils.decorators import email_verified_required
+from models.database.faction import Faction
 
 character_skills_bp = Blueprint('character_skills', __name__)
 
@@ -39,7 +40,7 @@ def character_skills(character_id):
         # Check required factions
         if skill.required_factions:
             required_factions = skill.required_factions_list
-            if character.faction_id not in required_factions:
+            if str(character.faction_id) not in required_factions:
                 continue
         
         # Check required species
@@ -109,10 +110,12 @@ def get_skill_cost(character_id):
     # Check required factions
     if skill.required_factions:
         required_factions = skill.required_factions_list
-        if character.faction_id not in required_factions:
+        if str(character.faction_id) not in required_factions:
+            # Get faction names for the error message
+            faction_names = [f.name for f in Faction.query.filter(Faction.id.in_(required_factions)).all()]
             return jsonify({
                 'can_purchase': False,
-                'reason': f'Requires faction: {", ".join(required_factions)}'
+                'reason': f'Requires faction: {", ".join(faction_names)}'
             })
     
     # Check required species
