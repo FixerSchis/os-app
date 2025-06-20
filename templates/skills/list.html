@@ -18,8 +18,9 @@
             <table class="table table-striped">
                 <thead>
                     <tr>
-                        <th class="col-6">Name</th>
-                        <th class="col-3">CP Cost</th>
+                        <th class="col-5">Name</th>
+                        <th class="col-1">CP Cost</th>
+                        <th class="col-4">Requirements</th>
                         {% if current_user.is_authenticated and current_user.has_role('rules_team') %}
                         <th class="col-3">Actions</th>
                         {% endif %}
@@ -28,8 +29,27 @@
                 <tbody>
                     {% for skill in skills %}
                     <tr>
-                        <td class="col-6">{{ skill.name }}</td>
-                        <td class="col-3">{{ skill.base_cost }}</td>
+                        <td class="col-5 align-middle">
+                            <strong>{{ skill.name }}</strong>
+                            <div class="text-muted small ps-3">
+                                {{ skill.description | safe }}
+                            </div>
+                        </td>
+                        <td class="col-1 align-middle">{{ skill.base_cost }}</td>
+                        <td class="col-4 align-middle">
+                            {% if skill.required_skill %}
+                                <span class="badge bg-primary">Skill: {{ skill.required_skill.name }}</span>
+                            {% endif %}
+                            {% for faction in skill.get_required_factions() %}
+                                <span class="badge bg-secondary">Faction: {{ faction.name }}</span>
+                            {% endfor %}
+                            {% for species in skill.get_required_species() %}
+                                <span class="badge bg-success">Species: {{ species.name }}</span>
+                            {% endfor %}
+                            {% for tag in skill.get_required_tags() %}
+                                <span class="badge bg-info text-dark">Tag: {{ tag.name }}</span>
+                            {% endfor %}
+                        </td>
                         {% if current_user.is_authenticated and current_user.has_role('rules_team') %}
                         <td class="col-3">
                             <a href="{{ url_for('skills.edit_skill', skill_id=skill.id) }}" class="btn btn-sm btn-primary">Edit</a>
@@ -43,4 +63,28 @@
     </div>
     {% endfor %}
 </div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const toggleButtons = document.querySelectorAll('.toggle-description');
+    toggleButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const skillId = this.getAttribute('data-skill-id');
+            const descriptionRow = document.getElementById('description-' + skillId);
+            if (descriptionRow) {
+                if (descriptionRow.style.display === 'none') {
+                    descriptionRow.style.display = 'table-row';
+                    this.textContent = 'Hide';
+                } else {
+                    descriptionRow.style.display = 'none';
+                    this.textContent = 'Details';
+                }
+            }
+        });
+    });
+});
+</script>
 {% endblock %} 
