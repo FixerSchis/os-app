@@ -39,7 +39,7 @@ def character_skills(character_id):
         # Check required factions
         if skill.required_factions:
             required_factions = skill.required_factions_list
-            if character.faction.value not in required_factions:
+            if character.faction_id not in required_factions:
                 continue
         
         # Check required species
@@ -109,7 +109,7 @@ def get_skill_cost(character_id):
     # Check required factions
     if skill.required_factions:
         required_factions = skill.required_factions_list
-        if character.faction.value not in required_factions:
+        if character.faction_id not in required_factions:
             return jsonify({
                 'can_purchase': False,
                 'reason': f'Requires faction: {", ".join(required_factions)}'

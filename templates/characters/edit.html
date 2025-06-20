@@ -95,7 +95,7 @@
                                 </select>
                                 {% else %}
                                 <input type="text" class="form-control" value="{{ character.faction.name if character and character.faction else '' }}" readonly>
-                                <input type="hidden" name="faction" value="{{ character.faction.id if character and character.faction else '' }}">
+                                <input type="hidden" name="faction" value="{{ character.faction_id if character and character.faction else '' }}">
                                 {% endif %}
                             </div>
                             
