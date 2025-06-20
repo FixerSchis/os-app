@@ -13,6 +13,9 @@ class Config:
     
     # Server configuration
     DEFAULT_PORT = 5000
+    SSL_ENABLED = False
+    SSL_CERT_FILE = None
+    SSL_KEY_FILE = None
     
     # Email configuration
     MAIL_SERVER = 'smtp.example.com'

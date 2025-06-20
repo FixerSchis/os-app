@@ -81,7 +81,7 @@ def register():
                 price_paid=prev_event.standard_ticket_price,
                 meal_ticket=False,
                 requires_bunk=False,
-                assigned_by_id=current_user.id,
+                assigned_by_id=user.id,
                 assigned_at=datetime.utcnow()
             )
             db.session.add(ticket)

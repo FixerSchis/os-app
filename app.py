@@ -1,4 +1,4 @@
-from flask import Flask, render_template, redirect, url_for
+from flask import Flask, render_template, redirect, url_for, request
 from models.character import Character
 from models.extensions import db
 from models import init_app
@@ -65,6 +65,15 @@ def create_app(config=None):
     @app.route('/.well-known/appspecific/com.chrome.devtools.json')
     def chrome_devtools_json():
         return '', 204
+
+    # Handle HTTPS requests in development (redirect to HTTP)
+    @app.before_request
+    def handle_https_redirect():
+        if request.headers.get('X-Forwarded-Proto') == 'https':
+            # If behind a proxy that indicates HTTPS, redirect to HTTP
+            if request.url.startswith('https://'):
+                return redirect(request.url.replace('https://', 'http://', 1), code=301)
+        return None
 
     # Register blueprints
     app.register_blueprint(auth_bp, url_prefix='/auth')
@@ -137,4 +146,15 @@ if __name__ == '__main__':
         pass
     
     app = create_app(config)
-    app.run(debug=True, host='0.0.0.0', port=config.DEFAULT_PORT)
+    
+    # Configure SSL if enabled
+    ssl_context = None
+    if config.SSL_ENABLED and config.SSL_CERT_FILE and config.SSL_KEY_FILE:
+        ssl_context = (config.SSL_CERT_FILE, config.SSL_KEY_FILE)
+    
+    app.run(
+        debug=True, 
+        host='0.0.0.0', 
+        port=config.DEFAULT_PORT,
+        ssl_context=ssl_context
+    )
