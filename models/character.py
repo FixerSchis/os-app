@@ -96,16 +96,30 @@ class Character(db.Model):
         return f'<Character {self.name}>'
 
     def get_total_skill_cost(self):
-        return sum(skill.cost for skill in self.skills)
-
-    def can_purchase_skill(self, skill):
-        return self.user.can_spend_character_points(skill.cost)
-
-    def purchase_skill(self, skill):
-        if not self.can_purchase_skill(skill):
-            return False
-        self.user.spend_character_points(skill.cost)
-        return True
+        """Calculate the total cost of all skills for this character."""
+        total_cost = 0
+        for character_skill in self.skills:
+            skill = character_skill.skill
+            if skill.cost_increases:
+                # For a skill with increasing cost, the cost of the nth purchase is base_cost + (n-1)
+                # We sum the cost for each purchase from 1 to times_purchased
+                for i in range(character_skill.times_purchased):
+                    purchase_cost = skill.base_cost + i
+                    # Apply species discounts
+                    for ability in self.species.abilities:
+                        if ability.type == 'skill_discounts' and str(skill.id) in ability.skill_discounts_dict:
+                            discount = ability.skill_discounts_dict[str(skill.id)]
+                            purchase_cost = max(0, purchase_cost - discount)
+                    total_cost += purchase_cost
+            else:
+                purchase_cost = skill.base_cost
+                # Apply species discounts
+                for ability in self.species.abilities:
+                    if ability.type == 'skill_discounts' and str(skill.id) in ability.skill_discounts_dict:
+                        discount = ability.skill_discounts_dict[str(skill.id)]
+                        purchase_cost = max(0, purchase_cost - discount)
+                total_cost += purchase_cost * character_skill.times_purchased
+        return total_cost
 
     def get_faction_name(self):
         return self.faction.name if self.faction else None
@@ -135,15 +149,17 @@ class Character(db.Model):
         # If the skill hasn't been purchased yet, start at 0
         count = 0 if character_skill is None else character_skill.times_purchased
         
-        # For refunds, we want to calculate the cost of the last purchase
-        if is_refund:
-            count -= 1
-            
         # Calculate the base cost based on the skill's properties
         base_cost = skill.base_cost
         if skill.cost_increases:
-            # Cost increases by 1 for each previous purchase
-            base_cost += count
+            # For refunds, we calculate the cost of the rank being refunded,
+            # which is the cost of the Nth purchase where N is the current count.
+            # For a new purchase, we calculate the cost of the (N+1)th purchase.
+            if is_refund:
+                if count > 0:
+                    base_cost += (count - 1) # Cost of the Nth purchase
+            else:
+                base_cost += count # Cost of the (N+1)th purchase
         
         # Apply species discounts if any
         for ability in self.species.abilities:
@@ -155,21 +171,9 @@ class Character(db.Model):
         return base_cost
     
     def get_available_character_points(self):
-        """Get the available character points for the character."""
-        if self.base_character_points < self.get_total_skill_cost():
-            self.user.character_points + (self.base_character_points - self.get_total_skill_cost())
-        return self.user.character_points
-
-    def get_total_skill_cost(self):
-        """Calculate the total cost of all skills for this character."""
-        total_cost = 0
-        for character_skill in self.skills:
-            if character_skill.skill.cost_increases:
-                for i in range(1, character_skill.times_purchased + 1):
-                    total_cost += character_skill.skill.base_cost + i
-            else:
-                total_cost += character_skill.skill.base_cost * character_skill.times_purchased
-        return total_cost
+        """Get the available character points for the character to spend."""
+        character_cp_balance = self.base_character_points - self.get_total_skill_cost()
+        return self.user.character_points + max(0, character_cp_balance)
 
     def can_purchase_skill(self, skill, user):
         """Check if the character can purchase a skill."""
@@ -198,7 +202,7 @@ class Character(db.Model):
         
         # Spend CP if character is active
         if self.status == CharacterStatus.ACTIVE.value and cp_from_user > 0:
-            if not user.can_spend_character_points(cost):
+            if not user.can_spend_character_points(cp_from_user):
                 return False, "Not enough character points"
         
         return True, None
@@ -215,8 +219,9 @@ class Character(db.Model):
         total_skills_cost = self.get_total_skill_cost()
         
         # Calculate how much CP we need from the user
-        remaining_base_cp = self.base_character_points - total_skills_cost
-        cp_from_user = max(0, cost - remaining_base_cp)
+        user_spent_before = max(0, total_skills_cost - self.base_character_points)
+        user_spent_after = max(0, total_skills_cost + cost - self.base_character_points)
+        cp_from_user = user_spent_after - user_spent_before
         
         # Spend CP if character is active
         if self.status == CharacterStatus.ACTIVE.value and cp_from_user > 0:
@@ -264,6 +269,13 @@ class Character(db.Model):
         if not character_skill:
             raise ValueError("Character does not have this skill")
         
+        # Calculate how much CP was spent from the user's pool before the refund
+        total_skills_cost_before = self.get_total_skill_cost()
+        user_spent_before = max(0, total_skills_cost_before - self.base_character_points)
+
+        # Calculate refund amount for this specific skill purchase
+        refund_amount = self.get_skill_cost(skill, is_refund=True)
+
         if character_skill.times_purchased <= 1:
             # Remove the skill entirely
             db.session.delete(character_skill)
@@ -271,12 +283,16 @@ class Character(db.Model):
             # Decrease the times purchased
             character_skill.times_purchased -= 1
         
-        # Calculate refund amount
-        refund_amount = self.get_skill_cost(skill, is_refund=True)
+        # Calculate how much CP would be spent from the user's pool after the refund
+        total_skills_cost_after = total_skills_cost_before - refund_amount
+        user_spent_after = max(0, total_skills_cost_after - self.base_character_points)
+        
+        # The actual refund is the difference
+        refund_to_user = user_spent_before - user_spent_after
         
         # Refund CP if character is active
-        if self.status == CharacterStatus.ACTIVE.value:
-            self.user.add_character_points(refund_amount)
+        if self.status == CharacterStatus.ACTIVE.value and refund_to_user > 0:
+            self.user.add_character_points(refund_to_user)
         
         db.session.commit()
         return True

@@ -12,7 +12,7 @@
         </div>
 
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <span class="h5 mb-0">Available CP: <strong>{{ (character.base_character_points + current_user.character_points) - character.get_total_skill_cost() }}</strong></span>
+            <span class="h5 mb-0">Available CP: <strong>{{ character.get_available_character_points() }}</strong></span>
             <span class="h5 mb-0">Spent CP: <strong>{{ character.get_total_skill_cost() }}</strong></span>
         </div>
 
@@ -35,7 +35,7 @@
                         {% for skill in group %}
                         {% set character_skill = character.skills|selectattr('skill_id', 'equalto', skill.id)|first %}
                         {% set cost = character.get_skill_cost(skill) %}
-                        {% set can_afford = (character.base_character_points + current_user.character_points - character.get_total_skill_cost()) >= cost %}
+                        {% set can_afford = character.get_available_character_points() >= cost %}
                         {% set can_refund = current_user.has_role('user_admin') or character.status == 'developing' %}
                         <tr>
                             <td class="ps-4" style="padding-left: 2em;">

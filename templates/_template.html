@@ -205,9 +205,6 @@
                 <li class="dropdown">
                     <a href="#" class="dropbtn">Database <i class="fas fa-caret-down"></i></a>
                     <div class="dropdown-content">
-                        {% if current_user.is_authenticated and current_user.has_role('user_admin') %}
-                            <a href="{{ url_for('user_management.user_management') }}">Users</a>
-                        {% endif %}
                         <a href="{{ url_for('factions.faction_list') }}">Factions</a>
                         <a href="{{ url_for('species.species_list') }}">Species</a>
                         <a href="{{ url_for('skills.skills_list') }}">Skills</a>
@@ -233,6 +230,9 @@
                 <li class="dropdown">
                     <a href="#" class="dropbtn">Tools <i class="fas fa-caret-down"></i></a>
                     <div class="dropdown-content">
+                        {% if current_user.is_authenticated and current_user.has_role('user_admin') %}
+                            <a href="{{ url_for('user_management.user_management') }}">Users</a>
+                        {% endif %}
                         <a href="{{ url_for('characters.character_list') }}">Characters</a>
                         {% if current_user.has_role('user_admin') or current_user.has_active_character() %}
                         <a href="{{ url_for('groups.group_list') }}">Groups</a>
