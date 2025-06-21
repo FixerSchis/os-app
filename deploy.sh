@@ -152,7 +152,6 @@ deploy_files() {
     find "$APP_DIR" -type f -exec chmod 644 {} \;
     find "$APP_DIR" -type d -exec chmod 755 {} \;
     chmod +x "$APP_DIR/wsgi.py"
-    chmod +x "$APP_DIR/deploy.sh"
 
     log "Application files deployed ✓"
 }
@@ -254,7 +253,7 @@ show_status() {
     echo "View logs:        journalctl -u $APP_NAME -f"
     echo
     echo "=== Next Steps ==="
-    echo "1. Edit $APP_DIR/.env with your production settings"
+    echo "1. Create and configure $APP_DIR/.env with your production settings"
     echo "2. Restart the service: systemctl restart $APP_NAME"
     echo "3. Configure your web server (nginx/apache) to proxy to 127.0.0.1:5000"
     echo "4. Set up SSL certificates if needed"
@@ -276,7 +275,6 @@ deploy() {
     deploy_files
     setup_venv
     install_service
-    setup_env
     init_database
     start_service
     show_status
