@@ -15,7 +15,7 @@ A Flask-based web application for managing LARP (Live Action Role-Playing) game 
 ## Quick Start
 
 ### Prerequisites
-- Python 3.8 or higher
+- Python 3.10 or higher
 - pip
 - Git
 
@@ -115,7 +115,7 @@ This project uses GitHub Actions for automated testing, code quality checks, and
 Every commit and pull request triggers the following checks:
 
 1. **Tests and Linting** (`Tests and Linting` job):
-   - Runs tests across Python 3.8, 3.9, 3.10, and 3.11
+   - Runs tests across Python 3.10, 3.11, and 3.12
    - Executes linting with flake8
    - Checks code formatting with Black
    - Verifies import sorting with isort
@@ -295,7 +295,7 @@ The application can be installed as a systemd service for automatic startup and 
 #### Prerequisites
 
 - Linux system with systemd
-- Python 3.8 or higher
+- Python 3.10 or higher
 - Application deployed to `/opt/orion-sphere-lrp` (or modify the service file accordingly)
 
 #### Step 1: Create Service User

@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "os-app"
 version = "0.0.1"
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 dependencies = [
     "Flask==3.0.2",
     "Flask-SQLAlchemy==3.1.1",
@@ -41,7 +41,7 @@ py-modules = ["app", "wsgi"]
 
 [tool.black]
 line-length = 100
-target-version = ['py38']
+target-version = ['py310']
 include = '\.pyi?$'
 # Exclude conftest.py from Black formatting - we handle it specially
 extend-exclude = '''

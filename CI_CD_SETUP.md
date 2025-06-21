@@ -13,7 +13,7 @@ The CI/CD pipeline ensures that all code changes meet quality standards before b
 #### `ci.yml` - Main CI Pipeline
 - **Triggers**: Every commit and pull request to master/develop
 - **Jobs**:
-  - **Tests and Linting**: Runs tests across Python 3.8-3.11, linting, formatting checks
+  - **Tests and Linting**: Runs tests across Python 3.10-3.12, linting, formatting checks
   - **Security Checks**: Bandit security analysis and Safety vulnerability checks
   - **Pre-commit Checks**: Runs all pre-commit hooks on all files
 
@@ -175,7 +175,7 @@ Local development hooks that run before each commit:
 - **Framework**: pytest
 - **Coverage**: pytest-cov
 - **Mocking**: pytest-mock
-- **Parallel**: Tests run across Python 3.8-3.11
+- **Parallel**: Tests run across Python 3.10-3.12
 
 ## Troubleshooting
 

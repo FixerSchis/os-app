@@ -5,7 +5,7 @@ Thank you for your interest in contributing to OS App! This document provides gu
 ## Getting Started
 
 ### Prerequisites
-- Python 3.8 or higher
+- Python 3.10 or higher
 - Git
 - pip
 

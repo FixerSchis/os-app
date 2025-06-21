@@ -38,8 +38,8 @@ def run_command(command, description, check=True):
 def check_python_version():
     """Check if Python version is compatible."""
     version = sys.version_info
-    if version.major < 3 or (version.major == 3 and version.minor < 8):
-        print("❌ Python 3.8 or higher is required")
+    if version.major < 3 or (version.major == 3 and version.minor < 10):
+        print("❌ Python 3.10 or higher is required")
         sys.exit(1)
     print(f"✅ Python {version.major}.{version.minor}.{version.micro} is compatible")
 

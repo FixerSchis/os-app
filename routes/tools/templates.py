@@ -177,7 +177,10 @@ def print_item_sheet(type, id):
                 type=PrintTemplateType.CHARACTER_SHEET.value
             ).first()
             if not template:
-                return jsonify({"error": "Character sheet template not found"}), 404
+                return (
+                    jsonify({"error": "No character sheet template found."}),
+                    400,
+                )
             pdf = layout_manager.generate_character_sheets_pdf([character], template)
         elif type == "items":
             # Get item and generate PDF
@@ -185,7 +188,10 @@ def print_item_sheet(type, id):
             # Get the template for item cards
             template = PrintTemplate.query.filter_by(type=PrintTemplateType.ITEM_CARD.value).first()
             if not template:
-                return jsonify({"error": "Item card template not found"}), 404
+                return (
+                    jsonify({"error": "No item card template. Create one first."}),
+                    400,
+                )  # noqa: E501
             pdf = layout_manager.generate_item_cards_pdf([item], template)
         elif type == "conditions":
             # Get condition and generate PDF
@@ -195,7 +201,10 @@ def print_item_sheet(type, id):
                 type=PrintTemplateType.CONDITION_CARD.value
             ).first()
             if not template:
-                return jsonify({"error": "Condition card template not found"}), 404
+                return (
+                    jsonify({"error": "No condition card template found."}),
+                    400,
+                )
             pdf = layout_manager.generate_condition_sheet_pdf([condition], template)
         elif type == "medicaments":
             # Get medicament and generate PDF
@@ -205,7 +214,10 @@ def print_item_sheet(type, id):
                 type=PrintTemplateType.MEDICAMENT_CARD.value
             ).first()
             if not template:
-                return jsonify({"error": "Medicament card template not found"}), 404
+                return (
+                    jsonify({"error": "No medicament card template found."}),
+                    400,
+                )
             pdf = layout_manager.generate_medicament_sheet_pdf([medicament], template)
         elif type == "exotics":
             # Get exotic substance and generate PDF
@@ -215,7 +227,10 @@ def print_item_sheet(type, id):
                 type=PrintTemplateType.EXOTIC_SUBSTANCE_LABEL.value
             ).first()
             if not template:
-                return jsonify({"error": "Exotic substance label template not found"}), 404
+                return (
+                    jsonify({"error": ("No exotic substance label template found.")}),
+                    400,
+                )
             pdf = layout_manager.generate_exotic_substance_labels_pdf([exotic], template)
         else:
             return jsonify({"error": "Invalid type"}), 400
@@ -247,7 +262,10 @@ def print_event_items(event_id, type):
                 type=PrintTemplateType.CHARACTER_SHEET.value
             ).first()
             if not template:
-                return jsonify({"error": "Character sheet template not found"}), 404
+                return (
+                    jsonify({"error": "No character sheet template found."}),
+                    400,
+                )
             pdf = layout_manager.generate_character_sheets_pdf(characters, template)
         elif type == "items":
             # Get all items in the event
@@ -257,7 +275,10 @@ def print_event_items(event_id, type):
             # Get the template for item cards
             template = PrintTemplate.query.filter_by(type=PrintTemplateType.ITEM_CARD.value).first()
             if not template:
-                return jsonify({"error": "Item card template not found"}), 404
+                return (
+                    jsonify({"error": "No item card template found."}),
+                    400,
+                )
             pdf = layout_manager.generate_item_cards_pdf(items, template)
         else:
             return jsonify({"error": "Invalid type"}), 400

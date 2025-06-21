@@ -16,8 +16,9 @@ def test_500_error_handler(app, test_client, db, wiki_index_page):
     original_testing_config = app.config["TESTING"]
     app.config["TESTING"] = False
 
-    with app.test_request_context(), mock.patch(
-        "routes.wiki.render_template", side_effect=Exception("mocked error")
+    with (
+        app.test_request_context(),
+        mock.patch("routes.wiki.render_template", side_effect=Exception("mocked error")),
     ):
         response = test_client.get(url_for("wiki.wiki_view", slug="index"))
         assert response.status_code == 500

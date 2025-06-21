@@ -264,9 +264,10 @@ class TestMessagesRoutes:
         db.session.add(message)
         db.session.commit()
         # Patch send_notification_email and render_email_template
-        with patch("utils.email.send_email") as mock_send, patch(
-            "utils.email.render_email_template"
-        ) as mock_render:
+        with (
+            patch("utils.email.send_email") as mock_send,
+            patch("utils.email.render_email_template") as mock_render,
+        ):
             mock_render.return_value = ("text", "<p>html</p>")
             response = test_client.post(
                 f"/messages/messages/{message.id}/respond",
