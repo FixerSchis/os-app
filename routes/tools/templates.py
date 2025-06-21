@@ -173,9 +173,7 @@ def print_item_sheet(type, id):
             if not (current_user.has_role("user_admin") or current_user.id == character.user_id):
                 return jsonify({"error": "Access denied"}), 403
             # Get the template for character sheets
-            template = PrintTemplate.query.filter_by(
-                type=PrintTemplateType.CHARACTER_SHEET.value
-            ).first()
+            template = PrintTemplate.query.filter_by(type=PrintTemplateType.CHARACTER_SHEET).first()
             if not template:
                 return (
                     jsonify({"error": "No character sheet template found."}),
@@ -186,7 +184,7 @@ def print_item_sheet(type, id):
             # Get item and generate PDF
             item = Item.query.get_or_404(id)
             # Get the template for item cards
-            template = PrintTemplate.query.filter_by(type=PrintTemplateType.ITEM_CARD.value).first()
+            template = PrintTemplate.query.filter_by(type=PrintTemplateType.ITEM_CARD).first()
             if not template:
                 return (
                     jsonify({"error": "No item card template. Create one first."}),
@@ -197,9 +195,7 @@ def print_item_sheet(type, id):
             # Get condition and generate PDF
             condition = Condition.query.get_or_404(id)
             # Get the template for condition cards
-            template = PrintTemplate.query.filter_by(
-                type=PrintTemplateType.CONDITION_CARD.value
-            ).first()
+            template = PrintTemplate.query.filter_by(type=PrintTemplateType.CONDITION_CARD).first()
             if not template:
                 return (
                     jsonify({"error": "No condition card template found."}),
@@ -210,9 +206,7 @@ def print_item_sheet(type, id):
             # Get medicament and generate PDF
             medicament = Medicament.query.get_or_404(id)
             # Get the template for medicament cards
-            template = PrintTemplate.query.filter_by(
-                type=PrintTemplateType.MEDICAMENT_CARD.value
-            ).first()
+            template = PrintTemplate.query.filter_by(type=PrintTemplateType.MEDICAMENT_CARD).first()
             if not template:
                 return (
                     jsonify({"error": "No medicament card template found."}),
@@ -224,7 +218,7 @@ def print_item_sheet(type, id):
             exotic = ExoticSubstance.query.get_or_404(id)
             # Get the template for exotic substance labels
             template = PrintTemplate.query.filter_by(
-                type=PrintTemplateType.EXOTIC_SUBSTANCE_LABEL.value
+                type=PrintTemplateType.EXOTIC_SUBSTANCE_LABEL
             ).first()
             if not template:
                 return (
@@ -258,9 +252,7 @@ def print_event_items(event_id, type):
             if not characters:
                 return jsonify({"error": "No characters found in this event."}), 404
             # Get the template for character sheets
-            template = PrintTemplate.query.filter_by(
-                type=PrintTemplateType.CHARACTER_SHEET.value
-            ).first()
+            template = PrintTemplate.query.filter_by(type=PrintTemplateType.CHARACTER_SHEET).first()
             if not template:
                 return (
                     jsonify({"error": "No character sheet template found."}),
@@ -273,7 +265,7 @@ def print_event_items(event_id, type):
             if not items:
                 return jsonify({"error": "No items found in this event."}), 404
             # Get the template for item cards
-            template = PrintTemplate.query.filter_by(type=PrintTemplateType.ITEM_CARD.value).first()
+            template = PrintTemplate.query.filter_by(type=PrintTemplateType.ITEM_CARD).first()
             if not template:
                 return (
                     jsonify({"error": "No item card template found."}),
