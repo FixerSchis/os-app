@@ -358,3 +358,115 @@ class TestMessagesRoutes:
                 "text",
                 "<p>html</p>",
             )
+
+    def test_send_message_exact_funds_split(
+        self, test_client, sample_user, sample_character, group, db
+    ):
+        """Test sending message when character and group together have exactly enough funds."""
+        with test_client.session_transaction() as sess:
+            sess["_user_id"] = str(sample_user.id)
+            sess["_fresh"] = True
+        sample_character.group = group
+        sample_character.bank_account = 3
+        group.bank_account = 7
+        db.session.commit()
+        db.session.refresh(sample_character)
+        db.session.refresh(group)
+        response = test_client.post(
+            "/messages/messages/send",
+            data={
+                "recipient_name": "Test Recipient",
+                "content": "Test message content",
+            },
+            follow_redirects=True,
+        )
+        assert response.status_code == 200
+        assert b"Message sent successfully" in response.data
+        db.session.refresh(sample_character)
+        db.session.refresh(group)
+        assert sample_character.bank_account == 0
+        assert group.bank_account == 0
+
+    def test_send_message_group_zero_character_enough(
+        self, test_client, sample_user, sample_character, group, db
+    ):
+        """Test sending message when group has zero but character has enough funds."""
+        with test_client.session_transaction() as sess:
+            sess["_user_id"] = str(sample_user.id)
+            sess["_fresh"] = True
+        sample_character.group = group
+        sample_character.bank_account = 15
+        group.bank_account = 0
+        db.session.commit()
+        db.session.refresh(sample_character)
+        db.session.refresh(group)
+        response = test_client.post(
+            "/messages/messages/send",
+            data={
+                "recipient_name": "Test Recipient",
+                "content": "Test message content",
+            },
+            follow_redirects=True,
+        )
+        assert response.status_code == 200
+        assert b"Message sent successfully" in response.data
+        db.session.refresh(sample_character)
+        db.session.refresh(group)
+        assert sample_character.bank_account == 5
+        assert group.bank_account == 0
+
+    def test_send_message_character_zero_group_insufficient(
+        self, test_client, sample_user, sample_character, group, db
+    ):
+        """Test sending message when character has zero and group has insufficient funds."""
+        with test_client.session_transaction() as sess:
+            sess["_user_id"] = str(sample_user.id)
+            sess["_fresh"] = True
+        sample_character.group = group
+        sample_character.bank_account = 0
+        group.bank_account = 5
+        db.session.commit()
+        db.session.refresh(sample_character)
+        db.session.refresh(group)
+        response = test_client.post(
+            "/messages/messages/send",
+            data={
+                "recipient_name": "Test Recipient",
+                "content": "Test message content",
+            },
+            follow_redirects=True,
+        )
+        assert response.status_code == 200
+        assert b"Insufficient funds" in response.data
+        db.session.refresh(sample_character)
+        db.session.refresh(group)
+        assert sample_character.bank_account == 0
+        assert group.bank_account == 5
+
+    def test_send_message_both_insufficient(
+        self, test_client, sample_user, sample_character, group, db
+    ):
+        """Test sending message when both character and group have insufficient funds."""
+        with test_client.session_transaction() as sess:
+            sess["_user_id"] = str(sample_user.id)
+            sess["_fresh"] = True
+        sample_character.group = group
+        sample_character.bank_account = 2
+        group.bank_account = 3
+        db.session.commit()
+        db.session.refresh(sample_character)
+        db.session.refresh(group)
+        response = test_client.post(
+            "/messages/messages/send",
+            data={
+                "recipient_name": "Test Recipient",
+                "content": "Test message content",
+            },
+            follow_redirects=True,
+        )
+        assert response.status_code == 200
+        assert b"Insufficient funds" in response.data
+        db.session.refresh(sample_character)
+        db.session.refresh(group)
+        assert sample_character.bank_account == 2
+        assert group.bank_account == 3
