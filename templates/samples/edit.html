@@ -1,0 +1,70 @@
+{% extends "_template.html" %}
+
+{% block title %}{% if sample %}Edit{% else %}Create{% endif %} Sample - Orion Sphere LRP{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="rules-management">
+        <h1>{% if sample %}Edit{% else %}Create{% endif %} Sample</h1>
+        <form method="POST">
+            <div class="form-group mb-3">
+                <label for="name">Name</label>
+                <input type="text" class="form-control" id="name" name="name" value="{{ sample.name if sample else '' }}" required>
+            </div>
+            
+            <div class="form-group mb-3">
+                <label for="type">Type</label>
+                <select class="form-control" id="type" name="type" required>
+                    <option value="">Select Type</option>
+                    {% for type in science_types %}
+                    <option value="{{ type }}" {% if sample and sample.type and sample.type.value == type %}selected{% endif %}>{{ type|title }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="form-group mb-3">
+                <label for="description">Description</label>
+                <textarea class="form-control" id="description" name="description" rows="3">{{ sample.description if sample else '' }}</textarea>
+            </div>
+            
+            <div class="form-group mb-3">
+                <label for="tags">Tags</label>
+                <select class="form-control select2" id="tags" name="tags[]" multiple>
+                    {% for tag in tags %}
+                    <option value="{{ tag.name }}" {% if sample and tag in sample.tags %}selected{% endif %}>{{ tag.name }}</option>
+                    {% endfor %}
+                </select>
+                <small class="form-text text-muted">You can type to add new tags</small>
+            </div>
+            
+            <div class="form-group mb-3">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="is_researched" name="is_researched" {% if sample and sample.is_researched %}checked{% endif %}>
+                    <label class="form-check-label" for="is_researched">
+                        Is Researched
+                    </label>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <button type="submit" class="btn btn-primary">Save</button>
+                <a href="{{ url_for('samples.sample_list') }}" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+$(document).ready(function() {
+    // Initialize Select2 for tags
+    $('#tags').select2({
+        tags: true,
+        tokenSeparators: [',', ' '],
+        placeholder: 'Select or type to add tags...'
+    });
+});
+</script>
+{% endblock %} 

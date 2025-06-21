@@ -31,9 +31,9 @@ from flask_login import current_user, login_required
 from models.tools.downtime import DowntimePeriod
 from models.enums import DowntimeStatus, DowntimeTaskStatus
 from models.tools.research import CharacterResearch
-from routes.tools.samples import samples_bp
 from routes.events import events_bp
 from routes.tools.tickets import tickets_bp
+from routes.database.samples import samples_bp
 
 def create_app(config_class=None):
     app = Flask("Orion Sphere LRP")
@@ -81,7 +81,6 @@ def create_app(config_class=None):
     app.register_blueprint(groups_bp, url_prefix='/groups')
     app.register_blueprint(messages_bp, url_prefix='/messages')
     app.register_blueprint(research_bp, url_prefix='/research')
-    app.register_blueprint(samples_bp, url_prefix='/samples')
     app.register_blueprint(settings_bp, url_prefix='/settings')
     app.register_blueprint(templates_bp, url_prefix='/templates')
     app.register_blueprint(tickets_bp, url_prefix='/tickets')
@@ -100,6 +99,7 @@ def create_app(config_class=None):
     app.register_blueprint(items_bp, url_prefix='/db/items')
     app.register_blueprint(medicaments_bp, url_prefix='/db/medicaments')
     app.register_blueprint(mods_bp, url_prefix='/db/mods')
+    app.register_blueprint(samples_bp, url_prefix='/db/samples')
     app.register_blueprint(skills_bp, url_prefix='/db/skills')
     app.register_blueprint(species_bp, url_prefix='/db/species')
 

@@ -218,6 +218,9 @@
                             <hr>
                             <a href="{{ url_for('conditions.list') }}">Conditions</a>
                             <a href="{{ url_for('cybernetics.list') }}">Cybernetics</a>
+                            <a href="{{ url_for('samples.sample_list') }}">Samples</a>
+                        {% elif current_user.is_authenticated and current_user.has_role('downtime_team') %}
+                            <a href="{{ url_for('samples.sample_list') }}">Samples</a>
                         {% else %}
                             <hr>
                         {% endif %}

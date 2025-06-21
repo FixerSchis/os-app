@@ -6,6 +6,7 @@
 <div class="container">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1>Samples</h1>
+        <a href="{{ url_for('samples.create') }}" class="btn btn-primary">Create Sample</a>
     </div>
 
     <div class="card">
@@ -35,10 +36,18 @@
                             <td>{{ sample.group.name if sample.group else 'No Group' }}</td>
                             <td>{{ 'Researched' if sample.is_researched else 'Not Researched' }}</td>
                             <td>
+                                <a href="{{ url_for('samples.edit', id=sample.id) }}" class="btn btn-sm btn-outline-primary">Edit</a>
+                                <form method="POST" action="{{ url_for('samples.delete', id=sample.id) }}" style="display:inline;">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete this sample?');">Delete</button>
+                                </form>
                                 <button class="btn btn-primary btn-sm print-sample-btn" data-sample-id="{{ sample.id }}">
                                     <i class="fas fa-print"></i> Print Sheet
                                 </button>
                             </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="6" class="text-center text-muted">No samples found.</td>
                         </tr>
                         {% endfor %}
                     </tbody>
