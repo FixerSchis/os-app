@@ -5,8 +5,8 @@ This script checks various aspects of the CI/CD configuration.
 """
 
 import os
-import sys
 import subprocess  # nosec
+import sys
 from pathlib import Path
 
 
@@ -16,12 +16,7 @@ def run_command(command, cwd=None):
         # If command is a string, split it for safety
         if isinstance(command, str):
             command = command.split()
-        result = subprocess.run(
-            command,
-            capture_output=True,
-            text=True,
-            cwd=cwd
-        )
+        result = subprocess.run(command, capture_output=True, text=True, cwd=cwd)
         return result.returncode == 0, result.stdout, result.stderr
     except Exception as e:
         return False, "", str(e)
@@ -36,23 +31,23 @@ def main():
     """Main verification function."""
     print("🔍 Verifying CI/CD Setup...")
     print("=" * 50)
-    
+
     # Get repository root
     repo_root = Path(__file__).parent.parent
     os.chdir(repo_root)
-    
+
     checks_passed = 0
     total_checks = 0
-    
+
     # Check 1: Verify workflow files exist
     print("\n1. Checking workflow files...")
     workflow_files = [
         ".github/workflows/ci.yml",
         ".github/workflows/setup-branch-protection.yml",
         ".github/workflows/initial-setup.yml",
-        ".github/workflows/release.yml"
+        ".github/workflows/release.yml",
     ]
-    
+
     for workflow_file in workflow_files:
         total_checks += 1
         if check_file_exists(workflow_file):
@@ -60,7 +55,7 @@ def main():
             checks_passed += 1
         else:
             print(f"   ❌ {workflow_file} missing")
-    
+
     # Check 2: Verify pre-commit config
     print("\n2. Checking pre-commit configuration...")
     total_checks += 1
@@ -69,7 +64,7 @@ def main():
         checks_passed += 1
     else:
         print("   ❌ .pre-commit-config.yaml missing")
-    
+
     # Check 3: Check current branch
     print("\n3. Checking current branch...")
     success, stdout, stderr = run_command(["git", "branch", "--show-current"])
@@ -83,7 +78,7 @@ def main():
             print("   ⚠️  Not on master or develop branch")
     else:
         print(f"   ❌ Could not determine current branch: {stderr}")
-    
+
     # Check 4: Check if develop branch exists
     print("\n4. Checking if develop branch exists...")
     success, stdout, stderr = run_command(["git", "ls-remote", "--heads", "origin", "develop"])
@@ -93,7 +88,7 @@ def main():
         checks_passed += 1
     else:
         print("   ❌ Develop branch does not exist on remote")
-    
+
     # Check 5: Check if workflows are properly configured for master
     print("\n5. Checking workflow branch configuration...")
     total_checks += 1
@@ -107,7 +102,7 @@ def main():
             print("   ❌ CI workflow not properly configured for master/develop")
     else:
         print("   ❌ CI workflow file not found")
-    
+
     # Check 6: Verify requirements files
     print("\n6. Checking requirements files...")
     req_files = ["requirements.txt", "requirements-dev.txt"]
@@ -118,7 +113,7 @@ def main():
             checks_passed += 1
         else:
             print(f"   ❌ {req_file} missing")
-    
+
     # Check 7: Check pytest configuration
     print("\n7. Checking pytest configuration...")
     total_checks += 1
@@ -127,11 +122,11 @@ def main():
         checks_passed += 1
     else:
         print("   ❌ pytest.ini missing")
-    
+
     # Summary
     print("\n" + "=" * 50)
     print(f"📊 Summary: {checks_passed}/{total_checks} checks passed")
-    
+
     if checks_passed == total_checks:
         print("🎉 All checks passed! Your CI/CD setup should be working correctly.")
         print("\nNext steps:")
@@ -145,9 +140,9 @@ def main():
         print("1. Ensure all workflow files are properly configured")
         print("2. Push to master/develop to trigger workflow runs")
         print("3. Check GitHub Actions tab for any workflow failures")
-    
+
     return 0 if checks_passed == total_checks else 1
 
 
 if __name__ == "__main__":
-    sys.exit(main()) 
+    sys.exit(main())
