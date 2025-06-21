@@ -42,7 +42,9 @@ def check_python_version():
 
 def check_virtual_environment():
     """Check if we're in a virtual environment."""
-    if hasattr(sys, 'real_prefix') or (hasattr(sys, 'base_prefix') and sys.base_prefix != sys.prefix):
+    if hasattr(sys, "real_prefix") or (
+        hasattr(sys, "base_prefix") and sys.base_prefix != sys.prefix
+    ):
         print("✅ Virtual environment detected")
         return True
     else:
@@ -68,7 +70,7 @@ def setup_pre_commit():
 def run_initial_checks():
     """Run initial checks to ensure everything is working."""
     print("\n🔍 Running initial checks...")
-    
+
     # Check if tools are available
     tools = [
         ("black", "Black formatter"),
@@ -78,7 +80,7 @@ def run_initial_checks():
         ("bandit", "bandit security checker"),
         ("pre-commit", "pre-commit hooks"),
     ]
-    
+
     for tool, description in tools:
         result = run_command(f"{tool} --version", f"Checking {description}", check=False)
         if result.returncode == 0:
@@ -97,33 +99,35 @@ def run_formatting():
 def run_tests():
     """Run tests to ensure everything is working."""
     print("\n🧪 Running tests...")
-    run_command("pytest --cov=. --cov-report=term-missing", "Running tests with coverage", check=False)
+    run_command(
+        "pytest --cov=. --cov-report=term-missing", "Running tests with coverage", check=False
+    )
 
 
 def main():
     """Main setup function."""
     print("🚀 Setting up development environment for OS App")
     print("=" * 50)
-    
+
     # Check prerequisites
     check_python_version()
     check_virtual_environment()
-    
+
     # Install dependencies
     install_dependencies()
-    
+
     # Set up pre-commit hooks
     setup_pre_commit()
-    
+
     # Run initial checks
     run_initial_checks()
-    
+
     # Run initial formatting
     run_formatting()
-    
+
     # Run tests
     run_tests()
-    
+
     print("\n" + "=" * 50)
     print("🎉 Development environment setup complete!")
     print("\nNext steps:")
@@ -139,4 +143,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main() 
+    main()

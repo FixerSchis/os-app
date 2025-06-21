@@ -1,0 +1,22 @@
+Orion Sphere LRP - Message Response Received
+
+Hello {{ user.first_name }},
+
+Your message to {{ message.recipient_name }} has received a response from an NPC.
+
+Original Message:
+"{{ message.content }}"
+
+Response:
+"{{ message.response }}"
+
+You can view your messages at: {{ url_for('messages.messages', _external=True) }}
+
+If you have any questions, please contact the game administrators.
+
+Best regards,
+The Orion Sphere LRP Team
+
+---
+This is an automated notification from Orion Sphere LRP.
+You can manage your notification preferences in your account settings. 

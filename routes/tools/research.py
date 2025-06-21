@@ -701,9 +701,9 @@ def project_info():
                                 req_to_dict(req) for req in current_stage.stage.unlock_requirements
                             ]
                 else:
-                    result["error"] = (
-                        "Character not assigned to this project or player ID mismatch."
-                    )
+                    result[
+                        "error"
+                    ] = "Character not assigned to this project or player ID mismatch."
         else:
             result["error"] = "Invalid character ID format."
     return jsonify(result)

@@ -6,6 +6,7 @@ from models.extensions import db
 from models.tools.character import Character
 from models.tools.message import Message
 from utils.decorators import npc_required
+from utils.email import send_notification_email
 
 bp = Blueprint("messages", __name__)
 
@@ -57,15 +58,20 @@ def send_message():
         flash("Invalid sender.", "error")
         return redirect(url_for("messages.messages"))
 
+    # Check if character can afford the message cost before creating the message
     if not paid_in_cash:
         if not sender.can_afford(10):
             flash("Insufficient funds. Messages cost 10 ec.", "error")
             return redirect(url_for("messages.messages"))
+
+    # Create the message first
+    message = Message(sender_id=sender_id, recipient_name=recipient_name, content=content)
+    db.session.add(message)
+
+    # Deduct funds only after the message is successfully created
+    if not paid_in_cash:
         sender.spend_funds(10, editor_user_id=current_user.id, reason="Send message")
 
-    message = Message(sender_id=sender_id, recipient_name=recipient_name, content=content)
-
-    db.session.add(message)
     db.session.commit()
 
     flash("Message sent successfully!", "success")
@@ -100,6 +106,10 @@ def respond_to_message(message_id):
             "response": response_text,
         }
     )
+
+    # Send email notification to the user if they want it
+    if message.sender.user:
+        send_notification_email(message.sender.user, "message_responded", message=message)
 
     flash("Response sent successfully!", "success")
     return redirect(url_for("messages.messages"))
