@@ -44,7 +44,7 @@
     <!-- Messages List -->
     <div class="card">
         <div class="card-header">
-            <h4>Pending Messages</h4>
+            <h4>All Messages</h4>
         </div>
         <div class="card-body">
             {% if messages %}
@@ -55,6 +55,7 @@
                                 <th>From</th>
                                 <th>To</th>
                                 <th>Sent</th>
+                                <th>Status</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -65,13 +66,61 @@
                                     <td>{{ message.recipient_name }}</td>
                                     <td>{{ message.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
                                     <td>
-                                        <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#responseModal{{ message.id }}">
-                                            Respond
-                                        </button>
+                                        {% if message.response %}
+                                            <span class="badge bg-success">Responded</span>
+                                        {% else %}
+                                            <span class="badge bg-warning">Pending</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if message.response %}
+                                            <button type="button" class="btn btn-info btn-sm" data-bs-toggle="modal" data-bs-target="#viewModal{{ message.id }}">
+                                                View
+                                            </button>
+                                        {% else %}
+                                            <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#responseModal{{ message.id }}">
+                                                Respond
+                                            </button>
+                                        {% endif %}
                                     </td>
                                 </tr>
 
-                                <!-- Response Modal -->
+                                <!-- View Modal for responded messages -->
+                                {% if message.response %}
+                                <div class="modal fade" id="viewModal{{ message.id }}" tabindex="-1" aria-labelledby="viewModalLabel{{ message.id }}" aria-hidden="true">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title" id="viewModalLabel{{ message.id }}">Message Details</h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <div class="mb-3">
+                                                    <strong>From:</strong> {{ message.sender.name }}
+                                                </div>
+                                                <div class="mb-3">
+                                                    <strong>To:</strong> {{ message.recipient_name }}
+                                                </div>
+                                                <div class="mb-3">
+                                                    <strong>Original Message:</strong>
+                                                    <p class="mt-2">{{ message.content }}</p>
+                                                </div>
+                                                <div class="mt-3 p-3 message-response">
+                                                    <strong>Response:</strong>
+                                                    <p class="mt-2 mb-0">{{ message.response }}</p>
+                                                    <small class="text-muted">Responded: {{ message.responded_at.strftime('%Y-%m-%d %H:%M') }}</small>
+                                                </div>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endif %}
+
+                                <!-- Response Modal for pending messages -->
+                                {% if not message.response %}
                                 <div class="modal fade" id="responseModal{{ message.id }}" tabindex="-1" aria-labelledby="responseModalLabel{{ message.id }}" aria-hidden="true">
                                     <div class="modal-dialog">
                                         <div class="modal-content">
@@ -104,12 +153,13 @@
                                         </div>
                                     </div>
                                 </div>
+                                {% endif %}
                             {% endfor %}
                         </tbody>
                     </table>
                 </div>
             {% else %}
-                <p class="text-muted">No pending messages.</p>
+                <p class="text-muted">No messages.</p>
             {% endif %}
         </div>
     </div>
