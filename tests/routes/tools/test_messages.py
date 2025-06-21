@@ -1,5 +1,6 @@
 import os
 import sys
+from unittest.mock import patch
 
 from models.tools.message import Message
 
@@ -248,3 +249,35 @@ class TestMessagesRoutes:
 
         # Should be forbidden for non-NPC users
         assert response.status_code in [403, 302]  # 403 Forbidden or redirect
+
+    def test_message_response_sends_notification(self, test_client, npc_user, sample_character, db):
+        """Test that responding to a message sends a notification email to the user."""
+        with test_client.session_transaction() as sess:
+            sess["_user_id"] = str(npc_user.id)
+            sess["_fresh"] = True
+        # Create a message
+        message = Message(
+            sender_id=sample_character.id,
+            recipient_name="Test Recipient",
+            content="Test question",
+        )
+        db.session.add(message)
+        db.session.commit()
+        # Patch send_notification_email and render_email_template
+        with patch("utils.email.send_email") as mock_send, patch(
+            "utils.email.render_email_template"
+        ) as mock_render:
+            mock_render.return_value = ("text", "<p>html</p>")
+            response = test_client.post(
+                f"/messages/messages/{message.id}/respond",
+                data={"response": "Test response"},
+                follow_redirects=True,
+            )
+            assert response.status_code == 200
+            # Should have called send_email with correct subject
+            mock_send.assert_any_call(
+                "Orion Sphere LRP - Message Response Received",
+                [sample_character.user.email],
+                "text",
+                "<p>html</p>",
+            )

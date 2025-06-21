@@ -25,12 +25,9 @@ def bank():
             user_id=current_user.id, status=CharacterStatus.ACTIVE.value
         ).first()
 
-    # Get all characters and groups for admin users
-    all_characters = []
-    all_groups = []
-    if current_user.has_role("user_admin"):
-        all_characters = Character.query.filter_by(status=CharacterStatus.ACTIVE.value).all()
-        all_groups = Group.query.all()
+    # Get all characters and groups for all users (not just admins)
+    all_characters = Character.query.filter_by(status=CharacterStatus.ACTIVE.value).all()
+    all_groups = Group.query.all()
 
     # Get selected accounts if admin
     selected_character = None
@@ -86,7 +83,7 @@ def bank():
                 }
             )
 
-    # Get all target accounts for transfer
+    # Get all target accounts for transfer (now always filled)
     target_accounts = []
     for char in all_characters:
         target_accounts.append(

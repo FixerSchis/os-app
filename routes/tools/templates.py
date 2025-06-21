@@ -290,9 +290,9 @@ def generate_template_completions(template_type):
         item_type_fields = {}
         for column in ItemType.__table__.columns:
             if column.name not in ["id"]:
-                item_type_fields[f"blueprint.item_type.{column.name}"] = (
-                    f"{column.type} - {column.name}"
-                )
+                item_type_fields[
+                    f"blueprint.item_type.{column.name}"
+                ] = f"{column.type} - {column.name}"
 
         completions = {
             "item": {**item_fields, **blueprint_fields, **item_type_fields},

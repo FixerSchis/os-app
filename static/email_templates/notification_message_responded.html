@@ -1,0 +1,17 @@
+<html>
+  <body>
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto;">
+      <h2>Orion Sphere LRP - Message Response Received</h2>
+      <p>Hello {{ user.first_name }},</p>
+      <p>Your message to <strong>{{ message.recipient_name }}</strong> has received a response from an NPC.</p>
+      <p><strong>Original Message:</strong><br>{{ message.content }}</p>
+      <p><strong>Response:</strong><br>{{ message.response }}</p>
+      <p>You can view your messages at: <a href="{{ url_for('messages.messages', _external=True) }}">View Messages</a></p>
+      <p>If you have any questions, please contact the game administrators.</p>
+      <br>
+      <p>Best regards,<br>The Orion Sphere LRP Team</p>
+      <hr>
+      <p style="font-size: small; color: #888;">This is an automated notification from Orion Sphere LRP.<br>You can manage your notification preferences in your account settings.</p>
+    </div>
+  </body>
+</html> 

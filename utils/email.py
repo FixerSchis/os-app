@@ -117,6 +117,10 @@ def send_notification_email(user, notification_type, **kwargs):
             "subject": "Orion Sphere LRP - Wiki Version Published",
             "template": "notification_wiki_published",
         },
+        "message_responded": {
+            "subject": "Orion Sphere LRP - Message Response Received",
+            "template": "notification_message_responded",
+        },
     }
 
     config = notification_config.get(notification_type)
