@@ -19,7 +19,8 @@ depends_on = None
 def upgrade():
     op.add_column("user", sa.Column("notify_message_responded", sa.Boolean(), nullable=True))
     op.execute("UPDATE user SET notify_message_responded = 1")
-    op.alter_column("user", "notify_message_responded", nullable=False, server_default=sa.true())
+    # SQLite doesn't support ALTER COLUMN, so we'll leave it nullable for now
+    # The application can handle the default value
 
 
 def downgrade():
