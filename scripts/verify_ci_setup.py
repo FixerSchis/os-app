@@ -6,18 +6,20 @@ This script checks various aspects of the CI/CD configuration.
 
 import os
 import sys
-import subprocess
+import subprocess  # nosec
 from pathlib import Path
 
 
 def run_command(command, cwd=None):
-    """Run a command and return the result."""
+    """Run a command and return the result. Accepts command as a list."""
     try:
+        # If command is a string, split it for safety
+        if isinstance(command, str):
+            command = command.split()
         result = subprocess.run(
-            command, 
-            shell=True, 
-            capture_output=True, 
-            text=True, 
+            command,
+            capture_output=True,
+            text=True,
             cwd=cwd
         )
         return result.returncode == 0, result.stdout, result.stderr
@@ -70,7 +72,7 @@ def main():
     
     # Check 3: Check current branch
     print("\n3. Checking current branch...")
-    success, stdout, stderr = run_command("git branch --show-current")
+    success, stdout, stderr = run_command(["git", "branch", "--show-current"])
     total_checks += 1
     if success:
         current_branch = stdout.strip()
@@ -78,13 +80,13 @@ def main():
         if current_branch in ["master", "develop"]:
             checks_passed += 1
         else:
-            print(f"   ⚠️  Not on master or develop branch")
+            print("   ⚠️  Not on master or develop branch")
     else:
         print(f"   ❌ Could not determine current branch: {stderr}")
     
     # Check 4: Check if develop branch exists
     print("\n4. Checking if develop branch exists...")
-    success, stdout, stderr = run_command("git ls-remote --heads origin develop")
+    success, stdout, stderr = run_command(["git", "ls-remote", "--heads", "origin", "develop"])
     total_checks += 1
     if success and stdout.strip():
         print("   ✅ Develop branch exists on remote")
