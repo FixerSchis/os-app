@@ -7,7 +7,7 @@ tools, dependencies, and pre-commit hooks.
 """
 
 import os
-import subprocess
+import subprocess  # nosec
 import sys
 from pathlib import Path
 
@@ -16,7 +16,11 @@ def run_command(command, description, check=True):
     """Run a command and handle errors."""
     print(f"🔄 {description}...")
     try:
-        result = subprocess.run(command, shell=True, check=check, capture_output=True, text=True)
+        # If command is a string, split it for safety
+        if isinstance(command, str):
+            command = command.split()
+        
+        result = subprocess.run(command, check=check, capture_output=True, text=True)
         if result.stdout:
             print(f"✅ {description} completed successfully")
         return result
@@ -56,15 +60,15 @@ def check_virtual_environment():
 def install_dependencies():
     """Install project dependencies."""
     # Install base requirements
-    run_command("pip install --upgrade pip", "Upgrading pip")
-    run_command("pip install -r requirements.txt", "Installing base requirements")
-    run_command("pip install -r requirements-dev.txt", "Installing development requirements")
+    run_command(["pip", "install", "--upgrade", "pip"], "Upgrading pip")
+    run_command(["pip", "install", "-r", "requirements.txt"], "Installing base requirements")
+    run_command(["pip", "install", "-r", "requirements-dev.txt"], "Installing development requirements")
 
 
 def setup_pre_commit():
     """Set up pre-commit hooks."""
-    run_command("pre-commit install", "Installing pre-commit hooks")
-    run_command("pre-commit install --hook-type commit-msg", "Installing commit-msg hook")
+    run_command(["pre-commit", "install"], "Installing pre-commit hooks")
+    run_command(["pre-commit", "install", "--hook-type", "commit-msg"], "Installing commit-msg hook")
 
 
 def run_initial_checks():
@@ -73,16 +77,16 @@ def run_initial_checks():
 
     # Check if tools are available
     tools = [
-        ("black", "Black formatter"),
-        ("isort", "isort import sorter"),
-        ("flake8", "flake8 linter"),
-        ("pytest", "pytest test runner"),
-        ("bandit", "bandit security checker"),
-        ("pre-commit", "pre-commit hooks"),
+        (["black", "--version"], "Black formatter"),
+        (["isort", "--version"], "isort import sorter"),
+        (["flake8", "--version"], "flake8 linter"),
+        (["pytest", "--version"], "pytest test runner"),
+        (["bandit", "--version"], "bandit security checker"),
+        (["pre-commit", "--version"], "pre-commit hooks"),
     ]
 
     for tool, description in tools:
-        result = run_command(f"{tool} --version", f"Checking {description}", check=False)
+        result = run_command(tool, f"Checking {description}", check=False)
         if result.returncode == 0:
             print(f"✅ {description} is available")
         else:
@@ -92,15 +96,15 @@ def run_initial_checks():
 def run_formatting():
     """Run initial formatting on the codebase."""
     print("\n🎨 Running initial code formatting...")
-    run_command("black .", "Formatting code with Black", check=False)
-    run_command("isort .", "Sorting imports with isort", check=False)
+    run_command(["black", "."], "Formatting code with Black", check=False)
+    run_command(["isort", "."], "Sorting imports with isort", check=False)
 
 
 def run_tests():
     """Run tests to ensure everything is working."""
     print("\n🧪 Running tests...")
     run_command(
-        "pytest --cov=. --cov-report=term-missing", "Running tests with coverage", check=False
+        ["pytest", "--cov=.", "--cov-report=term-missing"], "Running tests with coverage", check=False
     )
 
 
