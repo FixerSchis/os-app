@@ -22,7 +22,7 @@
             <table class="table table-striped">
                 <thead>
                     <tr>
-                        <th>Character</th>
+                        <th>Character / User</th>
                         <th>User Name</th>
                         <th>Ticket Type</th>
                         <th>Meal Ticket</th>
@@ -34,14 +34,26 @@
                 <tbody>
                     {% for ticket, character, user in tickets %}
                     <tr>
-                        <td>{{ character.user_id }}.{{ character.character_id }} - {{ character.name }}</td>
+                        <td>
+                            {% if ticket.character %}
+                                {{ character.user_id }}.{{ character.character_id }} - {{ character.name }}
+                            {% elif ticket.child_name %}
+                                {{ ticket.child_name }} (Child)
+                            {% else %}
+                                {{ user.first_name }} {{ user.surname }}
+                            {% endif %}
+                        </td>
                         <td>{{ user.first_name }} {{ user.surname }}</td>
                         <td>{{ TicketType.descriptions()[ticket.ticket_type.value] }}</td>
                         <td>{% if ticket.meal_ticket %}<i class="fas fa-check text-success"></i>{% else %}<i class="fas fa-times text-danger"></i>{% endif %}</td>
                         <td>{% if ticket.requires_bunk %}<i class="fas fa-check text-success"></i>{% else %}<i class="fas fa-times text-danger"></i>{% endif %}</td>
                         <td>£{{ '%.2f'|format(ticket.price_paid) }}</td>
                         <td>
-                            <a href="{{ url_for('events.assign_ticket', event_id=event.id) }}?character_id={{ character.user_id }}.{{ character.character_id }}" class="btn btn-sm btn-primary">Edit</a>
+                            {% if ticket.character %}
+                                <a href="{{ url_for('events.assign_ticket', event_id=event.id) }}?character_id={{ character.user_id }}.{{ character.character_id }}" class="btn btn-sm btn-primary">Edit</a>
+                            {% else %}
+                                <a href="{{ url_for('events.assign_ticket', event_id=event.id) }}" class="btn btn-sm btn-primary">Edit</a>
+                            {% endif %}
                         </td>
                     </tr>
                     {% endfor %}

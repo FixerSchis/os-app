@@ -30,10 +30,20 @@
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
+                                    <label for="ticket_type" class="form-label">Ticket Type</label>
+                                    <select class="form-select" id="ticket_type" name="ticket_type" required>
+                                        {% for ticket_type in TicketType.values() %}
+                                        <option value="{{ ticket_type }}">{{ TicketType.descriptions()[ticket_type] }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+
+                                <!-- Character ID Input (for Adult tickets) -->
+                                <div class="mb-3" id="character_section">
                                     <label for="character" class="form-label">Character ID (user_id.character_id)</label>
                                     <div class="input-group">
                                         <input type="text" class="form-control" id="character" name="character"
-                                               pattern="\d+\.\d+" placeholder="e.g. 1.1" required>
+                                               pattern="\d+\.\d+" placeholder="e.g. 1.1">
                                         <span class="input-group-text" id="character_id_status">
                                             <i class="fas fa-question text-muted"></i>
                                         </span>
@@ -41,13 +51,21 @@
                                     <div id="character_name" class="form-text text-success" style="display: none;"></div>
                                 </div>
 
-                                <div class="mb-3">
-                                    <label for="ticket_type" class="form-label">Ticket Type</label>
-                                    <select class="form-select" id="ticket_type" name="ticket_type" required>
-                                        {% for ticket_type in TicketType.values() %}
-                                        <option value="{{ ticket_type }}">{{ TicketType.descriptions()[ticket_type] }}</option>
+                                <!-- User Selection (for Crew and Child tickets) -->
+                                <div class="mb-3" id="user_section" style="display: none;">
+                                    <label for="user_id" class="form-label">User</label>
+                                    <select class="form-select" id="user_id" name="user_id">
+                                        <option value="">Select a user...</option>
+                                        {% for user in users %}
+                                        <option value="{{ user.id }}">{{ user.first_name }} {{ user.surname }} ({{ user.email }})</option>
                                         {% endfor %}
                                     </select>
+                                </div>
+
+                                <!-- Child Name Input (for Child tickets) -->
+                                <div class="mb-3" id="child_name_section" style="display: none;">
+                                    <label for="child_name" class="form-label">Child's Name</label>
+                                    <input type="text" class="form-control" id="child_name" name="child_name" maxlength="255" placeholder="Enter child's name">
                                 </div>
                             </div>
                             <div class="col-md-6">
@@ -94,6 +112,40 @@
 <script>
 let validationTimeout = null;
 const eventId = document.getElementById('event_id').value;
+
+function updateFormFields() {
+    const ticketType = document.getElementById('ticket_type').value;
+    // Hide all conditional fields by default
+    document.getElementById('character_section').style.display = 'none';
+    document.getElementById('user_section').style.display = 'none';
+    document.getElementById('child_name_section').style.display = 'none';
+
+    // Adult: show character selection
+    if (ticketType === 'adult') {
+        document.getElementById('character_section').style.display = '';
+        document.getElementById('character').required = true;
+        document.getElementById('user_id').required = false;
+        document.getElementById('child_name').required = false;
+    }
+    // Crew: show user selection
+    else if (ticketType === 'crew') {
+        document.getElementById('user_section').style.display = '';
+        document.getElementById('character').required = false;
+        document.getElementById('user_id').required = true;
+        document.getElementById('child_name').required = false;
+    }
+    // Child: show user and child name
+    else if (["child_12_15", "child_7_11", "child_under_7"].includes(ticketType)) {
+        document.getElementById('user_section').style.display = '';
+        document.getElementById('child_name_section').style.display = '';
+        document.getElementById('character').required = false;
+        document.getElementById('user_id').required = true;
+        document.getElementById('child_name').required = true;
+    }
+}
+
+document.getElementById('ticket_type').addEventListener('change', updateFormFields);
+window.addEventListener('DOMContentLoaded', updateFormFields);
 
 document.getElementById('character').addEventListener('input', function(e) {
     const characterId = e.target.value;

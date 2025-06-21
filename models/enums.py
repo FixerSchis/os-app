@@ -276,7 +276,6 @@ class TicketType(Enum):
     CHILD_12_15 = "child_12_15"
     CHILD_7_11 = "child_7_11"
     CHILD_UNDER_7 = "child_under_7"
-    MEAL_TICKET_ONLY = "meal_ticket_only"
     CREW = "crew"
 
     @classmethod
@@ -290,7 +289,6 @@ class TicketType(Enum):
             cls.CHILD_12_15.value: "Child (12-15)",
             cls.CHILD_7_11.value: "Child (7-11)",
             cls.CHILD_UNDER_7.value: "Child (under 7)",
-            cls.MEAL_TICKET_ONLY.value: "Meal Ticket Only",
             cls.CREW.value: "Crew",
         }
 

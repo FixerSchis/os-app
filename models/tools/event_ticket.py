@@ -9,7 +9,8 @@ class EventTicket(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     event_id = db.Column(db.Integer, db.ForeignKey("events.id"), nullable=False)
-    character_id = db.Column(db.Integer, db.ForeignKey("character.id"), nullable=False)
+    character_id = db.Column(db.Integer, db.ForeignKey("character.id"), nullable=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
     ticket_type = db.Column(
         db.Enum(
             TicketType,
@@ -23,11 +24,15 @@ class EventTicket(db.Model):
     price_paid = db.Column(db.Float, nullable=False)
     assigned_by_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
     assigned_at = db.Column(db.DateTime, default=datetime.now(timezone.utc))
+    child_name = db.Column(db.String(255), nullable=True)
 
     # Relationships
     event = db.relationship("Event", back_populates="tickets")
     character = db.relationship("Character", back_populates="event_tickets")
-    assigned_by = db.relationship("User", back_populates="assigned_tickets")
+    user = db.relationship("User", foreign_keys=[user_id])
+    assigned_by = db.relationship(
+        "User", foreign_keys=[assigned_by_id], back_populates="assigned_tickets"
+    )
 
     def get_ticket_price(self):
         if self.ticket_type == TicketType.ADULT.value:

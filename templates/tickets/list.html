@@ -16,7 +16,7 @@
                     <thead>
                         <tr>
                             <th>Event</th>
-                            <th>Character</th>
+                            <th>Character / User</th>
                             <th>Ticket Type</th>
                             <th>Event Date</th>
                         </tr>
@@ -25,7 +25,15 @@
                         {% for ticket in character_tickets %}
                             <tr>
                                 <td>{{ ticket.event.name }}</td>
-                                <td>{{ ticket.character.name }}</td>
+                                <td>
+                                    {% if ticket.character %}
+                                        {{ ticket.character.name }}
+                                    {% elif ticket.child_name %}
+                                        {{ ticket.child_name }} (Child)
+                                    {% else %}
+                                        {{ ticket.user.first_name }} {{ ticket.user.surname }}
+                                    {% endif %}
+                                </td>
                                 <td>{{ TicketType.descriptions()[ticket.ticket_type.value] }}</td>
                                 <td>{{ ticket.event.start_date.strftime('%Y-%m-%d') }}</td>
                             </tr>
@@ -48,7 +56,7 @@
                     <thead>
                         <tr>
                             <th>Event</th>
-                            <th>Character</th>
+                            <th>Character / User</th>
                             <th>Ticket Type</th>
                             <th>Event Date</th>
                         </tr>
@@ -57,7 +65,15 @@
                         {% for ticket in assigned_tickets %}
                             <tr>
                                 <td>{{ ticket.event.name }}</td>
-                                <td>{{ ticket.character.name }}</td>
+                                <td>
+                                    {% if ticket.character %}
+                                        {{ ticket.character.name }}
+                                    {% elif ticket.child_name %}
+                                        {{ ticket.child_name }} (Child)
+                                    {% else %}
+                                        {{ ticket.user.first_name }} {{ ticket.user.surname }}
+                                    {% endif %}
+                                </td>
                                 <td>{{ TicketType.descriptions()[ticket.ticket_type.value] }}</td>
                                 <td>{{ ticket.event.start_date.strftime('%Y-%m-%d') }}</td>
                             </tr>

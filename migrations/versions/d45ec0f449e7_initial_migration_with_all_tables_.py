@@ -701,7 +701,6 @@ def upgrade():
                 "child_12_15",
                 "child_7_11",
                 "child_under_7",
-                "meal_ticket_only",
                 "crew",
                 name="tickettype",
                 native_enum=False,

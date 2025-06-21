@@ -15,7 +15,7 @@ tickets_bp = Blueprint("tickets", __name__)
 def list_tickets():
     now = datetime.now(timezone.utc)
 
-    # Get tickets for user's characters
+    # Get tickets for user's characters (adult tickets)
     character_ids = [char.id for char in current_user.characters]
 
     # Upcoming tickets for characters
@@ -35,6 +35,27 @@ def list_tickets():
     )
 
     character_tickets = upcoming_character_tickets + past_character_tickets
+
+    # Get tickets where user is the recipient (crew tickets, child tickets purchased by user)
+    # Upcoming tickets where user is recipient
+    upcoming_user_tickets = (
+        EventTicket.query.join(Event)
+        .filter(EventTicket.user_id == current_user.id, Event.end_date >= now)
+        .filter(EventTicket.character_id.is_(None))  # Only tickets without characters
+        .order_by(Event.start_date.asc())
+        .all()
+    )
+
+    # Past tickets where user is recipient
+    past_user_tickets = (
+        EventTicket.query.join(Event)
+        .filter(EventTicket.user_id == current_user.id, Event.end_date < now)
+        .filter(EventTicket.character_id.is_(None))  # Only tickets without characters
+        .order_by(Event.start_date.desc())
+        .all()
+    )
+
+    user_tickets = upcoming_user_tickets + past_user_tickets
 
     # Get tickets assigned by user
     # Upcoming tickets assigned by user
@@ -57,7 +78,7 @@ def list_tickets():
 
     return render_template(
         "tickets/list.html",
-        character_tickets=character_tickets,
+        character_tickets=character_tickets + user_tickets,  # Combine character and user tickets
         assigned_tickets=assigned_tickets,
         TicketType=TicketType,
     )
