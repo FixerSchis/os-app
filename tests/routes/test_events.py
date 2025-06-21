@@ -1,3 +1,4 @@
+import json
 from datetime import datetime, timedelta
 from unittest.mock import patch
 
@@ -193,6 +194,72 @@ def test_purchase_ticket_get_no_active_character(test_client, authenticated_user
     response = test_client.get(f"/events/{event.id}/purchase", follow_redirects=True)
     assert response.status_code == 200
     # Should redirect due to no active character
+
+
+def test_purchase_ticket_post_blank_character_id(test_client, authenticated_user, db):
+    """Test that purchasing tickets with blank character ID is prevented."""
+    # Create a test event
+    event = Event(
+        event_number="TEST007",
+        name="Test Event",
+        event_type="mainline",
+        description="A test event",
+        early_booking_deadline=datetime.now() + timedelta(days=30),
+        start_date=datetime.now() + timedelta(days=45),
+        end_date=datetime.now() + timedelta(days=47),
+        location="Test Location",
+        standard_ticket_price=50.00,
+        early_booking_ticket_price=45.00,
+        child_ticket_price_12_15=25.00,
+        child_ticket_price_7_11=15.00,
+        child_ticket_price_under_7=0.00,
+    )
+    db.session.add(event)
+    db.session.commit()
+
+    with test_client.session_transaction() as session:
+        session["_user_id"] = authenticated_user.id
+        session["_fresh"] = True
+
+    # Test with blank character ID
+    cart_data = [
+        {
+            "ticketType": "adult",
+            "mealTicket": False,
+            "requiresBunk": False,
+            "ticketFor": "other",
+            "characterId": "",  # Blank character ID
+            "price": 50.00,
+        }
+    ]
+
+    response = test_client.post(
+        f"/events/{event.id}/purchase", data={"cart": json.dumps(cart_data)}, follow_redirects=True
+    )
+
+    assert response.status_code == 200
+    # Should show error message about no tickets being purchased
+    assert b"No tickets were purchased" in response.data
+
+    # Test with whitespace-only character ID
+    cart_data = [
+        {
+            "ticketType": "adult",
+            "mealTicket": False,
+            "requiresBunk": False,
+            "ticketFor": "other",
+            "characterId": "   ",  # Whitespace-only character ID
+            "price": 50.00,
+        }
+    ]
+
+    response = test_client.post(
+        f"/events/{event.id}/purchase", data={"cart": json.dumps(cart_data)}, follow_redirects=True
+    )
+
+    assert response.status_code == 200
+    # Should show error message about no tickets being purchased
+    assert b"No tickets were purchased" in response.data
 
 
 def test_assign_ticket_get(test_client, admin_user, db):
