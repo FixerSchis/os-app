@@ -131,10 +131,18 @@ backup_existing() {
         cp -r "$APP_DIR" "$backup_path"
         log "Backup created: $backup_path"
 
-        # Keep only last 5 backups
-        cd "$BACKUP_DIR"
-        ls -t | tail -n +6 | xargs -r rm -rf
-        log "Cleaned up old backups (kept last 5)"
+        # Keep only last 5 backups - use absolute paths to be safe
+        if [[ -d "$BACKUP_DIR" ]]; then
+            cd "$BACKUP_DIR"
+            # List backups by modification time, keep only the 5 most recent
+            ls -t | tail -n +6 | while read -r old_backup; do
+                if [[ -n "$old_backup" ]] && [[ -d "$BACKUP_DIR/$old_backup" ]]; then
+                    rm -rf "$BACKUP_DIR/$old_backup"
+                    log "Removed old backup: $old_backup"
+                fi
+            done
+            cd - > /dev/null  # Return to original directory
+        fi
     fi
 }
 
@@ -142,13 +150,20 @@ backup_existing() {
 deploy_files() {
     log "Deploying application files..."
 
+    # Safety check - make sure we're working with the correct directory
+    if [[ "$APP_DIR" != "/opt/orion-sphere-lrp" ]]; then
+        error "APP_DIR is not set to expected value: $APP_DIR"
+    fi
+
     # Remove existing files (except database and venv)
     if [[ -d "$APP_DIR" ]]; then
+        log "Cleaning existing files (preserving database and venv)..."
         find "$APP_DIR" -mindepth 1 -not -name "app.db" -not -name "venv" -not -path "*/venv/*" -delete
         log "Cleaned existing files (preserved database and venv)"
     fi
 
     # Copy all files except .git directory
+    log "Copying application files..."
     cp -r . "$APP_DIR/"
 
     # Remove .git directory if it was copied
