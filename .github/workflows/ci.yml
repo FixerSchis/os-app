@@ -45,14 +45,12 @@ jobs:
 
     - name: Check code formatting with black
       run: |
-        # Format conftest.py specially to preserve imports
-        python scripts/format_conftest.py
-        # Check formatting for all other files
-        black --check --diff . --exclude tests/conftest.py
+        # Check formatting for all files
+        black --check --diff .
 
     - name: Check import sorting with isort
       run: |
-        isort --check-only --diff . --skip tests/conftest.py
+        isort --check-only --diff .
 
     - name: Run tests with pytest
       run: |
@@ -94,7 +92,7 @@ jobs:
   pre-commit:
     name: Pre-commit Checks
     runs-on: ubuntu-latest
-    
+
     steps:
     - uses: actions/checkout@v4
       with:

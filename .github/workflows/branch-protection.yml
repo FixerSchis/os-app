@@ -28,7 +28,7 @@ jobs:
                   strict: true,
                   contexts: [
                     'Tests and Linting',
-                    'Security Checks', 
+                    'Security Checks',
                     'Pre-commit Checks'
                   ]
                 },

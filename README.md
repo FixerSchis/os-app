@@ -196,7 +196,7 @@ Branch protection is automatically configured when you push to main or develop b
    ```bash
    # Fix Black formatting
    black .
-   
+
    # Fix import sorting
    isort .
    ```
@@ -205,7 +205,7 @@ Branch protection is automatically configured when you push to main or develop b
    ```bash
    # Check specific issues
    flake8 . --select=E9,F63,F7,F82
-   
+
    # Check all issues
    flake8 . --count --exit-zero --max-complexity=10 --max-line-length=100
    ```
@@ -214,7 +214,7 @@ Branch protection is automatically configured when you push to main or develop b
    ```bash
    # Run tests locally
    pytest
-   
+
    # Run with coverage
    pytest --cov=. --cov-report=term-missing
    ```
@@ -223,7 +223,7 @@ Branch protection is automatically configured when you push to main or develop b
    ```bash
    # Run pre-commit manually
    pre-commit run --all-files
-   
+
    # Run specific hook
    pre-commit run black --all-files
    ```

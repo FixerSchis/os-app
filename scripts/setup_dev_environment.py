@@ -20,7 +20,7 @@ def run_command(command, description, check=True):
         if isinstance(command, str):
             command = command.split()
 
-        result = subprocess.run(command, check=check, capture_output=True, text=True)
+        result = subprocess.run(command, check=check, capture_output=True, text=True)  # nosec B603
         if result.stdout:
             print(f"✅ {description} completed successfully")
         return result

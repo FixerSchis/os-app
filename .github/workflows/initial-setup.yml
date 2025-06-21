@@ -26,7 +26,7 @@ jobs:
                   strict: true,
                   contexts: [
                     'Tests and Linting',
-                    'Security Checks', 
+                    'Security Checks',
                     'Pre-commit Checks'
                   ]
                 },
@@ -55,9 +55,9 @@ jobs:
                 owner: context.repo.owner,
                 repo: context.repo.repo
               });
-              
+
               const developExists = branches.data.some(branch => branch.name === 'develop');
-              
+
               if (developExists) {
                 await github.rest.repos.updateBranchProtection({
                   owner: context.repo.owner,
@@ -67,7 +67,7 @@ jobs:
                     strict: true,
                     contexts: [
                       'Tests and Linting',
-                      'Security Checks', 
+                      'Security Checks',
                       'Pre-commit Checks'
                     ]
                   },
@@ -99,9 +99,9 @@ jobs:
                 owner: context.repo.owner,
                 repo: context.repo.repo
               });
-              
+
               const developExists = branches.data.some(branch => branch.name === 'develop');
-              
+
               if (!developExists) {
                 // Get the latest commit from master
                 const masterBranch = await github.rest.repos.getBranch({
@@ -109,7 +109,7 @@ jobs:
                   repo: context.repo.repo,
                   branch: 'master'
                 });
-                
+
                 // Create develop branch from master
                 await github.rest.git.createRef({
                   owner: context.repo.owner,
@@ -117,7 +117,7 @@ jobs:
                   ref: 'refs/heads/develop',
                   sha: masterBranch.data.commit.sha
                 });
-                
+
                 console.log('✅ Created develop branch from master');
               } else {
                 console.log('ℹ️  Develop branch already exists');
@@ -166,4 +166,4 @@ jobs:
               } else {
                 console.error('❌ Error checking issue templates:', error.message);
               }
-            } 
+            }

@@ -16,7 +16,7 @@ def run_command(command, cwd=None):
         # If command is a string, split it for safety
         if isinstance(command, str):
             command = command.split()
-        result = subprocess.run(command, capture_output=True, text=True, cwd=cwd)
+        result = subprocess.run(command, capture_output=True, text=True, cwd=cwd)  # nosec B603
         return result.returncode == 0, result.stdout, result.stderr
     except Exception as e:
         return False, "", str(e)

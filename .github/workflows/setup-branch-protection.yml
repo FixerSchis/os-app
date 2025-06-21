@@ -25,7 +25,7 @@ jobs:
                   strict: true,
                   contexts: [
                     'Tests and Linting',
-                    'Security Checks', 
+                    'Security Checks',
                     'Pre-commit Checks'
                   ]
                 },
@@ -57,7 +57,7 @@ jobs:
                   strict: true,
                   contexts: [
                     'Tests and Linting',
-                    'Security Checks', 
+                    'Security Checks',
                     'Pre-commit Checks'
                   ]
                 },
@@ -74,4 +74,4 @@ jobs:
               console.log('Branch protection enabled for develop');
             } catch (error) {
               console.error('Error setting up branch protection for develop:', error.message);
-            } 
+            }
