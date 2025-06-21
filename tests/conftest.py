@@ -1,6 +1,3 @@
-# fmt: off
-# This file contains imports for all database models to ensure tables are created during test setup.
-# These imports should NOT be formatted by Black as they are intentionally kept even if unused.
 import os
 import sys
 import uuid
@@ -56,8 +53,6 @@ from models.tools.research import (
 from models.tools.role import Role as RoleModel
 from models.tools.user import User
 from models.wiki import WikiChangeLog, WikiImage, WikiPage, WikiPageVersion, WikiSection, WikiTag
-
-# fmt: on
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 

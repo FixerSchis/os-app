@@ -19,7 +19,7 @@ def run_command(command, description, check=True):
         # If command is a string, split it for safety
         if isinstance(command, str):
             command = command.split()
-        
+
         result = subprocess.run(command, check=check, capture_output=True, text=True)
         if result.stdout:
             print(f"✅ {description} completed successfully")
@@ -62,13 +62,17 @@ def install_dependencies():
     # Install base requirements
     run_command(["pip", "install", "--upgrade", "pip"], "Upgrading pip")
     run_command(["pip", "install", "-r", "requirements.txt"], "Installing base requirements")
-    run_command(["pip", "install", "-r", "requirements-dev.txt"], "Installing development requirements")
+    run_command(
+        ["pip", "install", "-r", "requirements-dev.txt"], "Installing development requirements"
+    )
 
 
 def setup_pre_commit():
     """Set up pre-commit hooks."""
     run_command(["pre-commit", "install"], "Installing pre-commit hooks")
-    run_command(["pre-commit", "install", "--hook-type", "commit-msg"], "Installing commit-msg hook")
+    run_command(
+        ["pre-commit", "install", "--hook-type", "commit-msg"], "Installing commit-msg hook"
+    )
 
 
 def run_initial_checks():
@@ -104,7 +108,9 @@ def run_tests():
     """Run tests to ensure everything is working."""
     print("\n🧪 Running tests...")
     run_command(
-        ["pytest", "--cov=.", "--cov-report=term-missing"], "Running tests with coverage", check=False
+        ["pytest", "--cov=.", "--cov-report=term-missing"],
+        "Running tests with coverage",
+        check=False,
     )
 
 
