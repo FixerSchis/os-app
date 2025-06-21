@@ -278,7 +278,38 @@ os-app/
 
 ## Deployment
 
-### Production Setup
+### Automated Linux Deployment (Recommended)
+
+For Linux servers, we provide an automated deployment script that handles the entire deployment process:
+
+**Quick Start:**
+```bash
+git clone https://github.com/your-username/os-app.git
+cd os-app
+sudo ./deploy.sh deploy
+```
+
+**Update existing installation:**
+```bash
+cd /path/to/your/app
+git pull origin master
+sudo ./deploy.sh update
+```
+
+The deployment script automatically:
+- Installs system dependencies
+- Creates application user and group
+- Sets up Python virtual environment
+- Installs systemd service
+- Handles database migrations
+- Creates automatic backups
+- Manages file permissions
+
+**For detailed instructions, see [DEPLOYMENT.md](DEPLOYMENT.md)**
+
+### Manual Production Setup
+
+If you prefer manual deployment or need custom configuration:
 
 1. Set up a production server
 2. Install dependencies
