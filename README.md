@@ -106,6 +106,149 @@ This project uses several tools to maintain code quality:
 - **bandit**: Security analysis
 - **pre-commit**: Git hooks for automated checks
 
+### Continuous Integration and Deployment (CI/CD)
+
+This project uses GitHub Actions for automated testing, code quality checks, and branch protection. The CI/CD pipeline ensures that all code changes meet quality standards before being merged.
+
+#### Automated Checks
+
+Every commit and pull request triggers the following checks:
+
+1. **Tests and Linting** (`Tests and Linting` job):
+   - Runs tests across Python 3.8, 3.9, 3.10, and 3.11
+   - Executes linting with flake8
+   - Checks code formatting with Black
+   - Verifies import sorting with isort
+   - Runs pytest with coverage (minimum 70% required)
+   - Uploads coverage reports to Codecov
+
+2. **Security Checks** (`Security Checks` job):
+   - Runs Bandit security analysis
+   - Checks for known security vulnerabilities with Safety
+   - Generates security reports
+
+3. **Pre-commit Checks** (`Pre-commit Checks` job):
+   - Runs all pre-commit hooks on all files
+   - Ensures consistent code formatting and quality
+
+#### Branch Protection
+
+The main and develop branches are protected with the following rules:
+
+- **Required Status Checks**: All CI jobs must pass before merging
+- **Pull Request Reviews**: At least 1 approval required
+- **Code Owner Reviews**: Required for main branch
+- **Stale Review Dismissal**: Outdated reviews are automatically dismissed
+- **No Force Pushes**: Force pushes are disabled
+- **No Deletions**: Branch deletions are disabled
+
+#### Setting Up Branch Protection
+
+Branch protection is automatically configured when you push to main or develop branches. You can also manually trigger the setup:
+
+1. Go to the **Actions** tab in your GitHub repository
+2. Select the **Setup Branch Protection** workflow
+3. Click **Run workflow**
+4. Choose the branch to protect (main or develop)
+
+#### Local Development Workflow
+
+1. **Install pre-commit hooks** (recommended):
+   ```bash
+   pip install -r requirements-dev.txt
+   pre-commit install
+   ```
+
+2. **Create a feature branch**:
+   ```bash
+   git checkout -b feature/your-feature-name
+   ```
+
+3. **Make your changes** and commit:
+   ```bash
+   git add .
+   git commit -m "Add your feature"
+   ```
+   (Pre-commit hooks will run automatically)
+
+4. **Push and create a pull request**:
+   ```bash
+   git push origin feature/your-feature-name
+   ```
+
+5. **Wait for CI checks** to complete on your PR
+
+6. **Request review** from code owners (for main branch)
+
+7. **Merge** once all checks pass and reviews are approved
+
+#### CI/CD Workflows
+
+- **`ci.yml`**: Main CI workflow that runs on all commits and PRs
+- **`setup-branch-protection.yml`**: Automatically configures branch protection
+- **`release.yml`**: Handles releases and versioning
+
+#### Troubleshooting CI Issues
+
+**Common Issues and Solutions:**
+
+1. **Formatting Issues**:
+   ```bash
+   # Fix Black formatting
+   black .
+   
+   # Fix import sorting
+   isort .
+   ```
+
+2. **Linting Issues**:
+   ```bash
+   # Check specific issues
+   flake8 . --select=E9,F63,F7,F82
+   
+   # Check all issues
+   flake8 . --count --exit-zero --max-complexity=10 --max-line-length=100
+   ```
+
+3. **Test Failures**:
+   ```bash
+   # Run tests locally
+   pytest
+   
+   # Run with coverage
+   pytest --cov=. --cov-report=term-missing
+   ```
+
+4. **Pre-commit Hook Failures**:
+   ```bash
+   # Run pre-commit manually
+   pre-commit run --all-files
+   
+   # Run specific hook
+   pre-commit run black --all-files
+   ```
+
+5. **Coverage Issues**:
+   - Ensure new code has adequate test coverage
+   - Minimum coverage requirement is 70%
+   - Add tests for new functionality
+
+#### CI/CD Configuration Files
+
+- `.github/workflows/ci.yml`: Main CI workflow
+- `.github/workflows/setup-branch-protection.yml`: Branch protection setup
+- `.pre-commit-config.yaml`: Pre-commit hooks configuration
+- `pyproject.toml`: Tool configurations (Black, isort, pytest)
+- `pytest.ini`: Pytest configuration
+- `.bandit`: Bandit security configuration
+
+#### Performance Optimization
+
+- **Caching**: Dependencies are cached between runs
+- **Parallel Jobs**: Tests run in parallel across Python versions
+- **Conditional Execution**: Some jobs only run when needed
+- **Matrix Strategy**: Tests multiple Python versions efficiently
+
 ### Testing
 
 Run the test suite:
