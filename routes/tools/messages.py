@@ -11,13 +11,26 @@ from utils.email import send_notification_email
 bp = Blueprint("messages", __name__)
 
 
-@bp.route("/messages")
+@bp.route("/")
 @login_required
 def messages():
     if current_user.has_role("npc"):
-        # For NPCs, show all messages without responses
-        messages = Message.query.filter_by(response=None).all()
+        # For NPCs, show messages that either have no response OR are sent by their
+        # active characters
         characters = Character.query.filter_by(status=CharacterStatus.ACTIVE.value).all()
+        character_ids = [
+            char.id
+            for char in current_user.characters
+            if char.status == CharacterStatus.ACTIVE.value
+        ]
+
+        if character_ids:
+            messages = Message.query.filter(
+                (Message.response.is_(None)) | (Message.sender_id.in_(character_ids))
+            ).all()
+        else:
+            messages = Message.query.filter(Message.response.is_(None)).all()
+
         return render_template(
             "messages/npc_messages.html", messages=messages, characters=characters
         )

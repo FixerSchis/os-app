@@ -950,3 +950,19 @@ a:hover {
 [data-theme="dark"] .status-badge {
     color: #fff !important;
 }
+
+[data-theme="dark"] .footer-link:hover {
+    color: var(--link-color);
+}
+
+/* Message response styling */
+.message-response {
+    background-color: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: 0.375rem;
+}
+
+[data-theme="dark"] .message-response {
+    background-color: var(--bg-tertiary);
+    border-color: var(--border-color);
+}
