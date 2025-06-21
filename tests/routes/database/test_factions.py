@@ -115,7 +115,7 @@ def test_factions_edit_post_authorized(test_client, rules_team_user, faction, db
     assert response.status_code == 200
     assert b"Faction updated successfully" in response.data
     db.session.expire_all()
-    updated = Faction.query.get(faction.id)
+    updated = db.session.get(Faction, faction.id)
     assert updated.name == new_name
     assert updated.wiki_slug == new_slug
     assert updated.allow_player_characters is True

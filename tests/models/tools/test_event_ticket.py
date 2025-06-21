@@ -33,6 +33,7 @@ def test_new_event_ticket(db, character, new_user):
     ticket = EventTicket(
         event_id=event.id,
         character_id=character.id,
+        user_id=new_user.id,
         ticket_type=TicketType.ADULT,
         meal_ticket=True,
         requires_bunk=True,

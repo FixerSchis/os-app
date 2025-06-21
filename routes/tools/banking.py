@@ -37,9 +37,9 @@ def bank():
         group_id = request.args.get("group_id")
 
         if character_id:
-            selected_character = Character.query.get(character_id)
+            selected_character = db.session.get(Character, character_id)
         if group_id:
-            selected_group = Group.query.get(group_id)
+            selected_group = db.session.get(Group, group_id)
 
     # Get available source accounts for transfer
     source_accounts = []

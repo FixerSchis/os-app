@@ -105,7 +105,7 @@ class Research(db.Model):
         assignee_stage_numbers = []
         for assignee in assignees:
             if assignee.current_stage_id is not None:
-                stage = ResearchStage.query.get(assignee.current_stage_id)
+                stage = db.session.get(ResearchStage, assignee.current_stage_id)
                 if stage:
                     assignee_stage_numbers.append(stage.stage_number)
             else:

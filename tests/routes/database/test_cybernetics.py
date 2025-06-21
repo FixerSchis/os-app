@@ -98,7 +98,7 @@ def test_cybernetics_edit_post_authorized(test_client, rules_team_user, cybernet
     assert response.status_code == 200
     assert b"Cybernetic updated" in response.data
     db.session.expire_all()
-    updated = Cybernetic.query.get(cybernetic.id)
+    updated = db.session.get(Cybernetic, cybernetic.id)
     assert updated.name == new_name
     assert updated.neural_shock_value == 9
 
@@ -111,5 +111,5 @@ def test_cybernetics_delete_authorized(test_client, rules_team_user, cybernetic,
     response = test_client.post(f"/db/cybernetics/{cybernetic.id}/delete", follow_redirects=True)
     assert response.status_code == 200
     db.session.expire_all()
-    deleted = Cybernetic.query.get(cybernetic.id)
+    deleted = db.session.get(Cybernetic, cybernetic.id)
     assert deleted is None

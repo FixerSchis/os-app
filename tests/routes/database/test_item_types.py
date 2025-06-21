@@ -128,7 +128,7 @@ def test_item_types_edit_post_authorized(test_client, rules_team_user, item_type
     assert response.status_code == 200
     assert b"Item type updated successfully" in response.data
     db.session.expire_all()
-    updated = ItemType.query.get(item_type.id)
+    updated = db.session.get(ItemType, item_type.id)
     assert updated.name == new_name
     assert updated.id_prefix == "CD"
 
@@ -173,7 +173,7 @@ def test_item_types_delete_authorized(test_client, rules_team_user, item_type, d
     response = test_client.post(f"/db/item-types/{item_type.id}/delete", follow_redirects=True)
     assert response.status_code == 200
     assert b"Item type deleted successfully" in response.data
-    deleted = ItemType.query.get(item_type.id)
+    deleted = db.session.get(ItemType, item_type.id)
     assert deleted is None
 
 
@@ -187,7 +187,7 @@ def test_item_types_delete_with_blueprints(test_client, rules_team_user, item_bl
     )
     assert response.status_code == 200
     assert b"Cannot delete item type with associated blueprints" in response.data
-    item_type = ItemType.query.get(item_blueprint_obj.item_type_id)
+    item_type = db.session.get(ItemType, item_blueprint_obj.item_type_id)
     assert item_type is not None
 
 

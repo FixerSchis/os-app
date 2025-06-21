@@ -37,7 +37,7 @@ def list():
             item_blueprint_mods.select().where(item_blueprint_mods.c.item_blueprint_id == bp.id)
         ).fetchall()
         # List of (mod, count) tuples
-        mod_counts = [(Mod.query.get(row.mod_id), row.count) for row in mod_rows]
+        mod_counts = [(db.session.get(Mod, row.mod_id), row.count) for row in mod_rows]
         mod_instances_by_blueprint[bp.id] = mod_counts
 
     return render_template(
@@ -80,7 +80,7 @@ def create_post():
             "rules/item_blueprints/edit.html", item_types=item_types, mods=mods_dict
         )
     try:
-        item_type = ItemType.query.get(item_type_id)
+        item_type = db.session.get(ItemType, item_type_id)
         if not item_type:
             flash("Invalid item type", "error")
             return render_template(

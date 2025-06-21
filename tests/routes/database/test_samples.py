@@ -215,7 +215,7 @@ def test_edit_sample_form_post(test_client, admin_user, db):
     )
     assert response.status_code == 200
     assert b"Sample updated" in response.data
-    updated = Sample.query.get(sample.id)
+    updated = db.session.get(Sample, sample.id)
     assert updated.name == "Edited Sample"
     assert updated.is_researched is True
     assert len(updated.tags) == 1
@@ -234,4 +234,4 @@ def test_delete_sample(test_client, admin_user, db):
     response = test_client.post(f"/db/samples/{sample.id}/delete", follow_redirects=True)
     assert response.status_code == 200
     assert b"Sample deleted" in response.data
-    assert Sample.query.get(sample.id) is None
+    assert db.session.get(Sample, sample.id) is None

@@ -66,7 +66,7 @@ def send_message():
         flash("All fields are required.", "error")
         return redirect(url_for("messages.messages"))
 
-    sender = Character.query.get(sender_id)
+    sender = db.session.get(Character, sender_id)
     if not sender:
         flash("Invalid sender.", "error")
         return redirect(url_for("messages.messages"))

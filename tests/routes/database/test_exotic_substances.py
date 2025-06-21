@@ -85,7 +85,7 @@ def test_exotic_substances_edit_post_authorized(test_client, rules_team_user, ex
     assert response.status_code == 200
     assert b"Exotic substance updated" in response.data
     db.session.expire_all()
-    updated = ExoticSubstance.query.get(exotic_substance.id)
+    updated = db.session.get(ExoticSubstance, exotic_substance.id)
     assert updated.name == new_name
     assert updated.type == ScienceType.LIFE
 

@@ -104,7 +104,7 @@ def confirm_email_change(token):
 def toggle_dark_mode():
     """Toggle dark mode preference for the current user."""
     try:
-        user = User.query.get(current_user.id)
+        user = db.session.get(User, current_user.id)
         if not user:
             return jsonify({"success": False, "error": "User not found"}), 404
 

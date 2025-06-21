@@ -30,6 +30,8 @@ wiki_bp = Blueprint("wiki", __name__)
 
 
 def get_latest_published_version(page):
+    if not page:
+        return None
     return (
         page.versions.filter_by(status=WikiPageVersionStatus.PUBLISHED)
         .order_by(None)
@@ -39,10 +41,14 @@ def get_latest_published_version(page):
 
 
 def get_latest_version(page):
+    if not page:
+        return None
     return page.versions.order_by(None).order_by(WikiPageVersion.version_number.desc()).first()
 
 
 def get_pending_version(page, current_user):
+    if not page:
+        return None
     latest_version = get_latest_version(page)
     if latest_version and latest_version.status == WikiPageVersionStatus.PUBLISHED:
         # Create a new PENDING version
@@ -252,7 +258,9 @@ def has_access(section, user):
 @login_required
 @plot_team_required
 def wiki_delete(slug):
-    page = WikiPage.query.get_or_404(slug)
+    page = db.session.get(WikiPage, slug)
+    if not page:
+        return render_template("errors/404.html"), 404
     version = get_pending_version(page, current_user)
     if version and not version.deleted:
         version.deleted = True
@@ -265,7 +273,7 @@ def wiki_delete(slug):
 @login_required
 @plot_team_required
 def wiki_restore(slug):
-    page = WikiPage.query.get_or_404(slug)
+    page = db.session.get(WikiPage, slug)
     version = get_pending_version(page, current_user)
     if not version:
         version = get_latest_published_version(page)
@@ -278,7 +286,9 @@ def wiki_restore(slug):
 
 @wiki_bp.route("/<path:slug>")
 def wiki_view(slug):
-    page = WikiPage.query.get_or_404(slug)
+    page = db.session.get(WikiPage, slug)
+    if not page:
+        return render_template("errors/404.html"), 404
     is_editor = current_user.is_authenticated and current_user.has_role("plot_team")
     user = current_user if current_user.is_authenticated else None
     version_id = request.args.get("version", type=int)
@@ -287,7 +297,7 @@ def wiki_view(slug):
     is_pending_version = False
 
     if version_id:
-        version = WikiPageVersion.query.get_or_404(version_id)
+        version = db.session.get(WikiPageVersion, version_id)
         if not version:
             return render_template("404.html"), 404
         published_version = get_latest_published_version(page)
@@ -395,13 +405,16 @@ def api_wiki_pages():
 @login_required
 @plot_team_required
 def wiki_edit(slug):
-    page = WikiPage.query.get_or_404(slug)
+    page = db.session.get(WikiPage, slug)
+    if not page:
+        return render_template("errors/404.html"), 404
     role_descriptions = Role.descriptions()
     available_roles = [{"value": v, "label": role_descriptions[v]} for v in Role.values()]
     version = get_latest_version(page)
     if not version:
         version = get_pending_version(page, current_user)
-
+    if not version:
+        return render_template("errors/404.html"), 404
     sections = [
         {
             "id": s.id,
@@ -439,7 +452,7 @@ def wiki_edit(slug):
 @login_required
 @plot_team_required
 def wiki_edit_post(slug):
-    page = WikiPage.query.get_or_404(slug)
+    page = db.session.get(WikiPage, slug)
     version = get_pending_version(page, current_user)
     if request.is_json:
         data = request.get_json()
@@ -453,11 +466,11 @@ def wiki_edit_post(slug):
             tag_objs = []
             for tag_val in tag_values:
                 if isinstance(tag_val, int) or (isinstance(tag_val, str) and tag_val.isdigit()):
-                    tag = WikiTag.query.get(int(tag_val))
+                    tag = db.session.get(WikiTag, int(tag_val))
                     if tag:
                         tag_objs.append(tag)
                 elif isinstance(tag_val, str):
-                    tag = WikiTag.query.filter_by(name=tag_val).first()
+                    tag = db.session.get(WikiTag, int(tag_val))
                     if not tag:
                         tag = WikiTag(name=tag_val)
                         db.session.add(tag)
@@ -534,11 +547,11 @@ def wiki_new_post():
             tag_objs = []
             for tag_val in tag_values:
                 if isinstance(tag_val, int) or (isinstance(tag_val, str) and tag_val.isdigit()):
-                    tag = WikiTag.query.get(int(tag_val))
+                    tag = db.session.get(WikiTag, int(tag_val))
                     if tag:
                         tag_objs.append(tag)
                 elif isinstance(tag_val, str):
-                    tag = WikiTag.query.filter_by(name=tag_val).first()
+                    tag = db.session.get(WikiTag, int(tag_val))
                     if not tag:
                         tag = WikiTag(name=tag_val)
                         db.session.add(tag)
@@ -581,7 +594,9 @@ def wiki_upload_image():
 
 @wiki_bp.route("/image/<int:image_id>")
 def wiki_image(image_id):
-    image = WikiImage.query.get_or_404(image_id)
+    image = WikiImage.query.get(image_id)
+    if not image:
+        return render_template("errors/404.html"), 404
     return send_file(io.BytesIO(image.data), mimetype=image.mimetype, download_name=image.filename)
 
 
@@ -679,7 +694,7 @@ def wiki_pending_changes_post():
         return redirect(url_for("wiki.wiki_pending_changes"))
     published_versions = []
     for slug in selected_slugs:
-        page = WikiPage.query.get(slug)
+        page = db.session.get(WikiPage, slug)
         if not page:
             continue
         latest_version = get_latest_version(page)
@@ -902,7 +917,9 @@ def wiki_tags_post():
     name = request.json.get("name", "").strip()
     if not name:
         return jsonify({"error": "No tag name provided"}), 400
-    tag = WikiTag.query.filter_by(name=name).first()
+    tag = None
+    if name.isdigit():
+        tag = db.session.get(WikiTag, int(name))
     if not tag:
         tag = WikiTag(name=name)
         db.session.add(tag)

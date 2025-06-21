@@ -143,7 +143,7 @@ def invite_character(group_id):
         flash("Character ID is required", "error")
         return redirect(url_for("groups.group_list"))
 
-    character = Character.query.get(character_id)
+    character = db.session.get(Character, character_id)
     if not character:
         flash("Character not found", "error")
         return redirect(url_for("groups.group_list"))
@@ -381,7 +381,7 @@ def add_character_admin(group_id):
         flash("Character ID is required", "error")
         return redirect(url_for("groups.group_list"))
 
-    character = Character.query.get(character_id)
+    character = db.session.get(Character, character_id)
     if not character:
         flash("Character not found", "error")
         return redirect(url_for("groups.group_list"))

@@ -61,7 +61,7 @@ def template_new_post():
 @admin_required
 def template_edit(template_id):
     """Edit an existing template"""
-    template = PrintTemplate.query.get(template_id)
+    template = db.session.get(PrintTemplate, template_id)
     if not template:
         flash("Template not found.", "error")
         return redirect(url_for("templates.template_list"))
@@ -82,7 +82,7 @@ def template_edit(template_id):
 @admin_required
 def template_edit_post(template_id):
     """Handle template editing"""
-    template = PrintTemplate.query.get(template_id)
+    template = db.session.get(PrintTemplate, template_id)
     if not template:
         flash("Template not found.", "error")
         return redirect(url_for("templates.template_list"))
@@ -101,7 +101,7 @@ def template_edit_post(template_id):
 @admin_required
 def render_template_preview(template_id):
     """API endpoint to render a template preview with sample data"""
-    template = PrintTemplate.query.get(template_id)
+    template = db.session.get(PrintTemplate, template_id)
     if not template:
         return jsonify({"error": "Template not found"}), 404
 
@@ -408,7 +408,7 @@ def generate_template_completions(template_type):
 @admin_required
 def print_template_preview(template_id):
     """Generate a full page preview PDF of the template with sample data."""
-    template = PrintTemplate.query.get(template_id)
+    template = db.session.get(PrintTemplate, template_id)
     if not template:
         return jsonify({"error": "Template not found"}), 404
 

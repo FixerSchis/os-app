@@ -133,7 +133,7 @@ def test_items_edit_post_authorized(test_client, rules_team_user, item, item_blu
     assert response.status_code == 200
     assert b"Item updated successfully" in response.data
     db.session.expire_all()
-    updated = Item.query.get(item.id)
+    updated = db.session.get(Item, item.id)
     assert updated.expiry == new_expiry
 
 
@@ -177,7 +177,7 @@ def test_items_delete_authorized(test_client, rules_team_user, item, db):
     response = test_client.post(f"/db/items/{item.id}/delete", follow_redirects=True)
     assert response.status_code == 200
     assert b"Item deleted successfully" in response.data
-    deleted_item = Item.query.get(item.id)
+    deleted_item = db.session.get(Item, item.id)
     assert deleted_item is None
 
 

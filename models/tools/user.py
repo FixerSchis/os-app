@@ -219,7 +219,11 @@ class User(UserMixin, db.Model):
             if hasattr(self, f"notify_{key}"):
                 setattr(self, f"notify_{key}", bool(value))
 
+    @staticmethod
+    def get_by_id(user_id):
+        return db.session.get(User, int(user_id))
+
 
 @login_manager.user_loader
 def load_user(user_id):
-    return User.query.get(int(user_id))
+    return db.session.get(User, int(user_id))

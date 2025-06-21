@@ -521,7 +521,7 @@ def add_assignee(research_id):
         return redirect(url_for("research.assignees", research_id=research_id))
 
     # Only allow active characters
-    character = Character.query.get(character_id)
+    character = db.session.get(Character, character_id)
     if not character or character.status != "active":
         flash("Only active characters can be assigned to research.", "error")
         return redirect(url_for("research.assignees", research_id=research_id))
@@ -671,7 +671,7 @@ def project_info():
             else:
                 # If the character is the current user or a downtime_team user, allow
                 # access
-                char = Character.query.get(char_id)
+                char = db.session.get(Character, char_id)
                 if (
                     char
                     and char.player_id == player_id

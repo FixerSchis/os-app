@@ -51,6 +51,15 @@ def upgrade():
     """
     )
 
+    # Handle any tickets that couldn't be backfilled (orphaned tickets)
+    # Delete tickets that have no user_id after backfill
+    op.execute(
+        """
+        DELETE FROM event_tickets
+        WHERE user_id IS NULL
+    """
+    )
+
     # Now set user_id to non-nullable
     with op.batch_alter_table("event_tickets", schema=None) as batch_op:
         batch_op.alter_column("user_id", nullable=False)

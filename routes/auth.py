@@ -80,6 +80,7 @@ def register():
             ticket = EventTicket(
                 event_id=prev_event.id,
                 character_id=character.id,
+                user_id=user.id,
                 ticket_type=TicketType.ADULT.value,
                 price_paid=prev_event.standard_ticket_price,
                 meal_ticket=False,

@@ -280,7 +280,7 @@ def purchase_ticket_post(event_id):
         db.session.add(ticket)
         # Only send notification if ticket is for a character with a user
         if character_id:
-            character = Character.query.get(character_id)
+            character = db.session.get(Character, character_id)
             if character and character.user:
                 send_event_ticket_assigned_notification_to_user(
                     character.user, ticket, event, character
@@ -369,7 +369,7 @@ def assign_ticket_post(event_id):
     db.session.add(ticket)
     # Only send notification if ticket is for a character with a user
     if character_id:
-        character = Character.query.get(character_id)
+        character = db.session.get(Character, character_id)
         if character and character.user:
             send_event_ticket_assigned_notification_to_user(
                 character.user, ticket, event, character

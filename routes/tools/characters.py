@@ -97,7 +97,7 @@ def create_character_post():
             all_cybernetics=all_cybernetics,
         )
 
-    faction = Faction.query.get(faction_id)
+    faction = db.session.get(Faction, faction_id)
     if not faction:
         flash("Invalid faction selected", "error")
         return render_template(
@@ -233,7 +233,7 @@ def edit_post(character_id):
             species_list=species_list,
         )
 
-    faction = Faction.query.get(faction_id)
+    faction = db.session.get(Faction, faction_id)
     if not faction:
         flash("Invalid faction selected", "error")
         return render_template(
@@ -338,11 +338,11 @@ def edit_post(character_id):
                     db.session.flush()
                 new_tags.add(tag.id)
         for tag_id in current_tags - new_tags:
-            tag = CharacterTag.query.get(tag_id)
+            tag = db.session.get(CharacterTag, tag_id)
             if tag:
                 character.tags.remove(tag)
         for tag_id in new_tags - current_tags:
-            tag = CharacterTag.query.get(tag_id)
+            tag = db.session.get(CharacterTag, tag_id)
             if tag and tag not in character.tags:
                 character.tags.append(tag)
     db.session.commit()
@@ -563,7 +563,7 @@ def create_for_player_post(player_id):
             all_cybernetics=all_cybernetics,
         )
 
-    faction = Faction.query.get(faction_id)
+    faction = db.session.get(Faction, faction_id)
     if not faction:
         flash("Invalid faction selected", "error")
         return render_template(
@@ -591,7 +591,7 @@ def create_for_player_post(player_id):
 
     # Validate species is permitted for faction
     if not (current_user.has_role("user_admin") or current_user.has_role("npc")):
-        species = Species.query.get(species_id)
+        species = db.session.get(Species, species_id)
         if not species or faction.id not in species.permitted_factions_list:
             flash("Selected species is not permitted for the chosen faction.", "error")
             return render_template(
