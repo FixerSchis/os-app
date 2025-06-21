@@ -91,5 +91,5 @@
 {% block scripts %}
 {{ super() }}
 <input type="hidden" id="item-blueprint-mods-data" value='{{ mods|tojson|safe }}'>
-<script src="{{ url_for('static', filename='js/item_blueprints_edit.js') }}"></script>
+<script src="{{ url_for('static', filename='js/pages/item-blueprints-edit.js') }}"></script>
 {% endblock %} 

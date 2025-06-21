@@ -75,23 +75,6 @@
 
 {% block scripts %}
 {% if can_edit %}
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const deleteButtons = document.querySelectorAll('.delete-btn');
-    const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
-    const deleteForm = document.getElementById('deleteForm');
-    const itemNameSpan = document.getElementById('itemName');
-
-    deleteButtons.forEach(button => {
-        button.addEventListener('click', function() {
-            const deleteUrl = this.dataset.deleteUrl;
-            const itemName = this.dataset.itemName;
-            deleteForm.action = deleteUrl;
-            itemNameSpan.textContent = itemName;
-            deleteModal.show();
-        });
-    });
-});
-</script>
+<script src="{{ url_for('static', filename='js/pages/item-types-list.js') }}"></script>
 {% endif %}
 {% endblock %} 

@@ -346,43 +346,13 @@
 
 {% if current_user.has_role('user_admin') %}
 <link href="{{ url_for('static', filename='external/css/select2.min.css') }}" rel="stylesheet" />
-<link href="{{ url_for('static', filename='css/select2-custom.css') }}" rel="stylesheet" />
-<script src="{{ url_for('static', filename='js/tag-select.js') }}"></script>
+<link href="{{ url_for('static', filename='css/components/select2-custom.css') }}" rel="stylesheet" />
+<script src="{{ url_for('static', filename='js/components/tag-select.js') }}"></script>
 {% endif %}
 
-<script src="{{ url_for('static', filename='js/character_species_filter.js') }}"></script>
+<script src="{{ url_for('static', filename='js/components/character-species-filter.js') }}"></script>
 {% if character and current_user.has_role('user_admin') %}
-<script src="{{ url_for('static', filename='js/character_conditions.js') }}"></script>
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    document.body.addEventListener('click', function(event) {
-        var btn = event.target.closest('.stage-details-toggle');
-        if (!btn) return;
-        var icon = btn.querySelector('i.fas');
-        var targetId = btn.getAttribute('data-details-target');
-        var target = document.querySelector(targetId);
-        console.log('Details button clicked:', btn, 'Target:', target);
-        if (!target) return;
-        if (target.style.display === 'none' || target.style.display === '') {
-            target.style.display = 'block';
-            icon.classList.remove('fa-chevron-down');
-            icon.classList.add('fa-chevron-up');
-        } else {
-            target.style.display = 'none';
-            icon.classList.remove('fa-chevron-up');
-            icon.classList.add('fa-chevron-down');
-        }
-    });
-});
-</script>
+<script src="{{ url_for('static', filename='js/components/character-conditions.js') }}"></script>
 {% endif %}
-
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    document.querySelectorAll('.progress-bar').forEach(function(bar) {
-        var percent = parseInt(bar.getAttribute('data-progress'));
-        bar.style.width = percent + '%';
-    });
-});
-</script>
+<script src="{{ url_for('static', filename='js/pages/character-edit.js') }}"></script>
 {% endblock %}

@@ -1,0 +1,72 @@
+.edit-form {
+    margin-bottom: 30px;
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+
+.roles-section {
+    margin: 30px 0;
+}
+
+.current-roles {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.role-badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    background-color: #007bff;
+    color: white;
+    border-radius: 16px;
+    font-size: 0.9em;
+}
+
+.btn-remove {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1.2em;
+    cursor: pointer;
+    padding: 0 4px;
+}
+
+.btn-remove:hover {
+    color: #ff4444;
+}
+
+.add-role-form {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    margin-top: 20px;
+}
+
+.add-role-form form {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+}
+
+.add-role-label {
+    margin-right: 8px;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.role-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.role-actions form {
+    margin: 0;
+} 

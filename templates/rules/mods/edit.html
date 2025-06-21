@@ -44,14 +44,5 @@
 {% block scripts %}
 {{ super() }}
 <script src="{{ url_for('static', filename='js/wiki_page_autocomplete.js') }}"></script>
-<script>
-window.addEventListener('DOMContentLoaded', function() {
-    $('#item_types').select2({
-        theme: 'bootstrap-5',
-        width: '100%',
-        placeholder: 'Select item types',
-        allowClear: true
-    });
-});
-</script>
+<script src="{{ url_for('static', filename='js/pages/mods-edit.js') }}"></script>
 {% endblock %} 

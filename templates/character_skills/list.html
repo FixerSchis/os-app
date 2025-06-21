@@ -2,6 +2,11 @@
 
 {% block title %}Character Skills - {{ character.name }}{% endblock %}
 
+{% block head %}
+{{ super() }}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/pages/character-skills.css') }}">
+{% endblock %}
+
 {% block content %}
 <div class="container">
     <div class="character-skills">
@@ -105,11 +110,6 @@
                 <sup>*</sup> - Prerequisite skill required.
             </p>
         </div>
-        <style>
-            .bg-skilltype {
-                background-color: var(--bs-table-bg) !important;
-            }
-        </style>
     </div>
 </div>
 {% endblock %} 

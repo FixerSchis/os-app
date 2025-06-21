@@ -1,0 +1,154 @@
+.audit-log-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.audit-log-header h1 {
+    margin: 0;
+    font-size: 2rem;
+    color: #333;
+}
+
+.audit-log-container {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+.audit-log-entries {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    background: #e0e0e0;
+}
+
+.audit-entry {
+    background: #fff;
+    padding: 1.5rem;
+}
+
+.audit-entry:first-child {
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+}
+
+.audit-entry:last-child {
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+}
+
+.audit-entry-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    gap: 1rem;
+}
+
+.audit-meta {
+    display: flex;
+    gap: 1.5rem;
+    color: #666;
+    font-size: 0.9rem;
+}
+
+.audit-timestamp,
+.audit-editor {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.audit-action .badge {
+    font-size: 0.875rem;
+    font-weight: 500;
+    padding: 0.5em 0.75em;
+    border-radius: 4px;
+}
+
+.audit-changes {
+    font-family: 'Fira Mono', 'Consolas', 'Monaco', monospace;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 6px;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.audit-empty {
+    padding: 2rem;
+    text-align: center;
+    color: #666;
+    font-style: italic;
+}
+
+.diff {
+    font-family: 'Fira Mono', 'Consolas', 'Monaco', monospace;
+    font-size: 1em;
+    background: #23272e;
+    color: #eaeaea;
+    border-radius: 12px;
+    border: 1.5px solid #444a57;
+    margin-top: 10px;
+    margin-bottom: 10px;
+    overflow-x: auto;
+}
+
+.diff-add {
+    color: #228B22;
+    background: #eaffea;
+    white-space: pre;
+    padding-left: 12px;
+}
+
+.diff-remove {
+    color: #b22222;
+    background: #ffecec;
+    white-space: pre;
+    padding-left: 12px;
+}
+
+.diff-context {
+    color: #888;
+    white-space: pre;
+    padding-left: 12px;
+}
+
+@media (max-width: 768px) {
+    .audit-log-header {
+        flex-direction: column;
+        align-items: flex-start;
+        margin-bottom: 1rem;
+    }
+
+    .audit-log-container {
+        border-radius: 0;
+        margin: 0 -1rem;
+    }
+
+    .audit-entry {
+        padding: 1rem;
+    }
+
+    .audit-entry-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .audit-meta {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .audit-changes {
+        font-size: 0.85rem;
+        padding: 0.75rem;
+    }
+} 

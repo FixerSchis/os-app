@@ -1,0 +1,33 @@
+.status-badge {
+    display: inline-block;
+    padding: 0.35em 0.65em;
+    font-size: 0.875em;
+    font-weight: 600;
+    line-height: 1;
+    text-align: center;
+    white-space: nowrap;
+    vertical-align: baseline;
+    border-radius: 0.25rem;
+    background-color: #6c757d;
+    color: #fff;
+}
+
+.status-active {
+    background-color: #198754;
+}
+
+.status-dead {
+    background-color: #dc3545;
+}
+
+.status-retired {
+    background-color: #ffc107;
+    color: #000;
+}
+
+.badge {
+    padding: 0.5em 0.75em;
+    font-size: 0.875rem;
+    font-weight: 500;
+    border-radius: 4px;
+} 

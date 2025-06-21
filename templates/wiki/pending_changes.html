@@ -54,6 +54,6 @@
 {{ super() }}
 {% if pending_pages %}
 <script src="{{ url_for('static', filename='external/js/ckeditor.js') }}"></script>
-<script src="{{ url_for('static', filename='js/wiki_pending_changes.js') }}"></script>
+<script src="{{ url_for('static', filename='js/pages/wiki-pending-changes.js') }}"></script>
 {% endif %}
 {% endblock %}

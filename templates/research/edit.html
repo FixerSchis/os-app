@@ -66,43 +66,6 @@
     <a href="{{ url_for('research.research_list') }}" class="btn btn-secondary">Cancel</a>
 </form>
 
-<script>
-function toggleArtefactItem() {
-    var type = document.getElementById('type').value;
-    var group = document.getElementById('artefact-item-group');
-    group.style.display = (type === 'artefact') ? 'block' : 'none';
-}
-// Set initial display on page load
-window.addEventListener('DOMContentLoaded', function() {
-    toggleArtefactItem();
-    // Toggle between existing and new item
-    function toggleArtefactOption() {
-        var existing = document.getElementById('existing-item-select');
-        var createNew = document.getElementById('new-item-type-select');
-        var selected = document.querySelector('input[name="artefact_option"]:checked').value;
-        if (selected === 'existing') {
-            existing.style.display = 'block';
-            createNew.style.display = 'none';
-        } else {
-            existing.style.display = 'none';
-            createNew.style.display = 'block';
-        }
-    }
-    var radios = document.querySelectorAll('input[name="artefact_option"]');
-    radios.forEach(function(radio) {
-        radio.addEventListener('change', toggleArtefactOption);
-    });
-    toggleArtefactOption();
-});
-</script>
-
-<script>
-window.REQUIREMENT_TYPE_OPTIONS_HTML = `{% for value, label in ResearchRequirementType.descriptions().items() %}<option value="{{ value }}">{{ label }}</option>{% endfor %}`;
-window.ITEM_TYPE_OPTIONS_HTML = `{% for item_type in item_types %}<option value="{{ item_type.id }}">{{ item_type.name }} ({{ item_type.id_prefix }})</option>{% endfor %}`;
-window.EXOTIC_TYPE_OPTIONS_HTML = `{% for exotic in exotics %}<option value="{{ exotic.id }}">{{ exotic.name }}</option>{% endfor %}`;
-window.SCIENCE_TYPE_OPTIONS_HTML = `{% for value, label in ScienceType.descriptions().items() %}<option value="{{ value }}">{{ label }}</option>{% endfor %}`;
-window.SAMPLE_TAG_OPTIONS_HTML = `{% for tag in sample_tags %}<option value="{{ tag.name }}">{{ tag.name }}</option>{% endfor %}`;
-</script>
 {% if research %}
 <input type="hidden" id="initial-stages-json" value='{{ research.stages_to_json()|tojson|safe }}'>
 {% else %}
@@ -112,47 +75,14 @@ window.SAMPLE_TAG_OPTIONS_HTML = `{% for tag in sample_tags %}<option value="{{ 
 
 {% block scripts %}
 {{ super() }}
-<script src="{{ url_for('static', filename='js/wiki_page_autocomplete.js') }}"></script>
-<script src="{{ url_for('static', filename='js/research_stages.js') }}"></script>
 <script>
-$(document).ready(function() {
-    // Show/hide artefact item group based on type
-    function toggleArtefactItem() {
-        if ($('#type').val() === 'artefact') {
-            $('#artefact-item-group').show();
-        } else {
-            $('#artefact-item-group').hide();
-        }
-    }
-    $('#type').on('change', toggleArtefactItem);
-    toggleArtefactItem();
-
-    // Show/hide selects based on radio
-    function toggleArtefactOption() {
-        if ($('input[name="artefact_option"]:checked').val() === 'existing') {
-            $('#existing-item-select').show();
-            $('#new-item-type-select').hide();
-        } else {
-            $('#existing-item-select').hide();
-            $('#new-item-type-select').show();
-        }
-    }
-    $('input[name="artefact_option"]').on('change', toggleArtefactOption);
-    toggleArtefactOption();
-
-    // Restore Select2
-    $('#item_id').select2({
-        theme: 'bootstrap-5',
-        width: '100%',
-        placeholder: 'Select an item',
-        allowClear: true
-    });
-    $('#item_type_id').select2({
-        theme: 'bootstrap-5',
-        width: '100%',
-        placeholder: 'Select an item type',
-        allowClear: true
-    });
-});
+window.REQUIREMENT_TYPE_OPTIONS_HTML = `{% for value, label in ResearchRequirementType.descriptions().items() %}<option value="{{ value }}">{{ label }}</option>{% endfor %}`;
+window.ITEM_TYPE_OPTIONS_HTML = `{% for item_type in item_types %}<option value="{{ item_type.id }}">{{ item_type.name }} ({{ item_type.id_prefix }})</option>{% endfor %}`;
+window.EXOTIC_TYPE_OPTIONS_HTML = `{% for exotic in exotics %}<option value="{{ exotic.id }}">{{ exotic.name }}</option>{% endfor %}`;
+window.SCIENCE_TYPE_OPTIONS_HTML = `{% for value, label in ScienceType.descriptions().items() %}<option value="{{ value }}">{{ label }}</option>{% endfor %}`;
+window.SAMPLE_TAG_OPTIONS_HTML = `{% for tag in sample_tags %}<option value="{{ tag.name }}">{{ tag.name }}</option>{% endfor %}`;
 </script>
+<script src="{{ url_for('static', filename='js/wiki_page_autocomplete.js') }}"></script>
+<script src="{{ url_for('static', filename='js/pages/research-stages.js') }}"></script>
+<script src="{{ url_for('static', filename='js/pages/research-edit.js') }}"></script>
 {% endblock %} 

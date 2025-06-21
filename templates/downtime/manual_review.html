@@ -164,6 +164,6 @@
     window.SCIENCE_TYPE_OPTIONS_HTML = `{% for value, label in ScienceType.descriptions().items() %}<option value="{{ value }}">{{ label }}</option>{% endfor %}`;
     window.SAMPLE_TAG_OPTIONS_HTML = `{% for tag in sample_tags %}<option value="{{ tag.name }}">{{ tag.name }}</option>{% endfor %}`;
 </script>
-<script src="{{ url_for('static', filename='js/research_stages.js') }}"></script>
+<script src="{{ url_for('static', filename='js/pages/research-stages.js') }}"></script>
 <script src="{{ url_for('static', filename='js/downtime/manual_review.js') }}"></script>
 {% endblock %} 

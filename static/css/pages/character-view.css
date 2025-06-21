@@ -1,0 +1,36 @@
+.restriction-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.restriction-select {
+    min-width: 160px;
+    max-width: 220px;
+    width: 200px;
+}
+
+.character-detail-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+.character-detail-table th,
+.character-detail-table td {
+    border: none;
+    padding: 0.75rem 1rem;
+    font-size: 1.1rem;
+}
+.character-detail-table th {
+    text-align: left;
+    font-weight: 600;
+    width: 180px;
+}
+.character-detail-table tr {
+    transition: background 0.2s;
+}
+.character-detail-table tr:hover td,
+.character-detail-table tr:hover th {
+    background: rgba(255,255,255,0.5);
+    transition: background 0.2s;
+} 
