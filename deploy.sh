@@ -143,7 +143,7 @@ deploy_files() {
     log "Deploying application files..."
 
     # Copy all files except .git directory
-    rsync -av --exclude='.git' --exclude='venv' --exclude='__pycache__' --exclude='*.pyc' . "$APP_DIR/"
+    rsync -av --delete --exclude='.git' --exclude='venv' --exclude='__pycache__' --exclude='*.pyc' --exclude='app.db' . "$APP_DIR/"
 
     # Set proper ownership
     chown -R $APP_USER:$APP_GROUP "$APP_DIR"
