@@ -93,7 +93,7 @@ def test_mods_edit_post_authorized(test_client, verified_login, mod_obj, item_ty
     assert response.status_code == 200
     assert b"Mod updated successfully" in response.data
     db.session.expire_all()
-    updated = Mod.query.get(mod_obj.id)
+    updated = db.session.get(Mod, mod_obj.id)
     assert updated.name == new_name
     assert updated.wiki_slug == new_slug
     assert item_type in updated.item_types

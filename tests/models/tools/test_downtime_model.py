@@ -61,7 +61,7 @@ def test_new_downtime_period_with_pack(db, character):
     db.session.commit()
 
     # Retrieve and assert
-    retrieved_period = DowntimePeriod.query.get(period.id)
+    retrieved_period = db.session.get(DowntimePeriod, period.id)
 
     assert retrieved_period is not None
     assert retrieved_period.status == DowntimeStatus.PENDING

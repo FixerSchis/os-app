@@ -130,7 +130,7 @@ def user_management_edit_user_post(user_id):
     elif "add_tag" in request.form:
         tag_id = request.form.get("tag_id")
         if tag_id:
-            tag = CharacterTag.query.get(tag_id)
+            tag = db.session.get(CharacterTag, tag_id)
             # Use the user's active character
             active_character = (
                 user.get_active_character() if hasattr(user, "get_active_character") else None
@@ -144,7 +144,7 @@ def user_management_edit_user_post(user_id):
     elif "remove_tag" in request.form:
         tag_id = request.form.get("tag_id")
         if tag_id:
-            tag = CharacterTag.query.get(tag_id)
+            tag = db.session.get(CharacterTag, tag_id)
             active_character = (
                 user.get_active_character() if hasattr(user, "get_active_character") else None
             )
@@ -158,7 +158,7 @@ def user_management_edit_user_post(user_id):
         character_id = request.form.get("character_id")
         new_status = request.form.get("status")
         if character_id and new_status in CharacterStatus.values():
-            character = Character.query.get(character_id)
+            character = db.session.get(Character, character_id)
             if character and character.player_id == user.player_id:
                 character.status = new_status
                 db.session.commit()

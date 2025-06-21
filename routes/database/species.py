@@ -23,7 +23,7 @@ def species_list():
     # Helper to get the first permitted faction's name for sorting
     def get_first_faction_name(species):
         if species.permitted_factions_list:
-            faction = Faction.query.get(species.permitted_factions_list[0])
+            faction = db.session.get(Faction, species.permitted_factions_list[0])
             return faction.name if faction else ""
         return ""
 
@@ -46,7 +46,7 @@ def species_list():
             else:
                 # Check if any permitted faction allows player characters
                 for faction_id in s.permitted_factions_list:
-                    faction = Faction.query.get(faction_id)
+                    faction = db.session.get(Faction, faction_id)
                     if faction and faction.allow_player_characters:
                         filtered_species.append(s)
                         break

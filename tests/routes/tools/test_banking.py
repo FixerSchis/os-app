@@ -211,7 +211,7 @@ class TestTransfer:
             assert response.status_code == 302  # Redirect on success
             # Verify the balances were updated
             db.session.refresh(character_with_group)
-            group = Group.query.get(character_with_group.group_id)
+            group = db.session.get(Group, character_with_group.group_id)
             assert group.bank_account == 400  # 500 - 100
 
     def test_transfer_admin_any_account(

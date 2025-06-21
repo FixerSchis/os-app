@@ -55,6 +55,7 @@ def test_list_tickets_with_character_tickets(test_client, authenticated_user, db
     ticket = EventTicket(
         event_id=event.id,
         character_id=character.id,
+        user_id=authenticated_user.id,
         ticket_type=TicketType.ADULT.value,
         price_paid=50.00,
         assigned_by_id=authenticated_user.id,
@@ -111,6 +112,7 @@ def test_list_tickets_with_assigned_tickets(test_client, authenticated_user, db)
     ticket = EventTicket(
         event_id=event.id,
         character_id=character.id,
+        user_id=authenticated_user.id,
         ticket_type=TicketType.ADULT.value,
         price_paid=50.00,
         assigned_by_id=authenticated_user.id,
@@ -162,6 +164,7 @@ def test_list_tickets_with_past_event(test_client, authenticated_user, db):
     ticket = EventTicket(
         event_id=past_event.id,
         character_id=character.id,
+        user_id=authenticated_user.id,
         ticket_type=TicketType.ADULT.value,
         price_paid=50.00,
         assigned_by_id=authenticated_user.id,

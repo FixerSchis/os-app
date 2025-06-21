@@ -96,7 +96,7 @@ def test_medicaments_edit_post_authorized(test_client, verified_login, medicamen
     assert response.status_code == 200
     assert b"Medicament updated successfully" in response.data
     db.session.expire_all()
-    updated = Medicament.query.get(medicament.id)
+    updated = db.session.get(Medicament, medicament.id)
     assert updated.name == new_name
     assert updated.wiki_slug == new_slug
     wiki_page = WikiPage.query.filter_by(slug=new_slug).first()

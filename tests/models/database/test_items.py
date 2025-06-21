@@ -33,7 +33,7 @@ def test_item_hierarchy(db):
     db.session.commit()
 
     # 5. Retrieve and assert
-    retrieved_item = Item.query.get(item.id)
+    retrieved_item = db.session.get(Item, item.id)
     assert retrieved_item is not None
     assert retrieved_item.expiry == 10
 

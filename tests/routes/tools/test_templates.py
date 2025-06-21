@@ -276,6 +276,7 @@ class TestTemplatesRoutes:
         ticket = EventTicket(
             event_id=event.id,
             character_id=character.id,
+            user_id=admin_user.id,
             ticket_type="adult",
             price_paid=100.0,
             assigned_by_id=admin_user.id,
@@ -338,6 +339,7 @@ class TestTemplatesRoutes:
         ticket = EventTicket(
             event_id=event.id,
             character_id=character.id,
+            user_id=admin_user.id,
             ticket_type="adult",
             price_paid=100.0,
             assigned_by_id=admin_user.id,

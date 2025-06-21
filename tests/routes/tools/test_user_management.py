@@ -78,7 +78,7 @@ class TestUserManagementRoutes:
         assert response.status_code == 200
 
         # Check that user was updated
-        updated_user = User.query.get(regular_user.id)
+        updated_user = db.session.get(User, regular_user.id)
         assert updated_user.email == "newemail@example.com"
         assert updated_user.first_name == "New"
         assert updated_user.surname == "Name"
@@ -112,7 +112,7 @@ class TestUserManagementRoutes:
         )
         assert response.status_code == 200
 
-        updated_user = User.query.get(regular_user.id)
+        updated_user = db.session.get(User, regular_user.id)
         assert updated_user.player_id is None
 
     def test_update_user_invalid_player_id(self, test_client, admin_user, regular_user, db):
@@ -234,7 +234,7 @@ class TestUserManagementRoutes:
         assert response.status_code == 200
 
         # Check that role was added
-        updated_user = User.query.get(regular_user.id)
+        updated_user = db.session.get(User, regular_user.id)
         assert updated_user.has_role(Role.RULES_TEAM.value)
 
     def test_add_owner_role_requires_owner(self, test_client, admin_user, regular_user, db):
@@ -288,7 +288,7 @@ class TestUserManagementRoutes:
         assert response.status_code == 200
         assert b"Role removed successfully" in response.data
 
-        updated_user = User.query.get(regular_user.id)
+        updated_user = db.session.get(User, regular_user.id)
         assert not updated_user.has_role(Role.RULES_TEAM.value)
 
     def test_add_tag(self, test_client, admin_user, regular_user, db):
@@ -320,7 +320,7 @@ class TestUserManagementRoutes:
         assert response.status_code == 200
         assert b"Tag added successfully" in response.data
 
-        updated_character = Character.query.get(character.id)
+        updated_character = db.session.get(Character, character.id)
         assert tag in updated_character.tags
 
     def test_remove_tag(self, test_client, admin_user, regular_user, db):
@@ -353,7 +353,7 @@ class TestUserManagementRoutes:
         assert response.status_code == 200
         assert b"Tag removed successfully" in response.data
 
-        updated_character = Character.query.get(character.id)
+        updated_character = db.session.get(Character, character.id)
         assert tag not in updated_character.tags
 
     def test_update_character_status(self, test_client, admin_user, regular_user, db):
@@ -384,5 +384,5 @@ class TestUserManagementRoutes:
         assert response.status_code == 200
         assert b"Character status updated successfully" in response.data
 
-        updated_character = Character.query.get(character.id)
+        updated_character = db.session.get(Character, character.id)
         assert updated_character.status == CharacterStatus.RETIRED.value

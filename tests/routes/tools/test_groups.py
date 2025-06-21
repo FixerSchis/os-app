@@ -51,7 +51,7 @@ class TestGroupsRoutes:
         assert b"Group created successfully" in resp.data
         group = Group.query.filter_by(name="New Group").first()
         assert group is not None
-        updated_char = Character.query.get(character.id)
+        updated_char = db.session.get(Character, character.id)
         assert updated_char.group_id == group.id
 
     def test_create_group_post_missing_fields(self, test_client, new_user, db):
@@ -75,7 +75,7 @@ class TestGroupsRoutes:
         data = {"name": "Edited Group", "type": "scientific", "bank_account": "100"}
         resp = test_client.post(f"/groups/{group.id}/edit", data=data, follow_redirects=True)
         assert b"Group updated successfully" in resp.data
-        updated = Group.query.get(group.id)
+        updated = db.session.get(Group, group.id)
         assert updated.name == "Edited Group"
         assert updated.type.value == "scientific"
         assert updated.bank_account == 100
@@ -98,7 +98,7 @@ class TestGroupsRoutes:
         data = {"name": "Edited Group"}
         resp = test_client.post(f"/groups/{group.id}/edit", data=data, follow_redirects=True)
         assert b"Group updated successfully" in resp.data
-        updated = Group.query.get(group.id)
+        updated = db.session.get(Group, group.id)
         assert updated.name == "Edited Group"
 
     def test_invite_character(self, test_client, new_user, db):
@@ -141,7 +141,7 @@ class TestGroupsRoutes:
             sess["_fresh"] = True
         resp = test_client.post(f"/groups/invite/{invite.id}/accept", follow_redirects=True)
         assert b"Joined group successfully" in resp.data
-        updated_char = Character.query.get(character.id)
+        updated_char = db.session.get(Character, character.id)
         assert updated_char.group_id == group.id
 
     def test_decline_invite(self, test_client, new_user, db):
@@ -159,7 +159,7 @@ class TestGroupsRoutes:
             sess["_fresh"] = True
         resp = test_client.post(f"/groups/invite/{invite.id}/decline", follow_redirects=True)
         assert b"Invite declined" in resp.data
-        invite = GroupInvite.query.get(invite.id)
+        invite = db.session.get(GroupInvite, invite.id)
         assert invite is None
 
     def test_leave_group(self, test_client, new_user, db):
@@ -179,7 +179,7 @@ class TestGroupsRoutes:
             sess["_fresh"] = True
         resp = test_client.post(f"/groups/{group.id}/leave", follow_redirects=True)
         assert b"You have left the group" in resp.data
-        updated_char = Character.query.get(character.id)
+        updated_char = db.session.get(Character, character.id)
         assert updated_char.group_id is None
 
     def test_disband_group(self, test_client, new_user, db):
@@ -199,7 +199,7 @@ class TestGroupsRoutes:
             sess["_fresh"] = True
         resp = test_client.post(f"/groups/{group.id}/disband", follow_redirects=True)
         assert b"Group has been disbanded" in resp.data
-        group = Group.query.get(group.id)
+        group = db.session.get(Group, group.id)
         assert group is None
 
     def test_remove_character_admin(self, test_client, admin_user, db):
@@ -219,7 +219,7 @@ class TestGroupsRoutes:
             sess["_fresh"] = True
         resp = test_client.post(f"/groups/{group.id}/remove/{character.id}", follow_redirects=True)
         assert b"Character removed from group" in resp.data
-        updated_char = Character.query.get(character.id)
+        updated_char = db.session.get(Character, character.id)
         assert updated_char.group_id is None
 
     def test_create_group_admin(self, test_client, admin_user, db):
@@ -247,7 +247,7 @@ class TestGroupsRoutes:
         }
         resp = test_client.post(f"/groups/{group.id}/edit/admin", data=data, follow_redirects=True)
         assert b"Group updated successfully" in resp.data
-        updated = Group.query.get(group.id)
+        updated = db.session.get(Group, group.id)
         assert updated.name == "Edited Admin Group"
         assert updated.type.value == "scientific"
         assert updated.bank_account == 200
@@ -269,5 +269,5 @@ class TestGroupsRoutes:
             f"/groups/{group.id}/add_character/admin", data=data, follow_redirects=True
         )
         assert b"Character added to group" in resp.data
-        updated_char = Character.query.get(character.id)
+        updated_char = db.session.get(Character, character.id)
         assert updated_char.group_id == group.id

@@ -142,7 +142,7 @@ def test_item_blueprints_edit_post_authorized(
     assert response.status_code == 200
     assert b"Item blueprint updated successfully" in response.data
     db.session.expire_all()
-    updated = ItemBlueprint.query.get(item_blueprint_obj.id)
+    updated = db.session.get(ItemBlueprint, item_blueprint_obj.id)
     assert updated.name == new_name
     assert updated.base_cost == 200
     assert updated.blueprint_id == new_blueprint_id
@@ -194,7 +194,7 @@ def test_item_blueprints_delete_authorized(test_client, rules_team_user, item_bl
     )
     assert response.status_code == 200
     assert b"Item blueprint deleted successfully" in response.data
-    deleted = ItemBlueprint.query.get(item_blueprint_obj.id)
+    deleted = db.session.get(ItemBlueprint, item_blueprint_obj.id)
     assert deleted is None
 
 

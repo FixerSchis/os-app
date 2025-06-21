@@ -99,13 +99,13 @@ def list():
         mod_rows = db.session.execute(
             item_mods_applied.select().where(item_mods_applied.c.item_id == item.id)
         ).fetchall()
-        mod_counts = [(Mod.query.get(row.mod_id), row.count) for row in mod_rows]
+        mod_counts = [(db.session.get(Mod, row.mod_id), row.count) for row in mod_rows]
         mod_instances_by_item[item.id] = mod_counts
     for bp in blueprints.values():
         mod_rows = db.session.execute(
             item_blueprint_mods.select().where(item_blueprint_mods.c.item_blueprint_id == bp.id)
         ).fetchall()
-        mod_counts = [(Mod.query.get(row.mod_id), row.count) for row in mod_rows]
+        mod_counts = [(db.session.get(Mod, row.mod_id), row.count) for row in mod_rows]
         mod_instances_by_blueprint[bp.id] = mod_counts
 
     return render_template(
@@ -207,7 +207,7 @@ def edit(id):
         mod_rows = db.session.execute(
             item_blueprint_mods.select().where(item_blueprint_mods.c.item_blueprint_id == bp.id)
         ).fetchall()
-        mod_counts = [(Mod.query.get(row.mod_id), row.count) for row in mod_rows]
+        mod_counts = [(db.session.get(Mod, row.mod_id), row.count) for row in mod_rows]
         mod_instances_by_blueprint[bp.id] = mod_counts
     return render_template(
         "rules/items/edit.html",
@@ -244,7 +244,7 @@ def edit_post(id):
         mod_rows = db.session.execute(
             item_blueprint_mods.select().where(item_blueprint_mods.c.item_blueprint_id == bp.id)
         ).fetchall()
-        mod_counts = [(Mod.query.get(row.mod_id), row.count) for row in mod_rows]
+        mod_counts = [(db.session.get(Mod, row.mod_id), row.count) for row in mod_rows]
         mod_instances_by_blueprint[bp.id] = mod_counts
 
     if not blueprint_id:
