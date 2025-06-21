@@ -6,7 +6,7 @@
 <div class="container">
     <div class="groups-management">
         <h1>Groups</h1>
-        
+
         {% if character.group %}
             <div class="card mb-4">
                 <div class="card-header">
@@ -18,20 +18,20 @@
                             <label for="name">Group Name</label>
                             <input type="text" class="form-control" id="name" name="name" value="{{ character.group.name }}" required>
                         </div>
-                        
+
                         <div class="form-group">
                             <label>Group Type</label>
                             <input type="text" class="form-control" value="{{ GroupType.descriptions()[character.group.type.value] if character.group.type.value else GroupType.descriptions()[character.group.type] }}" readonly>
                         </div>
-                        
+
                         <div class="form-group">
                             <label>Bank Balance</label>
                             <input type="text" class="form-control" value="{{ character.group.bank_account }}" readonly>
                         </div>
-                        
+
                         <button type="submit" class="btn btn-primary">Update Group Name</button>
                     </form>
-                    
+
                     <h3>Members</h3>
                     <table class="table">
                         <thead>
@@ -51,7 +51,7 @@
                             {% endfor %}
                         </tbody>
                     </table>
-                    
+
                     <h3>Group Samples</h3>
                     <div class="mb-3">
                         {% if character.group.samples.count() > 0 %}
@@ -62,7 +62,7 @@
                             <span class="text-muted">No samples assigned to this group.</span>
                         {% endif %}
                     </div>
-                    
+
                     <div class="mt-4">
                         <h3>Invite Character</h3>
                         <form method="POST" action="{{ url_for('groups.invite_character', group_id=character.group.id) }}" class="form-inline">
@@ -77,7 +77,7 @@
                             <button type="submit" class="btn btn-primary">Send Invite</button>
                         </form>
                     </div>
-                    
+
                     <div class="mt-4">
                         {% if character.group.characters|length > 1 %}
                         <form method="POST" action="{{ url_for('groups.leave_group', group_id=character.group.id) }}" style="display: inline;">
@@ -102,7 +102,7 @@
                             <label for="name">Group Name</label>
                             <input type="text" class="form-control" id="name" name="name" required>
                         </div>
-                        
+
                         <div class="form-group">
                             <label for="type">Group Type</label>
                             <select class="form-control form-select" id="type" name="type" required>
@@ -112,12 +112,12 @@
                                 {% endfor %}
                             </select>
                         </div>
-                        
+
                         <button type="submit" class="btn btn-primary">Create Group</button>
                     </form>
                 </div>
             </div>
-            
+
             {% if invites %}
             <div class="card">
                 <div class="card-header">
@@ -181,4 +181,4 @@
 {% block scripts %}
 {{ super() }}
 <script src="{{ url_for('static', filename='js/pages/groups-list.js') }}"></script>
-{% endblock %} 
+{% endblock %}

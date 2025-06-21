@@ -1,13 +1,22 @@
-from ..extensions import db
-from ..enums import BodyHitsType, AbilityType
 import json
+
+from ..enums import AbilityType, BodyHitsType
+from ..extensions import db
+
 
 class Ability(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    species_id = db.Column(db.Integer, db.ForeignKey('species.id'), nullable=False)
+    species_id = db.Column(db.Integer, db.ForeignKey("species.id"), nullable=False)
     name = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text, nullable=False)
-    type = db.Column(db.Enum(AbilityType, values_callable=lambda x: [e.value for e in x], native_enum=False), nullable=False)
+    type = db.Column(
+        db.Enum(
+            AbilityType,
+            values_callable=lambda x: [e.value for e in x],
+            native_enum=False,
+        ),
+        nullable=False,
+    )
     # For starting skills: list of skill IDs (JSON)
     starting_skills = db.Column(db.String, nullable=True)
     # For skill discounts: map of skill_id to discount (JSON)
@@ -29,25 +38,32 @@ class Ability(db.Model):
     def skill_discounts_dict(self, discounts):
         self.skill_discounts = json.dumps(discounts) if discounts else None
 
+
 class Species(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     wiki_page = db.Column(db.String(255), nullable=False)
-    permitted_factions = db.Column(db.String, nullable=False)  # Stored as JSON string of faction IDs
+    permitted_factions = db.Column(
+        db.String, nullable=False
+    )  # Stored as JSON string of faction IDs
     body_hits_type = db.Column(
-        db.Enum(BodyHitsType, values_callable=lambda x: [e.value for e in x], native_enum=False),
-        nullable=False
+        db.Enum(
+            BodyHitsType,
+            values_callable=lambda x: [e.value for e in x],
+            native_enum=False,
+        ),
+        nullable=False,
     )
     body_hits = db.Column(db.Integer, nullable=False, default=0)
     death_count = db.Column(db.Integer, nullable=False, default=0)
     keywords = db.Column(db.String, nullable=True)  # Stored as JSON string of keywords
 
     # Relationships
-    abilities = db.relationship('Ability', backref='species', cascade='all, delete-orphan')
-    characters = db.relationship('Character', back_populates='species')
+    abilities = db.relationship("Ability", backref="species", cascade="all, delete-orphan")
+    characters = db.relationship("Character", back_populates="species")
 
     def __repr__(self):
-        return f'<Species {self.name}>'
+        return f"<Species {self.name}>"
 
     @property
     def body_hits_type_enum(self):
@@ -74,4 +90,4 @@ class Species(db.Model):
 
     @keywords_list.setter
     def keywords_list(self, keywords):
-        self.keywords = json.dumps(keywords) if keywords else None 
+        self.keywords = json.dumps(keywords) if keywords else None

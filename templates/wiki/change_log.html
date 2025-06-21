@@ -8,7 +8,7 @@
         {% for log in logs %}
         <li class="list-group-item" style="margin-bottom: 20px;">
             <div><strong>Date:</strong> {{ log.timestamp.strftime('%Y-%m-%d %H:%M') if log.timestamp else '' }}</div>
-            <div><strong>By:</strong> 
+            <div><strong>By:</strong>
                 {% if log.user %}
                     {{ log.user.first_name }}{% if log.user.surname %} {{ log.user.surname }}{% endif %}
                     {% if not log.user.first_name and not log.user.surname %}{{ log.user.email }}{% endif %}
@@ -46,4 +46,4 @@
     <p>No change logs yet.</p>
     {% endif %}
 </div>
-{% endblock %} 
+{% endblock %}

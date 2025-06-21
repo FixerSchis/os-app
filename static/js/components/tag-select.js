@@ -46,4 +46,4 @@ $(document).ready(function() {
         theme: 'default',
         tags: false // No tag creation
     });
-}); 
+});

@@ -1,10 +1,10 @@
 document.addEventListener('DOMContentLoaded', function() {
     const printButtons = document.querySelectorAll('.print-exotic-btn');
-    
+
     printButtons.forEach(button => {
         button.addEventListener('click', function() {
             const exoticId = this.dataset.exoticId;
-            
+
             // Call the print endpoint
             fetch(`/templates/exotics/${exoticId}/print`)
                 .then(response => response.json())
@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         alert(data.error);
                         return;
                     }
-                    
+
                     // Open PDF in new tab
                     const pdfData = data.pdf;
                     const blob = new Blob([Uint8Array.from(atob(pdfData), c => c.charCodeAt(0))], { type: 'application/pdf' });
@@ -28,4 +28,4 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
         });
     });
-}); 
+});

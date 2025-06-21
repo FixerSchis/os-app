@@ -1,37 +1,29 @@
-import uuid
-from flask import (
-    Blueprint,
-    render_template,
-    request,
-    redirect,
-    url_for,
-    flash,
-    send_file,
-    jsonify,
-)
-from flask_login import AnonymousUserMixin, login_required, current_user
-from models.wiki import (
-    db,
-    WikiPage,
-    WikiImage,
-    WikiSection,
-    WikiPageVersion,
-    SectionRestrictionType,
-    WikiPageVersionStatus,
-    WikiChangeLog,
-    WikiTag,
-)
-from models.enums import Role
-from models.database.faction import Faction
-from models.database.species import Species
-from models.database.skills import Skill
-from models.tools.character import CharacterTag
-from models.database.cybernetic import Cybernetic
-from utils.decorators import plot_team_required
-import io
 import difflib
+import io
 import json
+import uuid
 
+from flask import Blueprint, flash, jsonify, redirect, render_template, request, send_file, url_for
+from flask_login import current_user, login_required
+
+from models.database.cybernetic import Cybernetic
+from models.database.faction import Faction
+from models.database.skills import Skill
+from models.database.species import Species
+from models.enums import Role
+from models.tools.character import CharacterTag
+from models.wiki import (
+    SectionRestrictionType,
+    WikiChangeLog,
+    WikiImage,
+    WikiPage,
+    WikiPageVersion,
+    WikiPageVersionStatus,
+    WikiSection,
+    WikiTag,
+    db,
+)
+from utils.decorators import plot_team_required
 from utils.email import send_wiki_published_notification_to_all
 
 wiki_bp = Blueprint("wiki", __name__)
@@ -47,11 +39,7 @@ def get_latest_published_version(page):
 
 
 def get_latest_version(page):
-    return (
-        page.versions.order_by(None)
-        .order_by(WikiPageVersion.version_number.desc())
-        .first()
-    )
+    return page.versions.order_by(None).order_by(WikiPageVersion.version_number.desc()).first()
 
 
 def get_pending_version(page, current_user):
@@ -109,7 +97,9 @@ def save_wiki_version(data, version):
                         if str(tag_val).isdigit():
                             tag_ids.append(int(tag_val))
                         else:
-                            tag = CharacterTag.query.filter(CharacterTag.name.ilike(tag_val)).first()
+                            tag = CharacterTag.query.filter(
+                                CharacterTag.name.ilike(tag_val)
+                            ).first()
                             if not tag:
                                 tag = CharacterTag(name=tag_val)
                                 db.session.add(tag)
@@ -117,9 +107,7 @@ def save_wiki_version(data, version):
                             tag_ids.append(tag.id)
                     restriction_value = json.dumps(tag_ids)
                 else:
-                    restriction_value = json.dumps(
-                        [int(v) for v in values if str(v).isdigit()]
-                    )
+                    restriction_value = json.dumps([int(v) for v in values if str(v).isdigit()])
             if section_data.get("id"):
                 section = existing_sections.get(section_data["id"])
                 if section:
@@ -156,13 +144,13 @@ def save_wiki_version(data, version):
 def build_wiki_tree(pages):
     tree = {}
     for page in pages:
-        parts = page['slug'].split('/')
+        parts = page["slug"].split("/")
         node = tree
         for i, part in enumerate(parts):
             if i == len(parts) - 1:
-                if '_pages' not in node:
-                    node['_pages'] = []
-                node['_pages'].append(page)
+                if "_pages" not in node:
+                    node["_pages"] = []
+                node["_pages"].append(page)
             else:
                 if part not in node:
                     node[part] = {}
@@ -183,12 +171,14 @@ def wiki_list():
         visible_sections = [s for s in version.sections if has_access(s, user)]
         if not visible_sections:
             continue
-        filtered_pages.append({
-            'slug': page.slug,
-            'title': page.title,
-            'deleted': bool(getattr(version, 'deleted', False)),
-            'tags': list(page.tags),
-        })
+        filtered_pages.append(
+            {
+                "slug": page.slug,
+                "title": page.title,
+                "deleted": bool(getattr(version, "deleted", False)),
+                "tags": list(page.tags),
+            }
+        )
     tree = build_wiki_tree(filtered_pages)
     return render_template("wiki/list.html", wiki_tree=tree)
 
@@ -236,9 +226,7 @@ def has_access(section, user):
             return character.species_id in [int(v) for v in values]
         if section.restriction_type == SectionRestrictionType.SKILL:
             # Character must have at least one of the required skills
-            character_skill_ids = [
-                cs.skill_id for cs in getattr(character, "skills", [])
-            ]
+            character_skill_ids = [cs.skill_id for cs in getattr(character, "skills", [])]
             return any(int(v) in character_skill_ids for v in values)
         if section.restriction_type == SectionRestrictionType.CYBERNETIC:
             # Character must have at least one of the required cybernetics
@@ -310,10 +298,7 @@ def wiki_view(slug):
             else:
                 return render_template("404.html"), 404
 
-        if (
-            published_version
-            and published_version.version_number > version.version_number
-        ):
+        if published_version and published_version.version_number > version.version_number:
             is_historic_version = True
     else:
         if is_editor and not current:
@@ -338,9 +323,7 @@ def wiki_view(slug):
             "title": s.title,
             "content": s.content,
             "order": s.order,
-            "restriction_type": (
-                s.restriction_type.name.lower() if s.restriction_type else None
-            ),
+            "restriction_type": (s.restriction_type.name.lower() if s.restriction_type else None),
             "restriction_value": s.restriction_value,
         }
         for s in version.sections
@@ -365,14 +348,9 @@ def get_internal_pages():
     q = request.args.get("q", "").strip().lower()
     query = WikiPage.query
     if q:
-        query = query.filter(
-            (WikiPage.title.ilike(f"%{q}%")) | (WikiPage.slug.ilike(f"%{q}%"))
-        )
+        query = query.filter((WikiPage.title.ilike(f"%{q}%")) | (WikiPage.slug.ilike(f"%{q}%")))
     return [
-        {
-            "id": page.slug,
-            "text": f"{page.title} ({page.slug})"
-        }
+        {"id": page.slug, "text": f"{page.title} ({page.slug})"}
         for page in query.order_by(WikiPage.title).limit(30)
     ]
 
@@ -382,34 +360,34 @@ def api_wiki_pages():
     """API endpoint for CKEditor to get wiki pages for link dropdown"""
     q = request.args.get("q", "").strip().lower()
     query = WikiPage.query
-    
+
     # Filter by search query if provided
     if q:
-        query = query.filter(
-            (WikiPage.title.ilike(f"%{q}%")) | (WikiPage.slug.ilike(f"%{q}%"))
-        )
-    
+        query = query.filter((WikiPage.title.ilike(f"%{q}%")) | (WikiPage.slug.ilike(f"%{q}%")))
+
     # Get user for access filtering
     user = current_user if current_user.is_authenticated else None
-    
+
     pages = []
     for page in query.order_by(WikiPage.title).limit(50):
         # Check if user has access to this page
         version = get_latest_published_version(page)
         if not version or version.deleted:
             continue
-            
+
         visible_sections = [s for s in version.sections if has_access(s, user)]
         if not visible_sections:
             continue
-            
-        pages.append({
-            "id": page.slug,
-            "text": page.title,
-            "url": url_for("wiki.wiki_view", slug=page.slug),
-            "slug": page.slug
-        })
-    
+
+        pages.append(
+            {
+                "id": page.slug,
+                "text": page.title,
+                "url": url_for("wiki.wiki_view", slug=page.slug),
+                "slug": page.slug,
+            }
+        )
+
     return jsonify(pages)
 
 
@@ -419,9 +397,7 @@ def api_wiki_pages():
 def wiki_edit(slug):
     page = WikiPage.query.get_or_404(slug)
     role_descriptions = Role.descriptions()
-    available_roles = [
-        {"value": v, "label": role_descriptions[v]} for v in Role.values()
-    ]
+    available_roles = [{"value": v, "label": role_descriptions[v]} for v in Role.values()]
     version = get_latest_version(page)
     if not version:
         version = get_pending_version(page, current_user)
@@ -432,26 +408,19 @@ def wiki_edit(slug):
             "title": s.title,
             "content": s.content,
             "order": s.order,
-            "restriction_type": (
-                s.restriction_type.name.lower() if s.restriction_type else None
-            ),
+            "restriction_type": (s.restriction_type.name.lower() if s.restriction_type else None),
             "restriction_value": s.restriction_value,
         }
         for s in version.sections
     ]
-    factions = [
-        {"id": f.id, "name": f.name} for f in Faction.query.order_by(Faction.name).all()
+    factions = [{"id": f.id, "name": f.name} for f in Faction.query.order_by(Faction.name).all()]
+    species = [{"id": s.id, "name": s.name} for s in Species.query.order_by(Species.name).all()]
+    skills = [{"id": sk.id, "name": sk.name} for sk in Skill.query.order_by(Skill.name).all()]
+    tags = [
+        {"id": t.id, "name": t.name} for t in CharacterTag.query.order_by(CharacterTag.name).all()
     ]
-    species = [
-        {"id": s.id, "name": s.name} for s in Species.query.order_by(Species.name).all()
-    ]
-    skills = [
-        {"id": sk.id, "name": sk.name} for sk in Skill.query.order_by(Skill.name).all()
-    ]
-    tags = [{"id": t.id, "name": t.name} for t in CharacterTag.query.order_by(CharacterTag.name).all()]
     cybernetics = [
-        {"id": c.id, "name": c.name}
-        for c in Cybernetic.query.order_by(Cybernetic.name).all()
+        {"id": c.id, "name": c.name} for c in Cybernetic.query.order_by(Cybernetic.name).all()
     ]
     return render_template(
         "wiki/edit.html",
@@ -480,7 +449,7 @@ def wiki_edit_post(slug):
             db.session.begin_nested()
             save_wiki_version(data, version)
             # Handle tags
-            tag_values = data.get('tags', [])
+            tag_values = data.get("tags", [])
             tag_objs = []
             for tag_val in tag_values:
                 if isinstance(tag_val, int) or (isinstance(tag_val, str) and tag_val.isdigit()):
@@ -497,9 +466,7 @@ def wiki_edit_post(slug):
             page.tags = tag_objs
             db.session.commit()
             flash("Page saved successfully")
-            return jsonify(
-                {"success": True, "redirect": url_for("wiki.wiki_view", slug=slug)}
-            )
+            return jsonify({"success": True, "redirect": url_for("wiki.wiki_view", slug=slug)})
         except Exception as e:
             db.session.rollback()
             return jsonify({"success": False, "error": str(e)}), 500
@@ -512,27 +479,21 @@ def wiki_edit_post(slug):
 @plot_team_required
 def wiki_new():
     role_descriptions = Role.descriptions()
-    available_roles = [
-        {"value": v, "label": role_descriptions[v]} for v in Role.values()
-    ]
+    available_roles = [{"value": v, "label": role_descriptions[v]} for v in Role.values()]
 
-    factions = [
-        {"id": f.id, "name": f.name} for f in Faction.query.order_by(Faction.name).all()
+    factions = [{"id": f.id, "name": f.name} for f in Faction.query.order_by(Faction.name).all()]
+    species = [{"id": s.id, "name": s.name} for s in Species.query.order_by(Species.name).all()]
+    skills = [{"id": sk.id, "name": sk.name} for sk in Skill.query.order_by(Skill.name).all()]
+    tags = [
+        {"id": t.id, "name": t.name} for t in CharacterTag.query.order_by(CharacterTag.name).all()
     ]
-    species = [
-        {"id": s.id, "name": s.name} for s in Species.query.order_by(Species.name).all()
-    ]
-    skills = [
-        {"id": sk.id, "name": sk.name} for sk in Skill.query.order_by(Skill.name).all()
-    ]
-    tags = [{"id": t.id, "name": t.name} for t in CharacterTag.query.order_by(CharacterTag.name).all()]
     cybernetics = [
-        {"id": c.id, "name": c.name}
-        for c in Cybernetic.query.order_by(Cybernetic.name).all()
+        {"id": c.id, "name": c.name} for c in Cybernetic.query.order_by(Cybernetic.name).all()
     ]
 
-    return render_template("wiki/edit.html", 
-        page=None, 
+    return render_template(
+        "wiki/edit.html",
+        page=None,
         sections=[],
         available_roles=available_roles,
         factions=factions,
@@ -549,12 +510,7 @@ def wiki_new():
 def wiki_new_post():
     if request.is_json:
         data = request.get_json()
-        if (
-            not data
-            or "title" not in data
-            or "slug" not in data
-            or "sections" not in data
-        ):
+        if not data or "title" not in data or "slug" not in data or "sections" not in data:
             return jsonify({"success": False, "error": "Invalid data format"}), 400
         if WikiPage.query.filter_by(slug=data["slug"]).first():
             flash("Slug already exists")
@@ -574,7 +530,7 @@ def wiki_new_post():
             db.session.begin_nested()
             save_wiki_version(data, version)
             # Handle tags
-            tag_values = data.get('tags', [])
+            tag_values = data.get("tags", [])
             tag_objs = []
             for tag_val in tag_values:
                 if isinstance(tag_val, int) or (isinstance(tag_val, str) and tag_val.isdigit()):
@@ -626,9 +582,7 @@ def wiki_upload_image():
 @wiki_bp.route("/image/<int:image_id>")
 def wiki_image(image_id):
     image = WikiImage.query.get_or_404(image_id)
-    return send_file(
-        io.BytesIO(image.data), mimetype=image.mimetype, download_name=image.filename
-    )
+    return send_file(io.BytesIO(image.data), mimetype=image.mimetype, download_name=image.filename)
 
 
 @wiki_bp.route("/changes/pending", methods=["GET"])
@@ -641,19 +595,12 @@ def wiki_pending_changes():
         latest_version = get_latest_version(page)
         published_version = get_latest_published_version(page)
         if latest_version and latest_version.status == WikiPageVersionStatus.PENDING:
-            if (
-                published_version
-                and latest_version.deleted != published_version.deleted
-            ):
-                diffs = [
-                    {"diff": ["[Deleted]" if latest_version.deleted else "[Restored]"]}
-                ]
+            if published_version and latest_version.deleted != published_version.deleted:
+                diffs = [{"diff": ["[Deleted]" if latest_version.deleted else "[Restored]"]}]
                 continue
 
             published_sections = (
-                {s.id: s for s in published_version.sections}
-                if published_version
-                else {}
+                {s.id: s for s in published_version.sections} if published_version else {}
             )
             diffs = []
 
@@ -668,18 +615,16 @@ def wiki_pending_changes():
                         else None
                     )
                     new_type = (
-                        section.restriction_type.name.lower()
-                        if section.restriction_type
-                        else None
+                        section.restriction_type.name.lower() if section.restriction_type else None
                     )
                     old_value = pub_section.restriction_value
                     new_value = section.restriction_value
-                    restriction_changed = (old_type != new_type) or (
-                        old_value != new_value
-                    )
+                    restriction_changed = (old_type != new_type) or (old_value != new_value)
                     if restriction_changed:
                         diff = [
-                            f"[Restriction changed: {old_type or 'None'} → {new_type or 'None'} | {old_value or 'None'} → {new_value or 'None'}]"
+                            f"[Restriction changed: {old_type or 'None'} -> "
+                            f"{new_type or 'None'} | {old_value or 'None'} -> "
+                            f"{new_value or 'None'}]"
                         ]
                     else:
                         diff = []
@@ -742,9 +687,7 @@ def wiki_pending_changes_post():
             # Compute diff vs. published
             published_version = get_latest_published_version(page)
             published_sections = (
-                {s.id: s for s in published_version.sections}
-                if published_version
-                else {}
+                {s.id: s for s in published_version.sections} if published_version else {}
             )
             diffs = []
             for section in latest_version.sections:
@@ -758,25 +701,21 @@ def wiki_pending_changes_post():
                         else None
                     )
                     new_type = (
-                        section.restriction_type.name.lower()
-                        if section.restriction_type
-                        else None
+                        section.restriction_type.name.lower() if section.restriction_type else None
                     )
                     old_value = pub_section.restriction_value
                     new_value = section.restriction_value
-                    restriction_changed = (old_type != new_type) or (
-                        old_value != new_value
-                    )
+                    restriction_changed = (old_type != new_type) or (old_value != new_value)
                     diff = []
                     if restriction_changed:
                         diff.append(
-                            f"[Restriction changed: {old_type or 'None'} → {new_type or 'None'} | {old_value or 'None'} → {new_value or 'None'}]"
+                            f"[Restriction changed: {old_type or 'None'} -> "
+                            f"{new_type or 'None'} | {old_value or 'None'} -> "
+                            f"{new_value or 'None'}]"
                         )
                     # If any restriction, do not show content
                     if new_type or old_type:
-                        diff.append(
-                            "[Restricted Section: Content hidden due to access restrictions]"
-                        )
+                        diff.append("[Restricted Section: Content hidden]")
                     else:
                         diff += list(
                             difflib.unified_diff(
@@ -791,28 +730,20 @@ def wiki_pending_changes_post():
                 else:
                     diff = ["[Added]"]
                     new_type = (
-                        section.restriction_type.name.lower()
-                        if section.restriction_type
-                        else None
+                        section.restriction_type.name.lower() if section.restriction_type else None
                     )
                     if new_type:
-                        diff.append(
-                            "[Restricted Section: Content hidden due to access restrictions]"
-                        )
+                        diff.append("[Restricted Section: Content hidden]")
                     else:
                         diff += (section.content or "").splitlines()
                 diffs.append("\n".join(diff))
             for section in published_sections.values():
                 diff = ["[Deleted]"]
                 old_type = (
-                    section.restriction_type.name.lower()
-                    if section.restriction_type
-                    else None
+                    section.restriction_type.name.lower() if section.restriction_type else None
                 )
                 if old_type:
-                    diff.append(
-                        "[Restricted Section: Content hidden due to access restrictions]"
-                    )
+                    diff.append("[Restricted Section: Content hidden]")
                 else:
                     diff += (section.content or "").splitlines()
                 diffs.append("\n".join(diff))
@@ -820,9 +751,7 @@ def wiki_pending_changes_post():
             latest_version.status = WikiPageVersionStatus.PUBLISHED
             published_versions.append(latest_version)
     if published_versions:
-        log = WikiChangeLog(
-            user_id=current_user.id, message=changelog, versions=published_versions
-        )
+        log = WikiChangeLog(user_id=current_user.id, message=changelog, versions=published_versions)
         db.session.add(log)
         db.session.commit()
 
@@ -842,14 +771,14 @@ def wiki_change_log():
 
 @wiki_bp.route("/search")
 def wiki_search():
-    query = request.args.get('q', '').strip()
+    query = request.args.get("q", "").strip()
     if not query:
-        return render_template("wiki/search.html", results=[], query='')
-    
+        return render_template("wiki/search.html", results=[], query="")
+
     # Tag search if query starts with #
-    if query.startswith('#'):
+    if query.startswith("#"):
         tag_term = query[1:].strip().lower()
-        tag_matches = WikiTag.query.filter(WikiTag.name.ilike(f'%{tag_term}%')).all()
+        tag_matches = WikiTag.query.filter(WikiTag.name.ilike(f"%{tag_term}%")).all()
         pages = set()
         for tag in tag_matches:
             for page in tag.pages:
@@ -863,17 +792,20 @@ def wiki_search():
         results = []
         for page in pages:
             version = get_latest_published_version(page)
-            results.append({
-                'page': page,
-                'highlighted_title': page.title,
-                'sections': [],
-                'tags': [t.name for t in page.tags]
-            })
+            results.append(
+                {
+                    "page": page,
+                    "highlighted_title": page.title,
+                    "sections": [],
+                    "tags": [t.name for t in page.tags],
+                }
+            )
         return render_template("wiki/search.html", results=results, query=query)
-    
+
     # Normal search
     pages = WikiPage.query.all()
     results = []
+
     def highlight_text(text, query):
         if not text:
             return text
@@ -886,12 +818,13 @@ def wiki_search():
             if pos == -1:
                 break
             result.append(text[:pos])
-            result.append('<mark>' + text[pos:pos+len(query)] + '</mark>')
-            text = text[pos+len(query):]
-            text_lower = text_lower[pos+len(query):]
+            result.append("<mark>" + text[pos : pos + len(query)] + "</mark>")
+            text = text[pos + len(query) :]
+            text_lower = text_lower[pos + len(query) :]
             pos = 0
         result.append(text)
-        return ''.join(result)
+        return "".join(result)
+
     for page in pages:
         version = get_latest_published_version(page)
         if not version or version.deleted:
@@ -903,10 +836,10 @@ def wiki_search():
         highlighted_title = highlight_text(page.title, query) if title_match else page.title
         section_matches = []
         for section in visible_sections:
-            section_title_match = query.lower() in (section.title or '').lower()
-            section_content_match = query.lower() in (section.content or '').lower()
+            section_title_match = query.lower() in (section.title or "").lower()
+            section_content_match = query.lower() in (section.content or "").lower()
             if section_title_match or section_content_match:
-                content = section.content or ''
+                content = section.content or ""
                 if section_content_match:
                     positions = []
                     pos = 0
@@ -921,62 +854,71 @@ def wiki_search():
                         end = min(len(content), positions[-1] + len(query) + 100)
                         excerpt = content[start:end]
                         if start > 0:
-                            excerpt = '...' + excerpt
+                            excerpt = "..." + excerpt
                         if end < len(content):
-                            excerpt = excerpt + '...'
+                            excerpt = excerpt + "..."
                         excerpt = highlight_text(excerpt, query)
                     else:
-                        excerpt = content[:200] + '...' if len(content) > 200 else content
+                        excerpt = content[:200] + "..." if len(content) > 200 else content
                 else:
-                    excerpt = content[:200] + '...' if len(content) > 200 else content
-                section_matches.append({
-                    'title': highlight_text(section.title, query) if section_title_match else section.title,
-                    'excerpt': excerpt,
-                    'title_match': section_title_match,
-                    'content_match': section_content_match
-                })
+                    excerpt = content[:200] + "..." if len(content) > 200 else content
+                section_matches.append(
+                    {
+                        "title": (
+                            highlight_text(section.title, query)
+                            if section_title_match
+                            else section.title
+                        ),
+                        "excerpt": excerpt,
+                        "title_match": section_title_match,
+                        "content_match": section_content_match,
+                    }
+                )
         if title_match or section_matches:
-            results.append({
-                'page': page,
-                'highlighted_title': highlighted_title,
-                'sections': section_matches
-            })
+            results.append(
+                {
+                    "page": page,
+                    "highlighted_title": highlighted_title,
+                    "sections": section_matches,
+                }
+            )
     return render_template("wiki/search.html", results=results, query=query)
 
 
-@wiki_bp.route('/tags', methods=['GET'])
+@wiki_bp.route("/tags", methods=["GET"])
 def wiki_tags():
-    q = request.args.get('q', '').strip()
+    q = request.args.get("q", "").strip()
     tags = WikiTag.query
     if q:
-        tags = tags.filter(WikiTag.name.ilike(f'%{q}%'))
+        tags = tags.filter(WikiTag.name.ilike(f"%{q}%"))
     tags = tags.order_by(WikiTag.name).all()
-    return jsonify({'results': [{'id': t.id, 'text': t.name} for t in tags]})
+    return jsonify({"results": [{"id": t.id, "text": t.name} for t in tags]})
 
-@wiki_bp.route('/tags', methods=['POST'])
+
+@wiki_bp.route("/tags", methods=["POST"])
 @login_required
 @plot_team_required
 def wiki_tags_post():
-    name = request.json.get('name', '').strip()
+    name = request.json.get("name", "").strip()
     if not name:
-        return jsonify({'error': 'No tag name provided'}), 400
+        return jsonify({"error": "No tag name provided"}), 400
     tag = WikiTag.query.filter_by(name=name).first()
     if not tag:
         tag = WikiTag(name=name)
         db.session.add(tag)
         db.session.commit()
-    return jsonify({'id': tag.id, 'text': tag.name})
+    return jsonify({"id": tag.id, "text": tag.name})
 
 
-@wiki_bp.route('/live_search')
+@wiki_bp.route("/live_search")
 def wiki_live_search():
-    query = request.args.get('q', '').strip()
+    query = request.args.get("q", "").strip()
     results = []
     if not query:
         return jsonify(results)
-    if query.startswith('#'):
+    if query.startswith("#"):
         tag_term = query[1:].strip().lower()
-        tag_matches = WikiTag.query.filter(WikiTag.name.ilike(f'%{tag_term}%')).all()
+        tag_matches = WikiTag.query.filter(WikiTag.name.ilike(f"%{tag_term}%")).all()
         pages = set()
         for tag in tag_matches:
             for page in tag.pages:
@@ -988,11 +930,13 @@ def wiki_live_search():
                     continue
                 pages.add(page)
         for page in pages:
-            results.append({
-                'title': page.title,
-                'slug': page.slug,
-                'tags': [t.name for t in page.tags]
-            })
+            results.append(
+                {
+                    "title": page.title,
+                    "slug": page.slug,
+                    "tags": [t.name for t in page.tags],
+                }
+            )
     else:
         # Match title or tag
         pages = WikiPage.query.all()
@@ -1006,9 +950,11 @@ def wiki_live_search():
             title_match = query.lower() in page.title.lower()
             tag_match = any(query.lower() in t.name.lower() for t in page.tags)
             if title_match or tag_match:
-                results.append({
-                    'title': page.title,
-                    'slug': page.slug,
-                    'tags': [t.name for t in page.tags]
-                })
+                results.append(
+                    {
+                        "title": page.title,
+                        "slug": page.slug,
+                        "tags": [t.name for t in page.tags],
+                    }
+                )
     return jsonify(results)

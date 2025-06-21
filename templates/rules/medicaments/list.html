@@ -10,7 +10,7 @@
         <a href="{{ url_for('medicaments.create') }}" class="btn btn-primary">Create Medicament</a>
         {% endif %}
     </div>
-    
+
     <div class="table-responsive">
         <table class="table table-striped table-hover align-middle">
             <thead>
@@ -56,4 +56,4 @@
 {% block scripts %}
 {{ super() }}
 <script src="{{ url_for('static', filename='js/pages/medicaments-list.js') }}"></script>
-{% endblock %} 
+{% endblock %}

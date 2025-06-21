@@ -6,14 +6,14 @@ class DarkModeManager {
         this.htmlElement = document.documentElement;
         // Check if user is authenticated by looking for settings link
         this.isAuthenticated = document.querySelector('a[href*="/settings/"]') !== null;
-        
+
         this.init();
     }
 
     init() {
         // Set initial theme based on user preference or session cookie
         this.setInitialTheme();
-        
+
         // Add event listener to toggle button
         if (this.navbarToggleButton) {
             this.navbarToggleButton.addEventListener('click', () => this.toggleTheme());
@@ -31,7 +31,7 @@ class DarkModeManager {
             this.setTheme(serverTheme);
             return;
         }
-        
+
         // No server theme, check for session cookie
         const sessionTheme = this.getCookie('theme');
         if (sessionTheme) {
@@ -45,9 +45,9 @@ class DarkModeManager {
     toggleTheme() {
         const currentTheme = this.htmlElement.getAttribute('data-theme');
         const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-        
+
         this.setTheme(newTheme);
-        
+
         // Persist preference
         this.persistPreference(newTheme);
     }
@@ -94,7 +94,7 @@ class DarkModeManager {
                 },
                 body: JSON.stringify({ theme: theme })
             });
-            
+
             if (!response.ok) {
                 console.error('Failed to save theme preference to server');
             }
@@ -120,4 +120,4 @@ class DarkModeManager {
 // Initialize dark mode manager when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
     new DarkModeManager();
-}); 
+});

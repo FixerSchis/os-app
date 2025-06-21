@@ -30,12 +30,12 @@ function getCurrentTemplateType() {
     if (form && form.dataset.templateType) {
         return form.dataset.templateType;
     }
-    
+
     const preview = document.getElementById('frontPreview');
     if (preview && preview.dataset.templateType) {
         return preview.dataset.templateType;
     }
-    
+
     return TEMPLATE_TYPES.CHARACTER_SHEET; // Default fallback
 }
 
@@ -79,7 +79,7 @@ function getTemplateTypeConfig(templateType) {
             description: 'Exotic Substance Label Template'
         }
     };
-    
+
     return configs[templateType] || configs[TEMPLATE_TYPES.CHARACTER_SHEET];
 }
 
@@ -88,7 +88,7 @@ document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('#monacoTabs button[data-tab]').forEach(btn => {
         btn.addEventListener('click', function() {
             const tab = this.getAttribute('data-tab');
-            
+
             // Save current content if Monaco is ready
             if (monacoEditor) {
                 monacoContents[currentMonacoTab] = monacoEditor.getValue();
@@ -99,13 +99,13 @@ document.addEventListener('DOMContentLoaded', function() {
                     monacoContents[currentMonacoTab] = fallbackEditor.value;
                 }
             }
-            
+
             // Update active tab
             document.querySelectorAll('#monacoTabs .nav-link').forEach(b => b.classList.remove('active'));
             this.classList.add('active');
-            
+
             currentMonacoTab = tab;
-            
+
             // If Monaco is ready, update editor content/language
             if (monacoEditor) {
                 if (tab === 'front') {
@@ -137,15 +137,15 @@ function initializeMonacoEditor() {
             'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs' // CDN fallback
         ]
     };
-    
+
     // Try local files first, fallback to CDN if needed
-    require.config({ 
+    require.config({
         paths: { 'vs': monacoPaths.vs[0] },
         catchError: true,
         onError: function(err) {
             console.warn('Monaco Editor local files failed, trying CDN fallback...', err);
             // Try CDN fallback
-            require.config({ 
+            require.config({
                 paths: { 'vs': monacoPaths.vs[1] },
                 catchError: true,
                 onError: function(cdnErr) {
@@ -184,7 +184,7 @@ function initializeMonacoEditor() {
             monacoContents[currentMonacoTab] = monacoEditor.getValue();
             debouncedUpdatePreview();
         });
-        
+
         // Load Jinja completions
         const completions = loadJinjaCompletionsFromField();
         if (completions) {
@@ -263,7 +263,7 @@ function updateHiddenFields() {
             monacoContents[currentMonacoTab] = fallbackEditor.value;
         }
     }
-    
+
     // Update hidden form fields
     document.getElementById('front_html').value = monacoContents.front;
     if (document.getElementById('back_html')) document.getElementById('back_html').value = monacoContents.back;
@@ -283,14 +283,14 @@ function updatePreview() {
     const cssStyles = getEditorContent('cssStyles') || '';
     const frontPreview = document.getElementById('frontPreview');
     const backPreview = document.getElementById('backPreview');
-    
+
     if (!frontPreview) return;
-    
+
     // Get template dimensions from the page (set by the template data)
     const templateWidth = frontPreview.dataset.widthMm;
     const templateHeight = frontPreview.dataset.heightMm;
     const templateType = getCurrentTemplateType();
-    
+
     // Set dimensions on the template content
     if (templateWidth && templateHeight) {
         frontPreview.style.width = templateWidth + 'mm';
@@ -300,7 +300,7 @@ function updatePreview() {
             backPreview.style.height = templateHeight + 'mm';
         }
     }
-    
+
     // Show loading state on both previews
     if (frontPreview) {
         frontPreview.innerHTML = '<div class="preview-loading"><i class="fas fa-spinner fa-spin"></i> Updating front preview...</div>';
@@ -308,14 +308,14 @@ function updatePreview() {
     if (backPreview) {
         backPreview.innerHTML = '<div class="preview-loading"><i class="fas fa-spinner fa-spin"></i> Updating back preview...</div>';
     }
-    
+
     // Get template ID from the page
     const templateId = getTemplateId();
     if (!templateId) {
         showAutoUpdateIndicator('Template ID not found', 'error');
         return;
     }
-    
+
     // Call the API to render the template
     fetch(`/templates/api/${templateId}/render`, {
         method: 'POST',
@@ -371,7 +371,7 @@ function updatePreview() {
             // Show error message
             const errorMessage = data.error || 'Unknown error occurred';
             showAutoUpdateIndicator('Preview error: ' + errorMessage, 'error');
-            
+
             // Show error in previews
             if (frontPreview) {
                 frontPreview.innerHTML = '<div class="preview-error"><i class="fas fa-exclamation-triangle"></i> <strong>Preview Error:</strong><br>' + errorMessage + '</div>';
@@ -384,7 +384,7 @@ function updatePreview() {
     .catch(error => {
         console.error('Preview update error:', error);
         showAutoUpdateIndicator('Network error: ' + error.message, 'error');
-        
+
         // Show error in previews
         const errorMessage = 'Network error occurred while updating preview';
         if (frontPreview) {
@@ -403,13 +403,13 @@ function getTemplateId() {
     if (form && form.dataset.templateId) {
         return form.dataset.templateId;
     }
-    
+
     // Try to get from URL as fallback
     const urlMatch = window.location.pathname.match(/\/templates\/(\d+)\/edit/);
     if (urlMatch) {
         return urlMatch[1];
     }
-    
+
     return null;
 }
 
@@ -417,11 +417,11 @@ function getTemplateId() {
 function debouncedUpdatePreview() {
     const autoPreview = document.getElementById('autoPreview');
     if (!autoPreview || !autoPreview.checked) return;
-    
+
     if (previewTimeout) {
         clearTimeout(previewTimeout);
     }
-    
+
     previewTimeout = setTimeout(() => {
         updatePreview();
     }, 500); // 500ms delay
@@ -436,11 +436,11 @@ function showAutoUpdateIndicator(message, type = 'success') {
         indicator.className = 'auto-update-indicator';
         document.body.appendChild(indicator);
     }
-    
+
     indicator.textContent = message;
     indicator.className = `auto-update-indicator ${type === 'warning' ? 'bg-warning' : 'bg-success'}`;
     indicator.classList.add('show');
-    
+
     setTimeout(() => {
         indicator.classList.remove('show');
     }, 2000);
@@ -450,18 +450,18 @@ function showAutoUpdateIndicator(message, type = 'success') {
 function handleTabKey(event) {
     if (event.key === 'Tab') {
         event.preventDefault();
-        
+
         const textarea = event.target;
         const start = textarea.selectionStart;
         const end = textarea.selectionEnd;
-        
+
         // Insert tab character at cursor position
         const newValue = textarea.value.substring(0, start) + '\t' + textarea.value.substring(end);
         textarea.value = newValue;
-        
+
         // Set cursor position after the tab
         textarea.selectionStart = textarea.selectionEnd = start + 1;
-        
+
         // Trigger input event for live preview
         textarea.dispatchEvent(new Event('input'));
     }
@@ -516,7 +516,7 @@ function showMonacoFallback() {
                 <textarea id="fallback-editor" class="form-control" rows="15" style="font-family: 'Fira Code', 'Monaco', 'Menlo', monospace; font-size: 14px;"></textarea>
             </div>
         `;
-        
+
         // Initialize fallback editor
         const fallbackEditor = document.getElementById('fallback-editor');
         if (fallbackEditor) {
@@ -597,13 +597,13 @@ function openPdfInNewWindow(pdfBase64, filename) {
     }
     const byteArray = new Uint8Array(byteNumbers);
     const blob = new Blob([byteArray], { type: 'application/pdf' });
-    
+
     // Create object URL
     const pdfUrl = URL.createObjectURL(blob);
-    
+
     // Open in new window
     const newWindow = window.open(pdfUrl, '_blank');
-    
+
     // Clean up the URL object after the window loads
     newWindow.addEventListener('load', () => {
         setTimeout(() => {
@@ -615,7 +615,7 @@ function openPdfInNewWindow(pdfBase64, filename) {
 function printTemplates(items, templateType) {
     // Show loading indicator
     const loadingToast = showAutoUpdateIndicator('Preparing print layout...', 'info');
-    
+
     // Send request to generate print layout
     fetch(`/print/${templateType}`, {
         method: 'POST',
@@ -633,7 +633,7 @@ function printTemplates(items, templateType) {
             showAutoUpdateIndicator(data.error, 'error');
             return;
         }
-        
+
         if (data.double_sided) {
             // Open front and back PDFs in new windows
             openPdfInNewWindow(data.front_pdf, 'front.pdf');
@@ -646,7 +646,7 @@ function printTemplates(items, templateType) {
             // Open single PDF in new window
             openPdfInNewWindow(data.pdf, 'document.pdf');
         }
-        
+
         showAutoUpdateIndicator('PDFs generated successfully', 'success');
     })
     .catch(error => {
@@ -658,7 +658,7 @@ function printTemplates(items, templateType) {
 // Event character sheet printing
 function printEventCharacterSheets(eventId) {
     showAutoUpdateIndicator('Generating character sheet PDFs...', 'info');
-    
+
     fetch(`/events/${eventId}/print_character_sheets`)
         .then(response => response.json())
         .then(data => {
@@ -666,7 +666,7 @@ function printEventCharacterSheets(eventId) {
                 showAutoUpdateIndicator(data.error, 'error');
                 return;
             }
-            
+
             // Open PDFs in new windows
             openPdfInNewWindow(data.front_pdf, 'character_sheets_front.pdf');
             if (data.back_pdf) {
@@ -674,7 +674,7 @@ function printEventCharacterSheets(eventId) {
                     openPdfInNewWindow(data.back_pdf, 'character_sheets_back.pdf');
                 }, 500);
             }
-            
+
             showAutoUpdateIndicator('Character sheets generated successfully', 'success');
         })
         .catch(error => {
@@ -686,7 +686,7 @@ function printEventCharacterSheets(eventId) {
 // Event items printing
 function printEventItems(eventId) {
     showAutoUpdateIndicator('Generating item card PDFs...', 'info');
-    
+
     fetch(`/events/${eventId}/print_items`)
         .then(response => response.json())
         .then(data => {
@@ -694,7 +694,7 @@ function printEventItems(eventId) {
                 showAutoUpdateIndicator(data.error, 'error');
                 return;
             }
-            
+
             // Open PDFs in new windows
             openPdfInNewWindow(data.front_pdf, 'item_cards_front.pdf');
             if (data.back_pdf) {
@@ -702,7 +702,7 @@ function printEventItems(eventId) {
                     openPdfInNewWindow(data.back_pdf, 'item_cards_back.pdf');
                 }, 500);
             }
-            
+
             showAutoUpdateIndicator('Item cards generated successfully', 'success');
         })
         .catch(error => {
@@ -714,7 +714,7 @@ function printEventItems(eventId) {
 // Single character sheet printing
 function printCharacterSheet(characterId) {
     showAutoUpdateIndicator('Generating character sheet PDF...', 'info');
-    
+
     fetch(`/characters/${characterId}/print`)
         .then(response => response.json())
         .then(data => {
@@ -722,7 +722,7 @@ function printCharacterSheet(characterId) {
                 showAutoUpdateIndicator(data.error, 'error');
                 return;
             }
-            
+
             // Open PDFs in new windows
             openPdfInNewWindow(data.front_pdf, 'character_sheet_front.pdf');
             if (data.back_pdf) {
@@ -730,7 +730,7 @@ function printCharacterSheet(characterId) {
                     openPdfInNewWindow(data.back_pdf, 'character_sheet_back.pdf');
                 }, 500);
             }
-            
+
             showAutoUpdateIndicator('Character sheet generated successfully', 'success');
         })
         .catch(error => {
@@ -742,7 +742,7 @@ function printCharacterSheet(characterId) {
 // Sample sticker printing
 function printSampleStickers(sampleId) {
     showAutoUpdateIndicator('Generating sample sticker PDF...', 'info');
-    
+
     fetch(`/samples/${sampleId}/print`)
         .then(response => response.json())
         .then(data => {
@@ -750,7 +750,7 @@ function printSampleStickers(sampleId) {
                 showAutoUpdateIndicator(data.error, 'error');
                 return;
             }
-            
+
             // Open PDF in new window
             openPdfInNewWindow(data.pdf, 'sample_stickers.pdf');
             showAutoUpdateIndicator('Sample stickers generated successfully', 'success');
@@ -769,21 +769,21 @@ document.addEventListener('DOMContentLoaded', function() {
         const eventId = eventCharactersPrintBtn.dataset.eventId;
         eventCharactersPrintBtn.addEventListener('click', () => printEventCharacterSheets(eventId));
     }
-    
+
     // Event items print button
     const eventItemsPrintBtn = document.querySelector('.print-items-btn');
     if (eventItemsPrintBtn) {
         const eventId = eventItemsPrintBtn.dataset.eventId;
         eventItemsPrintBtn.addEventListener('click', () => printEventItems(eventId));
     }
-    
+
     // Character sheet print button
     const characterPrintBtn = document.querySelector('.print-character-btn');
     if (characterPrintBtn) {
         const characterId = characterPrintBtn.dataset.characterId;
         characterPrintBtn.addEventListener('click', () => printCharacterSheet(characterId));
     }
-    
+
     // Sample stickers print buttons
     document.querySelectorAll('.print-sample-btn').forEach(button => {
         const sampleId = button.dataset.sampleId;
@@ -831,4 +831,4 @@ function printTemplatePreview() {
         console.error('Error generating print preview:', error);
         showAutoUpdateIndicator('Error generating print preview: ' + error.message, 'error');
     });
-} 
+}

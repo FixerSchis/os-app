@@ -1,0 +1,28 @@
+# Global owners
+* @your-username
+
+# Backend and API
+/app.py @your-username
+/models/ @your-username
+/routes/ @your-username
+/utils/ @your-username
+
+# Database and migrations
+/migrations/ @your-username
+/db/ @your-username
+
+# Frontend templates
+/templates/ @your-username
+/static/ @your-username
+
+# Tests
+/tests/ @your-username
+
+# Configuration files
+*.toml @your-username
+*.ini @your-username
+*.cfg @your-username
+requirements*.txt @your-username
+
+# Documentation
+*.md @your-username

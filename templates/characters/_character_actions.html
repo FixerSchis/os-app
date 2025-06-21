@@ -31,4 +31,4 @@
         <a href="{{ url_for('characters.edit', character_id=character.id) }}" class="btn btn-primary btn-sm">Edit</a>
         <button type="button" class="btn btn-danger btn-sm action-btn" data-action-url="{{ url_for('characters.delete_character', character_id=character.id) }}" data-action-label="Delete {{ character.name }}?" data-warning="This action is not reversible and cannot be recovered.">Delete</button>
     {% endif %}
-{% endif %} 
+{% endif %}

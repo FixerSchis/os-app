@@ -1,14 +1,23 @@
 from datetime import datetime
-from models.extensions import db
+
 from models.enums import EventType
+from models.extensions import db
+
 
 class Event(db.Model):
-    __tablename__ = 'events'
+    __tablename__ = "events"
 
     id = db.Column(db.Integer, primary_key=True)
     event_number = db.Column(db.String(50), unique=True, nullable=False)
     name = db.Column(db.String(255), nullable=False)
-    event_type = db.Column(db.Enum(EventType, native_enum=False, values_callable=lambda obj: [e.value for e in obj]), nullable=False)
+    event_type = db.Column(
+        db.Enum(
+            EventType,
+            native_enum=False,
+            values_callable=lambda obj: [e.value for e in obj],
+        ),
+        nullable=False,
+    )
     description = db.Column(db.String(1000))
     early_booking_deadline = db.Column(db.DateTime, nullable=False)
     start_date = db.Column(db.DateTime, nullable=False)
@@ -18,7 +27,7 @@ class Event(db.Model):
     meal_ticket_available = db.Column(db.Boolean, default=False)
     meal_ticket_price = db.Column(db.Float)
     bunks_available = db.Column(db.Boolean, default=False)
-    
+
     # Ticket prices
     standard_ticket_price = db.Column(db.Float, nullable=False)
     early_booking_ticket_price = db.Column(db.Float, nullable=False)
@@ -38,4 +47,4 @@ class Event(db.Model):
     def get_adult_ticket_price(self):
         if self.is_early_booking_available():
             return self.early_booking_ticket_price
-        return self.standard_ticket_price 
+        return self.standard_ticket_price

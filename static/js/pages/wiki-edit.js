@@ -24,4 +24,4 @@ $(function() {
         placeholder: 'Select or create tags',
         width: '100%'
     });
-}); 
+});

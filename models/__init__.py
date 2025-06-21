@@ -1,38 +1,47 @@
-from datetime import datetime, timedelta
-import uuid
-import os
 import logging
+import os
+import uuid
+from datetime import datetime, timedelta
 
-from models.enums import BodyHitsType, EventType, PrintTemplateType, ScienceType, WikiPageVersionStatus
-from models.extensions import db, login_manager, migrate
-from models.wiki import WikiPage, WikiPageVersion, WikiSection, WikiImage, WikiChangeLog, WikiTag, wiki_changelog_versions, wiki_page_tags
-from models.event import Event
-from models.database.skills import Skill
-from models.database.species import Ability, Species
-from models.database.faction import Faction
-from models.database.item import Item, item_mods_applied
-from models.database.mods import Mod, mod_type_restrictions
-from models.database.item_blueprint import ItemBlueprint, item_blueprint_mods
-from models.database.conditions import ConditionStage, Condition
-from models.database.cybernetic import Cybernetic, CharacterCybernetic
+from models.database.conditions import Condition, ConditionStage
+from models.database.cybernetic import Cybernetic
 from models.database.exotic_substances import ExoticSubstance
+from models.database.faction import Faction
+from models.database.item import Item
+from models.database.item_blueprint import ItemBlueprint
 from models.database.item_type import ItemType
 from models.database.medicaments import Medicament
-from models.tools.downtime import DowntimePeriod, DowntimePack
-from models.tools.user import User
-from models.tools.character import CharacterTag, CharacterSkill, Character, CharacterAuditLog, CharacterReputation, CharacterCondition, character_tags, setup_relationships
-from models.tools.role import Role, user_roles
-from models.tools.sample import SampleTag, Sample, sample_sample_tags
-from models.tools.research import Research, ResearchStage, ResearchStageRequirement, CharacterResearch, CharacterResearchStage, CharacterResearchStageRequirement
+from models.database.mods import Mod
+from models.database.sample import Sample
+from models.database.skills import Skill
+from models.database.species import Ability, Species
+from models.enums import (
+    BodyHitsType,
+    EventType,
+    PrintTemplateType,
+    ScienceType,
+    WikiPageVersionStatus,
+)
+from models.event import Event
+from models.extensions import db, login_manager, migrate
+from models.tools.character import (
+    Character,
+    CharacterAuditLog,
+    CharacterCondition,
+    CharacterReputation,
+    CharacterSkill,
+    CharacterTag,
+)
 from models.tools.group import Group, GroupInvite
-from models.tools.message import Message
 from models.tools.print_template import PrintTemplate
-from models.tools.event_ticket import EventTicket
+from models.tools.user import User
+from models.wiki import WikiImage, WikiPage, WikiPageVersion, WikiSection, WikiTag
+
 
 def init_app(app):
     # Ensure database directory exists
     os.makedirs(app.config["DATABASE_PATH"], exist_ok=True)
-    
+
     # Initialize extensions with app
     db.init_app(app)
     login_manager.init_app(app)
@@ -41,7 +50,8 @@ def init_app(app):
     # Let Alembic handle all database schema creation
     # Do not call db.create_all() here - use flask db upgrade instead
     with app.app_context():
-        setup_relationships()
+        pass
+
 
 def create_default_data():
     create_default_wiki_pages()
@@ -64,12 +74,11 @@ def create_default_data():
 def load_user(user_id):
     return User.query.get(int(user_id))
 
+
 def create_default_wiki_pages():
     if not WikiPage.query.filter_by(slug="index").first():
         logging.info("Creating default wiki page")
-        wiki_page = WikiPage(
-            slug="index", title="Welcome to Orion Sphere LRP"
-        )
+        wiki_page = WikiPage(slug="index", title="Welcome to Orion Sphere LRP")
         db.session.add(wiki_page)
         db.session.commit()
         wiki_page_version = WikiPageVersion(
@@ -84,29 +93,29 @@ def create_default_wiki_pages():
             version_id=wiki_page_version.id,
             order=0,
             title="Welcome!",
-            content="<p>This is Orion Sphere LRP, a live roleplaying game for the Orion Sphere universe.</p>",
+            content=(
+                "<p>This is Orion Sphere LRP, a live roleplaying game for the "
+                "Orion Sphere universe.</p>"
+            ),
         )
         db.session.add(wiki_section)
         db.session.commit()
+
 
 def create_default_factions():
     """Create default factions if none exist."""
     if Faction.query.first() is None:
         default_factions = [
-            ('Terran Ascendancy', 'faction/terran-ascendancy', True),
-            ('Free Union', 'faction/free-union', True),
-            ('Elysian Commonality', 'faction/elysian-commonality', True),
-            ('Tulaki Dominion', 'faction/tulaki-dominion', True)
+            ("Terran Ascendancy", "faction/terran-ascendancy", True),
+            ("Free Union", "faction/free-union", True),
+            ("Elysian Commonality", "faction/elysian-commonality", True),
+            ("Tulaki Dominion", "faction/tulaki-dominion", True),
         ]
-        
+
         tag = WikiTag(name="faction")
         for name, slug, allow_players in default_factions:
             logging.info(f"Creating faction: {name}")
-            faction = Faction(
-                name=name,
-                wiki_slug=slug,
-                allow_player_characters=allow_players
-            )
+            faction = Faction(name=name, wiki_slug=slug, allow_player_characters=allow_players)
             db.session.add(faction)
             # Create wiki page if it doesn't exist
             wiki_page = WikiPage.query.filter_by(slug=slug).first()
@@ -126,12 +135,13 @@ def create_default_factions():
                     version_id=wiki_version.id,
                     order=0,
                     title=name,
-                    content=f"<p>Description for {name} faction.</p>"
+                    content=f"<p>Description for {name} faction.</p>",
                 )
                 db.session.add(wiki_section)
                 db.session.flush()
-        
+
         db.session.commit()
+
 
 def create_default_skills():
     """Create default skills if none exist."""
@@ -152,11 +162,11 @@ def create_default_skills():
             ),
             Skill(
                 name="Toughness",
-                description="Increases physical resilience and ability to withstand damage.",
+                description=("Increases physical resilience and ability to withstand damage."),
                 skill_type="defense",
                 base_cost=2,
                 can_purchase_multiple=True,
-                cost_increases=True
+                cost_increases=True,
             ),
             Skill(
                 name="Engineering",
@@ -183,7 +193,7 @@ def create_default_skills():
                 skill_type="science",
                 base_cost=2,
                 adds_science_downtime=1,
-                science_type=ScienceType.GENERIC.value
+                science_type=ScienceType.GENERIC.value,
             ),
             Skill(
                 name="Life Science",
@@ -193,17 +203,17 @@ def create_default_skills():
                 can_purchase_multiple=True,
                 cost_increases=True,
                 adds_science_downtime=1,
-                science_type=ScienceType.LIFE.value
+                science_type=ScienceType.LIFE.value,
             ),
             Skill(
                 name="Corporeal Science",
-                description="Increases the ability to perform corporeal science actions.",
+                description=("Increases the ability to perform corporeal science actions."),
                 skill_type="science",
                 base_cost=1,
                 can_purchase_multiple=True,
                 cost_increases=True,
                 adds_science_downtime=1,
-                science_type=ScienceType.CORPOREAL.value
+                science_type=ScienceType.CORPOREAL.value,
             ),
             Skill(
                 name="Etheric Science",
@@ -213,29 +223,27 @@ def create_default_skills():
                 can_purchase_multiple=True,
                 cost_increases=True,
                 adds_science_downtime=1,
-                science_type=ScienceType.ETHERIC.value
+                science_type=ScienceType.ETHERIC.value,
             ),
             Skill(
                 name="Discipline",
-                description="Increases the ability to perform discipline actions. Adds 2 Will Points.",
+                description=(
+                    "Increases the ability to perform discipline actions. " "Adds 2 Will Points."
+                ),
                 skill_type="discipline",
                 base_cost=2,
                 character_sheet_values_list=[
-                    {
-                        "id": "will",
-                        "description": "Will Points",
-                        "value": 2
-                    }
-                ]
-            )
+                    {"id": "will", "description": "Will Points", "value": 2}
+                ],
+            ),
         ]
-        
+
         # Add skills to database and get their IDs
         for skill in skills:
             logging.info(f"Adding skill: {skill.name}")
             db.session.add(skill)
         db.session.flush()
-        
+
         # Set up combat skill requirements
         heavy_weapon = next(s for s in skills if s.name == "Heavy Energy Weapon Training")
         medium_weapon = next(s for s in skills if s.name == "Medium Energy Weapon Training")
@@ -246,23 +254,24 @@ def create_default_skills():
         life_science = next(s for s in skills if s.name == "Life Science")
         corporeal_science = next(s for s in skills if s.name == "Corporeal Science")
         etheric_science = next(s for s in skills if s.name == "Etheric Science")
-        
+
         life_science.required_skill_id = science.id
         corporeal_science.required_skill_id = science.id
         etheric_science.required_skill_id = science.id
-        
+
         db.session.commit()
         return skills
 
+
 def create_default_species():
     """Create default species if none exist."""
-    if not Species.query.first():        
+    if not Species.query.first():
         # Get factions
         terran_ascendancy = Faction.query.filter_by(name="Terran Ascendancy").first()
         free_union = Faction.query.filter_by(name="Free Union").first()
         elysian_commonality = Faction.query.filter_by(name="Elysian Commonality").first()
         tulaki_dominion = Faction.query.filter_by(name="Tulaki Dominion").first()
-        
+
         # Add species
         species_list = [
             Species(
@@ -272,7 +281,7 @@ def create_default_species():
                 body_hits_type_enum=BodyHitsType.GLOBAL.value,
                 body_hits=3,
                 death_count=2,
-                keywords_list=["Humanoid"]
+                keywords_list=["Humanoid"],
             ),
             Species(
                 name="Free Union Terran",
@@ -281,7 +290,7 @@ def create_default_species():
                 body_hits_type_enum=BodyHitsType.GLOBAL.value,
                 body_hits=3,
                 death_count=2,
-                keywords_list=["Humanoid"]
+                keywords_list=["Humanoid"],
             ),
             Species(
                 name="Elysian",
@@ -290,7 +299,7 @@ def create_default_species():
                 body_hits_type_enum=BodyHitsType.GLOBAL.value,
                 body_hits=3,
                 death_count=2,
-                keywords_list=["Humanoid", "Psionic"]
+                keywords_list=["Humanoid", "Psionic"],
             ),
             Species(
                 name="Tulaki",
@@ -299,38 +308,40 @@ def create_default_species():
                 body_hits_type_enum=BodyHitsType.GLOBAL.value,
                 body_hits=3,
                 death_count=2,
-                keywords_list=["Reptilian"]
-            )
+                keywords_list=["Reptilian"],
+            ),
         ]
-        
+
         # Add species to database
         for s in species_list:
             logging.info(f"Adding species: {s.name}")
             db.session.add(s)
         db.session.flush()
-        
+
         # Create wiki pages for each species
         tag = WikiTag(name="species")
         for species in species_list:
             # Create wiki page
             wiki_page = WikiPage(
-                slug=species.wiki_page,
-                title=f"{species.name} - Species",
-                tags=[tag]
+                slug=species.wiki_page, title=f"{species.name} - Species", tags=[tag]
             )
             db.session.add(wiki_page)
             db.session.flush()
-            
+
             # Create wiki version
             wiki_version = WikiPageVersion(
                 page_slug=species.wiki_page,
                 version_number=1,
-                status=WikiPageVersionStatus.PUBLISHED
+                status=WikiPageVersionStatus.PUBLISHED,
             )
             db.session.add(wiki_version)
             db.session.flush()
-            
+
             # Create wiki section with species info
+            body_hits_desc = BodyHitsType.descriptions()[species.body_hits_type]
+            faction_list = "".join(
+                f"<li>{faction}</li>" for faction in species.permitted_factions_list
+            )
             wiki_section = WikiSection(
                 id=str(uuid.uuid4()),
                 version_id=wiki_version.id,
@@ -340,16 +351,17 @@ def create_default_species():
                 <h2>Species Information</h2>
                 <p>Body Hits: {species.body_hits}</p>
                 <p>Death Count: {species.death_count}</p>
-                <p>Body Hits Type: {BodyHitsType.descriptions()[species.body_hits_type]}</p>
+                <p>Body Hits Type: {body_hits_desc}</p>
                 <h3>Permitted Factions</h3>
                 <ul>
-                    {''.join(f'<li>{faction}</li>' for faction in species.permitted_factions_list)}
+                    {faction_list}
                 </ul>
-                """
+                """,
             )
             db.session.add(wiki_section)
-        
+
         db.session.commit()
+
 
 def create_default_exotics():
     if not ExoticSubstance.query.first():
@@ -379,13 +391,14 @@ def create_default_exotics():
                     version_id=wiki_version.id,
                     order=0,
                     title=name,
-                    content=f"<p>Description for {name} ({exo_type}) exotic substance.</p>"
+                    content=(f"<p>Description for {name} ({exo_type}) exotic substance.</p>"),
                 )
                 db.session.add(wiki_section)
                 db.session.flush()
             substance = ExoticSubstance(name=name, type=exo_type, wiki_slug=wiki_slug)
             db.session.add(substance)
         db.session.commit()
+
 
 def create_default_medicaments():
     if not Medicament.query.first():
@@ -415,13 +428,14 @@ def create_default_medicaments():
                     version_id=wiki_version.id,
                     order=0,
                     title=name,
-                    content=f"<p>Description for {name} medicament.</p>"
+                    content=f"<p>Description for {name} medicament.</p>",
                 )
                 db.session.add(wiki_section)
                 db.session.flush()
             medicament = Medicament(name=name, wiki_slug=wiki_slug)
             db.session.add(medicament)
         db.session.commit()
+
 
 def create_default_item_types():
     if not ItemType.query.first():
@@ -445,11 +459,14 @@ def create_default_item_types():
             db.session.add(ItemType(name=name, id_prefix=prefix))
         db.session.commit()
 
+
 def create_default_mods():
     if not Mod.query.first():
-        ew_types = ItemType.query.filter(ItemType.name.in_([
-            "Light Energy Weapon", "Medium Energy Weapon", "Heavy Energy Weapon"
-        ])).all()
+        ew_types = ItemType.query.filter(
+            ItemType.name.in_(
+                ["Light Energy Weapon", "Medium Energy Weapon", "Heavy Energy Weapon"]
+            )
+        ).all()
         tag = WikiTag(name="mod")
         mods = [
             ("Increase Charge Capacity", []),
@@ -477,7 +494,7 @@ def create_default_mods():
                     version_id=wiki_version.id,
                     order=0,
                     title=name,
-                    content=f"<p>Description for {name} mod.</p>"
+                    content=f"<p>Description for {name} mod.</p>",
                 )
                 db.session.add(wiki_section)
                 db.session.flush()
@@ -486,17 +503,25 @@ def create_default_mods():
             db.session.add(mod)
         db.session.commit()
 
+
 def create_default_item_blueprints():
     if not ItemBlueprint.query.first():
         # Helper to get item type by name
         def get_type(name):
             return ItemType.query.filter_by(name=name).first()
+
         # Helper to get mod by name
         def get_mod(name):
             return Mod.query.filter_by(name=name).first()
+
         blueprints = [
             ("AA Blaster", "Light Energy Weapon", 100, ["Increase Charge Capacity"]),
-            ("AA Rifle", "Medium Energy Weapon", 150, ["Increase Charge Capacity", "Shock Bolt"]),
+            (
+                "AA Rifle",
+                "Medium Energy Weapon",
+                150,
+                ["Increase Charge Capacity", "Shock Bolt"],
+            ),
             ("AA Bolter", "Heavy Energy Weapon", 200, ["Hardened Components"]),
             ("AA Padded Suit", "Light Armor", 80, []),
             ("AA Reinforced Suit", "Medium Armor", 120, ["Hardened Components"]),
@@ -510,8 +535,9 @@ def create_default_item_blueprints():
             ("Artefact", "Artefact", 0, []),
         ]
         from collections import Counter, defaultdict
+
         from sqlalchemy import text
-        from models.database.item_blueprint import item_blueprint_mods
+
         # Track next blueprint_id per item_type.id_prefix
         next_blueprint_id = defaultdict(lambda: 1)
         for name, type_name, cost, mod_names in blueprints:
@@ -524,17 +550,22 @@ def create_default_item_blueprints():
             # Find all item types with the same prefix
             same_prefix_types = ItemType.query.filter(ItemType.id_prefix == current_prefix).all()
             same_prefix_type_ids = [t.id for t in same_prefix_types]
-            # Query existing blueprints with the same prefix to determine the next blueprint_id
-            existing_blueprints = ItemBlueprint.query.filter(ItemBlueprint.item_type_id.in_(same_prefix_type_ids)).all()
+            # Query existing blueprints with the same prefix to determine the next
+            # blueprint_id
+            existing_blueprints = ItemBlueprint.query.filter(
+                ItemBlueprint.item_type_id.in_(same_prefix_type_ids)
+            ).all()
             if existing_blueprints:
-                next_blueprint_id[current_prefix] = max(bp.blueprint_id for bp in existing_blueprints) + 1
+                next_blueprint_id[current_prefix] = (
+                    max(bp.blueprint_id for bp in existing_blueprints) + 1
+                )
             blueprint_id = next_blueprint_id[current_prefix]
             next_blueprint_id[current_prefix] += 1
             blueprint = ItemBlueprint(
                 name=name,
                 item_type_id=item_type.id,
                 blueprint_id=blueprint_id,
-                base_cost=cost
+                base_cost=cost,
             )
             db.session.add(blueprint)
             db.session.flush()  # Get blueprint.id
@@ -543,15 +574,22 @@ def create_default_item_blueprints():
                 mod = get_mod(mod_name)
                 if mod:
                     db.session.execute(
-                        text('INSERT INTO item_blueprint_mods (item_blueprint_id, mod_id, count) VALUES (:bid, :mid, :count)'),
-                        {'bid': blueprint.id, 'mid': mod.id, 'count': count}
+                        text(
+                            "INSERT INTO item_blueprint_mods "
+                            "(item_blueprint_id, mod_id, count) "
+                            "VALUES (:bid, :mid, :count)"
+                        ),
+                        {"bid": blueprint.id, "mid": mod.id, "count": count},
                     )
         db.session.commit()
 
+
 def create_default_items():
     if not Item.query.first():
+
         def get_blueprint(name):
             return ItemBlueprint.query.filter_by(name=name).first()
+
         items = [
             ("AA Blaster", 10),
             ("AA Rifle", 10),
@@ -564,9 +602,15 @@ def create_default_items():
         ]
         for blueprint, expiry in items:
             logging.info(f"Adding item: {blueprint}")
-            item = Item(blueprint_id=get_blueprint(blueprint).id, expiry=expiry, item_id=1, mods_applied=[])
+            item = Item(
+                blueprint_id=get_blueprint(blueprint).id,
+                expiry=expiry,
+                item_id=1,
+                mods_applied=[],
+            )
             db.session.add(item)
         db.session.commit()
+
 
 def create_default_conditions():
     if not Condition.query.first():
@@ -580,16 +624,16 @@ def create_default_conditions():
                         "rp_effect": "Mild disorientation and temporal afterimages.",
                         "diagnosis": "Detected by quantum resonance scan.",
                         "cure": "Stabilize with a phase modulator.",
-                        "duration": 2
+                        "duration": 2,
                     },
                     {
                         "stage_number": 2,
                         "rp_effect": "Severe time slips and memory loss.",
                         "diagnosis": "Temporal field instability observed.",
                         "cure": "Quantum field recalibration.",
-                        "duration": 1
-                    }
-                ]
+                        "duration": 1,
+                    },
+                ],
             },
             {
                 "name": "Nanite Contamination",
@@ -599,9 +643,9 @@ def create_default_conditions():
                         "rp_effect": "Tingling sensation and metallic taste.",
                         "diagnosis": "Microscopic nanite scan.",
                         "cure": "Administer nanite purge serum.",
-                        "duration": 3
+                        "duration": 3,
                     }
-                ]
+                ],
             },
             {
                 "name": "Plasma Burn Fever",
@@ -611,9 +655,9 @@ def create_default_conditions():
                         "rp_effect": "Elevated temperature and skin irritation.",
                         "diagnosis": "Thermal scan reveals plasma residue.",
                         "cure": "Apply plasma-neutralizing gel.",
-                        "duration": 2
+                        "duration": 2,
                     }
-                ]
+                ],
             },
             {
                 "name": "Synthetic Antibody Rejection",
@@ -623,16 +667,16 @@ def create_default_conditions():
                         "rp_effect": "Fatigue and joint pain.",
                         "diagnosis": "Blood test for synthetic antibody markers.",
                         "cure": "Immunosuppressant therapy.",
-                        "duration": 2
+                        "duration": 2,
                     },
                     {
                         "stage_number": 2,
                         "rp_effect": "Severe immune response and rash.",
                         "diagnosis": "Elevated white cell count.",
                         "cure": "Plasma exchange procedure.",
-                        "duration": 1
-                    }
-                ]
+                        "duration": 1,
+                    },
+                ],
             },
             {
                 "name": "Graviton Sickness",
@@ -642,10 +686,10 @@ def create_default_conditions():
                         "rp_effect": "Dizziness and sense of heaviness.",
                         "diagnosis": "Graviton field analysis.",
                         "cure": "Field dampener application.",
-                        "duration": 1
+                        "duration": 1,
                     }
-                ]
-            }
+                ],
+            },
         ]
         for cond in conditions_data:
             logging.info(f"Adding condition: {cond['name']}")
@@ -659,19 +703,36 @@ def create_default_conditions():
                     rp_effect=stage["rp_effect"],
                     diagnosis=stage["diagnosis"],
                     cure=stage["cure"],
-                    duration=stage["duration"]
+                    duration=stage["duration"],
                 )
                 db.session.add(stage_obj)
         db.session.commit()
+
 
 def create_default_cybernetics():
     if not Cybernetic.query.first():
         tag = WikiTag(name="cybernetic")
         cybernetics = [
             ("Cybernetic Limb", "cybernetic/cybernetic-limb", 10, 0, 0, 0, None),
-            ("Neural Interface", "cybernetic/neural-interface", 15, 0, 0, 1, ScienceType.GENERIC),
+            (
+                "Neural Interface",
+                "cybernetic/neural-interface",
+                15,
+                0,
+                0,
+                1,
+                ScienceType.GENERIC,
+            ),
         ]
-        for name, wiki_slug, neural_shock_value, eng_mods, eng_downtime, sci_downtime, sci_type in cybernetics:
+        for (
+            name,
+            wiki_slug,
+            neural_shock_value,
+            eng_mods,
+            eng_downtime,
+            sci_downtime,
+            sci_type,
+        ) in cybernetics:
             logging.info(f"Adding cybernetic: {name}")
             cybernetic = Cybernetic(
                 name=name,
@@ -680,7 +741,7 @@ def create_default_cybernetics():
                 adds_engineering_mods=eng_mods,
                 adds_engineering_downtime=eng_downtime,
                 adds_science_downtime=sci_downtime,
-                science_type=sci_type
+                science_type=sci_type,
             )
             db.session.add(cybernetic)
             db.session.flush()
@@ -699,10 +760,11 @@ def create_default_cybernetics():
                 version_id=wiki_version.id,
                 order=0,
                 title=name,
-                content=f"<p>Description for {name} cybernetic.</p>"
+                content=f"<p>Description for {name} cybernetic.</p>",
             )
             db.session.add(wiki_section)
         db.session.commit()
+
 
 def create_default_events():
     if not Event.query.first():
@@ -724,10 +786,10 @@ def create_default_events():
             early_booking_ticket_price=80,
             child_ticket_price_12_15=20,
             child_ticket_price_7_11=15,
-            child_ticket_price_under_7=0
+            child_ticket_price_under_7=0,
         )
         db.session.add(prev_event)
-        
+
         next_event = Event(
             event_number="2",
             event_type=EventType.MAINLINE.value,
@@ -745,175 +807,182 @@ def create_default_events():
             early_booking_ticket_price=80,
             child_ticket_price_12_15=20,
             child_ticket_price_7_11=15,
-            child_ticket_price_under_7=0
+            child_ticket_price_under_7=0,
         )
         db.session.add(next_event)
         db.session.commit()
+
 
 def create_default_templates():
     """Create default print templates if they don't exist."""
     # Define default templates with their specifications
     default_templates = [
         {
-            'type': PrintTemplateType.CHARACTER_SHEET,
-            'type_name': 'Character Sheet',
-            'width_mm': 148.0,
-            'height_mm': 210.0,
-            'has_back_side': True,
-            'is_landscape': True,
-            'items_per_row': 2,
-            'items_per_column': 1,
-            'margin_top_mm': 0.0,
-            'margin_bottom_mm': 0.0,
-            'margin_left_mm': 0.0,
-            'margin_right_mm': 0.0,
-            'gap_horizontal_mm': 0.0,
-            'gap_vertical_mm': 0.0
+            "type": PrintTemplateType.CHARACTER_SHEET,
+            "type_name": "Character Sheet",
+            "width_mm": 148.0,
+            "height_mm": 210.0,
+            "has_back_side": True,
+            "is_landscape": True,
+            "items_per_row": 2,
+            "items_per_column": 1,
+            "margin_top_mm": 0.0,
+            "margin_bottom_mm": 0.0,
+            "margin_left_mm": 0.0,
+            "margin_right_mm": 0.0,
+            "gap_horizontal_mm": 0.0,
+            "gap_vertical_mm": 0.0,
         },
         {
-            'type': PrintTemplateType.CHARACTER_ID,
-            'type_name': 'Character ID',
-            'width_mm': 63.5,
-            'height_mm': 88.9,
-            'has_back_side': False,
-            'is_landscape': False,
-            'items_per_row': 3,
-            'items_per_column': 3,
-            'margin_top_mm': 10.0,
-            'margin_bottom_mm': 10.0,
-            'margin_left_mm': 6.75,
-            'margin_right_mm': 6.75,
-            'gap_horizontal_mm': 2.0,
-            'gap_vertical_mm': 2.0
+            "type": PrintTemplateType.CHARACTER_ID,
+            "type_name": "Character ID",
+            "width_mm": 63.5,
+            "height_mm": 88.9,
+            "has_back_side": False,
+            "is_landscape": False,
+            "items_per_row": 3,
+            "items_per_column": 3,
+            "margin_top_mm": 10.0,
+            "margin_bottom_mm": 10.0,
+            "margin_left_mm": 6.75,
+            "margin_right_mm": 6.75,
+            "gap_horizontal_mm": 2.0,
+            "gap_vertical_mm": 2.0,
         },
         {
-            'type': PrintTemplateType.ITEM_CARD,
-            'type_name': 'Item Card',
-            'width_mm': 85.6,
-            'height_mm': 53.98,
-            'has_back_side': True,
-            'is_landscape': False,
-            'items_per_row': 2,
-            'items_per_column': 4,
-            'margin_top_mm': 10.0,
-            'margin_bottom_mm': 10.0,
-            'margin_left_mm': 17.4,
-            'margin_right_mm': 17.4,
-            'gap_horizontal_mm': 2.0,
-            'gap_vertical_mm': 2.0
+            "type": PrintTemplateType.ITEM_CARD,
+            "type_name": "Item Card",
+            "width_mm": 85.6,
+            "height_mm": 53.98,
+            "has_back_side": True,
+            "is_landscape": False,
+            "items_per_row": 2,
+            "items_per_column": 4,
+            "margin_top_mm": 10.0,
+            "margin_bottom_mm": 10.0,
+            "margin_left_mm": 17.4,
+            "margin_right_mm": 17.4,
+            "gap_horizontal_mm": 2.0,
+            "gap_vertical_mm": 2.0,
         },
         {
-            'type': PrintTemplateType.MEDICAMENT_CARD,
-            'type_name': 'Medicament Card',
-            'width_mm': 63.5,
-            'height_mm': 88.9,
-            'has_back_side': True,
-            'is_landscape': False,
-            'items_per_row': 3,
-            'items_per_column': 3,
-            'margin_top_mm': 10.0,
-            'margin_bottom_mm': 10.0,
-            'margin_left_mm': 6.75,
-            'margin_right_mm': 6.75,
-            'gap_horizontal_mm': 2.0,
-            'gap_vertical_mm': 2.0
+            "type": PrintTemplateType.MEDICAMENT_CARD,
+            "type_name": "Medicament Card",
+            "width_mm": 63.5,
+            "height_mm": 88.9,
+            "has_back_side": True,
+            "is_landscape": False,
+            "items_per_row": 3,
+            "items_per_column": 3,
+            "margin_top_mm": 10.0,
+            "margin_bottom_mm": 10.0,
+            "margin_left_mm": 6.75,
+            "margin_right_mm": 6.75,
+            "gap_horizontal_mm": 2.0,
+            "gap_vertical_mm": 2.0,
         },
         {
-            'type': PrintTemplateType.CONDITION_CARD,
-            'type_name': 'Condition Card',
-            'width_mm': 63.5,
-            'height_mm': 88.9,
-            'has_back_side': True,
-            'is_landscape': False,
-            'items_per_row': 3,
-            'items_per_column': 3,
-            'margin_top_mm': 10.0,
-            'margin_bottom_mm': 10.0,
-            'margin_left_mm': 6.75,
-            'margin_right_mm': 6.75,
-            'gap_horizontal_mm': 2.0,
-            'gap_vertical_mm': 2.0
+            "type": PrintTemplateType.CONDITION_CARD,
+            "type_name": "Condition Card",
+            "width_mm": 63.5,
+            "height_mm": 88.9,
+            "has_back_side": True,
+            "is_landscape": False,
+            "items_per_row": 3,
+            "items_per_column": 3,
+            "margin_top_mm": 10.0,
+            "margin_bottom_mm": 10.0,
+            "margin_left_mm": 6.75,
+            "margin_right_mm": 6.75,
+            "gap_horizontal_mm": 2.0,
+            "gap_vertical_mm": 2.0,
         },
         {
-            'type': PrintTemplateType.EXOTIC_SUBSTANCE_LABEL,
-            'type_name': 'Exotic Substance Label',
-            'width_mm': 25.0,
-            'height_mm': 10.0,
-            'has_back_side': False,
-            'is_landscape': False,
-            'items_per_row': 7,
-            'items_per_column': 24,
-            'margin_top_mm': 13.0,
-            'margin_bottom_mm': 13.0,
-            'margin_left_mm': 10.0,
-            'margin_right_mm': 10.0,
-            'gap_horizontal_mm': 2.0,
-            'gap_vertical_mm': 2.0
-        }
+            "type": PrintTemplateType.EXOTIC_SUBSTANCE_LABEL,
+            "type_name": "Exotic Substance Label",
+            "width_mm": 25.0,
+            "height_mm": 10.0,
+            "has_back_side": False,
+            "is_landscape": False,
+            "items_per_row": 7,
+            "items_per_column": 24,
+            "margin_top_mm": 13.0,
+            "margin_bottom_mm": 13.0,
+            "margin_left_mm": 10.0,
+            "margin_right_mm": 10.0,
+            "gap_horizontal_mm": 2.0,
+            "gap_vertical_mm": 2.0,
+        },
     ]
-    
+
     def load_template_file(template_type, filename):
         """Load template file content, return empty string if file doesn't exist."""
         import os
-        file_path = os.path.join('data', 'templates', template_type.value, filename)
+
+        file_path = os.path.join("data", "templates", template_type.value, filename)
         try:
-            with open(file_path, 'r', encoding='utf-8') as f:
+            with open(file_path, "r", encoding="utf-8") as f:
                 return f.read()
         except FileNotFoundError:
-            return ''
-    
+            return ""
+
     # Check for each template type and create if missing
     for template_data in default_templates:
         logging.info(f"Creating default template: {template_data['type_name']}")
-        existing_template = PrintTemplate.query.filter_by(type=template_data['type']).first()
+        existing_template = PrintTemplate.query.filter_by(type=template_data["type"]).first()
         if not existing_template:
             # Load template content from files
-            front_html = load_template_file(template_data['type'], 'front.html')
-            back_html = load_template_file(template_data['type'], 'back.html') if template_data['has_back_side'] else ''
-            css_styles = load_template_file(template_data['type'], 'styles.css')
-            
+            front_html = load_template_file(template_data["type"], "front.html")
+            back_html = (
+                load_template_file(template_data["type"], "back.html")
+                if template_data["has_back_side"]
+                else ""
+            )
+            css_styles = load_template_file(template_data["type"], "styles.css")
+
             template = PrintTemplate(
-                type=template_data['type'],
-                type_name=template_data['type_name'],
-                width_mm=template_data['width_mm'],
-                height_mm=template_data['height_mm'],
+                type=template_data["type"],
+                type_name=template_data["type_name"],
+                width_mm=template_data["width_mm"],
+                height_mm=template_data["height_mm"],
                 front_html=front_html,
                 back_html=back_html,
                 css_styles=css_styles,
-                has_back_side=template_data['has_back_side'],
-                is_landscape=template_data['is_landscape'],
-                items_per_row=template_data['items_per_row'],
-                items_per_column=template_data['items_per_column'],
-                margin_top_mm=template_data['margin_top_mm'],
-                margin_bottom_mm=template_data['margin_bottom_mm'],
-                margin_left_mm=template_data['margin_left_mm'],
-                margin_right_mm=template_data['margin_right_mm'],
-                gap_horizontal_mm=template_data['gap_horizontal_mm'],
-                gap_vertical_mm=template_data['gap_vertical_mm'],
-                created_by_user_id=1  # Use user ID 1 as default
+                has_back_side=template_data["has_back_side"],
+                is_landscape=template_data["is_landscape"],
+                items_per_row=template_data["items_per_row"],
+                items_per_column=template_data["items_per_column"],
+                margin_top_mm=template_data["margin_top_mm"],
+                margin_bottom_mm=template_data["margin_bottom_mm"],
+                margin_left_mm=template_data["margin_left_mm"],
+                margin_right_mm=template_data["margin_right_mm"],
+                gap_horizontal_mm=template_data["gap_horizontal_mm"],
+                gap_vertical_mm=template_data["gap_vertical_mm"],
+                created_by_user_id=1,  # Use user ID 1 as default
             )
             db.session.add(template)
-    
+
     db.session.commit()
 
+
 __all__ = [
-    'db',
-    'login_manager',
-    'migrate',
-    'User',
-    'Character',
-    'CharacterStatus',
-    'CharacterAuditLog',
-    'CharacterSkill',
-    'Species',
-    'Ability',
-    'WikiPage',
-    'WikiImage',
-    'Skill',
-    'Faction',
-    'CharacterTag',
-    'Group',
-    'GroupInvite',
-    'Sample',
-    'setup_relationships'
+    "db",
+    "login_manager",
+    "migrate",
+    "User",
+    "Character",
+    "CharacterStatus",
+    "CharacterAuditLog",
+    "CharacterSkill",
+    "Species",
+    "Ability",
+    "WikiPage",
+    "WikiImage",
+    "Skill",
+    "Faction",
+    "CharacterTag",
+    "Group",
+    "GroupInvite",
+    "Sample",
+    "setup_relationships",
 ]

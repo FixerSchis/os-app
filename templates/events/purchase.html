@@ -5,7 +5,7 @@
 {% block content %}
 <div class="container mt-4">
     <h1>Purchase Tickets for Event {{ event.event_number }} - {{ event.name }}</h1>
-    
+
     <div class="row">
         <!-- Event Details and Purchase Form -->
         <div class="col-lg-8">
@@ -52,7 +52,7 @@
             <form id="ticketForm" class="card">
                 <div class="card-body">
                     <h5 class="card-title">Add Tickets</h5>
-                    
+
                     <!-- Ticket Recipient Selection -->
                     <div class="mb-4">
                         <label class="form-label">Who is this ticket for?</label>
@@ -60,7 +60,7 @@
                         <div class="btn-group w-100" role="group">
                             <input type="radio" class="btn-check" name="ticket_for" id="ticket_for_self" value="self" checked>
                             <label class="btn btn-outline-primary" for="ticket_for_self">Myself</label>
-                            
+
                             <input type="radio" class="btn-check" name="ticket_for" id="ticket_for_other" value="other">
                             <label class="btn btn-outline-primary" for="ticket_for_other">Someone Else</label>
                         </div>
@@ -70,11 +70,11 @@
                         </div>
                         <input type="hidden" name="ticket_for" value="other">
                         {% endif %}
-                        
+
                         <!-- Character ID Input (shown if "Someone Else" selected or no active character) -->
                         <div id="character_id_section" class="mt-3" {% if current_user.has_active_character() %}style="display: none;"{% endif %}>
                             <div class="input-group">
-                                <input type="text" class="form-control" id="character_id" name="character_id" 
+                                <input type="text" class="form-control" id="character_id" name="character_id"
                                        placeholder="Enter character ID (e.g., 1.1)" pattern="^\d+\.\d+$" {% if not current_user.has_active_character() %}required{% endif %}>
                                 <span class="input-group-text" id="character_id_status">
                                     <i class="fas fa-question text-muted"></i>
@@ -222,25 +222,25 @@ document.getElementById('character_id').addEventListener('input', function() {
     const characterId = this.value.trim();
     const statusElement = document.getElementById('character_id_status');
     const nameElement = document.getElementById('character_name');
-    
+
     // Clear previous timeout
     if (validationTimeout) {
         clearTimeout(validationTimeout);
     }
-    
+
     // Reset status
     statusElement.innerHTML = '<i class="fas fa-question text-muted"></i>';
     nameElement.style.display = 'none';
-    
+
     // Validate format
     if (!/^\d+\.\d+$/.test(characterId)) {
         statusElement.innerHTML = '<i class="fas fa-times text-danger"></i>';
         return;
     }
-    
+
     // Set loading state
     statusElement.innerHTML = '<i class="fas fa-spinner fa-spin text-muted"></i>';
-    
+
     // Debounce validation
     validationTimeout = setTimeout(() => {
         fetch(`{{ url_for('characters.validate_user_id_character_id') }}?character_id=${encodeURIComponent(characterId)}`)
@@ -450,11 +450,11 @@ function updateCartDisplay() {
     let subtotal = 0;
     cart.forEach((item, index) => {
         subtotal += item.price;
-        
+
         // Create cart item element
         const itemElement = document.createElement('div');
         itemElement.className = 'd-flex justify-content-between align-items-center mb-2';
-        
+
         itemElement.innerHTML = `
             <div>
                 <div>${item.ticketType_name}${item.mealTicket ? ' + Meal' : ''}${item.requiresBunk ? ' + Bunk' : ''}</div>
@@ -477,7 +477,7 @@ function updateCartDisplay() {
     // Update totals
     subtotalElement.textContent = formatPrice(subtotal);
     totalElement.textContent = formatPrice(subtotal);
-    
+
     // Enable checkout and store cart data
     checkoutBtn.disabled = false;
     cartDataInput.value = JSON.stringify(cart);
@@ -489,14 +489,14 @@ updateCartDisplay();
 function updatePrice() {
     const ticketType = document.getElementById('ticket_type').value;
     const hasMealTicket = document.getElementById('has_meal_ticket')?.checked || false;
-    
+
     let price = PRICES[ticketType];
     if (hasMealTicket) {
         price += PRICES.meal_ticket;
     }
-    
+
     document.getElementById('total_price').textContent = `£${price.toFixed(2)}`;
     document.getElementById('price_paid').value = price;
 }
 </script>
-{% endblock %} 
+{% endblock %}

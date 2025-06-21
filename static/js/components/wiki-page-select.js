@@ -26,4 +26,4 @@ function initializeWikiPageSelect(inputId, placeholder) {
             };
         }
     });
-} 
+}

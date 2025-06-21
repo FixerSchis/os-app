@@ -75,10 +75,10 @@ $(document).ready(function() {
     $(document).on('change', '.requirement-type', function() {
         const reqEl = $(this).closest('.requirement');
         const type = $(this).val();
-        
+
         // Hide all type-specific groups
         reqEl.find('.science-type-group, .item-type-group, .exotic-type-group, .sample-tag-group, .requires-researched-group').hide();
-        
+
         // Show relevant groups based on type
         if (type === 'science') {
             reqEl.find('.science-type-group').show();
@@ -263,4 +263,4 @@ function getStagesData() {
         if (typeElem) {
             typeElem.addEventListener('change', toggleArtefactItem);
     }
-}); 
+});

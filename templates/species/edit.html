@@ -8,13 +8,13 @@
 <div class="container">
     <div class="character-management">
         <h1>{{ 'Edit' if species else 'Create' }} Species</h1>
-        
+
         <form method="POST" class="settings-form">
             <div class="form-group">
                 <label for="name">Species Name *</label>
                 <input type="text" class="form-control" id="name" name="name" value="{{ species.name if species else '' }}" required>
             </div>
-            
+
             {{ wiki_page_select(
                 input_id='wiki_page_autocomplete',
                 select_name='wiki_page',
@@ -22,7 +22,7 @@
                 required=true,
                 placeholder='Start typing to search...'
             ) }}
-            
+
             <div class="form-group">
                 <label for="body_hits_type">Body Hits Type *</label>
                 <select class="form-control" id="body_hits_type" name="body_hits_type" required>
@@ -43,7 +43,7 @@
                 <label for="death_count">Death Count *</label>
                 <input type="number" class="form-control" id="death_count" name="death_count" value="{{ species.death_count if species else 0 }}" required min="0">
             </div>
-            
+
             <div class="form-group">
                 <label for="keywords">Keywords</label>
                 <select name="keywords" class="form-control select2-multiple" id="keywords" multiple>
@@ -54,7 +54,7 @@
                     {% endif %}
                 </select>
             </div>
-            
+
             <div class="form-group">
                 <label for="permitted_factions">Permitted Factions *</label>
                 <select name="permitted_factions" class="form-control select2-multiple" id="permitted_factions" multiple>
@@ -65,7 +65,7 @@
                     {% endfor %}
                 </select>
             </div>
-            
+
             <h3>Abilities</h3>
             <div id="abilities-list">
                 {% for ability in (species.abilities if species else []) %}
@@ -120,7 +120,7 @@
                 {% endfor %}
             </div>
             <button type="button" class="btn btn-primary mb-3" id="add-ability">Add Ability</button>
-            
+
             <div class="form-group">
                 <button type="submit" class="btn btn-primary">{{ 'Save Changes' if species else 'Create Species' }}</button>
                 <a href="{{ url_for('species.species_list') }}" class="btn btn-secondary">Cancel</a>
@@ -141,4 +141,4 @@
 <script>
 window.ABILITY_TYPE_OPTIONS_HTML = document.getElementById('ability-type-options-template').innerHTML;
 </script>
-{% endblock %} 
+{% endblock %}

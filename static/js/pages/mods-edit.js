@@ -5,4 +5,4 @@ window.addEventListener('DOMContentLoaded', function() {
         placeholder: 'Select item types',
         allowClear: true
     });
-}); 
+});

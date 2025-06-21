@@ -77,13 +77,13 @@ function initWikiEditor() {
     CYBERNETICS = safeParseJSONDataAttr('#cybernetics-data', []);
 
     if (sections.length === 0) {
-        sections = [{ 
-            id: null, 
-            title: '', 
-            content: '', 
+        sections = [{
+            id: null,
+            title: '',
+            content: '',
             order: 0,
-            restriction_type: '', 
-            restriction_value: '' 
+            restriction_type: '',
+            restriction_value: ''
         }];
     }
 
@@ -158,16 +158,16 @@ function renderSections() {
             const config = { ...window.ckeditorConfig };
             config.selector = '#' + el.id;
             config.height = 350;
-            
+
             ClassicEditor
                 .create(el, config)
                 .then(editor => {
                     // Store editor reference
                     el.ckeditor = editor;
-                    
+
                     // Add wiki pages button after the editor
                     addWikiPagesButton(el, editor);
-                    
+
                     // Update section content when editor changes
                     editor.model.document.on('change:data', () => {
                         const idx = parseInt(el.id.split('-').pop());
@@ -194,7 +194,7 @@ function initializeSelect2() {
         let section = sections[idx];
         let data = [];
         let selected = [];
-        
+
         if (section.restriction_type === 'faction') {
             data = FACTIONS.map(f => ({id: f.id, text: f.name}));
             selected = section.restriction_value ? JSON.parse(section.restriction_value) : [];
@@ -205,7 +205,7 @@ function initializeSelect2() {
             data = SKILLS.map(s => ({id: s.id, text: s.name}));
             selected = section.restriction_value ? JSON.parse(section.restriction_value) : [];
         }
-        
+
         $(sel).select2({
             data: data,
             width: 'resolve',
@@ -225,7 +225,7 @@ function initializeSelect2() {
         let section = sections[idx];
         let data = TAGS.map(t => ({id: t.id, text: t.name}));
         let selected = section.restriction_value ? JSON.parse(section.restriction_value) : [];
-        
+
         $(sel).select2({
             data: data,
             width: 'resolve',
@@ -255,7 +255,7 @@ function initializeSelect2() {
             allowClear: true,
             minimumResultsForSearch: 10
         });
-        
+
         let idx = parseInt(sel.id.split('-')[4]);
         let section = sections[idx];
         if (section.restriction_type === 'reputation' && section.restriction_value) {
@@ -266,7 +266,7 @@ function initializeSelect2() {
                 }
             } catch (e) {}
         }
-        
+
         $(sel).on('change', function() {
             let idx = parseInt(this.id.split('-')[4]);
             let section = sections[idx];
@@ -291,7 +291,7 @@ function initializeSelect2() {
         let section = sections[idx];
         let data = CYBERNETICS.map(c => ({id: c.id, text: c.name}));
         let selected = section.restriction_value ? JSON.parse(section.restriction_value) : [];
-        
+
         $(sel).select2({
             data: data,
             width: 'resolve',
@@ -310,7 +310,7 @@ function initializeSelect2() {
 function renderRestrictionValueField(section, idx) {
     switch (section.restriction_type) {
         case 'role':
-            let options = AVAILABLE_ROLES.filter(role => role.value !== 'owner' && role.value !== 'admin').map(role => 
+            let options = AVAILABLE_ROLES.filter(role => role.value !== 'owner' && role.value !== 'admin').map(role =>
                 `<option value="${role.value}" ${section.restriction_value === role.value ? 'selected' : ''}>${role.label}</option>`
             ).join('');
             return `<select id="section-restriction-value-${idx}" class="form-control restriction-select" onchange="updateRestrictionValue(${idx})" style="margin-left: 8px;">
@@ -346,13 +346,13 @@ function renderRestrictionValueField(section, idx) {
 
 // Global functions for section management
 window.addSectionHere = function(idx) {
-    sections.splice(idx + 1, 0, { 
-        id: null, 
-        title: '', 
-        content: '', 
+    sections.splice(idx + 1, 0, {
+        id: null,
+        title: '',
+        content: '',
         order: idx + 1,
-        restriction_type: '', 
-        restriction_value: '' 
+        restriction_type: '',
+        restriction_value: ''
     });
     renderSections();
 }
@@ -411,27 +411,27 @@ function gatherSectionData() {
             sections[idx].id = null;
         }
     });
-    
+
     return sections;
 }
 
 function saveWiki() {
     gatherSectionData();
-    
+
     // Prepare data as JSON
     const data = {
         sections: sections
     };
-    
+
     // Add other form data
     const title = document.getElementById('title')?.value;
     const slug = document.getElementById('slug')?.value;
     const tags = $('#wiki-tags').val();
-    
+
     if (title) data.title = title;
     if (slug) data.slug = slug;
     if (tags) data.tags = tags;
-    
+
     fetch(window.location.href, {
         method: 'POST',
         headers: {
@@ -489,7 +489,7 @@ function showSectionAlert(message, type = 'info', undoCallback = null, timeout =
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', function() {
     initWikiEditor();
-    
+
     // Handle form submission
     const form = document.getElementById('wiki-edit-form');
     if (form) {
@@ -507,11 +507,11 @@ function addWikiPagesButton(textareaElement, editor) {
     button.className = 'btn btn-outline-primary btn-sm mt-2';
     button.innerHTML = '<i class="bi bi-link-45deg"></i> Insert Wiki Page Link';
     button.style.marginBottom = '10px';
-    
+
     button.addEventListener('click', () => {
         showWikiPagesDialog(editor);
     });
-    
+
     // Insert button after the textarea
     textareaElement.parentNode.insertBefore(button, textareaElement.nextSibling);
 }
@@ -533,29 +533,29 @@ function showWikiPagesDialog(editor) {
             </div>
         </div>
     `;
-    
+
     document.body.appendChild(modal);
-    
+
     const searchInput = modal.querySelector('.ck-wiki-search-input');
     const pagesList = modal.querySelector('.ck-wiki-pages-list');
     const closeBtn = modal.querySelector('.ck-wiki-modal-close');
-    
+
     let selectedIndex = -1;
     let currentPages = [];
-    
+
     // Load initial pages
     loadWikiPages('', pagesList, editor, modal);
-    
+
     // Handle search
     searchInput.addEventListener('input', () => {
         selectedIndex = -1;
         loadWikiPages(searchInput.value, pagesList, editor, modal);
     });
-    
+
     // Handle keyboard navigation
     searchInput.addEventListener('keydown', (e) => {
         const items = pagesList.querySelectorAll('.ck-wiki-page-item');
-        
+
         switch(e.key) {
             case 'ArrowDown':
                 e.preventDefault();
@@ -579,22 +579,22 @@ function showWikiPagesDialog(editor) {
                 break;
         }
     });
-    
+
     // Handle close
     closeBtn.addEventListener('click', () => {
         document.body.removeChild(modal);
     });
-    
+
     // Close on outside click
     modal.addEventListener('click', (e) => {
         if (e.target === modal) {
             document.body.removeChild(modal);
         }
     });
-    
+
     // Focus search input
     searchInput.focus();
-    
+
     // Function to update selection highlighting
     function updateSelection(items) {
         items.forEach((item, index) => {
@@ -610,9 +610,9 @@ function showWikiPagesDialog(editor) {
 // Function to load wiki pages from API
 function loadWikiPages(query, pagesList, editor, modal) {
     const url = `/wiki/api/wiki-pages${query ? `?q=${encodeURIComponent(query)}` : ''}`;
-    
+
     pagesList.innerHTML = '<div class="ck-wiki-loading">Loading...</div>';
-    
+
     fetch(url)
         .then(response => {
             if (!response.ok) {
@@ -622,29 +622,29 @@ function loadWikiPages(query, pagesList, editor, modal) {
         })
         .then(pages => {
             pagesList.innerHTML = '';
-            
+
             if (pages.length === 0) {
                 pagesList.innerHTML = '<div class="ck-wiki-no-results">No wiki pages found</div>';
                 return;
             }
-            
+
             pages.forEach((page, index) => {
                 const item = document.createElement('div');
                 item.className = 'ck-wiki-page-item';
                 item.textContent = page.text;
                 item.setAttribute('data-index', index);
-                
+
                 item.addEventListener('click', () => {
                     // Insert the wiki page link
                     const linkUrl = page.url;
-                    
+
                     // CKEditor will automatically use selected text or the URL as link text
                     editor.execute('link', linkUrl);
-                    
+
                     // Close the modal
                     document.body.removeChild(modal);
                 });
-                
+
                 item.addEventListener('mouseenter', () => {
                     // Update selected index on hover
                     const items = pagesList.querySelectorAll('.ck-wiki-page-item');
@@ -657,7 +657,7 @@ function loadWikiPages(query, pagesList, editor, modal) {
                     });
                     selectedIndex = index;
                 });
-                
+
                 pagesList.appendChild(item);
             });
         })

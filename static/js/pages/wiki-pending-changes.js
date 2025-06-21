@@ -17,15 +17,15 @@ document.addEventListener('DOMContentLoaded', function() {
             },
             height: '200px'
         };
-        
+
         ClassicEditor
             .create(changelogElement, config)
             .then(editor => {
                 changelogElement.ckeditor = editor;
-                
+
                 // Add wiki pages button after the editor
                 addWikiPagesButton(changelogElement, editor);
-                
+
                 // Update publish button when content changes
                 editor.model.document.on('change:data', updatePublishButton);
             })
@@ -42,12 +42,12 @@ document.addEventListener('DOMContentLoaded', function() {
             changelog.addEventListener('input', updatePublishButton);
         }
     }
-    
+
     // Initialize checkboxes
     document.querySelectorAll('.page-checkbox').forEach(cb => {
         cb.addEventListener('change', updatePublishButton);
     });
-    
+
     // Initial state
     setTimeout(updatePublishButton, 500);
 
@@ -85,11 +85,11 @@ function addWikiPagesButton(textareaElement, editor) {
     button.className = 'btn btn-outline-primary btn-sm mt-2';
     button.innerHTML = '<i class="bi bi-link-45deg"></i> Insert Wiki Page Link';
     button.style.marginBottom = '10px';
-    
+
     button.addEventListener('click', () => {
         showWikiPagesDialog(editor);
     });
-    
+
     // Insert button after the textarea
     textareaElement.parentNode.insertBefore(button, textareaElement.nextSibling);
 }
@@ -111,29 +111,29 @@ function showWikiPagesDialog(editor) {
             </div>
         </div>
     `;
-    
+
     document.body.appendChild(modal);
-    
+
     const searchInput = modal.querySelector('.ck-wiki-search-input');
     const pagesList = modal.querySelector('.ck-wiki-pages-list');
     const closeBtn = modal.querySelector('.ck-wiki-modal-close');
-    
+
     let selectedIndex = -1;
     let currentPages = [];
-    
+
     // Load initial pages
     loadWikiPages('', pagesList, editor, modal);
-    
+
     // Handle search
     searchInput.addEventListener('input', () => {
         selectedIndex = -1;
         loadWikiPages(searchInput.value, pagesList, editor, modal);
     });
-    
+
     // Handle keyboard navigation
     searchInput.addEventListener('keydown', (e) => {
         const items = pagesList.querySelectorAll('.ck-wiki-page-item');
-        
+
         switch(e.key) {
             case 'ArrowDown':
                 e.preventDefault();
@@ -157,22 +157,22 @@ function showWikiPagesDialog(editor) {
                 break;
         }
     });
-    
+
     // Handle close
     closeBtn.addEventListener('click', () => {
         document.body.removeChild(modal);
     });
-    
+
     // Close on outside click
     modal.addEventListener('click', (e) => {
         if (e.target === modal) {
             document.body.removeChild(modal);
         }
     });
-    
+
     // Focus search input
     searchInput.focus();
-    
+
     // Function to update selection highlighting
     function updateSelection(items) {
         items.forEach((item, index) => {
@@ -188,9 +188,9 @@ function showWikiPagesDialog(editor) {
 // Function to load wiki pages from API
 function loadWikiPages(query, pagesList, editor, modal) {
     const url = `/wiki/api/wiki-pages${query ? `?q=${encodeURIComponent(query)}` : ''}`;
-    
+
     pagesList.innerHTML = '<div class="ck-wiki-loading">Loading...</div>';
-    
+
     fetch(url)
         .then(response => {
             if (!response.ok) {
@@ -200,29 +200,29 @@ function loadWikiPages(query, pagesList, editor, modal) {
         })
         .then(pages => {
             pagesList.innerHTML = '';
-            
+
             if (pages.length === 0) {
                 pagesList.innerHTML = '<div class="ck-wiki-no-results">No wiki pages found</div>';
                 return;
             }
-            
+
             pages.forEach((page, index) => {
                 const item = document.createElement('div');
                 item.className = 'ck-wiki-page-item';
                 item.textContent = page.text;
                 item.setAttribute('data-index', index);
-                
+
                 item.addEventListener('click', () => {
                     // Insert the wiki page link
                     const linkUrl = page.url;
-                    
+
                     // CKEditor will automatically use selected text or the URL as link text
                     editor.execute('link', linkUrl);
-                    
+
                     // Close the modal
                     document.body.removeChild(modal);
                 });
-                
+
                 item.addEventListener('mouseenter', () => {
                     // Update selected index on hover
                     const items = pagesList.querySelectorAll('.ck-wiki-page-item');
@@ -235,7 +235,7 @@ function loadWikiPages(query, pagesList, editor, modal) {
                     });
                     selectedIndex = index;
                 });
-                
+
                 pagesList.appendChild(item);
             });
         })
@@ -250,8 +250,8 @@ function updatePublishButton() {
     const changelogEditor = document.querySelector('#changelog')?.ckeditor;
     const changelog = changelogEditor ? changelogEditor.getData() : document.getElementById('changelog').value;
     const changelogText = changelog.replace(/<[^>]*>/g, '').trim();
-    
+
     let anyChecked = false;
     checkboxes.forEach(cb => { if (cb.checked) anyChecked = true; });
     document.getElementById('publish-btn').disabled = !(anyChecked && changelogText.length > 0);
-} 
+}

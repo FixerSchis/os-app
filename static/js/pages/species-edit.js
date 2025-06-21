@@ -31,7 +31,7 @@ $(document).ready(function() {
             width: '100%',
             allowClear: true
         };
-        
+
         // Add specific configuration based on the select element
         if ($(this).attr('id') === 'keywords') {
             config.tags = true;
@@ -53,7 +53,7 @@ $(document).ready(function() {
         } else {
             config.placeholder = 'Select items...';
         }
-        
+
         $(this).select2(config);
     });
 
@@ -181,4 +181,4 @@ $(document).ready(function() {
         });
         if (!valid) e.preventDefault();
     });
-}); 
+});

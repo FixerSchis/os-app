@@ -1,29 +1,28 @@
-from models.extensions import db
 import math
-from models.database.item_blueprint import item_blueprint_mods
+
+from models.extensions import db
 
 item_mods_applied = db.Table(
-    'item_mods_applied',
-    db.Column('item_id', db.Integer, db.ForeignKey('item.id'), primary_key=True),
-    db.Column('mod_id', db.Integer, db.ForeignKey('mods.id'), primary_key=True),
-    db.Column('count', db.Integer, nullable=False, default=1)
+    "item_mods_applied",
+    db.Column("item_id", db.Integer, db.ForeignKey("item.id"), primary_key=True),
+    db.Column("mod_id", db.Integer, db.ForeignKey("mods.id"), primary_key=True),
+    db.Column("count", db.Integer, nullable=False, default=1),
 )
+
 
 class Item(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    blueprint_id = db.Column(db.Integer, db.ForeignKey('item_blueprints.id'), nullable=False)
+    blueprint_id = db.Column(db.Integer, db.ForeignKey("item_blueprints.id"), nullable=False)
     item_id = db.Column(db.Integer, nullable=False)
     expiry = db.Column(db.Integer, nullable=True)
 
-    blueprint = db.relationship('ItemBlueprint', back_populates='items')
-    mods_applied = db.relationship('Mod', secondary=item_mods_applied, backref='items_applied')
+    blueprint = db.relationship("ItemBlueprint", back_populates="items")
+    mods_applied = db.relationship("Mod", secondary=item_mods_applied, backref="items_applied")
 
-    __table_args__ = (
-        db.UniqueConstraint('blueprint_id', 'item_id', name='uix_blueprint_itemid'),
-    )
+    __table_args__ = (db.UniqueConstraint("blueprint_id", "item_id", name="uix_blueprint_itemid"),)
 
     def __repr__(self):
-        return f'<Item {self.blueprint_id}-{self.item_id}>'
+        return f"<Item {self.blueprint_id}-{self.item_id}>"
 
     @property
     def full_code(self):
@@ -48,4 +47,4 @@ class Item(db.Model):
         return math.ceil(self.base_cost_calc(additional_mods) * 0.1)
 
     def get_modification_cost(self, additional_mods=0):
-        return math.ceil(self.base_cost_calc(additional_mods) * 0.5) 
+        return math.ceil(self.base_cost_calc(additional_mods) * 0.5)

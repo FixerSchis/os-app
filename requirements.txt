@@ -11,4 +11,4 @@ qrcode[pil]==7.4.2
 WeasyPrint==62.1
 cryptography==42.0.8
 pyOpenSSL==24.1.0
-pytest 
+pytest

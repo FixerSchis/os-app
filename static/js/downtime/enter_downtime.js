@@ -40,7 +40,7 @@ function getJsonData(elementId) {
     }
 }
 
-function validate() { 
+function validate() {
     stepErrors['engineering'] = !validateEngineeringStep();
     stepErrors['science'] = !validateScienceStep();
 }

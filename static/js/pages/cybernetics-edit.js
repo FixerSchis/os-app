@@ -16,4 +16,4 @@ $(document).ready(function() {
 
     scienceDowntimeInput.addEventListener('change', toggleScienceType);
     toggleScienceType(); // Initial state
-}); 
+});

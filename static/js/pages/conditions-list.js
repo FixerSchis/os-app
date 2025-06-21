@@ -19,7 +19,7 @@ document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('.print-condition-btn').forEach(function(button) {
         button.addEventListener('click', function() {
             const conditionId = this.dataset.conditionId;
-            
+
             // Call the print endpoint
             fetch(`/templates/conditions/${conditionId}/print`)
                 .then(response => response.json())
@@ -28,7 +28,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         alert(data.error);
                         return;
                     }
-                    
+
                     // Open PDF in new tab
                     const pdfData = data.pdf;
                     const blob = new Blob([Uint8Array.from(atob(pdfData), c => c.charCodeAt(0))], { type: 'application/pdf' });
@@ -43,4 +43,4 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
         });
     });
-}); 
+});

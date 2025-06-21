@@ -43,10 +43,10 @@ if ($('#purchase-blueprints-list').length) {
 function renderPurchaseRows() {
     const $list = $('#purchase-blueprints-list');
     $list.empty();
-    
+
     // Remove any existing purchase hidden inputs
     $('input[name="purchases[]"]').remove();
-    
+
     purchaseRows.forEach((row, idx) => {
         const blueprintOptions = blueprints.map(bp => `<option value="${bp.id}" ${String(row.blueprint_id) === String(bp.id) ? 'selected' : ''}>${bp.name} (${bp.base_cost} ec)</option>`).join('');
         $list.append(`
@@ -66,7 +66,7 @@ function renderPurchaseRows() {
                 </div>
             </div>
         `);
-        
+
         // Add hidden input for form submission if a blueprint is selected
         if (row.blueprint_id) {
             const bp = blueprints.find(b => String(b.id) === String(row.blueprint_id));
@@ -82,7 +82,7 @@ function renderPurchaseRows() {
             }
         }
     });
-    
+
     // Initialize Select2 for all blueprint selects
     $('.blueprint-select').select2({
         width: '100%',
@@ -165,4 +165,4 @@ $('#purchase-blueprints-list').on('change', '.purchase-item-select', function() 
 });
 $('#purchase-blueprints-list').on('click', '.remove-purchase-row', function() {
     setTimeout(window.updateTotalChitCost, 0); // after row is removed
-}); 
+});

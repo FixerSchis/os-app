@@ -18,12 +18,12 @@
             </div>
             {% endif %}
         </div>
-        
+
         <form method="POST" class="settings-form w-100">
             {% if admin_context %}
             <input type="hidden" name="admin_context" value="1">
             {% endif %}
-            
+
             <div class="row g-4">
                 <!-- Basic Information -->
                 <div class="col-lg-6">
@@ -47,22 +47,22 @@
                             <div class="row g-3">
                                 <div class="col-md-6">
                                     <label class="form-label">Pronouns (subject)</label>
-                                    <input type="text" 
-                                           id="pronouns_subject" 
-                                           name="pronouns_subject" 
+                                    <input type="text"
+                                           id="pronouns_subject"
+                                           name="pronouns_subject"
                                            class="form-control"
                                            placeholder="e.g., they"
-                                           value="{{ character.pronouns_subject if character else '' }}" 
+                                           value="{{ character.pronouns_subject if character else '' }}"
                                            {% if is_readonly %}readonly{% endif %}>
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label">Pronouns (object)</label>
-                                    <input type="text" 
-                                           id="pronouns_object" 
-                                           name="pronouns_object" 
+                                    <input type="text"
+                                           id="pronouns_object"
+                                           name="pronouns_object"
                                            class="form-control"
                                            placeholder="e.g., them"
-                                           value="{{ character.pronouns_object if character else '' }}" 
+                                           value="{{ character.pronouns_object if character else '' }}"
                                            {% if is_readonly %}readonly{% endif %}>
                                 </div>
                             </div>
@@ -98,7 +98,7 @@
                                 <input type="hidden" name="faction" value="{{ character.faction_id if character and character.faction else '' }}">
                                 {% endif %}
                             </div>
-                            
+
                             <div class="form-group mb-0">
                                 <label for="species_id" class="form-label">Species *</label>
                                 {% set user_is_admin = current_user.has_role('user_admin') %}
@@ -275,8 +275,8 @@
                         <div class="card-body">
                             <div class="form-group mb-0">
                                 <label for="base_character_points" class="form-label">Base Character Points</label>
-                                <input type="number" id="base_character_points" name="base_character_points" class="form-control" 
-                                       value="{{ character.base_character_points if character else (30 if current_user.has_role('npc') else 10) }}" 
+                                <input type="number" id="base_character_points" name="base_character_points" class="form-control"
+                                       value="{{ character.base_character_points if character else (30 if current_user.has_role('npc') else 10) }}"
                                        min="0" {% if is_readonly %}readonly{% endif %}>
                                 <div class="form-text text-muted">Default is 10 CP, or 30 CP for NPCs</div>
                             </div>
@@ -306,9 +306,9 @@
                                             <td>{{ faction.name }}</td>
                                             <td>
                                                 {% if current_user.has_role('user_admin') %}
-                                                <input type="number" 
-                                                       class="form-control form-control-sm" 
-                                                       name="reputation_{{ faction.id }}" 
+                                                <input type="number"
+                                                       class="form-control form-control-sm"
+                                                       name="reputation_{{ faction.id }}"
                                                        value="{{ character.get_reputation(faction.id) }}">
                                                 {% else %}
                                                 <span class="badge bg-secondary">{{ character.get_reputation(faction.id) }}</span>

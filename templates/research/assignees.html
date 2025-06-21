@@ -5,7 +5,7 @@
 {% block content %}
 <div class="container mt-4">
     <h1>Research Assignees - {{ research.project_name }}</h1>
-    
+
     <div class="card mb-4">
         <div class="card-header">
             <h5 class="mb-0">Add Assignee</h5>
@@ -65,9 +65,9 @@
                                 {% endif %}
                             </td>
                             <td>
-                                <form action="{{ url_for('research.remove_assignee', research_id=research.id, character_id=assignee.character.id) }}" 
+                                <form action="{{ url_for('research.remove_assignee', research_id=research.id, character_id=assignee.character.id) }}"
                                       method="POST" class="d-inline">
-                                    <a href="{{ url_for('research.edit_progress', research_id=research.id, character_id=assignee.character.id) }}" 
+                                    <a href="{{ url_for('research.edit_progress', research_id=research.id, character_id=assignee.character.id) }}"
                                        class="btn btn-primary btn-sm">Edit Progress</a>
                                     <button type="submit" class="btn btn-danger btn-sm">Remove</button>
                                 </form>
@@ -87,4 +87,4 @@
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/pages/research-assignees.js') }}"></script>
 {% endblock %}
-{% endblock %} 
+{% endblock %}

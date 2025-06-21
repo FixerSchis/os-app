@@ -182,11 +182,11 @@
     .monaco-editor .monaco-editor-background {
         background: #1e1e1e;
     }
-    
+
     .monaco-editor .margin {
         background: #252526;
     }
-    
+
     .monaco-editor .monaco-editor-background,
     .monaco-editor .inputarea {
         background: #1e1e1e;
@@ -323,12 +323,12 @@
         flex-direction: column;
         gap: 15px;
     }
-    
+
     .template-dimension-container {
         padding: 15px;
         min-height: 150px;
     }
-    
+
     .template-content {
         padding: 8px;
     }
@@ -342,14 +342,14 @@
         padding: 0 !important;
         margin: 0 !important;
     }
-    
+
     .template-content {
         border: none !important;
         box-shadow: none !important;
         padding: 0 !important;
     }
-    
+
     .template-content-back {
         background: white !important;
     }
-} 
+}

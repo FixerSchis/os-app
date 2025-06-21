@@ -1,6 +1,6 @@
 .bg-skilltype {
     background-color: var(--bs-table-bg) !important;
-} 
+}
 
 .character-cards {
     display: flex;
@@ -238,7 +238,7 @@
     .character-management {
         padding: 1.5rem;
     }
-    
+
     .character-management .row {
         --bs-gutter-x: 1rem;
     }
@@ -246,7 +246,7 @@
     .character-management .card-body {
         padding: 1rem;
     }
-    
+
     .character-management .col-md-6 {
         margin-bottom: 1rem;
     }
@@ -316,4 +316,4 @@ select.form-control:focus {
 
 .skill-list {
     cursor: pointer;
-} 
+}

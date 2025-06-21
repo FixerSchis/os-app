@@ -10,7 +10,7 @@
         <a href="{{ url_for('exotic_substances.create') }}" class="btn btn-primary">Create Substance</a>
         {% endif %}
     </div>
-    
+
     <div class="table-responsive">
         <table class="table table-striped table-hover align-middle">
             <thead>
@@ -58,4 +58,4 @@
 {% block scripts %}
 {{ super() }}
 <script src="{{ url_for('static', filename='js/pages/exotic-substances-list.js') }}"></script>
-{% endblock %} 
+{% endblock %}

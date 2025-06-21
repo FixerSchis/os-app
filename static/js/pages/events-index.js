@@ -5,4 +5,4 @@ $(document).ready(function() {
         currentUrl.searchParams.set('show_previous', showPrevious);
         window.location.href = currentUrl.toString();
     });
-}); 
+});

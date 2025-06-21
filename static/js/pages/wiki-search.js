@@ -70,4 +70,4 @@ $(function() {
     });
 
     // On form submit, just let the form submit as normal (for full search)
-}); 
+});

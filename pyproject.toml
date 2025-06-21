@@ -23,5 +23,51 @@ dependencies = [
     "pytest"
 ]
 
+[project.optional-dependencies]
+dev = [
+    "pytest==7.4.3",
+    "pytest-cov==4.1.0",
+    "pytest-mock==3.12.0",
+    "black==23.11.0",
+    "isort==5.12.0",
+    "flake8==6.1.0",
+    "bandit==1.7.5",
+    "safety==2.3.5",
+    "pre-commit==3.5.0"
+]
+
 [tool.setuptools]
-py-modules = ["app", "wsgi"] 
+py-modules = ["app", "wsgi"]
+
+[tool.black]
+line-length = 100
+target-version = ['py38']
+include = '\.pyi?$'
+# Exclude conftest.py from Black formatting - we handle it specially
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+  | migrations
+  | instance
+  | db
+  # files
+  | tests/conftest\.py
+)/
+'''
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+line_length = 100
+known_first_party = ["app", "models", "routes", "utils"]
+known_third_party = ["flask", "sqlalchemy", "pytest"]
+sections = ["FUTURE", "STDLIB", "THIRDPARTY", "FIRSTPARTY", "LOCALFOLDER"]
+skip = ["tests/conftest.py"]

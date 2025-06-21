@@ -17,7 +17,7 @@
                 <label for="neural_shock_value">Neural Shock Value</label>
                 <input type="number" class="form-control" id="neural_shock_value" name="neural_shock_value" value="{{ cyber.neural_shock_value if cyber else '' }}" required min="0">
             </div>
-            
+
             <div class="form-group mb-3">
                 <label for="adds_engineering_mods">Adds Engineering Mods</label>
                 <input type="number" class="form-control" id="adds_engineering_mods" name="adds_engineering_mods" value="{{ cyber.adds_engineering_mods if cyber else 0 }}" min="0">
@@ -42,7 +42,7 @@
                     {% endfor %}
                 </select>
             </div>
-            
+
             {{ wiki_page_select(
                 input_id='wiki_page_autocomplete',
                 select_name='wiki_slug',
@@ -52,7 +52,7 @@
                 placeholder='Start typing to search...',
                 help_text='e.g. cybernetics/neural-interface'
             ) }}
-            
+
             <div class="form-group">
                 <button type="submit" class="btn btn-primary">Save</button>
                 <a href="{{ url_for('cybernetics.list') }}" class="btn btn-secondary">Cancel</a>
@@ -66,4 +66,4 @@
 {{ super() }}
 <script src="{{ url_for('static', filename='js/wiki_page_autocomplete.js') }}"></script>
 <script src="{{ url_for('static', filename='js/pages/cybernetics-edit.js') }}"></script>
-{% endblock %} 
+{% endblock %}

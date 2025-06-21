@@ -29,7 +29,7 @@
                             <label for="items">Select Items</label>
                             <select class="form-control select2" id="items" name="item_ids[]" multiple>
                                 {% for item in items %}
-                                <option value="{{ item.id }}" 
+                                <option value="{{ item.id }}"
                                     {% if item.id|string in pack.items|map(attribute='id')|list %}selected{% endif %}>
                                     {{ item.name }} ({{ item.full_code }})
                                 </option>
@@ -49,7 +49,7 @@
                             <label for="medicaments">Select Medicaments</label>
                             <select class="form-control select2" id="medicaments" name="medicament_ids[]" multiple>
                                 {% for medicament in medicaments %}
-                                <option value="{{ medicament.id }}" 
+                                <option value="{{ medicament.id }}"
                                     {% if medicament.id|string in pack.medicaments|map(attribute='id')|list %}selected{% endif %}>
                                     {{ medicament.name }}
                                 </option>
@@ -60,7 +60,7 @@
                             {% for medicament in medicaments %}
                             <div class="form-group medicament-amount" data-medicament-id="{{ medicament.id }}" style="display: none;">
                                 <label for="medicament_amount_{{ medicament.id }}">Amount of {{ medicament.name }}</label>
-                                <input type="number" class="form-control" id="medicament_amount_{{ medicament.id }}" 
+                                <input type="number" class="form-control" id="medicament_amount_{{ medicament.id }}"
                                        name="medicament_amount_{{ medicament.id }}" min="1"
                                        value="{{ pack.medicaments|selectattr('id', 'equalto', medicament.id|string)|map(attribute='amount')|first|default(1) }}">
                             </div>
@@ -79,7 +79,7 @@
                             <label for="exotics">Select Exotic Substances</label>
                             <select class="form-control select2" id="exotics" name="exotic_ids[]" multiple>
                                 {% for exotic in exotics %}
-                                <option value="{{ exotic.id }}" 
+                                <option value="{{ exotic.id }}"
                                     {% if exotic.id|string in pack.exotic_substances|map(attribute='id')|list %}selected{% endif %}>
                                     {{ exotic.name }}
                                 </option>
@@ -90,7 +90,7 @@
                             {% for exotic in exotics %}
                             <div class="form-group exotic-amount" data-exotic-id="{{ exotic.id }}" style="display: none;">
                                 <label for="exotic_amount_{{ exotic.id }}">Amount of {{ exotic.name }}</label>
-                                <input type="number" class="form-control" id="exotic_amount_{{ exotic.id }}" 
+                                <input type="number" class="form-control" id="exotic_amount_{{ exotic.id }}"
                                        name="exotic_amount_{{ exotic.id }}" min="1"
                                        value="{{ pack.exotic_substances|selectattr('id', 'equalto', exotic.id|string)|map(attribute='amount')|first|default(1) }}">
                             </div>
@@ -131,7 +131,7 @@
                             <label for="conditions">Select Conditions</label>
                             <select class="form-control select2" id="conditions" name="condition_ids[]" multiple>
                                 {% for condition in conditions %}
-                                <option value="{{ condition.id }}" 
+                                <option value="{{ condition.id }}"
                                     {% if condition.id|string in pack.conditions|map(attribute='id')|list %}selected{% endif %}>
                                     {{ condition.name }}
                                 </option>
@@ -142,7 +142,7 @@
                             {% for condition in conditions %}
                             <div class="form-group condition-duration" data-condition-id="{{ condition.id }}" style="display: none;">
                                 <label for="condition_duration_{{ condition.id }}">Remaining Duration of {{ condition.name }}</label>
-                                <input type="number" class="form-control" id="condition_duration_{{ condition.id }}" 
+                                <input type="number" class="form-control" id="condition_duration_{{ condition.id }}"
                                        name="condition_duration_{{ condition.id }}" min="0"
                                        value="{{ pack.conditions|selectattr('id', 'equalto', condition.id|string)|map(attribute='duration')|first|default(condition.stages[0].duration if condition.stages else 0) }}">
                             </div>
@@ -252,4 +252,4 @@
 {% block scripts %}
 {{ super() }}
 <script src="{{ url_for('static', filename='js/downtime/enter_pack_contents.js') }}"></script>
-{% endblock %} 
+{% endblock %}

@@ -36,7 +36,7 @@
                     </div>
                     <h5 class="card-title pe-5">Event {{ event.event_number }} - {{ event.name }}</h5>
                     <p class="card-text">{{ event.description[:200] }}{% if event.description|length > 200 %}...{% endif %}</p>
-                    
+
                     <div class="mb-3">
                         <strong>Dates:</strong><br>
                         {{ event.start_date.strftime('%d %b %Y') }} - {{ event.end_date.strftime('%d %b %Y') }}
@@ -109,4 +109,4 @@
 {% block scripts %}
 {{ super() }}
 <script src="{{ url_for('static', filename='js/pages/events-index.js') }}"></script>
-{% endblock %} 
+{% endblock %}

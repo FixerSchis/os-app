@@ -26,7 +26,7 @@ function initScienceSlots() {
         toggleScienceFields($(this));
     });
     initTeachToFields();
-    
+
     // Validate any existing teach invention actions
     $('.science-slot-card').each(function() {
         const $card = $(this);
@@ -46,11 +46,11 @@ function initTeachToFields() {
         var $group = $(this);
         var teachTo = $group.find('.btn.active').data('teach-to');
         var $card = $group.closest('.science-slot-card');
-        
+
         // First hide everything
         $card.find('.science-teach-to-group-select, .science-teach-to-id-input').hide();
         $card.find('.science-teach-to-group-select').next('.select2-container').hide();
-        
+
         // Then show only what's needed
         if (teachTo === 'group') {
             $card.find('.science-teach-to-group-select').show();
@@ -69,7 +69,7 @@ $(document).ready(function() {
         allowClear: true,
         theme: 'bootstrap4'
     });
-    
+
     $('.science-teach-to-group-select').select2({
         width: '100%',
         placeholder: 'Select a group member',
@@ -90,7 +90,7 @@ $(document).ready(function() {
         allowClear: true,
         theme: 'bootstrap4'
     });
-    
+
     // Initialize visibility after select2 is set up
     initScienceSlots();
 });
@@ -297,14 +297,14 @@ $(document).on('click', '.btn-toggle-teach-to .btn', function() {
     $btn.addClass('active');
     var teachTo = $btn.data('teach-to');
     var $card = $btn.closest('.science-slot-card');
-    
+
     // Hide both containers and their select2 containers
     $card.find('.science-teach-to-group-select, .science-teach-to-id-input').hide();
     $card.find('.science-teach-to-group-select').next('.select2-container').hide();
     // Remove any status messages
     $card.find('.science-teach-to-status').remove();
     $card.find('.science-teach-to-id-input').removeClass('is-valid is-invalid');
-    
+
     if (teachTo === 'group') {
         $card.find('.science-teach-to-group-select').show();
         $card.find('.science-teach-to-group-select').next('.select2-container').show();
@@ -341,14 +341,14 @@ $(document).on('input', '.science-teach-to-id-input', function() {
     var idVal = $input.val();
     var projectId = $card.find('.science-teach-project-select').val();
     var teachingCharId = $('#downtime-form').data('character-id');
-    
+
     // Remove previous status
     $card.find('.science-teach-to-status').remove();
     $input.removeClass('is-valid is-invalid');
-    
+
     if (idVal && idVal.includes('.') && projectId) {
         // Get character info and validate teaching
-        $.get('/db/research/can_teach_character', { 
+        $.get('/db/research/can_teach_character', {
             project_id: projectId,
             character_id: idVal,
             teaching_character_id: teachingCharId
@@ -356,7 +356,7 @@ $(document).on('input', '.science-teach-to-id-input', function() {
             // Remove previous status
             $card.find('.science-teach-to-status').remove();
             $input.removeClass('is-valid is-invalid');
-            
+
             if (resp.valid) {
                 $input.addClass('is-valid');
                 $input.after('<span class="science-teach-to-status" style="color:green;font-weight:bold;">&#10003; ' + resp.character_name + ' - ' + resp.message + '</span>');
@@ -373,7 +373,7 @@ function validateScienceStep() {
     let valid = true;
     let error = '';
     let theoriseCount = 0;
-    
+
     // First pass: count theorise actions
     $('.science-slot-card').each(function() {
         const $card = $(this);
@@ -382,7 +382,7 @@ function validateScienceStep() {
             theoriseCount++;
         }
     });
-    
+
     // Second pass: validate each slot
     $('.science-slot-card').each(function() {
         const $card = $(this);
@@ -391,7 +391,7 @@ function validateScienceStep() {
             // Reset validation
             $card.find('.science-action-select, input, select, textarea').removeClass('is-invalid');
             setSelect2Invalid($card.find('select'), false);
-            
+
             if (action === 'theorise') {
                 const name = $card.find('input[name^="science_theorise_name_"]').val();
                 const desc = $card.find('textarea[name^="science_theorise_desc_"]').val();

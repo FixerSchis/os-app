@@ -1,7 +1,8 @@
-import pytest
-from models.event import Event
-from models.enums import EventType
 from datetime import datetime, timedelta
+
+from models.enums import EventType
+from models.event import Event
+
 
 def test_new_event_with_methods(db):
     """Test creation of a new Event and its methods."""
@@ -10,7 +11,7 @@ def test_new_event_with_methods(db):
     early_deadline = now + timedelta(days=30)
     start_date = now + timedelta(days=60)
     end_date = now + timedelta(days=63)
-    
+
     event = Event(
         event_number="EV004",
         name="Test Event",
@@ -28,15 +29,15 @@ def test_new_event_with_methods(db):
         early_booking_ticket_price=80.0,
         child_ticket_price_12_15=50.0,
         child_ticket_price_7_11=25.0,
-        child_ticket_price_under_7=0.0
+        child_ticket_price_under_7=0.0,
     )
-    
+
     db.session.add(event)
     db.session.commit()
-    
+
     # Retrieve and assert
     retrieved_event = Event.query.filter_by(event_number="EV004").first()
-    
+
     assert retrieved_event is not None
     assert retrieved_event.event_number == "EV004"
     assert retrieved_event.name == "Test Event"
@@ -53,12 +54,12 @@ def test_new_event_with_methods(db):
     assert retrieved_event.child_ticket_price_7_11 == 25.0
     assert retrieved_event.child_ticket_price_under_7 == 0.0
     assert retrieved_event.id is not None
-    
+
     # Test methods
     assert retrieved_event.is_upcoming() is True  # End date is in the future
     assert retrieved_event.is_early_booking_available() is True  # Early deadline is in the future
     assert retrieved_event.get_adult_ticket_price() == 80.0  # Should return early booking price
-    
+
     # Test with past early booking deadline
     past_event = Event(
         event_number="EV005",
@@ -71,11 +72,11 @@ def test_new_event_with_methods(db):
         early_booking_ticket_price=80.0,
         child_ticket_price_12_15=50.0,
         child_ticket_price_7_11=25.0,
-        child_ticket_price_under_7=0.0
+        child_ticket_price_under_7=0.0,
     )
-    
+
     db.session.add(past_event)
     db.session.commit()
-    
+
     assert past_event.is_early_booking_available() is False
-    assert past_event.get_adult_ticket_price() == 100.0  # Should return standard price 
+    assert past_event.get_adult_ticket_price() == 100.0  # Should return standard price

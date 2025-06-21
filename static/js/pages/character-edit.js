@@ -26,4 +26,4 @@ document.addEventListener('DOMContentLoaded', function() {
         var percent = parseInt(bar.getAttribute('data-progress'));
         bar.style.width = percent + '%';
     });
-}); 
+});

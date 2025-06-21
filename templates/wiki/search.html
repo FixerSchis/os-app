@@ -5,7 +5,7 @@
 {% block wiki_content %}
 <div class="container">
     <h1>Wiki Search</h1>
-    
+
     <form method="GET" action="{{ url_for('wiki.wiki_search') }}" class="mb-4">
         <div class="input-group">
             <input type="text" name="q" class="form-control" placeholder="Search wiki..." value="{{ query }}" required>
@@ -49,4 +49,4 @@
         {% endif %}
     {% endif %}
 </div>
-{% endblock %} 
+{% endblock %}

@@ -37,13 +37,13 @@
                                     </div>
                                 </div>
                             </div>
-                            <div class="card-body">                                
+                            <div class="card-body">
                                 <div class="preview-container">
                                     <div class="template-dimension-container template-dimension-container-{{ template.type.value if template else 'character_sheet' }}" data-template-type="{{ template.type.value if template else 'character_sheet' }}">
                                         <div class="template-preview-row">
                                             <div class="template-preview-item">
-                                                <div class="template-content" id="frontPreview" 
-                                                     data-width-mm="{{ template.width_mm if template else 148.0 }}" 
+                                                <div class="template-content" id="frontPreview"
+                                                     data-width-mm="{{ template.width_mm if template else 148.0 }}"
                                                      data-height-mm="{{ template.height_mm if template else 210.0 }}"
                                                      data-template-type="{{ template.type.value if template else 'character_sheet' }}">
                                                     <div class="text-center text-muted py-5">
@@ -55,7 +55,7 @@
                                             {% if template and template.has_back_side %}
                                             <div class="template-preview-item">
                                                 <div class="template-content template-content-back" id="backPreview"
-                                                     data-width-mm="{{ template.width_mm if template else 148.0 }}" 
+                                                     data-width-mm="{{ template.width_mm if template else 148.0 }}"
                                                      data-height-mm="{{ template.height_mm if template else 210.0 }}"
                                                      data-template-type="{{ template.type.value if template else 'character_sheet' }}">
                                                     <div class="text-center text-muted py-5">
@@ -133,4 +133,4 @@
 {% block scripts %}
 <script src="{{ url_for('static', filename='external/js/monaco-loader.js') }}"></script>
 <script src="{{ url_for('static', filename='js/pages/templates.js') }}"></script>
-{% endblock %} 
+{% endblock %}

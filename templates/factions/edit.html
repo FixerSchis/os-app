@@ -8,13 +8,13 @@
 <div class="container">
     <div class="faction-management">
         <h1>{{ 'Edit' if faction else 'Create' }} Faction</h1>
-        
+
         <form method="POST" class="settings-form">
             <div class="form-group">
                 <label for="name">Faction Name *</label>
                 <input type="text" class="form-control" id="name" name="name" value="{{ faction.name if faction else '' }}" required>
             </div>
-            
+
             {{ wiki_page_select(
                 input_id='wiki_page_autocomplete',
                 select_name='wiki_page',
@@ -23,7 +23,7 @@
                 required=true,
                 placeholder='Start typing to search...'
             ) }}
-            
+
             <table style="width:100%; border: none; margin-bottom: 1.5rem;">
               <tr>
                 <td style="width: 1.5em; vertical-align: middle;">
@@ -34,7 +34,7 @@
                 </td>
               </tr>
             </table>
-            
+
             <div class="form-group">
                 <button type="submit" class="btn btn-primary">{{ 'Save Changes' if faction else 'Create Faction' }}</button>
                 <a href="{{ url_for('factions.faction_list') }}" class="btn btn-secondary">Cancel</a>

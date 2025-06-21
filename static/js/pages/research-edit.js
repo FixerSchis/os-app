@@ -69,4 +69,4 @@ $(document).ready(function() {
         placeholder: 'Select an item type',
         allowClear: true
     });
-}); 
+});

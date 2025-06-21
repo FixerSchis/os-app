@@ -15,7 +15,7 @@ $(document).ready(function() {
         const templateType = $(this).data('template-type');
         const id = $(this).data('id');
         let endpoint;
-        
+
         if (templateType === 'character_sheet') {
             endpoint = `/templates/print/character/${id}`;
         } else if (templateType === 'item_card') {
@@ -24,7 +24,7 @@ $(document).ready(function() {
             console.error('Unknown template type:', templateType);
             return;
         }
-        
+
         fetch(endpoint, {
             method: 'POST',
             headers: {
@@ -58,4 +58,4 @@ $(document).ready(function() {
             alert('Failed to generate PDF');
         });
     });
-}); 
+});

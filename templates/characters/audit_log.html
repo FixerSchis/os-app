@@ -13,7 +13,7 @@
         <h1>Audit Log for {{ character.name }}</h1>
         <a href="{{ url_for('characters.edit', character_id=character.id) }}" class="btn btn-secondary">Back to Character</a>
     </div>
-    
+
     <div class="audit-log-container">
         <div class="audit-log-entries">
             {% for log in audit_logs %}
@@ -50,4 +50,4 @@
         </div>
     </div>
 </div>
-{% endblock %} 
+{% endblock %}

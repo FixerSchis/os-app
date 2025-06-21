@@ -24,4 +24,4 @@ StandardError=journal
 SyslogIdentifier=orion-sphere-lrp
 
 [Install]
-WantedBy=multi-user.target 
+WantedBy=multi-user.target

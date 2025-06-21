@@ -38,4 +38,4 @@ function initSpeciesFilter(factionSelectId, speciesSelectId, userIsAdmin, userIs
     factionSelect.addEventListener('change', filterSpecies);
     // Initial filter
     filterSpecies();
-} 
+}

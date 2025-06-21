@@ -18,12 +18,12 @@
             <h1>Orion Sphere LRP</h1>
             <h2>New Event Created</h2>
         </div>
-        
+
         <div class="content">
             <p>Hello {{ user.first_name }},</p>
-            
+
             <p>A new event has been created and is now available for registration.</p>
-            
+
             <p><strong>Event Details:</strong></p>
             <ul>
                 <li><strong>Event Number:</strong> {{ event.event_number }}</li>
@@ -36,22 +36,22 @@
                 <li><strong>Standard Ticket Price:</strong> {{ event.standard_ticket_price }}</li>
                 <li><strong>Description:</strong> {{ event.description[:200] + '...' if event.description and len(event.description) > 200 else event.description or 'No description available' }}</li>
             </ul>
-            
+
             <p>Don't miss out on this exciting event! Register early to secure your spot.</p>
-            
+
             <p style="text-align: center; margin: 30px 0;">
                 <a href="{{ url_for('events.view', event_id=event.id, _external=True) }}" class="btn">View Event Details</a>
             </p>
-            
+
             <p>If you have any questions about the event, please contact the event organizers.</p>
-            
+
             <p>Best regards,<br>The Orion Sphere LRP Team</p>
         </div>
-        
+
         <div class="footer">
             <p>This is an automated notification from Orion Sphere LRP.</p>
             <p>You can manage your notification preferences in your account settings.</p>
         </div>
     </div>
 </body>
-</html> 
+</html>

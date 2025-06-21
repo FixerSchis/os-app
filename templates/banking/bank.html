@@ -6,7 +6,7 @@
 <div class="container">
     <div class="banking-management">
         <h1>Banking</h1>
-        
+
         <div class="row">
             <!-- Character Balance -->
             <div class="col-md-6">
@@ -28,7 +28,7 @@
                                 </select>
                             </div>
                         {% endif %}
-                        
+
                         {% if selected_character or active_character %}
                             {% set character = selected_character or active_character %}
                             <div class="balance-display">
@@ -54,7 +54,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <!-- Group Balance -->
             <div class="col-md-6">
                 <div class="card mb-4">
@@ -75,7 +75,7 @@
                                 </select>
                             </div>
                         {% endif %}
-                        
+
                         {% if selected_group or (active_character and active_character.group) %}
                             {% set group = selected_group or active_character.group %}
                             <div class="balance-display">
@@ -102,7 +102,7 @@
                 </div>
             </div>
         </div>
-        
+
         <!-- Transfer Form -->
         {% if source_accounts %}
         <div class="card">
@@ -164,4 +164,4 @@
 {% block scripts %}
 {{ super() }}
 <script src="{{ url_for('static', filename='js/pages/banking.js') }}"></script>
-{% endblock %} 
+{% endblock %}

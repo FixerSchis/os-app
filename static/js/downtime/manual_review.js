@@ -1,20 +1,20 @@
 $(document).ready(function() {
     const form = document.getElementById('manual-review-form');
     const confirmComplete = document.getElementById('confirm_complete');
-    
+
     // Handle form submission
     form.addEventListener('submit', function(e) {
         if (confirmComplete.checked) {
             // Check if all required fields are filled
             const requiredFields = form.querySelectorAll('[required]');
             let allFilled = true;
-            
+
             requiredFields.forEach(field => {
                 if (!field.value.trim()) {
                     allFilled = false;
                 }
             });
-            
+
             if (!allFilled) {
                 e.preventDefault();
                 alert('Please fill in all required fields before confirming completion.');
@@ -69,7 +69,7 @@ $(document).ready(function() {
         const index = $(this).attr('id').split('_')[1];
         const container = $(`#stages-container_${index}`);
         const initialStagesJson = $(`#initial-stages-json-${index}`).val();
-        
+
         if (initialStagesJson) {
             try {
                 const stages = JSON.parse(initialStagesJson);
@@ -111,7 +111,7 @@ function getStagesData(container) {
                 requirement_type: reqEl.find('.requirement-type').val(),
                 amount: parseInt(reqEl.find('.requirement-amount').val())
             };
-            
+
             if (requirement.requirement_type === 'science') {
                 requirement.science_type = reqEl.find('.science-type').val();
             } else if (requirement.requirement_type === 'item') {
@@ -122,10 +122,10 @@ function getStagesData(container) {
                 requirement.sample_tag = reqEl.find('.sample-tag').val();
                 requirement.requires_researched = reqEl.find('.requires-researched').is(':checked');
             }
-            
+
             stage.unlock_requirements.push(requirement);
         });
         stages.push(stage);
     });
     return stages;
-} 
+}

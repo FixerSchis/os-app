@@ -5,7 +5,7 @@
 {% block content %}
 <div class="container">
     <h1>Manual Review - {{ character.name }}</h1>
-    
+
     <form method="POST" id="manual-review-form">
         <!-- Invention Reviews -->
         {% if invention %}
@@ -19,11 +19,11 @@
                     <p class="mb-2">{{ invention.description or '' }}</p>
                     <div class="mb-3">
                         <div class="btn-group" role="group">
-                            <input type="radio" class="btn-check" name="invention_review" 
+                            <input type="radio" class="btn-check" name="invention_review"
                                    id="approve" value="approve"
                                    {% if review_data.get('invention_review', 'decline') == 'approve' %}checked{% endif %}>
                             <label class="btn btn-outline-success" for="approve">Approve</label>
-                            <input type="radio" class="btn-check" name="invention_review" 
+                            <input type="radio" class="btn-check" name="invention_review"
                                    id="decline" value="decline"
                                    {% if review_data.get('invention_review', 'decline') == 'decline' %}checked{% endif %}>
                             <label class="btn btn-outline-danger" for="decline">Decline</label>
@@ -32,17 +32,17 @@
                     <!-- Decline Response -->
                     <div class="mb-3 decline-response" id="decline_response" style="display: none;">
                         <label for="invention_response" class="form-label">Reason for Decline</label>
-                        <textarea class="form-control" 
-                                  id="invention_response" 
-                                  name="invention_response" 
+                        <textarea class="form-control"
+                                  id="invention_response"
+                                  name="invention_response"
                                   rows="3">{{ review_data.get('invention_response', '') }}</textarea>
                     </div>
                     <!-- Approve Options -->
                     <div class="mb-3 approve-options" id="approve_options" style="display: none;">
                         <div class="form-check mb-2">
-                            <input class="form-check-input" type="radio" 
-                                   name="invention_type" 
-                                   id="new_invention" 
+                            <input class="form-check-input" type="radio"
+                                   name="invention_type"
+                                   id="new_invention"
                                    value="new"
                                    {% if review_data.get('invention_type') == 'new' %}checked{% endif %}>
                             <label class="form-check-label" for="new_invention">
@@ -50,9 +50,9 @@
                             </label>
                         </div>
                         <div class="form-check mb-2">
-                            <input class="form-check-input" type="radio" 
-                                   name="invention_type" 
-                                   id="improve_invention" 
+                            <input class="form-check-input" type="radio"
+                                   name="invention_type"
+                                   id="improve_invention"
                                    value="improve"
                                    {% if review_data.get('invention_type') == 'improve' %}checked{% endif %}>
                             <label class="form-check-label" for="improve_invention">
@@ -63,16 +63,16 @@
                         <div class="new-invention-fields" id="new_invention_fields" style="display: none;">
                             <div class="mb-2">
                                 <label for="invention_name" class="form-label">Project Name</label>
-                                <input type="text" class="form-control" 
-                                       id="invention_name" 
+                                <input type="text" class="form-control"
+                                       id="invention_name"
                                        name="invention_name"
                                        value="{{ review_data.get('invention_name', '') }}">
                             </div>
                             <div class="mb-2">
                                 <label for="invention_description" class="form-label">Description</label>
-                                <textarea class="form-control" 
-                                          id="invention_description" 
-                                          name="invention_description" 
+                                <textarea class="form-control"
+                                          id="invention_description"
+                                          name="invention_description"
                                           rows="3">{{ review_data.get('invention_description', '') }}</textarea>
                             </div>
                             <h5 class="mt-3">Requirements</h5>
@@ -85,8 +85,8 @@
                         <!-- Improve Invention Fields -->
                         <div class="improve-invention-fields" id="improve_invention_fields" style="display: none;">
                             <label for="existing_invention" class="form-label">Select Invention to Improve</label>
-                            <select class="form-control" 
-                                    id="existing_invention" 
+                            <select class="form-control"
+                                    id="existing_invention"
                                     name="existing_invention">
                                 <option value="">Select an invention...</option>
                                 {% for research in character.research %}
@@ -104,7 +104,7 @@
             </div>
         </div>
         {% endif %}
-        
+
         <!-- Reputation Questions -->
         {% if reputation_questions %}
         <div class="card mb-4">
@@ -119,12 +119,12 @@
                         <span class="badge bg-secondary ms-2">Reputation: {{ character.get_reputation(question.faction_id) }}</span>
                     </h3>
                     <p class="mb-2">{{ question.question }}</p>
-                    
+
                     <div class="mb-3">
                         <label for="reputation_response_{{ question.faction_id }}" class="form-label">Response</label>
-                        <textarea class="form-control" 
-                                  id="reputation_response_{{ question.faction_id }}" 
-                                  name="reputation_response_{{ question.faction_id }}" 
+                        <textarea class="form-control"
+                                  id="reputation_response_{{ question.faction_id }}"
+                                  name="reputation_response_{{ question.faction_id }}"
                                   rows="3">{{ review_data.get('reputation_response_' ~ question.faction_id, '') }}</textarea>
                     </div>
                 </div>
@@ -132,7 +132,7 @@
             </div>
         </div>
         {% endif %}
-        
+
         <!-- Submit Section -->
         <div class="card mb-4">
             <div class="card-body">
@@ -166,4 +166,4 @@
 </script>
 <script src="{{ url_for('static', filename='js/pages/research-stages.js') }}"></script>
 <script src="{{ url_for('static', filename='js/downtime/manual_review.js') }}"></script>
-{% endblock %} 
+{% endblock %}

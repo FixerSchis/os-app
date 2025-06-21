@@ -6,10 +6,10 @@
 <div class="container">
     <div class="user-management">
         <h1>Edit User</h1>
-        
+
         <div class="user-details">
             <h2>{{ user.email }}</h2>
-            
+
             <form method="POST" action="{{ url_for('user_management.user_management_edit_user', user_id=user.id) }}" class="edit-form">
                 <div class="form-group">
                     <label for="email">Email:</label>
@@ -28,15 +28,15 @@
 
                 <div class="form-group">
                     <label for="pronouns_subject">Pronouns (subject):</label>
-                    <input type="text" id="pronouns_subject" name="pronouns_subject" 
-                           value="{{ user.pronouns_subject or '' }}" 
+                    <input type="text" id="pronouns_subject" name="pronouns_subject"
+                           value="{{ user.pronouns_subject or '' }}"
                            placeholder="e.g., they" class="form-control">
                 </div>
 
                 <div class="form-group">
                     <label for="pronouns_object">Pronouns (object):</label>
-                    <input type="text" id="pronouns_object" name="pronouns_object" 
-                           value="{{ user.pronouns_object or '' }}" 
+                    <input type="text" id="pronouns_object" name="pronouns_object"
+                           value="{{ user.pronouns_object or '' }}"
                            placeholder="e.g., them" class="form-control">
                 </div>
 
@@ -99,4 +99,4 @@
         </div>
     </div>
 </div>
-{% endblock %} 
+{% endblock %}

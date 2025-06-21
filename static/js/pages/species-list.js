@@ -10,7 +10,7 @@ $(document).ready(function() {
     // Filter function
     function filterSpecies() {
         var selectedFaction = $('#faction-filter').val();
-        
+
         if (!selectedFaction) {
             // Show all species if no faction is selected
             $('.species-row').show();
@@ -32,4 +32,4 @@ $(document).ready(function() {
 
     // Bind filter function to select change
     $('#faction-filter').on('change', filterSpecies);
-}); 
+});

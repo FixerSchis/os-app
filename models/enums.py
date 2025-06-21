@@ -1,5 +1,6 @@
 from enum import Enum
 
+
 class Role(Enum):
     OWNER = "owner"
     ADMIN = "admin"
@@ -25,6 +26,7 @@ class Role(Enum):
             cls.NPC.value: "NPC",
         }
 
+
 class CharacterStatus(Enum):
     DEVELOPING = "developing"
     ACTIVE = "active"
@@ -44,6 +46,7 @@ class CharacterStatus(Enum):
             cls.RETIRED.value: "Retired",
         }
 
+
 class BodyHitsType(Enum):
     LOCATIONAL = "locational"
     GLOBAL = "global"
@@ -58,6 +61,7 @@ class BodyHitsType(Enum):
             cls.LOCATIONAL.value: "Locational Hits",
             cls.GLOBAL.value: "Global Hits",
         }
+
 
 class SectionRestrictionType(Enum):
     ROLE = "role"
@@ -84,6 +88,7 @@ class SectionRestrictionType(Enum):
             cls.TAG.value: "Character Tag",
         }
 
+
 class WikiPageVersionStatus(Enum):
     PUBLISHED = "published"
     PENDING = "pending"
@@ -98,6 +103,7 @@ class WikiPageVersionStatus(Enum):
             cls.PUBLISHED.value: "Published",
             cls.PENDING.value: "Pending Review",
         }
+
 
 class AbilityType(Enum):
     GENERIC = "generic"
@@ -115,6 +121,7 @@ class AbilityType(Enum):
             cls.STARTING_SKILLS.value: "Starting Skills",
             cls.SKILL_DISCOUNTS.value: "Skill Discounts",
         }
+
 
 class CharacterAuditAction(Enum):
     CREATE = "create"
@@ -135,6 +142,7 @@ class CharacterAuditAction(Enum):
             cls.FUNDS_SPENT.value: "Funds Spent",
         }
 
+
 class GroupType(Enum):
     MILITARY = "military"
     SCIENTIFIC = "scientific"
@@ -149,8 +157,9 @@ class GroupType(Enum):
         return {
             cls.MILITARY.value: "Military",
             cls.SCIENTIFIC.value: "Scientific",
-            cls.CORPORATE.value: "Corporate"
+            cls.CORPORATE.value: "Corporate",
         }
+
 
 class ScienceType(Enum):
     GENERIC = "generic"
@@ -171,6 +180,7 @@ class ScienceType(Enum):
             cls.ETHERIC.value: "Etheric",
         }
 
+
 class ResearchType(Enum):
     INVENTION = "invention"
     ARTEFACT = "artefact"
@@ -185,6 +195,7 @@ class ResearchType(Enum):
             cls.INVENTION.value: "Invention",
             cls.ARTEFACT.value: "Artefact",
         }
+
 
 class ResearchRequirementType(Enum):
     SCIENCE = "science"
@@ -205,9 +216,10 @@ class ResearchRequirementType(Enum):
             cls.SAMPLE.value: "Required Sample",
         }
 
+
 class DowntimeStatus(Enum):
-    PENDING = 'pending'
-    COMPLETED = 'completed'
+    PENDING = "pending"
+    COMPLETED = "completed"
 
     @classmethod
     def values(cls):
@@ -220,11 +232,12 @@ class DowntimeStatus(Enum):
             cls.COMPLETED.value: "Completed",
         }
 
+
 class DowntimeTaskStatus(Enum):
-    ENTER_PACK = 'enter_pack'
-    ENTER_DOWNTIME = 'enter_downtime'
-    MANUAL_REVIEW = 'manual_review'
-    COMPLETED = 'completed'
+    ENTER_PACK = "enter_pack"
+    ENTER_DOWNTIME = "enter_downtime"
+    MANUAL_REVIEW = "manual_review"
+    COMPLETED = "completed"
 
     @classmethod
     def values(cls):
@@ -238,6 +251,7 @@ class DowntimeTaskStatus(Enum):
             cls.MANUAL_REVIEW.value: "Manual Review",
             cls.COMPLETED.value: "Completed",
         }
+
 
 class EventType(Enum):
     MAINLINE = "mainline"
@@ -255,6 +269,7 @@ class EventType(Enum):
             cls.SANCTIONED.value: "Sanctioned Event",
             cls.ONLINE.value: "Online Event",
         }
+
 
 class TicketType(Enum):
     ADULT = "adult"
@@ -279,6 +294,7 @@ class TicketType(Enum):
             cls.CREW.value: "Crew",
         }
 
+
 class PrintTemplateType(Enum):
     CHARACTER_SHEET = "character_sheet"
     CHARACTER_ID = "character_id"
@@ -290,7 +306,7 @@ class PrintTemplateType(Enum):
     @classmethod
     def values(cls):
         return [type.value for type in cls]
-    
+
     @classmethod
     def descriptions(cls):
         return {

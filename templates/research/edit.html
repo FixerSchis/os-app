@@ -61,7 +61,7 @@
     </div>
 
     <input type="hidden" id="stages-json" name="stages_json">
-    
+
     <button type="submit" class="btn btn-primary">{{ research and 'Save Changes' or 'Create Project' }}</button>
     <a href="{{ url_for('research.research_list') }}" class="btn btn-secondary">Cancel</a>
 </form>
@@ -85,4 +85,4 @@ window.SAMPLE_TAG_OPTIONS_HTML = `{% for tag in sample_tags %}<option value="{{ 
 <script src="{{ url_for('static', filename='js/wiki_page_autocomplete.js') }}"></script>
 <script src="{{ url_for('static', filename='js/pages/research-stages.js') }}"></script>
 <script src="{{ url_for('static', filename='js/pages/research-edit.js') }}"></script>
-{% endblock %} 
+{% endblock %}

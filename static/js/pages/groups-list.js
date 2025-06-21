@@ -26,4 +26,4 @@ document.addEventListener('DOMContentLoaded', function() {
             groupActionModal.show();
         });
     }
-}); 
+});

@@ -39,4 +39,4 @@ $('#downtime-form').on('submit', function() {
             value: JSON.stringify(repObj)
         }).appendTo(this);
     }
-}); 
+});

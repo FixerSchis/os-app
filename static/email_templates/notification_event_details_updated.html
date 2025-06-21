@@ -18,12 +18,12 @@
             <h1>Orion Sphere LRP</h1>
             <h2>Event Details Updated</h2>
         </div>
-        
+
         <div class="content">
             <p>Hello {{ user.first_name }},</p>
-            
+
             <p>The details for an event you have a ticket for have been updated.</p>
-            
+
             <p><strong>Event Details:</strong></p>
             <ul>
                 <li><strong>Event Number:</strong> {{ event.event_number }}</li>
@@ -35,22 +35,22 @@
                 <li><strong>Early Booking Deadline:</strong> {{ event.early_booking_deadline.strftime('%Y-%m-%d %H:%M') if event.early_booking_deadline else 'N/A' }}</li>
                 <li><strong>Character:</strong> {{ character.name }}</li>
             </ul>
-            
+
             <p>Please review the updated event information to ensure you have the latest details for planning and preparation.</p>
-            
+
             <p style="text-align: center; margin: 30px 0;">
                 <a href="{{ url_for('events.view', event_id=event.id, _external=True) }}" class="btn">View Updated Event Details</a>
             </p>
-            
+
             <p>If you have any questions about the updated event details, please contact the event organizers.</p>
-            
+
             <p>Best regards,<br>The Orion Sphere LRP Team</p>
         </div>
-        
+
         <div class="footer">
             <p>This is an automated notification from Orion Sphere LRP.</p>
             <p>You can manage your notification preferences in your account settings.</p>
         </div>
     </div>
 </body>
-</html> 
+</html>

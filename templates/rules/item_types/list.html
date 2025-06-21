@@ -30,7 +30,7 @@
                     <td>
                         <div class="btn-group">
                             <a href="{{ url_for('item_types.edit', id=item_type.id) }}" class="btn btn-sm btn-outline-primary">Edit</a>
-                            <button type="button" class="btn btn-sm btn-outline-danger delete-btn" 
+                            <button type="button" class="btn btn-sm btn-outline-danger delete-btn"
                                     data-delete-url="{{ url_for('item_types.delete', id=item_type.id) }}"
                                     data-item-name="{{ item_type.name }}">
                                 Delete
@@ -77,4 +77,4 @@
 {% if can_edit %}
 <script src="{{ url_for('static', filename='js/pages/item-types-list.js') }}"></script>
 {% endif %}
-{% endblock %} 
+{% endblock %}

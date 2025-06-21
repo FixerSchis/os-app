@@ -6,13 +6,13 @@
 <div class="container">
     <div class="skill-management">
         <h1>{{ 'Edit' if skill else 'Create' }} Skill</h1>
-        
+
         <form method="POST" class="settings-form">
             <div class="form-group">
                 <label for="name">Skill Name *</label>
                 <input type="text" class="form-control" id="name" name="name" value="{{ skill.name if skill else '' }}" required>
             </div>
-            
+
             <div class="form-group">
                 <label for="description">Description *</label>
                 <textarea class="form-control" id="description" name="description" rows="3" required>{{ skill.description if skill else '' }}</textarea>
@@ -33,7 +33,7 @@
                     {% endfor %}
                 </select>
             </div>
-            
+
             <div class="form-group">
                 <label for="adds_engineering_mods">Adds Engineering Mods</label>
                 <input type="number" class="form-control" id="adds_engineering_mods" name="adds_engineering_mods" value="{{ skill.adds_engineering_mods if skill else 0 }}" min="0">
@@ -94,7 +94,7 @@
                     {% endfor %}
                 </select>
             </div>
-            
+
             <div class="form-group">
                 <label for="required_factions">Required Factions</label>
                 <select class="form-control select2-multiple" id="required_factions" name="required_factions" multiple>
@@ -105,7 +105,7 @@
                     {% endfor %}
                 </select>
             </div>
-            
+
             <div class="form-group">
                 <label for="required_species">Required Species</label>
                 <select class="form-control select2-multiple" id="required_species" name="required_species" multiple>
@@ -155,7 +155,7 @@
                 </div>
                 <button type="button" class="btn btn-secondary" id="add-character-sheet-value">Add Character Sheet Value</button>
             </div>
-            
+
             <div class="form-group">
                 <button type="submit" class="btn btn-primary">{{ 'Save Changes' if skill else 'Create Skill' }}</button>
                 <a href="{{ url_for('skills.skills_list') }}" class="btn btn-secondary">Cancel</a>
@@ -247,7 +247,7 @@ $(document).ready(function() {
 
     // Character sheet values functionality
     let characterSheetValueIndex = parseInt($('#character-sheet-values-container').data('initial-count')) || 0;
-    
+
     $('#add-character-sheet-value').click(function() {
         const container = $('#character-sheet-values-container');
         const newRow = $(`
@@ -272,10 +272,10 @@ $(document).ready(function() {
         container.append(newRow);
         characterSheetValueIndex++;
     });
-    
+
     $(document).on('click', '.remove-character-sheet-value', function() {
         $(this).closest('.character-sheet-value-row').remove();
     });
 });
 </script>
-{% endblock %} 
+{% endblock %}

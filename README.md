@@ -1,370 +1,171 @@
-# Orion Sphere LRP
+# OS App
 
-A comprehensive Flask web application for managing Live Role-Playing (LRP) game systems. Built with modern web technologies, it provides a robust platform for character management, wiki functionality, user authentication, and game administration.
+A Flask-based web application for managing LARP (Live Action Role-Playing) game data, including characters, events, and game mechanics.
 
-## 🚀 Features
+## Features
 
-### Core Functionality
-- **User Authentication & Authorization**: Secure login system with role-based access control
-- **Character Management**: Complete character creation, editing, and tracking system
-- **Wiki System**: Rich content management with image support and markdown formatting
-- **Species & Skills Management**: Comprehensive database for game mechanics
-- **Downtime Activities**: Track and manage character activities between sessions
-- **Research System**: Manage character research projects and progress
-- **Banking System**: In-game currency and transaction management
-- **Event Management**: Organize and track game events and attendance
+- Character management and creation
+- Event organization and tracking
+- Database management for game rules and items
+- User authentication and authorization
+- Email notifications
+- QR code generation
+- PDF generation for game materials
 
-### Technical Features
-- **Modern Web Framework**: Built with Flask 3.0+ and SQLAlchemy ORM
-- **Database Management**: SQLite with Alembic migrations for schema evolution
-- **Security**: CSRF protection, password hashing, secure session handling
-- **Email Integration**: Automated email notifications and user verification
-- **PDF Generation**: Character sheets and documents with WeasyPrint
-- **QR Code Support**: Generate QR codes for various game elements
-- **SSL/TLS Support**: Built-in HTTPS support for secure connections
-- **Responsive Design**: Modern UI with Bootstrap and custom styling
+## Quick Start
 
-### Administrative Tools
-- **User Management Dashboard**: Comprehensive user administration
-- **Audit Logging**: Track system changes and user actions
-- **Template Management**: Customizable templates for various game elements
-- **Database Administration**: Web-based management of game data
-- **Message System**: Internal communication between players and GMs
+### Prerequisites
+- Python 3.8 or higher
+- pip
+- Git
 
-## 📋 Prerequisites
+### Installation
 
-- **Python**: 3.8 or higher
-- **Operating System**: Windows, macOS, or Linux
-- **Web Browser**: Modern browser with JavaScript enabled
-- **SSL Certificates**: For production HTTPS deployment (optional for development)
-
-## 🛠️ Installation
-
-### Development Setup
-
-1. **Clone the repository**:
-```bash
-git clone <repository-url>
-cd os-app
-```
-
-2. **Create a virtual environment**:
-```bash
-python -m venv venv
-```
-
-3. **Activate the virtual environment**:
-   - **Windows**:
+1. Clone the repository:
    ```bash
-   venv\Scripts\activate
-   ```
-   - **Unix/macOS**:
-   ```bash
-   source venv/bin/activate
+   git clone https://github.com/your-username/os-app.git
+   cd os-app
    ```
 
-4. **Install dependencies**:
+2. Create a virtual environment:
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   ```
+
+3. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. Set up environment variables:
+   ```bash
+   cp .env.example .env
+   # Edit .env with your configuration
+   ```
+
+5. Initialize the database:
+   ```bash
+   flask db upgrade
+   ```
+
+6. Run the application:
+   ```bash
+   python app.py
+   ```
+
+The application will be available at `http://localhost:5000`
+
+## Development
+
+### Setting up the development environment
+
+1. Install development dependencies:
+   ```bash
+   pip install -r requirements-dev.txt
+   ```
+
+2. Install pre-commit hooks:
+   ```bash
+   pre-commit install
+   ```
+
+3. Run tests:
+   ```bash
+   pytest
+   ```
+
+4. Format code:
+   ```bash
+   black .
+   isort .
+   ```
+
+5. Lint code:
+   ```bash
+   flake8 .
+   ```
+
+### Contributing
+
+We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details on how to:
+
+- Set up your development environment
+- Follow our coding standards
+- Submit pull requests
+- Report issues
+
+### Code Quality
+
+This project uses several tools to maintain code quality:
+
+- **Black**: Code formatting
+- **isort**: Import sorting
+- **flake8**: Linting
+- **pytest**: Testing
+- **bandit**: Security analysis
+- **pre-commit**: Git hooks for automated checks
+
+### Testing
+
+Run the test suite:
 ```bash
-pip install -r requirements.txt
+pytest
 ```
 
-5. **Initialize the database**:
+Run with coverage:
 ```bash
-# The database will be automatically initialized on first run
+pytest --cov=. --cov-report=html
 ```
 
-6. **Run the application**:
-```bash
-python app.py
-```
-
-The application will be available at `https://localhost` (HTTPS) or `http://localhost:5000` (HTTP)
-
-### Production Setup
-
-For production deployment, see the [Linux Service Setup](#linux-service-setup) section below.
-
-## 🐧 Linux Service Setup
-
-To run the application as a systemd service on Linux:
-
-### 1. Create Service User
-
-Create a dedicated user for the application:
-```bash
-sudo useradd -r -s /bin/false orion-sphere
-sudo groupadd orion-sphere
-sudo usermod -a -G orion-sphere orion-sphere
-```
-
-### 2. Install Application
-
-Copy the application to `/opt/orion-sphere-lrp`:
-```bash
-sudo mkdir -p /opt/orion-sphere-lrp
-sudo cp -r . /opt/orion-sphere-lrp/
-sudo chown -R orion-sphere:orion-sphere /opt/orion-sphere-lrp
-```
-
-### 3. Set Up Virtual Environment
-
-```bash
-cd /opt/orion-sphere-lrp
-sudo -u orion-sphere python3 -m venv venv
-sudo -u orion-sphere /opt/orion-sphere-lrp/venv/bin/pip install -r requirements.txt
-```
-
-### 4. Create Required Directories
-
-```bash
-sudo mkdir -p /opt/orion-sphere-lrp/logs
-sudo mkdir -p /opt/orion-sphere-lrp/instance
-sudo mkdir -p /opt/orion-sphere-lrp/db
-sudo chown -R orion-sphere:orion-sphere /opt/orion-sphere-lrp/logs
-sudo chown -R orion-sphere:orion-sphere /opt/orion-sphere-lrp/instance
-sudo chown -R orion-sphere:orion-sphere /opt/orion-sphere-lrp/db
-```
-
-### 5. Install Service File
-
-Copy the service file to systemd:
-```bash
-sudo cp orion-sphere-lrp.service /etc/systemd/system/
-sudo systemctl daemon-reload
-```
-
-### 6. Enable and Start Service
-
-```bash
-sudo systemctl enable orion-sphere-lrp
-sudo systemctl start orion-sphere-lrp
-```
-
-### 7. Check Service Status
-
-```bash
-sudo systemctl status orion-sphere-lrp
-```
-
-### 8. View Logs
-
-```bash
-sudo journalctl -u orion-sphere-lrp -f
-```
-
-### Service Management Commands
-
-- **Start service**: `sudo systemctl start orion-sphere-lrp`
-- **Stop service**: `sudo systemctl stop orion-sphere-lrp`
-- **Restart service**: `sudo systemctl restart orion-sphere-lrp`
-- **Reload configuration**: `sudo systemctl reload orion-sphere-lrp`
-- **Disable service**: `sudo systemctl disable orion-sphere-lrp`
-
-### Troubleshooting
-
-If the service fails to start, check the following:
-
-1. **Check service status and logs**:
-```bash
-sudo systemctl status orion-sphere-lrp
-sudo journalctl -u orion-sphere-lrp -n 50
-```
-
-2. **Verify file permissions**:
-```bash
-sudo ls -la /opt/orion-sphere-lrp/
-sudo ls -la /opt/orion-sphere-lrp/venv/bin/python
-```
-
-3. **Test manual execution**:
-```bash
-sudo -u orion-sphere /opt/orion-sphere-lrp/venv/bin/python /opt/orion-sphere-lrp/wsgi.py
-```
-
-4. **Check directory ownership**:
-```bash
-sudo chown -R orion-sphere:orion-sphere /opt/orion-sphere-lrp
-```
-
-5. **Verify virtual environment**:
-```bash
-sudo -u orion-sphere /opt/orion-sphere-lrp/venv/bin/pip list
-```
-
-### Configuration
-
-The service runs the application using the `wsgi.py` file. Make sure to:
-
-1. Configure SSL certificates in `/opt/orion-sphere-lrp/data/ssl/`
-2. Update the configuration in `config/__init__.py` for production settings
-3. Ensure the database directory has proper permissions
-4. Set appropriate file permissions for the application directory
-
-## 🏗️ Project Structure
+## Project Structure
 
 ```
 os-app/
-├── app.py                          # Main application entry point
-├── wsgi.py                         # WSGI entry point for production
-├── requirements.txt                # Python dependencies
-├── orion-sphere-lrp.service        # Systemd service file
-├── config/                         # Configuration management
-│   └── __init__.py                # Main configuration class
-├── static/                         # Static assets
-│   ├── css/                       # Stylesheets
-│   ├── js/                        # JavaScript files
-│   ├── images/                    # Images and icons
-│   └── external/                  # Third-party libraries
-├── templates/                      # HTML templates
-│   ├── auth/                      # Authentication pages
-│   ├── characters/                # Character management
-│   ├── wiki/                      # Wiki pages
-│   ├── errors/                    # Error pages
-│   └── ...                        # Other template directories
-├── models/                         # Database models and business logic
-│   ├── database/                  # Core database models
-│   ├── tools/                     # Game-specific models
-│   ├── enums.py                   # Enumeration definitions
-│   └── extensions.py              # Flask extensions
-├── routes/                         # Application routes
-│   ├── auth.py                    # Authentication routes
-│   ├── database/                  # Database management routes
-│   ├── tools/                     # Game tool routes
-│   └── ...                        # Other route modules
-├── migrations/                     # Database migrations
-│   └── versions/                  # Migration files
-├── tests/                          # Test suite
-│   ├── models/                    # Model tests
-│   ├── routes/                    # Route tests
-│   └── utils/                     # Utility tests
-├── utils/                          # Utility functions
-├── data/                          # Application data
-│   ├── ssl/                       # SSL certificates
-│   └── templates/                 # Print templates
-└── db/                           # Database files (created at runtime)
+├── app.py                 # Main application entry point
+├── models/               # Database models
+├── routes/               # Flask routes and views
+├── templates/            # Jinja2 templates
+├── static/               # Static files (CSS, JS, images)
+├── tests/                # Test suite
+├── migrations/           # Database migrations
+├── config/               # Configuration files
+└── utils/                # Utility functions
 ```
 
-## 📦 Dependencies
+## Deployment
 
-### Core Framework
-- **Flask 3.0.2**: Web framework
-- **Flask-SQLAlchemy 3.1.1**: Database ORM
-- **Flask-Login 0.6.3**: User session management
-- **Flask-WTF 1.2.1**: Form handling and CSRF protection
-- **Flask-Migrate 4.0.5**: Database migrations
-- **Flask-Mail 0.9.1**: Email functionality
+### Production Setup
 
-### Security & Validation
-- **Werkzeug 3.0.1**: WSGI utilities and security
-- **email-validator 2.1.0.post1**: Email validation
-- **cryptography 42.0.8**: Cryptographic functions
-- **pyOpenSSL 24.1.0**: SSL/TLS support
-
-### Utilities
-- **python-dotenv 1.0.1**: Environment variable management
-- **qrcode[pil] 7.4.2**: QR code generation
-- **WeasyPrint 62.1**: PDF generation
-- **pytest**: Testing framework
-
-## 🔧 Configuration
+1. Set up a production server
+2. Install dependencies
+3. Configure environment variables
+4. Set up a production database
+5. Run database migrations
+6. Configure a WSGI server (e.g., Gunicorn)
+7. Set up a reverse proxy (e.g., Nginx)
 
 ### Environment Variables
 
-The application can be configured using environment variables or by creating a `config/local.py` file:
+Required environment variables:
+- `SECRET_KEY`: Flask secret key
+- `DATABASE_URL`: Database connection string
+- `MAIL_SERVER`: SMTP server for email
+- `MAIL_USERNAME`: Email username
+- `MAIL_PASSWORD`: Email password
 
-```python
-# config/local.py
-class LocalConfig(Config):
-    SECRET_KEY = 'your-secure-secret-key'
-    MAIL_USERNAME = 'your-email@gmail.com'
-    MAIL_PASSWORD = 'your-app-password'
-    BASE_URL = 'https://your-domain.com'
-    SSL_ENABLED = True
-    DEFAULT_PORT = 443
-```
+## License
 
-### SSL Configuration
+[Add your license information here]
 
-For HTTPS support, place your SSL certificates in `data/ssl/`:
-- `cert.pem`: SSL certificate
-- `key.pem`: Private key
+## Support
 
-### Database Configuration
+- Create an issue for bugs or feature requests
+- Check the documentation in the `/docs` folder
+- Join our community discussions
 
-The application uses SQLite by default. The database file is created automatically in the `db/` directory.
+## Acknowledgments
 
-## 🧪 Testing
-
-Run the test suite:
-
-```bash
-# Run all tests
-pytest
-
-# Run with coverage
-pytest --cov=.
-
-# Run specific test file
-pytest tests/test_auth.py
-```
-
-## 🔒 Security Features
-
-- **Password Security**: Passwords hashed using Werkzeug's security functions
-- **CSRF Protection**: Enabled on all forms
-- **Session Security**: Secure session handling with configurable lifetime
-- **Input Validation**: Comprehensive client and server-side validation
-- **Role-Based Access Control**: Granular permissions system
-- **SQL Injection Protection**: SQLAlchemy ORM prevents injection attacks
-- **XSS Protection**: Template escaping and input sanitization
-
-## 🚀 Deployment
-
-### Development
-```bash
-python app.py
-```
-
-### Production with WSGI
-```bash
-python wsgi.py
-```
-
-### Production with Gunicorn
-```bash
-gunicorn -w 4 -b 0.0.0.0:5000 wsgi:application
-```
-
-### Docker (Future Enhancement)
-```bash
-# Dockerfile and docker-compose.yml will be added in future versions
-```
-
-## 📝 Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## 📄 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## 🤝 Support
-
-For support and questions:
-- Create an issue in the repository
-- Contact the development team
-- Check the wiki documentation
-
-## 🔄 Version History
-
-- **v1.0.0**: Initial release with core functionality
-- **v1.1.0**: Added Linux service support and enhanced documentation
-- **Future**: Planned features and improvements
-
----
-
-**Orion Sphere LRP** - Empowering Live Role-Playing communities with modern web technology.
+- Flask framework and ecosystem
+- Contributors and maintainers
+- LARP community feedback

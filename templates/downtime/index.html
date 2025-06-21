@@ -5,7 +5,7 @@
 {% block content %}
 <div class="container">
     <h1>Downtime</h1>
-    
+
     {% if current_user.has_role('downtime_team') %}
         <!-- Downtime Team View -->
         {% if not active_period %}
@@ -65,13 +65,13 @@
                                             <td>{{ DowntimeTaskStatus.descriptions()[status.value] }}</td>
                                             <td>
                                                 {% if status == DowntimeTaskStatus.ENTER_PACK %}
-                                                    <a href="{{ url_for('downtime.enter_pack_contents', period_id=active_period.id, character_id=pack.character.id) }}" 
+                                                    <a href="{{ url_for('downtime.enter_pack_contents', period_id=active_period.id, character_id=pack.character.id) }}"
                                                        class="btn btn-primary btn-sm">Edit Pack</a>
                                                 {% elif status == DowntimeTaskStatus.ENTER_DOWNTIME %}
-                                                    <a href="{{ url_for('downtime.enter_downtime', period_id=active_period.id, character_id=pack.character.id) }}" 
+                                                    <a href="{{ url_for('downtime.enter_downtime', period_id=active_period.id, character_id=pack.character.id) }}"
                                                        class="btn btn-primary btn-sm">Enter Downtime</a>
                                                 {% elif status == DowntimeTaskStatus.MANUAL_REVIEW %}
-                                                    <a href="{{ url_for('downtime.manual_review', period_id=active_period.id, character_id=pack.character.id) }}" 
+                                                    <a href="{{ url_for('downtime.manual_review', period_id=active_period.id, character_id=pack.character.id) }}"
                                                        class="btn btn-primary btn-sm">Review</a>
                                                 {% endif %}
                                             </td>
@@ -104,7 +104,7 @@
                                     <td>{{ pack.character.name }}</td>
                                     <td>{{ DowntimeTaskStatus.descriptions()[pack.status.value] }}</td>
                                     <td>
-                                        <a href="{{ url_for('downtime.enter_downtime', period_id=active_period.id, character_id=pack.character.id) }}" 
+                                        <a href="{{ url_for('downtime.enter_downtime', period_id=active_period.id, character_id=pack.character.id) }}"
                                            class="btn btn-primary btn-sm">Enter Downtime</a>
                                     </td>
                                 </tr>
@@ -127,4 +127,4 @@
 {% block scripts %}
 {{ super() }}
 <script src="{{ url_for('static', filename='js/pages/downtime-index.js') }}"></script>
-{% endblock %} 
+{% endblock %}

@@ -10,7 +10,7 @@
         {% else %}
         <h1>New Page</h1>
         {% endif %}
-        
+
         <form method="POST" id="wiki-edit-form">
             {% if not page %}
             <div class="form-group">
@@ -36,7 +36,7 @@
             </div>
 
             <div id="sections-list"></div>
-            
+
             <div class="form-group mt-4">
                 <button type="submit" class="btn btn-primary">Save Changes</button>
                 <a href="{{ url_for('wiki.wiki_view', slug=page.slug) }}" class="btn btn-secondary">Cancel</a>

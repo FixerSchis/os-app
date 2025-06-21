@@ -6,7 +6,7 @@
 <div class="container mt-4">
     <h1>Edit Research Progress</h1>
     <h4>{{ research.project_name }} - {{ character.name }}</h4>
-    
+
     <div class="card mt-4">
         <div class="card-header d-flex justify-content-between align-items-center">
             {% if not current_stage %}
@@ -49,10 +49,10 @@
                                     </td>
                                     <td>{{ req_progress.requirement.amount }}</td>
                                     <td>
-                                        <input type="number" 
-                                               class="form-control" 
-                                               id="requirement_{{ req_progress.id }}" 
-                                               name="requirement_{{ req_progress.id }}" 
+                                        <input type="number"
+                                               class="form-control"
+                                               id="requirement_{{ req_progress.id }}"
+                                               name="requirement_{{ req_progress.id }}"
                                                value="{{ req_progress.progress }}"
                                                min="0"
                                                max="{{ req_progress.requirement.amount }}">
@@ -73,4 +73,4 @@
         </div>
     </div>
 </div>
-{% endblock %} 
+{% endblock %}

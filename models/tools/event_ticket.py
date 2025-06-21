@@ -1,19 +1,28 @@
-from datetime import datetime
-from models.extensions import db
+from datetime import datetime, timezone
+
 from models.enums import TicketType
+from models.extensions import db
+
 
 class EventTicket(db.Model):
-    __tablename__ = 'event_tickets'
+    __tablename__ = "event_tickets"
 
     id = db.Column(db.Integer, primary_key=True)
-    event_id = db.Column(db.Integer, db.ForeignKey('events.id'), nullable=False)
-    character_id = db.Column(db.Integer, db.ForeignKey('character.id'), nullable=False)
-    ticket_type = db.Column(db.Enum(TicketType, native_enum=False, values_callable=lambda obj: [e.value for e in obj]), nullable=False)
+    event_id = db.Column(db.Integer, db.ForeignKey("events.id"), nullable=False)
+    character_id = db.Column(db.Integer, db.ForeignKey("character.id"), nullable=False)
+    ticket_type = db.Column(
+        db.Enum(
+            TicketType,
+            native_enum=False,
+            values_callable=lambda obj: [e.value for e in obj],
+        ),
+        nullable=False,
+    )
     meal_ticket = db.Column(db.Boolean, default=False)
     requires_bunk = db.Column(db.Boolean, default=False)
     price_paid = db.Column(db.Float, nullable=False)
-    assigned_by_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    assigned_at = db.Column(db.DateTime, default=datetime.utcnow)
+    assigned_by_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    assigned_at = db.Column(db.DateTime, default=datetime.now(timezone.utc))
 
     # Relationships
     event = db.relationship("Event", back_populates="tickets")
@@ -29,4 +38,4 @@ class EventTicket(db.Model):
             return self.event.child_ticket_price_7_11
         elif self.ticket_type == TicketType.CHILD_UNDER_7.value:
             return self.event.child_ticket_price_under_7
-        return 0 
+        return 0

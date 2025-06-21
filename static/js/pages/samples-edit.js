@@ -11,4 +11,4 @@ $(document).ready(function() {
         theme: "bootstrap-5",
         placeholder: 'Select Type'
     });
-}); 
+});

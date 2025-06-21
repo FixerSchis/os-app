@@ -1,11 +1,11 @@
 document.addEventListener('DOMContentLoaded', function() {
     const statusFilter = document.getElementById('status-filter');
     const statusRows = document.querySelectorAll('.status-row');
-    
+
     if (statusFilter) {
         statusFilter.addEventListener('change', function() {
             const selectedStatus = this.value;
-            
+
             statusRows.forEach(row => {
                 if (row.dataset.status === selectedStatus) {
                     row.style.display = '';
@@ -33,7 +33,7 @@ $(document).ready(function() {
     }, function(data) {
         const events = data.events;
         const select = $('#event-select');
-        
+
         events.forEach(function(event) {
             const option = new Option(
                 `Event ${event.event_number} - ${event.name} (Ended: ${event.end_date})`,
@@ -43,8 +43,8 @@ $(document).ready(function() {
             );
             select.append(option);
         });
-        
+
         // Trigger change to update Select2
         select.trigger('change');
     });
-}); 
+});

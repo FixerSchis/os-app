@@ -14,28 +14,28 @@
 .mod-select {
     margin-bottom: 0.75rem;
 }
-.eng-slot-card { 
-    border: 1px solid #dee2e6; 
-    border-radius: 0.25rem; 
-    padding: 1rem; 
-    margin-bottom: 1.5rem; 
-    background: #23272b; 
+.eng-slot-card {
+    border: 1px solid #dee2e6;
+    border-radius: 0.25rem;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+    background: #23272b;
 }
-.eng-slot-header { 
-    font-weight: bold; 
-    margin-bottom: 0.5rem; 
+.eng-slot-header {
+    font-weight: bold;
+    margin-bottom: 0.5rem;
 }
-.eng-slot-row { 
-    display: flex; 
-    gap: 1rem; 
-    align-items: center; 
-    margin-bottom: 0.5rem; 
+.eng-slot-row {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    margin-bottom: 0.5rem;
 }
-.eng-slot-label { 
-    min-width: 120px; 
+.eng-slot-label {
+    min-width: 120px;
 }
-.btn-toggle-group .btn { 
-    min-width: 120px; 
+.btn-toggle-group .btn {
+    min-width: 120px;
 }
 .is-invalid {
     border-color: #dc3545 !important;
@@ -51,4 +51,4 @@
     position: absolute;
     right: 0;
     top: 0;
-} 
+}

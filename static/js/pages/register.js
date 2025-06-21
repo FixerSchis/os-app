@@ -24,12 +24,12 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        if (!/[a-z]/.test(passwordInput.value) || 
-            !/[A-Z]/.test(passwordInput.value) || 
+        if (!/[a-z]/.test(passwordInput.value) ||
+            !/[A-Z]/.test(passwordInput.value) ||
             !/([0-9]|[^a-zA-Z0-9])/.test(passwordInput.value)) {
             event.preventDefault();
             alert('Password must contain at least one lowercase letter, one uppercase letter, and one numeric or special character');
             return;
         }
     });
-}); 
+});

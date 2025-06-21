@@ -1,6 +1,6 @@
 document.getElementById('layoutForm').addEventListener('submit', function(e) {
     e.preventDefault();
-    
+
     const formData = {
         is_landscape: document.getElementById('is_landscape').checked,
         has_back_side: document.getElementById('has_back_side').checked,
@@ -76,4 +76,4 @@ document.querySelector('.preview-btn').addEventListener('click', function() {
         console.error('Error generating print preview:', error);
         alert('Error generating print preview: ' + error.message);
     });
-}); 
+});

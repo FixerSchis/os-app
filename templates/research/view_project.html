@@ -24,7 +24,7 @@
                 </div>
                 <div class="col-md-6">
                     <p><strong>Character:</strong> {{ character_research.character.name }}</p>
-                    <p><strong>Current Stage:</strong> 
+                    <p><strong>Current Stage:</strong>
                         {% if current_stage %}
                             {{ current_stage.stage.name }}
                         {% else %}
@@ -73,7 +73,7 @@
                             {% if stage.description %}
                                 <p>{{ stage.description }}</p>
                             {% endif %}
-                            
+
                             {% if stage.unlock_requirements %}
                                 <h6>Requirements:</h6>
                                 <ul class="list-unstyled">
@@ -122,4 +122,4 @@
         </div>
     </div>
 </div>
-{% endblock %} 
+{% endblock %}

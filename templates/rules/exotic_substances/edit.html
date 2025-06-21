@@ -8,13 +8,13 @@
 <div class="container">
     <div class="rules-management">
         <h1>{% if substance %}Edit{% else %}Create{% endif %} Exotic Substance</h1>
-        
+
         <form method="POST">
             <div class="form-group">
                 <label for="name">Name</label>
                 <input type="text" class="form-control" id="name" name="name" value="{{ substance.name if substance else '' }}" required>
             </div>
-            
+
             <div class="form-group">
                 <label for="type">Type</label>
                 <select class="form-control" id="type" name="type" required>
@@ -24,14 +24,14 @@
                     {% endfor %}
                 </select>
             </div>
-            
+
             {{ wiki_page_select(
                 input_id='wiki_page_autocomplete',
                 select_name='wiki_slug',
                 initial_slug=substance.wiki_slug if substance else '',
                 required=true
             ) }}
-            
+
             <div class="form-group">
                 <button type="submit" class="btn btn-primary">{% if substance %}Save Changes{% else %}Create{% endif %}</button>
                 <a href="{{ url_for('exotic_substances.list') }}" class="btn btn-secondary">Cancel</a>
@@ -44,4 +44,4 @@
 {% block scripts %}
 {{ super() }}
 <script src="{{ url_for('static', filename='js/wiki_page_autocomplete.js') }}"></script>
-{% endblock %} 
+{% endblock %}
