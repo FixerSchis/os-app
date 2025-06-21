@@ -3,7 +3,7 @@ name: Initial Repository Setup
 on:
   workflow_dispatch:
   push:
-    branches: [ main ]
+    branches: [ master ]
     paths-ignore:
       - '**.md'
       - '.github/workflows/initial-setup.yml'
@@ -17,11 +17,11 @@ jobs:
         with:
           script: |
             try {
-              // Set up branch protection for main
+              // Set up branch protection for master
               await github.rest.repos.updateBranchProtection({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                branch: 'main',
+                branch: 'master',
                 required_status_checks: {
                   strict: true,
                   contexts: [
@@ -40,9 +40,9 @@ jobs:
                 allow_force_pushes: false,
                 allow_deletions: false
               });
-              console.log('✅ Branch protection enabled for main');
+              console.log('✅ Branch protection enabled for master');
             } catch (error) {
-              console.error('❌ Error setting up branch protection for main:', error.message);
+              console.error('❌ Error setting up branch protection for master:', error.message);
             }
 
       - name: Setup Branch Protection for develop
@@ -103,22 +103,22 @@ jobs:
               const developExists = branches.data.some(branch => branch.name === 'develop');
               
               if (!developExists) {
-                // Get the latest commit from main
-                const mainBranch = await github.rest.repos.getBranch({
+                // Get the latest commit from master
+                const masterBranch = await github.rest.repos.getBranch({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
-                  branch: 'main'
+                  branch: 'master'
                 });
                 
-                // Create develop branch from main
+                // Create develop branch from master
                 await github.rest.git.createRef({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
                   ref: 'refs/heads/develop',
-                  sha: mainBranch.data.commit.sha
+                  sha: masterBranch.data.commit.sha
                 });
                 
-                console.log('✅ Created develop branch from main');
+                console.log('✅ Created develop branch from master');
               } else {
                 console.log('ℹ️  Develop branch already exists');
               }

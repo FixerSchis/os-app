@@ -11,18 +11,18 @@ The CI/CD pipeline ensures that all code changes meet quality standards before b
 ### 1. GitHub Actions Workflows
 
 #### `ci.yml` - Main CI Pipeline
-- **Triggers**: Every commit and pull request to main/develop
+- **Triggers**: Every commit and pull request to master/develop
 - **Jobs**:
   - **Tests and Linting**: Runs tests across Python 3.8-3.11, linting, formatting checks
   - **Security Checks**: Bandit security analysis and Safety vulnerability checks
   - **Pre-commit Checks**: Runs all pre-commit hooks on all files
 
 #### `setup-branch-protection.yml` - Branch Protection Setup
-- **Triggers**: Manual dispatch or push to main/develop
+- **Triggers**: Manual dispatch or push to master/develop
 - **Purpose**: Automatically configures branch protection rules
 
 #### `initial-setup.yml` - Repository Initialization
-- **Triggers**: Manual dispatch or first push to main
+- **Triggers**: Manual dispatch or first push to master
 - **Purpose**: Sets up repository settings, creates develop branch, configures protection
 
 #### `release.yml` - Release Management
@@ -31,7 +31,7 @@ The CI/CD pipeline ensures that all code changes meet quality standards before b
 
 ### 2. Branch Protection Rules
 
-#### Main Branch
+#### Master Branch
 - ✅ Required status checks: All CI jobs must pass
 - ✅ Pull request reviews: At least 1 approval required
 - ✅ Code owner reviews: Required
@@ -202,125 +202,3 @@ Local development hooks that run before each commit:
    pytest  # Run locally first
    pytest --cov=. --cov-report=term-missing
    ```
-
-4. **Coverage Issues**:
-   - Add tests for new code
-   - Check coverage report: `pytest --cov=. --cov-report=html`
-   - Open `htmlcov/index.html` in browser
-
-#### Pre-commit Hook Failures
-
-1. **Manual Run**:
-   ```bash
-   pre-commit run --all-files
-   ```
-
-2. **Skip Hooks** (emergency only):
-   ```bash
-   git commit -m "Emergency fix" --no-verify
-   ```
-
-3. **Update Hooks**:
-   ```bash
-   pre-commit autoupdate
-   ```
-
-### Performance Issues
-
-1. **Slow CI**:
-   - Check cache configuration
-   - Review parallel job settings
-   - Consider splitting large test suites
-
-2. **Local Development**:
-   - Use pre-commit hooks for faster feedback
-   - Run specific test files during development
-   - Use pytest-xdist for parallel testing
-
-## Configuration Files
-
-### GitHub Actions
-- `.github/workflows/ci.yml`: Main CI pipeline
-- `.github/workflows/setup-branch-protection.yml`: Branch protection
-- `.github/workflows/initial-setup.yml`: Repository setup
-- `.github/workflows/release.yml`: Release management
-
-### Code Quality Tools
-- `pyproject.toml`: Black, isort, pytest configuration
-- `pytest.ini`: Pytest settings
-- `.pre-commit-config.yaml`: Pre-commit hooks
-- `.bandit`: Security analysis configuration
-
-### Dependencies
-- `requirements.txt`: Production dependencies
-- `requirements-dev.txt`: Development dependencies
-
-## Best Practices
-
-### For Developers
-
-1. **Always run tests locally** before pushing
-2. **Use meaningful commit messages**
-3. **Keep PRs small and focused**
-4. **Add tests for new functionality**
-5. **Update documentation when needed**
-
-### For Reviewers
-
-1. **Check CI status** before approving
-2. **Review test coverage**
-3. **Verify security implications**
-4. **Ensure documentation is updated**
-5. **Test locally if needed**
-
-### For Maintainers
-
-1. **Monitor CI performance**
-2. **Update dependencies regularly**
-3. **Review and update quality standards**
-4. **Maintain branch protection rules**
-5. **Keep workflows up to date**
-
-## Monitoring and Maintenance
-
-### Regular Tasks
-
-1. **Weekly**:
-   - Review CI performance
-   - Check for failed builds
-   - Update dependencies if needed
-
-2. **Monthly**:
-   - Review and update quality standards
-   - Check coverage trends
-   - Update GitHub Actions versions
-
-3. **Quarterly**:
-   - Review and update branch protection rules
-   - Assess CI/CD pipeline effectiveness
-   - Plan improvements
-
-### Metrics to Track
-
-- **Build Success Rate**: Should be >95%
-- **Average Build Time**: Monitor for increases
-- **Test Coverage**: Maintain >70%, aim for >80%
-- **Security Issues**: Address promptly
-- **PR Review Time**: Keep under 48 hours
-
-## Support
-
-- **CI/CD Issues**: Check Actions tab for detailed logs
-- **Local Setup**: Run `python scripts/setup_dev_environment.py`
-- **Documentation**: See README.md for detailed setup instructions
-- **Questions**: Create an issue or contact maintainers
-
-## Future Improvements
-
-- [ ] Add deployment automation
-- [ ] Implement staging environment
-- [ ] Add performance testing
-- [ ] Integrate with external security scanning
-- [ ] Add automated dependency updates
-- [ ] Implement feature flags
-- [ ] Add monitoring and alerting 

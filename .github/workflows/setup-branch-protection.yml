@@ -3,7 +3,7 @@ name: Setup Branch Protection
 on:
   workflow_dispatch:
   push:
-    branches: [ main, develop ]
+    branches: [ master, develop ]
     paths-ignore:
       - '**.md'
       - '.github/workflows/setup-branch-protection.yml'
@@ -12,7 +12,7 @@ jobs:
   setup-protection:
     runs-on: ubuntu-latest
     steps:
-      - name: Setup Branch Protection for main
+      - name: Setup Branch Protection for master
         uses: actions/github-script@v7
         with:
           script: |
@@ -20,7 +20,7 @@ jobs:
               await github.rest.repos.updateBranchProtection({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                branch: 'main',
+                branch: 'master',
                 required_status_checks: {
                   strict: true,
                   contexts: [
@@ -39,9 +39,9 @@ jobs:
                 allow_force_pushes: false,
                 allow_deletions: false
               });
-              console.log('Branch protection enabled for main');
+              console.log('Branch protection enabled for master');
             } catch (error) {
-              console.error('Error setting up branch protection for main:', error.message);
+              console.error('Error setting up branch protection for master:', error.message);
             }
 
       - name: Setup Branch Protection for develop
