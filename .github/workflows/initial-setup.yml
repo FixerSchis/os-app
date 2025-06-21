@@ -1,0 +1,169 @@
+name: Initial Repository Setup
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths-ignore:
+      - '**.md'
+      - '.github/workflows/initial-setup.yml'
+
+jobs:
+  setup-repository:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup Branch Protection
+        uses: actions/github-script@v7
+        with:
+          script: |
+            try {
+              // Set up branch protection for main
+              await github.rest.repos.updateBranchProtection({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                branch: 'main',
+                required_status_checks: {
+                  strict: true,
+                  contexts: [
+                    'Tests and Linting',
+                    'Security Checks', 
+                    'Pre-commit Checks'
+                  ]
+                },
+                enforce_admins: false,
+                required_pull_request_reviews: {
+                  required_approving_review_count: 1,
+                  dismiss_stale_reviews: true,
+                  require_code_owner_reviews: true
+                },
+                restrictions: null,
+                allow_force_pushes: false,
+                allow_deletions: false
+              });
+              console.log('✅ Branch protection enabled for main');
+            } catch (error) {
+              console.error('❌ Error setting up branch protection for main:', error.message);
+            }
+
+      - name: Setup Branch Protection for develop
+        uses: actions/github-script@v7
+        with:
+          script: |
+            try {
+              // Check if develop branch exists
+              const branches = await github.rest.repos.listBranches({
+                owner: context.repo.owner,
+                repo: context.repo.repo
+              });
+              
+              const developExists = branches.data.some(branch => branch.name === 'develop');
+              
+              if (developExists) {
+                await github.rest.repos.updateBranchProtection({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  branch: 'develop',
+                  required_status_checks: {
+                    strict: true,
+                    contexts: [
+                      'Tests and Linting',
+                      'Security Checks', 
+                      'Pre-commit Checks'
+                    ]
+                  },
+                  enforce_admins: false,
+                  required_pull_request_reviews: {
+                    required_approving_review_count: 1,
+                    dismiss_stale_reviews: true,
+                    require_code_owner_reviews: false
+                  },
+                  restrictions: null,
+                  allow_force_pushes: false,
+                  allow_deletions: false
+                });
+                console.log('✅ Branch protection enabled for develop');
+              } else {
+                console.log('ℹ️  Develop branch does not exist, skipping protection setup');
+              }
+            } catch (error) {
+              console.error('❌ Error setting up branch protection for develop:', error.message);
+            }
+
+      - name: Create develop branch if it doesn't exist
+        uses: actions/github-script@v7
+        with:
+          script: |
+            try {
+              // Check if develop branch exists
+              const branches = await github.rest.repos.listBranches({
+                owner: context.repo.owner,
+                repo: context.repo.repo
+              });
+              
+              const developExists = branches.data.some(branch => branch.name === 'develop');
+              
+              if (!developExists) {
+                // Get the latest commit from main
+                const mainBranch = await github.rest.repos.getBranch({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  branch: 'main'
+                });
+                
+                // Create develop branch from main
+                await github.rest.git.createRef({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  ref: 'refs/heads/develop',
+                  sha: mainBranch.data.commit.sha
+                });
+                
+                console.log('✅ Created develop branch from main');
+              } else {
+                console.log('ℹ️  Develop branch already exists');
+              }
+            } catch (error) {
+              console.error('❌ Error creating develop branch:', error.message);
+            }
+
+      - name: Setup Repository Settings
+        uses: actions/github-script@v7
+        with:
+          script: |
+            try {
+              // Update repository settings
+              await github.rest.repos.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                allow_merge_commit: true,
+                allow_squash_merge: true,
+                allow_rebase_merge: false,
+                delete_branch_on_merge: true,
+                has_issues: true,
+                has_wiki: false,
+                has_projects: false
+              });
+              console.log('✅ Repository settings updated');
+            } catch (error) {
+              console.error('❌ Error updating repository settings:', error.message);
+            }
+
+      - name: Create Issue Templates
+        uses: actions/github-script@v7
+        with:
+          script: |
+            try {
+              // Check if issue templates directory exists
+              const contents = await github.rest.repos.getContent({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                path: '.github/ISSUE_TEMPLATE'
+              });
+              console.log('ℹ️  Issue templates already exist');
+            } catch (error) {
+              if (error.status === 404) {
+                console.log('ℹ️  No issue templates found, consider adding them for better issue management');
+              } else {
+                console.error('❌ Error checking issue templates:', error.message);
+              }
+            } 
