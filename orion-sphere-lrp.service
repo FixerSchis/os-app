@@ -14,12 +14,9 @@ ExecReload=/bin/kill -HUP $MAINPID
 Restart=always
 RestartSec=10
 
-# Security settings
+# Basic security settings
 NoNewPrivileges=true
 PrivateTmp=true
-ProtectSystem=strict
-ProtectHome=true
-ReadWritePaths=/opt/orion-sphere-lrp/db /opt/orion-sphere-lrp/instance /opt/orion-sphere-lrp/logs
 
 # Logging
 StandardOutput=journal
