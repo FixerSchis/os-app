@@ -3,6 +3,7 @@ from models.tools.character import Character
 from models.extensions import db
 from models import init_app, create_default_data
 from utils.email import mail
+from utils.database_init import initialize_database
 from config import Config
 from routes.wiki import wiki_bp
 from routes.tools.user_management import user_management_bp
@@ -34,7 +35,6 @@ from models.tools.research import CharacterResearch
 from routes.events import events_bp
 from routes.tools.tickets import tickets_bp
 from routes.database.samples import samples_bp
-from flask_migrate import upgrade
 
 def create_app(config_class=None):
     app = Flask("Orion Sphere LRP")
@@ -53,8 +53,8 @@ def create_app(config_class=None):
     # Only create default data if not in testing mode
     if not app.config.get('TESTING'):
         with app.app_context():
-            # Run migrations automatically to create/update database schema
-            upgrade()
+            # Initialize database with proper migration handling
+            initialize_database()
             create_default_data()
     
     mail.init_app(app)
