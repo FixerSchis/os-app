@@ -352,11 +352,12 @@ class PrintLayout:
         html.append("</body></html>")
         return "\n".join(html)
 
-    def generate_character_sheets_pdf(self, characters: List) -> BytesIO:
+    def generate_character_sheets_pdf(self, characters: List, template: PrintTemplate = None) -> BytesIO:
         """Generate a PDF containing character sheets for the given characters."""
-        template = PrintTemplate.query.filter_by(
-            type=PrintTemplateType.CHARACTER_SHEET.value
-        ).first()
+        if template is None:
+            template = PrintTemplate.query.filter_by(
+                type=PrintTemplateType.CHARACTER_SHEET.value
+            ).first()
         if not template:
             raise ValueError("Character sheet template not found")
 
@@ -383,9 +384,10 @@ class PrintLayout:
 
         return self.generate_pdf(items_to_print, template, template.has_back_side)
 
-    def generate_character_id_pdf(self, characters: List) -> BytesIO:
+    def generate_character_id_pdf(self, characters: List, template: PrintTemplate = None) -> BytesIO:
         """Generate a PDF containing character IDs for the given characters."""
-        template = PrintTemplate.query.filter_by(type=PrintTemplateType.CHARACTER_ID.value).first()
+        if template is None:
+            template = PrintTemplate.query.filter_by(type=PrintTemplateType.CHARACTER_ID.value).first()
         if not template:
             raise ValueError("Character ID template not found")
 
@@ -408,9 +410,10 @@ class PrintLayout:
 
         return self.generate_pdf(items_to_print, template, template.has_back_side)
 
-    def generate_item_cards_pdf(self, items: List) -> BytesIO:
+    def generate_item_cards_pdf(self, items: List, template: PrintTemplate = None) -> BytesIO:
         """Generate a PDF containing item cards for the given items."""
-        template = PrintTemplate.query.filter_by(type=PrintTemplateType.ITEM_CARD.value).first()
+        if template is None:
+            template = PrintTemplate.query.filter_by(type=PrintTemplateType.ITEM_CARD.value).first()
         if not template:
             raise ValueError("Item card template not found")
 
@@ -437,11 +440,12 @@ class PrintLayout:
 
         return self.generate_pdf(items_to_print, template, template.has_back_side)
 
-    def generate_exotic_substance_labels_pdf(self, items: List) -> BytesIO:
+    def generate_exotic_substance_labels_pdf(self, items: List, template: PrintTemplate = None) -> BytesIO:
         """Generate a PDF containing a full sheet of exotic substance labels."""
-        template = PrintTemplate.query.filter_by(
-            type=PrintTemplateType.EXOTIC_SUBSTANCE_LABEL.value
-        ).first()
+        if template is None:
+            template = PrintTemplate.query.filter_by(
+                type=PrintTemplateType.EXOTIC_SUBSTANCE_LABEL.value
+            ).first()
         if not template:
             raise ValueError("Exotic substance label template not found")
 
@@ -464,11 +468,12 @@ class PrintLayout:
 
         return self.generate_pdf(items_to_print, template, template.has_back_side)
 
-    def generate_condition_sheet_pdf(self, items: List) -> BytesIO:
+    def generate_condition_sheet_pdf(self, items: List, template: PrintTemplate = None) -> BytesIO:
         """Generate a PDF containing a full sheet of identical condition cards."""
-        template = PrintTemplate.query.filter_by(
-            type=PrintTemplateType.CONDITION_CARD.value
-        ).first()
+        if template is None:
+            template = PrintTemplate.query.filter_by(
+                type=PrintTemplateType.CONDITION_CARD.value
+            ).first()
         if not template:
             raise ValueError("Condition card template not found")
 
@@ -495,11 +500,12 @@ class PrintLayout:
 
         return self.generate_pdf(items_to_print, template, template.has_back_side)
 
-    def generate_medicament_sheet_pdf(self, items: List) -> BytesIO:
+    def generate_medicament_sheet_pdf(self, items: List, template: PrintTemplate = None) -> BytesIO:
         """Generate a PDF containing a full sheet of identical medicament cards."""
-        template = PrintTemplate.query.filter_by(
-            type=PrintTemplateType.MEDICAMENT_CARD.value
-        ).first()
+        if template is None:
+            template = PrintTemplate.query.filter_by(
+                type=PrintTemplateType.MEDICAMENT_CARD.value
+            ).first()
         if not template:
             raise ValueError("Medicament card template not found")
 
