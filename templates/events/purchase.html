@@ -373,6 +373,12 @@ function addToCart() {
     }
     const characterId = ticketFor === 'other' ? document.getElementById('character_id').value.trim() : null;
 
+    // Validate character ID for "other" tickets
+    if (ticketFor === 'other' && (!characterId || characterId === '')) {
+        alert('Please enter a valid character ID for the ticket recipient.');
+        return;
+    }
+
     // Calculate price for this ticket (including add-ons)
     let price = 0;
     if (ticketType === 'crew') {

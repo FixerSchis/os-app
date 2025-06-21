@@ -178,7 +178,7 @@ def purchase_ticket_post(event_id):
             character_id = current_user.get_active_character().id
         else:
             char_id_str = item.get("characterId")
-            if not char_id_str or "." not in char_id_str:
+            if not char_id_str or "." not in char_id_str or not char_id_str.strip():
                 continue
             user_id, player_id = char_id_str.split(".")
             try:
