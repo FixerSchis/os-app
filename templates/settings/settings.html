@@ -65,14 +65,14 @@
                     <label for="pronouns_subject">Pronouns (subject):</label>
                     <input type="text" id="pronouns_subject" name="pronouns_subject"
                            value="{{ current_user.pronouns_subject or '' }}"
-                           placeholder="e.g., they" class="form-control">
+                           placeholder="eg., they/she/he/it" class="form-control">
                 </div>
 
                 <div class="form-group">
                     <label for="pronouns_object">Pronouns (object):</label>
                     <input type="text" id="pronouns_object" name="pronouns_object"
                            value="{{ current_user.pronouns_object or '' }}"
-                           placeholder="e.g., them" class="form-control">
+                           placeholder="eg., them/her/him/that" class="form-control">
                 </div>
 
                 <button type="submit" class="btn btn-primary">Update Profile</button>
