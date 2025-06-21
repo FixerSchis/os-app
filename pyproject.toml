@@ -17,7 +17,7 @@ dependencies = [
     "python-dotenv==1.0.1",
     "Werkzeug==3.0.1",
     "qrcode[pil]==7.4.2",
-    "WeasyPrint==62.1",
+    "WeasyPrint==65.1",
     "cryptography==42.0.8",
     "pyOpenSSL==24.1.0",
     "pytest"
