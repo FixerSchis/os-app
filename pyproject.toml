@@ -16,7 +16,7 @@ dependencies = [
     "email-validator==2.1.0.post1",
     "python-dotenv==1.1.0",
     "Werkzeug==3.0.1",
-    "qrcode[pil]==7.4.2",
+    "qrcode[pil]==8.2",
     "WeasyPrint==65.1",
     "cryptography==42.0.8",
     "pyOpenSSL==24.1.0",
