@@ -196,6 +196,144 @@ def test_character_funds(db, new_user, character):
     assert character.get_available_funds() == 70
 
 
+def test_character_funds_with_group(db, new_user, character, group):
+    """Test character fund management with group funds."""
+    from models.enums import CharacterAuditAction
+    from models.tools.character import CharacterAuditLog
+
+    # Add character to group
+    character.group = group
+
+    # Set initial balances
+    character.bank_account = 50
+    group.bank_account = 100
+    db.session.commit()
+    db.session.refresh(character)
+    db.session.refresh(group)
+
+    # Test spending from character funds only
+    character.spend_funds(30, new_user.id, "Test purchase")
+    db.session.commit()
+    db.session.refresh(character)
+    db.session.refresh(group)
+
+    assert character.bank_account == 20  # 50 - 30
+    assert group.bank_account == 100  # Unchanged
+    assert character.get_available_funds() == 120  # 20 + 100
+
+    # Test spending more than character has (should use group funds)
+    character.spend_funds(50, new_user.id, "Large purchase")
+    db.session.commit()
+    db.session.refresh(character)
+    db.session.refresh(group)
+
+    assert character.bank_account == 0  # 20 - 20 (all character funds used)
+    assert group.bank_account == 70  # 100 - 30 (remaining 30 from group)
+    assert character.get_available_funds() == 70  # 0 + 70
+
+    # Test spending from group funds only
+    character.spend_funds(40, new_user.id, "Group purchase")
+    db.session.commit()
+    db.session.refresh(character)
+    db.session.refresh(group)
+
+    assert character.bank_account == 0  # Still 0
+    assert group.bank_account == 30  # 70 - 40
+    assert character.get_available_funds() == 30  # 0 + 30
+
+    # Test spending more than available (should fail)
+    with pytest.raises(ValueError, match="Not enough funds"):
+        character.spend_funds(50, new_user.id, "This should fail")
+
+    # Verify balances didn't change
+    db.session.refresh(character)
+    db.session.refresh(group)
+    assert character.bank_account == 0
+    assert group.bank_account == 30
+
+    # Check audit logs
+    logs = (
+        CharacterAuditLog.query.filter_by(
+            character_id=character.id, action=CharacterAuditAction.FUNDS_SPENT
+        )
+        .order_by(CharacterAuditLog.timestamp)
+        .all()
+    )
+
+    assert len(logs) == 3
+    assert "Character: 30" in logs[0].changes  # First purchase
+    assert "Character: 20, Group: 30" in logs[1].changes  # Large purchase
+    assert "Group: 40" in logs[2].changes  # Group purchase
+
+
+def test_character_funds_no_group(db, new_user, character):
+    """Test character fund management without group."""
+    from models.enums import CharacterAuditAction
+    from models.tools.character import CharacterAuditLog
+
+    # Set initial balance
+    character.bank_account = 100
+    character.group = None
+    db.session.commit()
+    db.session.refresh(character)
+
+    # Test spending from character funds only
+    character.spend_funds(50, new_user.id, "Test purchase")
+    db.session.commit()
+    db.session.refresh(character)
+
+    assert character.bank_account == 50  # 100 - 50
+    assert character.get_available_funds() == 50  # Only character funds
+
+    # Test spending more than character has (should fail)
+    with pytest.raises(ValueError, match="Not enough funds"):
+        character.spend_funds(100, new_user.id, "This should fail")
+
+    # Verify balance didn't change
+    db.session.refresh(character)
+    assert character.bank_account == 50
+
+    # Check audit log
+    log = CharacterAuditLog.query.filter_by(
+        character_id=character.id, action=CharacterAuditAction.FUNDS_SPENT
+    ).first()
+    assert log is not None
+    assert "Character: 50" in log.changes
+
+
+def test_character_funds_zero_character_balance(db, new_user, character, group):
+    """Test spending when character has zero balance but group has funds."""
+    from models.enums import CharacterAuditAction
+    from models.tools.character import CharacterAuditLog
+
+    # Add character to group
+    character.group = group
+
+    # Set initial balances
+    character.bank_account = 0
+    group.bank_account = 100
+    db.session.commit()
+    db.session.refresh(character)
+    db.session.refresh(group)
+
+    # Test spending from group funds only
+    character.spend_funds(50, new_user.id, "Group purchase")
+    db.session.commit()
+    db.session.refresh(character)
+    db.session.refresh(group)
+
+    assert character.bank_account == 0  # Still 0
+    assert group.bank_account == 50  # 100 - 50
+    assert character.get_available_funds() == 50  # 0 + 50
+
+    # Check audit log
+    log = CharacterAuditLog.query.filter_by(
+        character_id=character.id, action=CharacterAuditAction.FUNDS_SPENT
+    ).first()
+    assert log is not None
+    assert "Group: 50" in log.changes
+
+
 def test_get_available_science_slots(db, new_user, character):
     """Test the calculation of available science slots."""
     from models.database.skills import Skill

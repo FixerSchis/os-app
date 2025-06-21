@@ -43,8 +43,7 @@ def bank():
 
     # Get available source accounts for transfer
     source_accounts = []
-    if current_user.has_role("user_admin"):
-        # Add all character accounts
+    if active_character:
         for char in all_characters:
             source_accounts.append(
                 {
@@ -62,24 +61,6 @@ def bank():
                     "id": group.id,
                     "name": f"{group.name} (Group)",
                     "balance": group.bank_account,
-                }
-            )
-    elif active_character:
-        source_accounts.append(
-            {
-                "type": "character",
-                "id": active_character.id,
-                "name": f"{active_character.name} (Character)",
-                "balance": active_character.bank_account,
-            }
-        )
-        if active_character.group:
-            source_accounts.append(
-                {
-                    "type": "group",
-                    "id": active_character.group.id,
-                    "name": f"{active_character.group.name} (Group)",
-                    "balance": active_character.group.bank_account,
                 }
             )
 

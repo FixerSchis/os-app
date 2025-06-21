@@ -116,7 +116,7 @@ class TestMessagesRoutes:
             sess["_user_id"] = str(sample_user.id)
             sess["_fresh"] = True
         # Character has no funds
-        sample_character.ec = 0
+        sample_character.bank_account = 0
         db.session.commit()
         response = test_client.post(
             "/messages/messages/send",
@@ -128,6 +128,82 @@ class TestMessagesRoutes:
         )
         assert response.status_code == 200
         assert b"Insufficient funds" in response.data
+
+    def test_send_message_with_group_funds(
+        self, test_client, sample_user, sample_character, group, db
+    ):
+        """Test sending message using group funds when character has insufficient funds"""
+        with test_client.session_transaction() as sess:
+            sess["_user_id"] = str(sample_user.id)
+            sess["_fresh"] = True
+
+        # Add character to group and set balances
+        sample_character.group = group
+        sample_character.bank_account = 5  # Not enough for 10 ec message
+        group.bank_account = 20
+        db.session.commit()
+        db.session.refresh(sample_character)
+        db.session.refresh(group)
+
+        response = test_client.post(
+            "/messages/messages/send",
+            data={
+                "recipient_name": "Test Recipient",
+                "content": "Test message content",
+            },
+            follow_redirects=True,
+        )
+        assert response.status_code == 200
+        assert b"Message sent successfully" in response.data
+
+        # Check message was created
+        message = Message.query.filter_by(sender_id=sample_character.id).first()
+        assert message is not None
+        assert message.recipient_name == "Test Recipient"
+        assert message.content == "Test message content"
+
+        # Check funds were deducted correctly (5 from character, 5 from group)
+        db.session.refresh(sample_character)
+        db.session.refresh(group)
+        assert sample_character.bank_account == 0  # 5 - 5
+        assert group.bank_account == 15  # 20 - 5
+
+    def test_send_message_group_funds_only(
+        self, test_client, sample_user, sample_character, group, db
+    ):
+        """Test sending message using only group funds when character has zero balance"""
+        with test_client.session_transaction() as sess:
+            sess["_user_id"] = str(sample_user.id)
+            sess["_fresh"] = True
+
+        # Add character to group and set balances
+        sample_character.group = group
+        sample_character.bank_account = 0  # No character funds
+        group.bank_account = 20
+        db.session.commit()
+        db.session.refresh(sample_character)
+        db.session.refresh(group)
+
+        response = test_client.post(
+            "/messages/messages/send",
+            data={
+                "recipient_name": "Test Recipient",
+                "content": "Test message content",
+            },
+            follow_redirects=True,
+        )
+        assert response.status_code == 200
+        assert b"Message sent successfully" in response.data
+
+        # Check message was created
+        message = Message.query.filter_by(sender_id=sample_character.id).first()
+        assert message is not None
+
+        # Check funds were deducted from group only
+        db.session.refresh(sample_character)
+        db.session.refresh(group)
+        assert sample_character.bank_account == 0  # Still 0
+        assert group.bank_account == 10  # 20 - 10
 
     def test_send_message_missing_fields(self, test_client, npc_user, sample_character):
         """Test sending message with missing fields"""
