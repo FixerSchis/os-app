@@ -25,7 +25,7 @@ class TestMessagesRoutes:
         db.session.add(message)
         db.session.commit()
 
-        response = test_client.get("/messages/messages", follow_redirects=True)
+        response = test_client.get("/messages/", follow_redirects=True)
         assert response.status_code == 200
         assert b"Test message content" in response.data
 
@@ -44,7 +44,7 @@ class TestMessagesRoutes:
         db.session.add(message)
         db.session.commit()
 
-        response = test_client.get("/messages/messages", follow_redirects=True)
+        response = test_client.get("/messages/", follow_redirects=True)
         assert response.status_code == 200
         assert b"Test message content" in response.data
 
@@ -52,7 +52,7 @@ class TestMessagesRoutes:
         with test_client.session_transaction() as sess:
             sess["_user_id"] = str(regular_user.id)
             sess["_fresh"] = True
-        response = test_client.get("/messages/messages")
+        response = test_client.get("/messages/")
         assert response.status_code == 302  # Redirect to index
         assert "/index" in response.location or response.location.endswith("/")
 
