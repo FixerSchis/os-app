@@ -145,6 +145,158 @@ os-app/
 6. Configure a WSGI server (e.g., Gunicorn)
 7. Set up a reverse proxy (e.g., Nginx)
 
+### Installing as a System Service
+
+The application can be installed as a systemd service for automatic startup and management. This is the recommended approach for production deployments.
+
+#### Prerequisites
+
+- Linux system with systemd
+- Python 3.8 or higher
+- Application deployed to `/opt/orion-sphere-lrp` (or modify the service file accordingly)
+
+#### Step 1: Create Service User
+
+Create a dedicated user for running the application:
+
+```bash
+sudo useradd -r -s /bin/false orion-sphere
+sudo groupadd orion-sphere
+sudo usermod -a -G orion-sphere orion-sphere
+```
+
+#### Step 2: Deploy Application
+
+Deploy your application to the target directory:
+
+```bash
+sudo mkdir -p /opt/orion-sphere-lrp
+sudo chown orion-sphere:orion-sphere /opt/orion-sphere-lrp
+# Copy your application files to /opt/orion-sphere-lrp/
+```
+
+#### Step 3: Install Service File
+
+Copy the service file to the systemd directory:
+
+```bash
+sudo cp orion-sphere-lrp.service /etc/systemd/system/
+sudo chmod 644 /etc/systemd/system/orion-sphere-lrp.service
+```
+
+#### Step 4: Configure Environment
+
+Create a production environment file:
+
+```bash
+sudo -u orion-sphere nano /opt/orion-sphere-lrp/.env
+```
+
+Add your production environment variables:
+```bash
+FLASK_ENV=production
+SECRET_KEY=your-secret-key-here
+DATABASE_URL=your-database-url
+MAIL_SERVER=your-smtp-server
+MAIL_USERNAME=your-email-username
+MAIL_PASSWORD=your-email-password
+```
+
+#### Step 5: Set Up Virtual Environment
+
+```bash
+cd /opt/orion-sphere-lrp
+sudo -u orion-sphere python3 -m venv venv
+sudo -u orion-sphere venv/bin/pip install -r requirements.txt
+```
+
+#### Step 6: Initialize Database
+
+```bash
+sudo -u orion-sphere venv/bin/flask db upgrade
+```
+
+#### Step 7: Enable and Start Service
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable orion-sphere-lrp
+sudo systemctl start orion-sphere-lrp
+```
+
+#### Step 8: Verify Installation
+
+Check the service status:
+
+```bash
+sudo systemctl status orion-sphere-lrp
+```
+
+View logs:
+
+```bash
+sudo journalctl -u orion-sphere-lrp -f
+```
+
+#### Service Management Commands
+
+```bash
+# Start the service
+sudo systemctl start orion-sphere-lrp
+
+# Stop the service
+sudo systemctl stop orion-sphere-lrp
+
+# Restart the service
+sudo systemctl restart orion-sphere-lrp
+
+# Reload configuration (without stopping)
+sudo systemctl reload orion-sphere-lrp
+
+# Check status
+sudo systemctl status orion-sphere-lrp
+
+# View logs
+sudo journalctl -u orion-sphere-lrp
+
+# Follow logs in real-time
+sudo journalctl -u orion-sphere-lrp -f
+
+# Disable auto-start
+sudo systemctl disable orion-sphere-lrp
+```
+
+#### Troubleshooting
+
+1. **Service fails to start**: Check logs with `sudo journalctl -u orion-sphere-lrp -n 50`
+2. **Permission issues**: Ensure the `orion-sphere` user owns the application directory
+3. **Environment variables**: Verify `.env` file exists and has correct permissions
+4. **Database connection**: Test database connectivity manually
+5. **Port conflicts**: Ensure port 5000 (or your configured port) is available
+
+#### Customization
+
+You can modify the service file to:
+- Change the working directory
+- Use a different user/group
+- Add additional environment variables
+- Configure different restart policies
+- Set resource limits
+
+Example modifications:
+```ini
+# Add environment variables
+Environment=FLASK_ENV=production
+Environment=PORT=8080
+
+# Change working directory
+WorkingDirectory=/path/to/your/app
+
+# Use different user
+User=www-data
+Group=www-data
+```
+
 ### Environment Variables
 
 Required environment variables:
