@@ -173,7 +173,9 @@ def print_item_sheet(type, id):
             if not (current_user.has_role("user_admin") or current_user.id == character.user_id):
                 return jsonify({"error": "Access denied"}), 403
             # Get the template for character sheets
-            template = PrintTemplate.query.filter_by(type=PrintTemplateType.CHARACTER_SHEET.value).first()
+            template = PrintTemplate.query.filter_by(
+                type=PrintTemplateType.CHARACTER_SHEET.value
+            ).first()
             if not template:
                 return jsonify({"error": "Character sheet template not found"}), 404
             pdf = layout_manager.generate_character_sheets_pdf([character], template)
@@ -189,7 +191,9 @@ def print_item_sheet(type, id):
             # Get condition and generate PDF
             condition = Condition.query.get_or_404(id)
             # Get the template for condition cards
-            template = PrintTemplate.query.filter_by(type=PrintTemplateType.CONDITION_CARD.value).first()
+            template = PrintTemplate.query.filter_by(
+                type=PrintTemplateType.CONDITION_CARD.value
+            ).first()
             if not template:
                 return jsonify({"error": "Condition card template not found"}), 404
             pdf = layout_manager.generate_condition_sheet_pdf([condition], template)
@@ -197,7 +201,9 @@ def print_item_sheet(type, id):
             # Get medicament and generate PDF
             medicament = Medicament.query.get_or_404(id)
             # Get the template for medicament cards
-            template = PrintTemplate.query.filter_by(type=PrintTemplateType.MEDICAMENT_CARD.value).first()
+            template = PrintTemplate.query.filter_by(
+                type=PrintTemplateType.MEDICAMENT_CARD.value
+            ).first()
             if not template:
                 return jsonify({"error": "Medicament card template not found"}), 404
             pdf = layout_manager.generate_medicament_sheet_pdf([medicament], template)
@@ -205,7 +211,9 @@ def print_item_sheet(type, id):
             # Get exotic substance and generate PDF
             exotic = ExoticSubstance.query.get_or_404(id)
             # Get the template for exotic substance labels
-            template = PrintTemplate.query.filter_by(type=PrintTemplateType.EXOTIC_SUBSTANCE_LABEL.value).first()
+            template = PrintTemplate.query.filter_by(
+                type=PrintTemplateType.EXOTIC_SUBSTANCE_LABEL.value
+            ).first()
             if not template:
                 return jsonify({"error": "Exotic substance label template not found"}), 404
             pdf = layout_manager.generate_exotic_substance_labels_pdf([exotic], template)
@@ -235,7 +243,9 @@ def print_event_items(event_id, type):
             if not characters:
                 return jsonify({"error": "No characters found in this event."}), 404
             # Get the template for character sheets
-            template = PrintTemplate.query.filter_by(type=PrintTemplateType.CHARACTER_SHEET.value).first()
+            template = PrintTemplate.query.filter_by(
+                type=PrintTemplateType.CHARACTER_SHEET.value
+            ).first()
             if not template:
                 return jsonify({"error": "Character sheet template not found"}), 404
             pdf = layout_manager.generate_character_sheets_pdf(characters, template)
@@ -435,32 +445,38 @@ def print_template_preview(template_id):
         if template.type == PrintTemplateType.CHARACTER_SHEET:
             sample = get_sample_character()
             pdf = layout_manager.generate_character_sheets_pdf(
-                [sample for _ in range(template.items_per_row * template.items_per_column)], template
+                [sample for _ in range(template.items_per_row * template.items_per_column)],
+                template,
             )
         elif template.type == PrintTemplateType.CHARACTER_ID:
             sample = get_sample_character()
             pdf = layout_manager.generate_character_id_pdf(
-                [sample for _ in range(template.items_per_row * template.items_per_column)], template
+                [sample for _ in range(template.items_per_row * template.items_per_column)],
+                template,
             )
         elif template.type == PrintTemplateType.ITEM_CARD:
             sample = get_sample_item()
             pdf = layout_manager.generate_item_cards_pdf(
-                [sample for _ in range(template.items_per_row * template.items_per_column)], template
+                [sample for _ in range(template.items_per_row * template.items_per_column)],
+                template,
             )
         elif template.type == PrintTemplateType.MEDICAMENT_CARD:
             sample = get_sample_medicament()
             pdf = layout_manager.generate_medicament_sheet_pdf(
-                [sample for _ in range(template.items_per_row * template.items_per_column)], template
+                [sample for _ in range(template.items_per_row * template.items_per_column)],
+                template,
             )
         elif template.type == PrintTemplateType.CONDITION_CARD:
             sample = get_sample_condition()
             pdf = layout_manager.generate_condition_sheet_pdf(
-                [sample for _ in range(template.items_per_row * template.items_per_column)], template
+                [sample for _ in range(template.items_per_row * template.items_per_column)],
+                template,
             )
         elif template.type == PrintTemplateType.EXOTIC_SUBSTANCE_LABEL:
             sample = get_sample_exotic_substance()
             pdf = layout_manager.generate_exotic_substance_labels_pdf(
-                [sample for _ in range(template.items_per_row * template.items_per_column)], template
+                [sample for _ in range(template.items_per_row * template.items_per_column)],
+                template,
             )
         else:
             return jsonify({"error": "Invalid template type"}), 400

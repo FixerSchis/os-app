@@ -352,7 +352,9 @@ class PrintLayout:
         html.append("</body></html>")
         return "\n".join(html)
 
-    def generate_character_sheets_pdf(self, characters: List, template: PrintTemplate = None) -> BytesIO:
+    def generate_character_sheets_pdf(
+        self, characters: List, template: PrintTemplate = None
+    ) -> BytesIO:
         """Generate a PDF containing character sheets for the given characters."""
         if template is None:
             template = PrintTemplate.query.filter_by(
@@ -384,10 +386,14 @@ class PrintLayout:
 
         return self.generate_pdf(items_to_print, template, template.has_back_side)
 
-    def generate_character_id_pdf(self, characters: List, template: PrintTemplate = None) -> BytesIO:
+    def generate_character_id_pdf(
+        self, characters: List, template: PrintTemplate = None
+    ) -> BytesIO:
         """Generate a PDF containing character IDs for the given characters."""
         if template is None:
-            template = PrintTemplate.query.filter_by(type=PrintTemplateType.CHARACTER_ID.value).first()
+            template = PrintTemplate.query.filter_by(
+                type=PrintTemplateType.CHARACTER_ID.value
+            ).first()
         if not template:
             raise ValueError("Character ID template not found")
 
@@ -440,7 +446,9 @@ class PrintLayout:
 
         return self.generate_pdf(items_to_print, template, template.has_back_side)
 
-    def generate_exotic_substance_labels_pdf(self, items: List, template: PrintTemplate = None) -> BytesIO:
+    def generate_exotic_substance_labels_pdf(
+        self, items: List, template: PrintTemplate = None
+    ) -> BytesIO:
         """Generate a PDF containing a full sheet of exotic substance labels."""
         if template is None:
             template = PrintTemplate.query.filter_by(
