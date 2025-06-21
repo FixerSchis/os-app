@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}{% endblock %} - Orion Sphere LRP</title>
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='images/favicon.ico') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/errors.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/templates.css') }}">
@@ -13,6 +14,49 @@
     <link href="{{ url_for('static', filename='external/css/bootstrap.min.css') }}" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='external/css/bootstrap-icons.min.css') }}">
     <style>
+        /* Navbar background image */
+        nav {
+            background-image: url('{{ url_for("static", filename="images/navbar-background.jpg") }}');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            position: relative;
+        }
+        
+        /* Add a dark overlay to ensure text readability */
+        nav::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 1;
+        }
+        
+        /* Ensure nav content is above the overlay */
+        nav > * {
+            position: relative;
+            z-index: 2;
+        }
+        
+        /* Logo styling */
+        .brand-logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: white;
+            text-decoration: none;
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+        
+        .brand-logo img {
+            height: 40px;
+            width: auto;
+        }
+        
         .dropdown {
             position: relative;
             display: inline-block;
@@ -198,7 +242,10 @@
 <body>
     <nav>
         <div class="nav-wrapper">
-            <a href="{{ url_for('index') }}" class="brand-logo">Orion Sphere LRP</a>
+            <a href="{{ url_for('index') }}" class="brand-logo">
+                <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Orion Sphere LRP Logo">
+                Orion Sphere LRP
+            </a>
             <ul class="right">
                 <li><a href="{{ url_for('wiki.wiki_view', slug='index') }}">Home</a></li>
                 <li><a href="{{ url_for('events.event_list') }}">Events</a></li>

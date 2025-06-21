@@ -7,29 +7,30 @@
     <div class="rules-management">
         <h1>{% if sample %}Edit{% else %}Create{% endif %} Sample</h1>
         <form method="POST">
-            <div class="form-group mb-3">
-                <label for="name">Name</label>
-                <input type="text" class="form-control" id="name" name="name" value="{{ sample.name if sample else '' }}" required>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="name" class="form-label">Name</label>
+                    <input type="text" class="form-control" id="name" name="name" value="{{ sample.name if sample else '' }}" required>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="type" class="form-label">Type</label>
+                    <select class="form-select" id="type" name="type" required>
+                        <option value="">Select Type</option>
+                        {% for type in science_types %}
+                        <option value="{{ type }}" {% if sample and sample.type and sample.type.value == type %}selected{% endif %}>{{ type|title }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
             </div>
             
-            <div class="form-group mb-3">
-                <label for="type">Type</label>
-                <select class="form-control" id="type" name="type" required>
-                    <option value="">Select Type</option>
-                    {% for type in science_types %}
-                    <option value="{{ type }}" {% if sample and sample.type and sample.type.value == type %}selected{% endif %}>{{ type|title }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            
-            <div class="form-group mb-3">
-                <label for="description">Description</label>
+            <div class="mb-3">
+                <label for="description" class="form-label">Description</label>
                 <textarea class="form-control" id="description" name="description" rows="3">{{ sample.description if sample else '' }}</textarea>
             </div>
             
-            <div class="form-group mb-3">
-                <label for="tags">Tags</label>
-                <select class="form-control select2" id="tags" name="tags[]" multiple>
+            <div class="mb-3">
+                <label for="tags" class="form-label">Tags</label>
+                <select class="form-select select2" id="tags" name="tags[]" multiple>
                     {% for tag in tags %}
                     <option value="{{ tag.name }}" {% if sample and tag in sample.tags %}selected{% endif %}>{{ tag.name }}</option>
                     {% endfor %}
@@ -37,7 +38,7 @@
                 <small class="form-text text-muted">You can type to add new tags</small>
             </div>
             
-            <div class="form-group mb-3">
+            <div class="mb-3">
                 <div class="form-check">
                     <input class="form-check-input" type="checkbox" id="is_researched" name="is_researched" {% if sample and sample.is_researched %}checked{% endif %}>
                     <label class="form-check-label" for="is_researched">
@@ -61,9 +62,15 @@
 $(document).ready(function() {
     // Initialize Select2 for tags
     $('#tags').select2({
+        theme: "bootstrap-5",
         tags: true,
         tokenSeparators: [',', ' '],
         placeholder: 'Select or type to add tags...'
+    });
+
+    $('#type').select2({
+        theme: "bootstrap-5",
+        placeholder: 'Select Type'
     });
 });
 </script>

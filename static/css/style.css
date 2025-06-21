@@ -24,6 +24,29 @@ nav {
     color: white;
     padding: 1rem;
     width: 100%;
+    background-image: url('../images/navbar-background.jpg');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    position: relative;
+}
+
+/* Add a dark overlay to ensure text readability */
+nav::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.7);
+    z-index: 1;
+}
+
+/* Ensure nav content is above the overlay */
+nav > * {
+    position: relative;
+    z-index: 2;
 }
 
 .nav-wrapper {
@@ -36,10 +59,19 @@ nav {
 }
 
 .brand-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
     color: white;
     text-decoration: none;
     font-size: 1.5rem;
     font-weight: bold;
+}
+
+.brand-logo img {
+    height: 40px;
+    width: auto;
+    filter: brightness(1.1); /* Make logo slightly brighter for better visibility */
 }
 
 .right {
@@ -57,6 +89,11 @@ nav {
     color: white;
     text-decoration: none;
     white-space: nowrap;
+    transition: color 0.2s ease;
+}
+
+.right a:hover {
+    color: #ffd700; /* Gold color on hover for better visibility */
 }
 
 .welcome-section {
