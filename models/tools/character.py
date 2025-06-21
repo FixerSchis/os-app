@@ -465,14 +465,32 @@ class Character(db.Model):
         if not self.can_afford(amount):
             raise ValueError("Not enough funds")
 
-        self.bank_account -= amount
+        # Calculate how much to take from character balance vs group balance
+        character_contribution = min(self.bank_account, amount)
+        group_contribution = amount - character_contribution
+
+        # Deduct from character balance first
+        if character_contribution > 0:
+            self.bank_account -= character_contribution
+
+        # Deduct remaining from group balance if needed
+        if group_contribution > 0 and self.group:
+            self.group.bank_account -= group_contribution
 
         # Create an audit log for the expenditure
+        changes_parts = []
+        if character_contribution > 0:
+            changes_parts.append(f"Character: {character_contribution}")
+        if group_contribution > 0:
+            changes_parts.append(f"Group: {group_contribution}")
+
+        changes_text = f"Spent {amount} on {reason} ({', '.join(changes_parts)})"
+
         audit_log = CharacterAuditLog(
             character_id=self.id,
             editor_user_id=editor_user_id,
             action=CharacterAuditAction.FUNDS_SPENT,
-            changes=f"Spent {amount} on {reason}",
+            changes=changes_text,
         )
         db.session.add(audit_log)
 
