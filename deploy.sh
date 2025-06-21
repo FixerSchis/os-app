@@ -142,8 +142,20 @@ backup_existing() {
 deploy_files() {
     log "Deploying application files..."
 
+    # Remove existing files (except database and venv)
+    if [[ -d "$APP_DIR" ]]; then
+        find "$APP_DIR" -mindepth 1 -not -name "app.db" -not -name "venv" -not -path "*/venv/*" -delete
+        log "Cleaned existing files (preserved database and venv)"
+    fi
+
     # Copy all files except .git directory
-    rsync -av --delete --exclude='.git' --exclude='venv' --exclude='__pycache__' --exclude='*.pyc' --exclude='app.db' . "$APP_DIR/"
+    cp -r . "$APP_DIR/"
+
+    # Remove .git directory if it was copied
+    rm -rf "$APP_DIR/.git"
+
+    # Remove venv if it was copied (we'll recreate it)
+    rm -rf "$APP_DIR/venv"
 
     # Set proper ownership
     chown -R $APP_USER:$APP_GROUP "$APP_DIR"
