@@ -6,45 +6,43 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/wiki.css') }}">
 {% endblock %}
 {% block content %}
-<div class="container">
-    <div class="editor-banner d-flex justify-content-between align-items-center">
-        <div class="d-flex flex-wrap gap-2">
-            <a href="{{ url_for('wiki.wiki_view', slug='index') }}" class="btn btn-secondary btn-sm">Wiki Home</a>
-            <a href="{{ url_for('wiki.wiki_change_log') }}" class="btn btn-info btn-sm">Change Log</a>
-            <a href="{{ url_for('wiki.wiki_list') }}" class="btn btn-primary btn-sm">Index</a>
-            {% if current_user.is_authenticated and current_user.has_role("plot_team") %}
-            <a href="{{ url_for('wiki.wiki_pending_changes') }}" class="btn btn-info btn-sm">Pending Changes</a>
-            <a href="{{ url_for('wiki.wiki_new') }}" class="btn btn-primary btn-sm">New Page</a>
-            {% if not is_version_view %}
-                {% if page and not is_list_page %}
-                    <a href="{{ url_for('wiki.wiki_edit', slug=page.slug) }}" class="btn btn-primary btn-sm">Edit</a>
-                    {% if page.slug != 'index' %}
-                        {% if version and not version.deleted %}
-                            <form method="POST" action="{{ url_for('wiki.wiki_delete', slug=page.slug) }}" class="d-inline-block">
-                                <button type="submit" class="btn btn-danger btn-sm">Delete</button>
-                            </form>
-                        {% elif version %}
-                            <form method="POST" action="{{ url_for('wiki.wiki_restore', slug=page.slug) }}" class="d-inline-block">
-                                <button type="submit" class="btn btn-warning btn-sm">Restore</button>
-                            </form>
-                        {% endif %}
+<div class="editor-banner d-flex justify-content-between align-items-center">
+    <div class="d-flex flex-wrap gap-2">
+        <a href="{{ url_for('wiki.wiki_view', slug='index') }}" class="btn btn-secondary btn-sm">Wiki Home</a>
+        <a href="{{ url_for('wiki.wiki_change_log') }}" class="btn btn-info btn-sm">Change Log</a>
+        <a href="{{ url_for('wiki.wiki_list') }}" class="btn btn-primary btn-sm">Index</a>
+        {% if current_user.is_authenticated and current_user.has_role("plot_team") %}
+        <a href="{{ url_for('wiki.wiki_pending_changes') }}" class="btn btn-info btn-sm">Pending Changes</a>
+        <a href="{{ url_for('wiki.wiki_new') }}" class="btn btn-primary btn-sm">New Page</a>
+        {% if not is_version_view %}
+            {% if page and not is_list_page %}
+                <a href="{{ url_for('wiki.wiki_edit', slug=page.slug) }}" class="btn btn-primary btn-sm">Edit</a>
+                {% if page.slug != 'index' %}
+                    {% if version and not version.deleted %}
+                        <form method="POST" action="{{ url_for('wiki.wiki_delete', slug=page.slug) }}" class="d-inline-block">
+                            <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                        </form>
+                    {% elif version %}
+                        <form method="POST" action="{{ url_for('wiki.wiki_restore', slug=page.slug) }}" class="d-inline-block">
+                            <button type="submit" class="btn btn-warning btn-sm">Restore</button>
+                        </form>
                     {% endif %}
                 {% endif %}
             {% endif %}
-            {% endif %}
-        </div>
-        <form method="GET" action="{{ url_for('wiki.wiki_search') }}" class="d-flex flex-grow-1 justify-content-end" id="wiki-search-form" autocomplete="off">
-            <div class="input-group input-group-sm wiki-search-group" style="max-width: 300px;">
-                <input type="text" class="form-control" id="wiki-search-input" name="q" placeholder="Search wiki..." autocomplete="off">
-                <button type="submit" class="btn btn-outline-secondary search-button">
-                    <i class="bi bi-search"></i>
-                </button>
-                <div id="wiki-search-dropdown" class="dropdown-menu" style="width: 100%; max-height: 300px; overflow-y: auto; position: absolute; top: 100%; left: 0; z-index: 1000; display: none;"></div>
-            </div>
-        </form>
+        {% endif %}
+        {% endif %}
     </div>
-    {% block wiki_content %}{% endblock %}
+    <form method="GET" action="{{ url_for('wiki.wiki_search') }}" class="d-flex flex-grow-1 justify-content-end" id="wiki-search-form" autocomplete="off">
+        <div class="input-group input-group-sm wiki-search-group" style="max-width: 300px;">
+            <input type="text" class="form-control" id="wiki-search-input" name="q" placeholder="Search wiki..." autocomplete="off">
+            <button type="submit" class="btn btn-outline-secondary search-button">
+                <i class="bi bi-search"></i>
+            </button>
+            <div id="wiki-search-dropdown" class="dropdown-menu" style="width: 100%; max-height: 300px; overflow-y: auto; position: absolute; top: 100%; left: 0; z-index: 1000; display: none;"></div>
+        </div>
+    </form>
 </div>
+{% block wiki_content %}{% endblock %}
 {% endblock %}
 
 {% block scripts %}

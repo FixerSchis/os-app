@@ -50,7 +50,6 @@ instance/
 *.sqlite
 *.sqlite3
 db/
-migrations/
 
 # Logs
 *.log

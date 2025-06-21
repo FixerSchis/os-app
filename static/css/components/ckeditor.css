@@ -140,4 +140,49 @@
 .ck-wiki-page-tags {
     font-size: 12px;
     color: #666;
+}
+
+.ck-editor__editable[role="textbox"] {
+    /* Editing area */
+    min-height: 350px;
+}
+
+/* Dark Mode Overrides for CKEditor */
+[data-theme="dark"] .ck.ck-editor__main > .ck-editor__editable {
+    background: var(--bg-secondary) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--border-color) !important;
+}
+
+[data-theme="dark"] .ck.ck-toolbar {
+    background: var(--bg-tertiary) !important;
+    border-color: var(--border-color) !important;
+}
+
+[data-theme="dark"] .ck.ck-button,
+[data-theme="dark"] .ck.ck-button .ck-icon {
+    color: var(--text-primary) !important;
+    background: transparent !important;
+}
+
+[data-theme="dark"] .ck.ck-button:hover,
+[data-theme="dark"] .ck.ck-button.ck-on {
+    background: var(--bg-secondary) !important;
+}
+
+[data-theme="dark"] .ck.ck-dropdown .ck-dropdown__arrow,
+[data-theme="dark"] .ck.ck-splitbutton .ck-splitbutton__arrow {
+    color: var(--text-primary) !important;
+}
+[data-theme="dark"] .ck.ck-dropdown__panel {
+    background: var(--card-bg) !important;
+    border-color: var(--border-color) !important;
+}
+[data-theme="dark"] .ck.ck-list__item .ck-button:hover {
+    background: var(--bg-tertiary) !important;
+}
+
+[data-theme="dark"] .ck.ck-input {
+    background-color: var(--bg-secondary) !important;
+    color: var(--text-primary) !important;
 } 

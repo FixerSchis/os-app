@@ -294,7 +294,7 @@ def remove_character(group_id, character_id):
 @user_admin_required
 def create_group_admin():
     if request.method == 'GET':
-        return render_template('groups/admin_edit.html')
+        return render_template('groups/admin_edit.html', GroupType=GroupType)
     
     name = request.form.get('name')
     type = request.form.get('type')
@@ -325,15 +325,21 @@ def create_group_admin():
     flash('Group created successfully', 'success')
     return redirect(url_for('groups.group_list'))
 
-@groups_bp.route('/<int:group_id>/edit/admin', methods=['GET', 'POST'])
+@groups_bp.route('/<int:group_id>/edit/admin', methods=['GET'])
 @login_required
 @email_verified_required
 @user_admin_required
 def edit_group_admin(group_id):
     group = Group.query.get_or_404(group_id)
     
-    if request.method == 'GET':
-        return render_template('groups/admin_edit.html', group=group)
+    return render_template('groups/admin_edit.html', group=group, GroupType=GroupType)
+
+@groups_bp.route('/<int:group_id>/edit/admin', methods=['POST'])
+@login_required
+@email_verified_required
+@user_admin_required
+def edit_group_admin_post(group_id):
+    group = Group.query.get_or_404(group_id)
     
     name = request.form.get('name')
     type = request.form.get('type')
@@ -341,17 +347,17 @@ def edit_group_admin(group_id):
     
     if not name:
         flash('Name is required', 'error')
-        return redirect(url_for('groups.edit_group_admin', group_id=group.id))
+        return redirect(url_for('groups.edit_group_admin', group_id=group.id, GroupType=GroupType))
     
     if type not in GroupType.values():
         flash('Invalid group type', 'error')
-        return redirect(url_for('groups.edit_group_admin', group_id=group.id))
+        return redirect(url_for('groups.edit_group_admin', group_id=group.id, GroupType=GroupType))
     
     try:
         bank_account_int = int(bank_account) if bank_account else 0
     except ValueError:
         flash('Bank account must be a number', 'error')
-        return redirect(url_for('groups.edit_group_admin', group_id=group.id))
+        return redirect(url_for('groups.admin_edit', group_id=group.id, GroupType=GroupType))
     
     group.name = name
     group.type = type

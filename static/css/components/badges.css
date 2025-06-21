@@ -30,4 +30,13 @@
     font-size: 0.875rem;
     font-weight: 500;
     border-radius: 4px;
+}
+
+[data-theme="dark"] .status-badge {
+    color: #fff;
+}
+
+[data-theme="dark"] .status-badge.status-active {
+    background-color: var(--success-color);
+    color: #fff;
 } 

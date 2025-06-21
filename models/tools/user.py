@@ -45,6 +45,9 @@ class User(UserMixin, db.Model):
     notify_event_ticket_assigned = db.Column(db.Boolean, default=True)
     notify_event_details_updated = db.Column(db.Boolean, default=True)
     notify_wiki_published = db.Column(db.Boolean, default=True)
+    
+    # Theme preference
+    dark_mode_preference = db.Column(db.Boolean, default=True, nullable=False)
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)

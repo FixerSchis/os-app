@@ -1,101 +1,66 @@
-.input-group-sm .form-control,
-.input-group-sm .btn {
-    height: 2rem;
-    font-size: 1rem;
-    border-radius: 0.25rem;
+.wiki-search-form .form-control {
+    width: 250px;
 }
-.input-group-sm .btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding-top: 0;
-    padding-bottom: 0;
+
+[data-theme="dark"] .wiki-nav .nav-link {
+    color: var(--text-primary);
 }
-.input-group-sm .btn i {
+
+/* Search Bar Input */
+[data-theme="dark"] .wiki-search-group .form-control {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    border-color: var(--border-color);
+}
+/* Make placeholder text visible */
+[data-theme="dark"] .wiki-search-group .form-control::placeholder {
+  color: var(--text-secondary);
+  opacity: 0.8;
+}
+
+/* Search Bar Button */
+[data-theme="dark"] .wiki-search-group .btn {
+    background-color: var(--bg-secondary);
+    border-color: var(--border-color);
+    color: var(--text-secondary);
+}
+[data-theme="dark"] .wiki-search-group .btn:hover {
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+
+/* Wiki Index Page */
+.wiki-index-container {
+    margin-top: 1.5rem;
+}
+
+.wiki-index-list {
+    list-style-type: none;
+    padding-left: 0;
+}
+
+.wiki-index-list .wiki-index-list {
+    margin-left: 1.5rem;
+    padding-top: 0.5rem;
+}
+
+.wiki-category-item {
     font-size: 1.1rem;
-    line-height: 1;
-}
-.editor-banner {
-    margin-bottom: 1rem;
-}
-.editor-banner .btn {
-    margin: 0.25rem;
-}
-@media (max-width: 768px) {
-    .editor-banner {
-        flex-direction: column;
-        align-items: stretch !important;
-    }
-    .editor-banner > div {
-        display: flex;
-        flex-wrap: wrap;
-        justify-content: center;
-        gap: 0.5rem;
-        margin-bottom: 1rem;
-    }
-    .editor-banner form {
-        width: 100%;
-    }
-    .wiki-search-group {
-        width: 100% !important;
-    }
-    .btn {
-        flex: 0 1 auto;
-        white-space: nowrap;
-    }
+    font-weight: 500;
+    margin-top: 1rem;
 }
 
-/* Search result highlighting */
-mark {
-    background-color: #ffd700;
-    padding: 0 2px;
-    border-radius: 2px;
+.wiki-page-item {
+    padding: 0.1rem 0;
 }
 
-.input-group-sm.wiki-search-group {
-    display: flex;
-    align-items: center;
+.wiki-slug {
+    color: var(--bs-gray-500);
+    font-size: 0.9em;
+    margin-left: 0.25rem;
 }
 
-.input-group-sm.wiki-search-group .form-control {
-    height: 2rem;
-    font-size: 1rem;
-    border-radius: 0.25rem 0 0 0.25rem;
-    border-right: none;
-}
-
-.input-group-sm.wiki-search-group .btn {
-    height: 2rem;
-    padding: 0 0.75rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 0 0.25rem 0.25rem 0;
-    border-left: none;
-}
-
-.input-group-sm.wiki-search-group .btn i {
-    font-size: 1.1rem;
-    line-height: 1;
-}
-
-#wiki-search-dropdown {
-    margin-top: 2px;
-    border: 1px solid rgba(0,0,0,0.15);
-    border-radius: 0.25rem;
-    box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.175);
-}
-
-#wiki-search-dropdown .dropdown-item {
-    padding: 0.5rem 1rem;
-    white-space: normal;
-}
-
-#wiki-search-dropdown .dropdown-item.active {
-    background-color: #007bff;
-    color: white;
-}
-
-.ck-editor__editable[role="textbox"] {
-    min-height: 350px;
+[data-theme="dark"] .wiki-slug {
+    color: var(--bs-gray-600);
 } 

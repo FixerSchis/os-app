@@ -1,5 +1,4 @@
 function initializeWikiPageSelect(inputId, placeholder) {
-    console.log('Initializing Select2 for', '#' + inputId);
     $('#' + inputId).select2({
         tags: true,
         placeholder: placeholder,
@@ -11,7 +10,6 @@ function initializeWikiPageSelect(inputId, placeholder) {
             dataType: 'json',
             delay: 250,
             processResults: function (data) {
-                console.log('Select2 wiki AJAX data:', data);
                 return { results: data };
             },
             cache: true

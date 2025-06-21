@@ -50,6 +50,78 @@ def test_settings_update_notifications(test_client, authenticated_user, db):
     assert authenticated_user.notify_event_details_updated is True
     assert authenticated_user.notify_wiki_published is False
 
+def test_toggle_dark_mode_endpoint(test_client, authenticated_user, db):
+    """Test the toggle dark mode API endpoint."""
+    # Start with dark mode enabled
+    authenticated_user.dark_mode_preference = True
+    db.session.commit()
+    
+    # Test toggling to light mode
+    response = test_client.post('/settings/toggle-dark-mode', 
+                               json={'theme': 'light'})
+    
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data['success'] is True
+    assert data['dark_mode'] is False
+    
+    # Check database was updated
+    db.session.refresh(authenticated_user)
+    assert authenticated_user.dark_mode_preference is False
+    
+    # Test toggling back to dark mode
+    response = test_client.post('/settings/toggle-dark-mode', 
+                               json={'theme': 'dark'})
+    
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data['success'] is True
+    assert data['dark_mode'] is True
+    
+    # Check database was updated
+    db.session.refresh(authenticated_user)
+    assert authenticated_user.dark_mode_preference is True
+
+def test_toggle_dark_mode_fallback(test_client, authenticated_user, db):
+    """Test the toggle dark mode endpoint with fallback behavior."""
+    # Start with dark mode enabled
+    authenticated_user.dark_mode_preference = True
+    db.session.commit()
+    
+    # Test without theme parameter (should toggle)
+    response = test_client.post('/settings/toggle-dark-mode', 
+                               json={})
+    
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data['success'] is True
+    assert data['dark_mode'] is False  # Should toggle from True to False
+    
+    # Check database was updated
+    db.session.refresh(authenticated_user)
+    assert authenticated_user.dark_mode_preference is False
+
+def test_toggle_dark_mode_unauthenticated(test_client):
+    """Test toggle dark mode endpoint when user is not authenticated."""
+    response = test_client.post('/settings/toggle-dark-mode', 
+                               json={'theme': 'dark'})
+    assert response.status_code == 302  # Should redirect to login page
+
+def test_user_dark_mode_default(test_client, db):
+    """Test that new users have dark mode enabled by default."""
+    # Create a new user
+    user = User(
+        email='newuser@example.com',
+        first_name='New',
+        surname='User'
+    )
+    user.set_password('password123')
+    db.session.add(user)
+    db.session.commit()
+    
+    # Check that dark mode preference is True by default
+    assert user.dark_mode_preference is True
+
 def test_change_email_get(test_client, authenticated_user):
     """Test GET request to change email page."""
     response = test_client.get('/settings/change-email')

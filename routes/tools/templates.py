@@ -49,7 +49,7 @@ def template_list():
     return render_template("templates/list.html", templates=templates, PrintTemplateType=PrintTemplateType)
 
 
-@templates_bp.route("/templates/new", methods=["GET"])
+@templates_bp.route("/new", methods=["GET"])
 @login_required
 @admin_required
 def template_new():
@@ -57,7 +57,7 @@ def template_new():
     return render_template("templates/edit.html", template=None, PrintTemplateType=PrintTemplateType)
 
 
-@templates_bp.route("/templates/new", methods=["POST"])
+@templates_bp.route("/new", methods=["POST"])
 @login_required
 @admin_required
 def template_new_post():
@@ -67,7 +67,7 @@ def template_new_post():
     return redirect(url_for("templates.template_list"))
 
 
-@templates_bp.route("/templates/<int:template_id>/edit", methods=["GET"])
+@templates_bp.route("/<int:template_id>/edit", methods=["GET"])
 @login_required
 @admin_required
 def template_edit(template_id):
@@ -83,7 +83,7 @@ def template_edit(template_id):
     return render_template("templates/edit.html", template=template, PrintTemplateType=PrintTemplateType, completions=completions)
 
 
-@templates_bp.route("/templates/<int:template_id>/edit", methods=["POST"])
+@templates_bp.route("/<int:template_id>/edit", methods=["POST"])
 @login_required
 @admin_required
 def template_edit_post(template_id):

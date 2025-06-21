@@ -106,13 +106,13 @@
 
 /* Template content styling */
 .template-content {
-    background: white;
-    border: 1px solid #dee2e6;
-    border-radius: 4px;
-    padding: 10px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    overflow: hidden;
+    background-color: #fff;
+    color: #000;
+    border: 1px solid #ccc;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    margin: 0 auto;
     position: relative;
+    overflow: hidden;
 }
 
 .template-content-back {

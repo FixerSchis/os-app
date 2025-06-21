@@ -1,61 +1,42 @@
 {% extends "wiki/_template.html" %}
-{% block title %}Wiki - Orion Sphere LRP{% endblock %}
+{% block title %}Wiki Index - Orion Sphere LRP{% endblock %}
+
 {% macro render_tree(node) %}
-    {% set child_keys = node.keys()|select('ne', '_pages')|list %}
-    {% set pages = node._pages if node._pages is defined else [] %}
-    {# Classify subsections #}
-    {% set single_page_subsections = [] %}
-    {% set multi_page_subsections = [] %}
-    {% for key in child_keys %}
-        {% set value = node[key] %}
-        {% set sub_child_keys = value.keys()|select('ne', '_pages')|list %}
-        {% set sub_num_pages = value._pages|length if value._pages is defined else 0 %}
-        {% if sub_num_pages == 1 and sub_child_keys|length == 0 %}
-            {% set _ = single_page_subsections.append((key, value)) %}
-        {% else %}
-            {% set _ = multi_page_subsections.append((key, value)) %}
-        {% endif %}
-    {% endfor %}
-    <ul style="margin-left: 1.5em;">
+    <ul class="wiki-index-list">
         {# 1. Pages at this level #}
-        {% for page in pages|sort(attribute='title') %}
-            <li>
-                <a href="{{ url_for('wiki.wiki_view', slug=page.slug) }}">{{ page.title }}</a>
-                <span style="color: #888; font-size: 0.95em;">({{ page.slug }})</span>
-                {% if page.tags %}
-                    {% for tag in page.tags %}
-                        <span class="badge bg-info text-dark" style="margin-left: 4px;">{{ tag.name }}</span>
-                    {% endfor %}
-                {% endif %}
-            </li>
-        {% endfor %}
-        {# 2. Single-page subsections, flattened #}
-        {% for key, value in single_page_subsections|sort(attribute=0) %}
-            {% for page in value._pages %}
-                <li>
+        {% if node._pages is defined %}
+            {% for page in node._pages|sort(attribute='title') %}
+                <li class="wiki-page-item">
                     <a href="{{ url_for('wiki.wiki_view', slug=page.slug) }}">{{ page.title }}</a>
-                    <span style="color: #888; font-size: 0.95em;">({{ page.slug }})</span>
+                    <span class="wiki-slug">({{ page.slug }})</span>
                     {% if page.tags %}
                         {% for tag in page.tags %}
-                            <span class="badge bg-info text-dark" style="margin-left: 4px;">{{ tag.name }}</span>
+                            <span class="badge bg-info" style="margin-left: 4px;">{{ tag.name }}</span>
                         {% endfor %}
                     {% endif %}
                 </li>
             {% endfor %}
-        {% endfor %}
-        {# 3. Multi-page subsections, nested #}
-        {% for key, value in multi_page_subsections|sort(attribute=0) %}
-            <li><strong>{{ key|capitalize }}</strong>
-                {{ render_tree(value) }}
+        {% endif %}
+
+        {# 2. Sub-categories, nested #}
+        {% set child_keys = node.keys()|select('ne', '_pages')|list|sort %}
+        {% for key in child_keys %}
+            <li class="wiki-category-item">
+                <strong>{{ key|capitalize }}</strong>
+                {# Recursively render the subtree for the category #}
+                {{ render_tree(node[key]) }}
             </li>
         {% endfor %}
     </ul>
 {% endmacro %}
+
 {% block wiki_content %}
 <div class="container">
     <h1>Wiki Index</h1>
     {% if wiki_tree._pages or wiki_tree|length > 1 %}
-        {{ render_tree(wiki_tree) }}
+        <div class="wiki-index-container">
+            {{ render_tree(wiki_tree) }}
+        </div>
     {% else %}
         <div class="alert alert-info">No wiki pages available.</div>
     {% endif %}

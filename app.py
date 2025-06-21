@@ -1,4 +1,4 @@
-from flask import Flask, render_template, redirect, url_for, request, abort
+from flask import Flask, render_template, redirect, url_for, request, abort, jsonify
 from models.tools.character import Character
 from models.extensions import db
 from models import init_app, create_default_data
@@ -34,6 +34,7 @@ from models.tools.research import CharacterResearch
 from routes.events import events_bp
 from routes.tools.tickets import tickets_bp
 from routes.database.samples import samples_bp
+from flask_migrate import upgrade
 
 def create_app(config_class=None):
     app = Flask("Orion Sphere LRP")
@@ -52,6 +53,8 @@ def create_app(config_class=None):
     # Only create default data if not in testing mode
     if not app.config.get('TESTING'):
         with app.app_context():
+            # Run migrations automatically to create/update database schema
+            upgrade()
             create_default_data()
     
     mail.init_app(app)
@@ -72,6 +75,26 @@ def create_app(config_class=None):
     @app.route('/.well-known/appspecific/com.chrome.devtools.json')
     def chrome_devtools_json():
         return '', 204
+
+    @app.route('/toggle-theme', methods=['POST'])
+    def toggle_theme():
+        """Handle theme toggle for non-authenticated users."""
+        try:
+            data = request.get_json()
+            theme = data.get('theme', 'dark') if data else 'dark'
+            
+            # Set cookie for non-authenticated users
+            response = jsonify({
+                'success': True,
+                'theme': theme
+            })
+            response.set_cookie('theme', theme, max_age=30*24*60*60, path='/')  # 30 days
+            return response
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'error': str(e)
+            }), 400
 
     # Register blueprints
     app.register_blueprint(auth_bp, url_prefix='/auth')

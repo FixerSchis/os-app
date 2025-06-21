@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 import uuid
 import os
+import logging
 
 from models.enums import BodyHitsType, EventType, PrintTemplateType, ScienceType, WikiPageVersionStatus
 from models.extensions import db, login_manager, migrate
@@ -29,18 +30,18 @@ from models.tools.print_template import PrintTemplate
 from models.tools.event_ticket import EventTicket
 
 def init_app(app):
-    # Configure database
+    # Ensure database directory exists
     os.makedirs(app.config["DATABASE_PATH"], exist_ok=True)
-
+    
     # Initialize extensions with app
     db.init_app(app)
     login_manager.init_app(app)
     migrate.init_app(app, db)
 
-    # Create database tables
+    # Let Alembic handle all database schema creation
+    # Do not call db.create_all() here - use flask db upgrade instead
     with app.app_context():
         setup_relationships()
-        db.create_all()
 
 def create_default_data():
     create_default_wiki_pages()
@@ -65,6 +66,7 @@ def load_user(user_id):
 
 def create_default_wiki_pages():
     if not WikiPage.query.filter_by(slug="index").first():
+        logging.info("Creating default wiki page")
         wiki_page = WikiPage(
             slug="index", title="Welcome to Orion Sphere LRP"
         )
@@ -99,6 +101,7 @@ def create_default_factions():
         
         tag = WikiTag(name="faction")
         for name, slug, allow_players in default_factions:
+            logging.info(f"Creating faction: {name}")
             faction = Faction(
                 name=name,
                 wiki_slug=slug,
@@ -229,6 +232,7 @@ def create_default_skills():
         
         # Add skills to database and get their IDs
         for skill in skills:
+            logging.info(f"Adding skill: {skill.name}")
             db.session.add(skill)
         db.session.flush()
         
@@ -301,6 +305,7 @@ def create_default_species():
         
         # Add species to database
         for s in species_list:
+            logging.info(f"Adding species: {s.name}")
             db.session.add(s)
         db.session.flush()
         
@@ -355,6 +360,7 @@ def create_default_exotics():
         ]
         tag = WikiTag(name="exotic")
         for name, exo_type, wiki_slug in exotics:
+            logging.info(f"Adding exotic: {name}")
             # Create wiki page if it doesn't exist
             wiki_page = WikiPage.query.filter_by(slug=wiki_slug).first()
             if not wiki_page:
@@ -390,6 +396,7 @@ def create_default_medicaments():
         ]
         tag = WikiTag(name="medicament")
         for name, wiki_slug in medicaments:
+            logging.info(f"Adding medicament: {name}")
             # Create wiki page if it doesn't exist
             wiki_page = WikiPage.query.filter_by(slug=wiki_slug).first()
             if not wiki_page:
@@ -434,6 +441,7 @@ def create_default_item_types():
             ("Artefact", "AX"),
         ]
         for name, prefix in default_types:
+            logging.info(f"Adding item type: {name}")
             db.session.add(ItemType(name=name, id_prefix=prefix))
         db.session.commit()
 
@@ -449,6 +457,7 @@ def create_default_mods():
             ("Shock Bolt", ew_types),
         ]
         for name, types in mods:
+            logging.info(f"Adding mod: {name}")
             wiki_slug = "mod/" + name.lower().replace(" ", "-")
             # Create wiki page if it doesn't exist
             wiki_page = WikiPage.query.filter_by(slug=wiki_slug).first()
@@ -506,6 +515,7 @@ def create_default_item_blueprints():
         # Track next blueprint_id per item_type.id_prefix
         next_blueprint_id = defaultdict(lambda: 1)
         for name, type_name, cost, mod_names in blueprints:
+            logging.info(f"Adding item blueprint: {name}")
             item_type = get_type(type_name)
             if not item_type:
                 continue
@@ -553,6 +563,7 @@ def create_default_items():
             ("AA Sword", 10),
         ]
         for blueprint, expiry in items:
+            logging.info(f"Adding item: {blueprint}")
             item = Item(blueprint_id=get_blueprint(blueprint).id, expiry=expiry, item_id=1, mods_applied=[])
             db.session.add(item)
         db.session.commit()
@@ -637,6 +648,7 @@ def create_default_conditions():
             }
         ]
         for cond in conditions_data:
+            logging.info(f"Adding condition: {cond['name']}")
             condition = Condition(name=cond["name"])
             db.session.add(condition)
             db.session.flush()  # Get condition.id
@@ -660,6 +672,7 @@ def create_default_cybernetics():
             ("Neural Interface", "cybernetic/neural-interface", 15, 0, 0, 1, ScienceType.GENERIC),
         ]
         for name, wiki_slug, neural_shock_value, eng_mods, eng_downtime, sci_downtime, sci_type in cybernetics:
+            logging.info(f"Adding cybernetic: {name}")
             cybernetic = Cybernetic(
                 name=name,
                 wiki_slug=wiki_slug,
@@ -693,6 +706,7 @@ def create_default_cybernetics():
 
 def create_default_events():
     if not Event.query.first():
+        logging.info("Creating default events")
         prev_event = Event(
             event_number="1",
             event_type=EventType.MAINLINE.value,
@@ -850,6 +864,7 @@ def create_default_templates():
     
     # Check for each template type and create if missing
     for template_data in default_templates:
+        logging.info(f"Creating default template: {template_data['type_name']}")
         existing_template = PrintTemplate.query.filter_by(type=template_data['type']).first()
         if not existing_template:
             # Load template content from files

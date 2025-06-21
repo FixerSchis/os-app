@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from flask_login import login_required, current_user
 from models.extensions import db
 from models.tools.user import User
@@ -84,4 +84,33 @@ def confirm_email_change(token):
     else:
         flash('The verification link is invalid or has expired.', 'error')
         
-    return redirect(url_for('settings.settings')) 
+    return redirect(url_for('settings.settings'))
+
+@settings_bp.route('/toggle-dark-mode', methods=['POST'])
+@login_required
+def toggle_dark_mode():
+    """Toggle dark mode preference for the current user."""
+    try:
+        user = User.query.get(current_user.id)
+        if not user:
+            return jsonify({'success': False, 'error': 'User not found'}), 404
+            
+        data = request.get_json()
+        if data and 'theme' in data:
+            # Set the theme directly based on the request
+            user.dark_mode_preference = (data['theme'] == 'dark')
+        else:
+            # Fallback to toggle behavior
+            user.dark_mode_preference = not user.dark_mode_preference
+        
+        db.session.commit()
+        return jsonify({
+            'success': True,
+            'dark_mode': user.dark_mode_preference
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 400 
