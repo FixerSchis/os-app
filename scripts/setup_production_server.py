@@ -40,17 +40,33 @@ def check_system_requirements():
     if not os.path.exists("/etc/debian_version"):
         print("Warning: This script is designed for Debian/Ubuntu systems")
 
-    # Check Python version
-    python_version = run_command("python3 --version", capture_output=True)
-    print(f"Python version: {python_version}")
+    # Check Python
+    python_version_result = run_command("python3 --version", capture_output=True)
+    if python_version_result and hasattr(python_version_result, "stdout"):
+        print(f"✅ Python: {python_version_result.stdout.strip()}")
+    else:
+        print("❌ Python3 not found")
+        return False
 
-    # Check if required packages are installed
-    required_packages = ["python3", "python3-venv", "python3-pip", "nginx", "supervisor"]
+    # Check required packages
+    required_packages = ["python3-venv", "python3-pip", "nginx", "git"]
+    missing_packages = []
 
     for package in required_packages:
         result = run_command(f"dpkg -l | grep -q {package}", check=False)
-        if result.returncode != 0:
-            print(f"Warning: {package} is not installed")
+        if result and result.returncode != 0:
+            missing_packages.append(package)
+
+    if missing_packages:
+        print(f"⚠️  Missing packages: {', '.join(missing_packages)}")
+        print("Installing missing packages...")
+        run_command("sudo apt update")
+        for package in missing_packages:
+            run_command(f"sudo apt install -y {package}")
+    else:
+        print("✅ All required packages are installed")
+
+    return True
 
 
 def create_deployment_user():
@@ -275,13 +291,16 @@ def generate_ssh_key():
         print(f"SSH key generated at {key_path}")
 
     # Display public key
-    public_key = run_command(f"cat {key_path}.pub", capture_output=True)
-    print("\n" + "=" * 50)
-    print("SSH PUBLIC KEY FOR GITHUB SECRETS")
-    print("=" * 50)
-    print(public_key)
-    print("=" * 50)
-    print("\nAdd this public key to your GitHub repository secrets as DEPLOY_SSH_KEY")
+    public_key_result = run_command(f"cat {key_path}.pub", capture_output=True)
+    if public_key_result and hasattr(public_key_result, "stdout"):
+        print("\n" + "=" * 50)
+        print("SSH PUBLIC KEY FOR GITHUB SECRETS")
+        print("=" * 50)
+        print(public_key_result.stdout.strip())
+        print("=" * 50)
+        print("\nAdd this public key to your GitHub repository secrets as DEPLOY_SSH_KEY")
+    else:
+        print("❌ Failed to read SSH public key")
 
 
 def create_env_file(env_vars, port):

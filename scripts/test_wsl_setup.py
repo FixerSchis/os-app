@@ -25,8 +25,6 @@ def run_command(command, check=True, capture_output=False, timeout=30):
             text=True,
             timeout=timeout,
         )
-        if capture_output:
-            return result.stdout.strip()
         return result
     except subprocess.TimeoutExpired:
         print(f"Command timed out: {command}")
@@ -74,9 +72,9 @@ def check_system_requirements():
         return False
 
     # Check Python
-    python_version = run_command("python3 --version", capture_output=True)
-    if python_version:
-        print(f"✅ Python: {python_version}")
+    python_version_result = run_command("python3 --version", capture_output=True)
+    if python_version_result and hasattr(python_version_result, "stdout"):
+        print(f"✅ Python: {python_version_result.stdout.strip()}")
     else:
         print("❌ Python3 not found")
         return False
@@ -170,7 +168,12 @@ server {
         if nginx_test and hasattr(nginx_test, "returncode") and nginx_test.returncode == 0:
             print("✅ Nginx configuration test passed")
             # Only try to reload if systemd is available
-            if run_command("which systemctl", check=False, capture_output=True):
+            systemctl_check = run_command("which systemctl", check=False, capture_output=True)
+            if (
+                systemctl_check
+                and hasattr(systemctl_check, "returncode")
+                and systemctl_check.returncode == 0
+            ):
                 run_command("sudo systemctl reload nginx", check=False)
             return True
         else:
@@ -242,10 +245,10 @@ def test_ssh_key_generation():
 
     result = run_command(f"ssh-keygen -t ed25519 -f {key_path} -N ''")
     if result:
-        public_key = run_command(f"cat {key_path}.pub", capture_output=True)
-        if public_key:
+        public_key_result = run_command(f"cat {key_path}.pub", capture_output=True)
+        if public_key_result and hasattr(public_key_result, "stdout"):
             print("✅ SSH key generated successfully")
-            print(f"Public key: {public_key[:50]}...")
+            print(f"Public key: {public_key_result.stdout.strip()[:50]}...")
             return True
 
     print("❌ Failed to generate SSH key")
