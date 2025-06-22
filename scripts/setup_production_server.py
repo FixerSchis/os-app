@@ -51,20 +51,38 @@ def run_command(command, check=True, capture_output=False):
 
 
 def check_system_requirements():
-    """Check if the system meets the requirements."""
+    """Check system requirements."""
     print("Checking system requirements...")
 
-    # Check if running on Debian/Ubuntu
-    if not os.path.exists("/etc/debian_version"):
+    # Check OS
+    if os.path.exists("/etc/debian_version"):
+        with open("/etc/debian_version", "r") as f:
+            debian_version = f.read().strip()
+        print(f"✅ Debian version: {debian_version}")
+    else:
         print("Warning: This script is designed for Debian/Ubuntu systems")
 
-    # Check Python
-    python_version_result = run_command("python3 --version", capture_output=True)
-    if python_version_result and hasattr(python_version_result, "stdout"):
-        print(f"✅ Python: {python_version_result.stdout.strip()}")
-    else:
+    # Check Python - try multiple commands
+    python_commands = ["python3", "python"]
+    python_found = False
+
+    for cmd in python_commands:
+        python_version_result = run_command(f"{cmd} --version", capture_output=True, check=False)
+        if (
+            python_version_result
+            and hasattr(python_version_result, "returncode")
+            and python_version_result.returncode == 0
+        ):
+            print(f"✅ Python: {python_version_result.stdout.strip()}")
+            python_found = True
+            break
+
+    if not python_found:
         print("❌ Python3 not found")
-        return False
+        print("Installing Python3...")
+        run_command("sudo apt update")
+        run_command("sudo apt install -y python3 python3-pip python3-venv")
+        return True  # Continue anyway
 
     # Check required packages
     required_packages = ["python3-venv", "python3-pip", "nginx", "git"]
@@ -88,23 +106,44 @@ def check_system_requirements():
 
 
 def create_deployment_user():
-    """Create a deployment user for the application."""
+    """Create a deployment user."""
     print("Setting up deployment user...")
 
     username = input("Enter deployment username (default: os-app): ").strip() or "os-app"
 
     # Check if user exists
     result = run_command(f"id {username}", check=False)
-    if result.returncode == 0:
-        print(f"User {username} already exists")
+    if result and result.returncode == 0:
+        print(f"✅ User {username} already exists")
         return username
 
-    # Create user
-    run_command(f"sudo useradd -m -s /bin/bash {username}")
-    run_command(f"sudo usermod -aG sudo {username}")
-    print(f"Created user: {username}")
+    # Create user with proper group handling
+    print(f"Creating user {username}...")
 
-    return username
+    # First try to create user normally
+    result = run_command(f"sudo useradd -m -s /bin/bash {username}", check=False)
+
+    if result and result.returncode != 0:
+        # If that fails, try with existing group
+        print("User creation failed, trying with existing group...")
+        result = run_command(f"sudo useradd -m -s /bin/bash -g {username} {username}", check=False)
+
+        if result and result.returncode != 0:
+            # If still fails, try without group specification
+            print("Trying without group specification...")
+            result = run_command(f"sudo useradd -m -s /bin/bash {username}", check=False)
+
+    if result and result.returncode == 0:
+        # Add to sudo group
+        run_command(f"sudo usermod -aG sudo {username}", check=False)
+        print(f"✅ Created user: {username}")
+        return username
+    else:
+        print(f"❌ Failed to create user {username}")
+        print("You may need to create the user manually:")
+        print(f"sudo useradd -m -s /bin/bash {username}")
+        print(f"sudo usermod -aG sudo {username}")
+        return None
 
 
 def setup_directories():
