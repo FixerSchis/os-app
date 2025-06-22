@@ -1,0 +1,175 @@
+name: Deploy to Production
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types:
+      - completed
+    branches:
+      - master
+
+jobs:
+  deploy:
+    name: Deploy to Production Server
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.11"
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Create deployment package
+      run: |
+        # Create a deployment directory
+        mkdir -p deployment
+        cp -r . deployment/
+        cd deployment
+
+        # Remove unnecessary files for deployment
+        rm -rf .git .github tests venv __pycache__ .pytest_cache htmlcov .coverage
+        rm -rf .gitignore .pre-commit-config.yaml pyproject.toml
+        rm -rf scripts/setup_dev_environment.py scripts/setup_dev.py scripts/verify_ci_setup.py
+
+        # Create deployment archive
+        tar -czf ../deployment.tar.gz .
+
+    - name: Deploy to server
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.DEPLOY_HOST }}
+        username: ${{ secrets.DEPLOY_USER }}
+        key: ${{ secrets.DEPLOY_SSH_KEY }}
+        port: ${{ secrets.DEPLOY_PORT || 22 }}
+        script: |
+          # Set deployment variables
+          APP_NAME="os-app"
+          DEPLOY_DIR="/opt/$APP_NAME"
+          BACKUP_DIR="/opt/backups/$APP_NAME"
+          SERVICE_NAME="$APP_NAME"
+
+          # Create backup directory if it doesn't exist
+          sudo mkdir -p $BACKUP_DIR
+
+          # Create timestamp for backup
+          TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+
+          # Backup current deployment if it exists
+          if [ -d "$DEPLOY_DIR" ]; then
+            echo "Creating backup of current deployment..."
+            sudo tar -czf "$BACKUP_DIR/backup_$TIMESTAMP.tar.gz" -C /opt $APP_NAME
+            sudo rm -rf "$DEPLOY_DIR"
+          fi
+
+          # Create deployment directory
+          sudo mkdir -p $DEPLOY_DIR
+          sudo chown ${{ secrets.DEPLOY_USER }}:${{ secrets.DEPLOY_USER }} $DEPLOY_DIR
+
+          # Extract new deployment
+          cd $DEPLOY_DIR
+          tar -xzf /tmp/deployment.tar.gz
+
+          # Set up Python virtual environment
+          python3 -m venv venv
+          source venv/bin/activate
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+          # Set up environment variables
+          if [ ! -f .env ]; then
+            echo "Creating .env file from template..."
+            cp .env.example .env 2>/dev/null || echo "# Add your environment variables here" > .env
+          fi
+
+          # Get port from .env file or use default
+          PORT=$(grep "^PORT=" .env 2>/dev/null | cut -d'=' -f2 || echo "8000")
+          echo "Using port: $PORT"
+
+          # Run database migrations
+          echo "Running database migrations..."
+          source venv/bin/activate
+          export FLASK_APP=app.py
+          export FLASK_ENV=production
+          flask db upgrade
+
+          # Set proper permissions
+          sudo chown -R ${{ secrets.DEPLOY_USER }}:${{ secrets.DEPLOY_USER }} $DEPLOY_DIR
+          sudo chmod -R 755 $DEPLOY_DIR
+
+          # Create systemd service file if it doesn't exist
+          if [ ! -f /etc/systemd/system/$SERVICE_NAME.service ]; then
+            echo "Creating systemd service..."
+            sudo tee /etc/systemd/system/$SERVICE_NAME.service > /dev/null <<EOF
+          [Unit]
+          Description=OS App Flask Application
+          After=network.target
+
+          [Service]
+          Type=simple
+          User=${{ secrets.DEPLOY_USER }}
+          WorkingDirectory=$DEPLOY_DIR
+          Environment=PATH=$DEPLOY_DIR/venv/bin
+          Environment=FLASK_APP=app.py
+          Environment=FLASK_ENV=production
+          ExecStart=$DEPLOY_DIR/venv/bin/gunicorn --workers 4 --bind 0.0.0.0:$PORT app:app
+          Restart=always
+          RestartSec=10
+
+          [Install]
+          WantedBy=multi-user.target
+          EOF
+
+            sudo systemctl daemon-reload
+            sudo systemctl enable $SERVICE_NAME
+          else
+            # Update existing service with new port
+            echo "Updating systemd service with new port..."
+            sudo sed -i "s/--bind 0.0.0.0:[0-9]*/--bind 0.0.0.0:$PORT/" /etc/systemd/system/$SERVICE_NAME.service
+            sudo systemctl daemon-reload
+          fi
+
+          # Restart the service
+          echo "Restarting service..."
+          sudo systemctl restart $SERVICE_NAME
+
+          # Wait for service to be ready
+          sleep 10
+
+          # Check if service is running
+          if sudo systemctl is-active --quiet $SERVICE_NAME; then
+            echo "Deployment successful! Service is running on port $PORT."
+          else
+            echo "Deployment failed! Service is not running."
+            sudo systemctl status $SERVICE_NAME
+            exit 1
+          fi
+
+          # Clean up old backups (keep last 5)
+          cd $BACKUP_DIR
+          ls -t | tail -n +6 | xargs -r sudo rm -f
+
+    - name: Upload deployment artifacts
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: deployment-package
+        path: deployment.tar.gz
+        retention-days: 7
+
+    - name: Notify deployment status
+      if: always()
+      run: |
+        if [ "${{ job.status }}" == "success" ]; then
+          echo "✅ Deployment completed successfully!"
+        else
+          echo "❌ Deployment failed!"
+        fi
