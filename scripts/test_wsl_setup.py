@@ -158,6 +158,8 @@ server {
 """
 
     config_path = "/etc/nginx/sites-available/os-app-test"
+
+    # Create the config file in /tmp first
     with open("/tmp/os-app-test-nginx.conf", "w") as f:  # nosec
         f.write(test_config)
 
@@ -165,12 +167,16 @@ server {
     if result:
         run_command(f"sudo ln -sf {config_path} /etc/nginx/sites-enabled/")
         nginx_test = run_command("sudo nginx -t", capture_output=True)
-        if nginx_test and "test is successful" in nginx_test:
+        if nginx_test and hasattr(nginx_test, "returncode") and nginx_test.returncode == 0:
             print("✅ Nginx configuration test passed")
-            run_command("sudo systemctl reload nginx")
+            # Only try to reload if systemd is available
+            if run_command("which systemctl", check=False, capture_output=True):
+                run_command("sudo systemctl reload nginx", check=False)
             return True
         else:
             print("❌ Nginx configuration test failed")
+            if nginx_test and hasattr(nginx_test, "stdout"):
+                print(f"Error: {nginx_test.stdout}")
             return False
     else:
         print("❌ Failed to create Nginx configuration")
@@ -206,9 +212,18 @@ WantedBy=multi-user.target
 
     result = run_command(f"sudo cp /tmp/os-app-test.service {service_path}")
     if result:
-        run_command("sudo systemctl daemon-reload")
-        run_command("sudo systemctl enable os-app-test")
-        print("✅ Systemd service created and enabled")
+        # Only try systemctl commands if systemd is available
+        systemctl_check = run_command("which systemctl", check=False, capture_output=True)
+        if (
+            systemctl_check
+            and hasattr(systemctl_check, "returncode")
+            and systemctl_check.returncode == 0
+        ):
+            run_command("sudo systemctl daemon-reload", check=False)
+            run_command("sudo systemctl enable os-app-test", check=False)
+            print("✅ Systemd service created and enabled")
+        else:
+            print("⚠️  Systemd service file created (systemd not available in WSL)")
         return True
     else:
         print("❌ Failed to create systemd service")
@@ -313,7 +328,8 @@ def run_integration_tests():
     ]
 
     # Only test Nginx if it's available
-    if run_command("which nginx", check=False, capture_output=True):
+    nginx_check = run_command("which nginx", check=False, capture_output=True)
+    if nginx_check and hasattr(nginx_check, "returncode") and nginx_check.returncode == 0:
         tests.insert(0, ("Check Nginx status", "sudo systemctl is-active nginx"))
 
     passed = 0
@@ -327,6 +343,8 @@ def run_integration_tests():
                 passed += 1
             else:
                 print(f"❌ {test_name}")
+                if result and hasattr(result, "stderr") and result.stderr:
+                    print(f"  Error: {result.stderr.strip()}")
         except Exception as e:
             print(f"❌ {test_name}: {e}")
 
