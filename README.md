@@ -40,7 +40,7 @@ A Flask-based web application for managing LARP (Live Action Role-Playing) game 
 
 4. Set up environment variables:
    ```bash
-   cp .env.example .env
+   cp env.example .env
    # Edit .env with your configuration
    ```
 
@@ -54,7 +54,51 @@ A Flask-based web application for managing LARP (Live Action Role-Playing) game 
    python app.py
    ```
 
-The application will be available at `http://localhost:5000`
+The application will be available at the URL and port specified in your environment variables (default: `http://localhost:5000`)
+
+## Configuration
+
+This application uses environment variables for all configuration. Copy `env.example` to `.env` and modify the values as needed:
+
+### Required Environment Variables
+
+- `SECRET_KEY`: Secret key for Flask sessions (generate a secure random string)
+- `MAIL_USERNAME`: Gmail username for sending emails
+- `MAIL_PASSWORD`: Gmail app password (not your regular password)
+
+### Optional Environment Variables
+
+- `FLASK_RUN_PORT`: Port to run the server on (default: 5000)
+- `SSL_ENABLED`: Enable SSL/HTTPS (default: false)
+- `SSL_CERT_FILE`: Path to SSL certificate file
+- `SSL_KEY_FILE`: Path to SSL private key file
+- `BASE_URL`: Base URL for the application (default: http://localhost)
+- `MAIL_SERVER`: SMTP server (default: smtp.gmail.com)
+- `MAIL_PORT`: SMTP port (default: 587)
+- `MAIL_USE_TLS`: Use TLS for email (default: true)
+- `MAIL_DEFAULT_SENDER`: Default sender email address
+
+### Development Configuration
+
+For development, you can use these settings in your `.env` file:
+
+```bash
+FLASK_DEBUG=1
+FLASK_RUN_PORT=5000
+SSL_ENABLED=false
+BASE_URL=http://localhost
+```
+
+### Production Configuration
+
+For production, use these settings:
+
+```bash
+FLASK_DEBUG=0
+FLASK_RUN_PORT=443
+SSL_ENABLED=true
+BASE_URL=https://yourdomain.com
+```
 
 ## Development
 
@@ -340,8 +384,7 @@ Add your production environment variables:
 ```bash
 FLASK_ENV=production
 SECRET_KEY=your-secret-key-here
-DATABASE_URL=sqlite:///db/os_app.db
-MAIL_SERVER=smtp.gmail.com
+MAIL_SERVER=your-mail-server
 MAIL_USERNAME=your-email-username
 MAIL_PASSWORD=your-email-password
 ```

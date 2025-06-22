@@ -1,42 +1,59 @@
-from flask import Flask, abort, g, jsonify, redirect, render_template, request, url_for
-from flask_login import current_user, login_required
-from flask_migrate import Migrate
-from sqlalchemy.orm import sessionmaker
+import os
 
-from config import Config, LocalConfig
-from models import create_default_data, db, init_app, login_manager
-from models.enums import DowntimeStatus, DowntimeTaskStatus
-from models.tools.character import Character
-from models.tools.downtime import DowntimePeriod
-from models.tools.research import CharacterResearch
-from routes.auth import auth_bp
-from routes.database.conditions import conditions_bp
-from routes.database.cybernetics import cybernetics_bp
-from routes.database.exotic_substances import exotic_substances_bp
-from routes.database.factions import factions_bp
-from routes.database.item_blueprints import item_blueprints_bp
-from routes.database.item_types import item_types_bp
-from routes.database.items import items_bp
-from routes.database.medicaments import medicaments_bp
-from routes.database.mods import mods_bp
-from routes.database.samples import samples_bp
-from routes.database.skills import skills_bp
-from routes.database.species import species_bp
-from routes.events import events_bp
-from routes.settings import settings_bp
-from routes.tools.banking import banking_bp
-from routes.tools.character_skills import character_skills_bp
-from routes.tools.characters import characters_bp
-from routes.tools.downtime import bp as downtime_bp
-from routes.tools.groups import groups_bp
-from routes.tools.messages import bp as messages_bp
-from routes.tools.research import research_bp
-from routes.tools.templates import templates_bp
-from routes.tools.tickets import tickets_bp
-from routes.tools.user_management import user_management_bp
-from routes.wiki import wiki_bp
-from utils.database_init import initialize_database
-from utils.email import mail
+from dotenv import load_dotenv
+
+# Load environment variables from .env file if it exists
+# This must be done before importing other modules that depend on env vars
+load_dotenv()
+
+from flask import (  # noqa: E402
+    Flask,
+    abort,
+    g,
+    jsonify,
+    redirect,
+    render_template,
+    request,
+    url_for,
+)
+from flask_login import current_user, login_required  # noqa: E402
+from flask_migrate import Migrate  # noqa: E402
+from sqlalchemy.orm import sessionmaker  # noqa: E402
+
+from config import Config  # noqa: E402
+from models import create_default_data, db, init_app, login_manager  # noqa: E402
+from models.enums import DowntimeStatus, DowntimeTaskStatus  # noqa: E402
+from models.tools.character import Character  # noqa: E402
+from models.tools.downtime import DowntimePeriod  # noqa: E402
+from models.tools.research import CharacterResearch  # noqa: E402
+from routes.auth import auth_bp  # noqa: E402
+from routes.database.conditions import conditions_bp  # noqa: E402
+from routes.database.cybernetics import cybernetics_bp  # noqa: E402
+from routes.database.exotic_substances import exotic_substances_bp  # noqa: E402
+from routes.database.factions import factions_bp  # noqa: E402
+from routes.database.item_blueprints import item_blueprints_bp  # noqa: E402
+from routes.database.item_types import item_types_bp  # noqa: E402
+from routes.database.items import items_bp  # noqa: E402
+from routes.database.medicaments import medicaments_bp  # noqa: E402
+from routes.database.mods import mods_bp  # noqa: E402
+from routes.database.samples import samples_bp  # noqa: E402
+from routes.database.skills import skills_bp  # noqa: E402
+from routes.database.species import species_bp  # noqa: E402
+from routes.events import events_bp  # noqa: E402
+from routes.settings import settings_bp  # noqa: E402
+from routes.tools.banking import banking_bp  # noqa: E402
+from routes.tools.character_skills import character_skills_bp  # noqa: E402
+from routes.tools.characters import characters_bp  # noqa: E402
+from routes.tools.downtime import bp as downtime_bp  # noqa: E402
+from routes.tools.groups import groups_bp  # noqa: E402
+from routes.tools.messages import bp as messages_bp  # noqa: E402
+from routes.tools.research import research_bp  # noqa: E402
+from routes.tools.templates import templates_bp  # noqa: E402
+from routes.tools.tickets import tickets_bp  # noqa: E402
+from routes.tools.user_management import user_management_bp  # noqa: E402
+from routes.wiki import wiki_bp  # noqa: E402
+from utils.database_init import initialize_database  # noqa: E402
+from utils.email import mail  # noqa: E402
 
 
 def create_app(config_class=None):
@@ -44,10 +61,6 @@ def create_app(config_class=None):
 
     if config_class is None:
         config_class = Config
-        try:
-            config_class = LocalConfig
-        except ImportError:
-            pass
 
     app.config.from_object(config_class())
     init_app(app)
