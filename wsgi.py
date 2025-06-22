@@ -22,8 +22,8 @@ if __name__ == "__main__":
         ssl_context = (config.get("SSL_CERT_FILE"), config.get("SSL_KEY_FILE"))
 
     application.run(
-        debug=os.environ.get("FLASK_DEBUG", "0") == "1",
-        host=os.environ.get("FLASK_RUN_HOST", "127.0.0.1"),
+        debug=config.get("FLASK_DEBUG", "0") == "1",
+        host=config.get("FLASK_RUN_HOST", "0.0.0.0"),  # nosec B104
         port=config.get("DEFAULT_PORT", 5000),
         ssl_context=ssl_context,
     )

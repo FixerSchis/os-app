@@ -314,8 +314,9 @@ Deploy your application to the target directory:
 
 ```bash
 sudo mkdir -p /opt/orion-sphere-lrp
-sudo chown orion-sphere:orion-sphere /opt/orion-sphere-lrp
-# Copy your application files to /opt/orion-sphere-lrp/
+sudo cp -r . /opt/orion-sphere-lrp/
+sudo rm -rf /opt/orion-sphere-lrp/.git
+sudo chown -R orion-sphere:orion-sphere /opt/orion-sphere-lrp/
 ```
 
 #### Step 3: Install Service File
@@ -339,8 +340,8 @@ Add your production environment variables:
 ```bash
 FLASK_ENV=production
 SECRET_KEY=your-secret-key-here
-DATABASE_URL=your-database-url
-MAIL_SERVER=your-smtp-server
+DATABASE_URL=sqlite:///db/os_app.db
+MAIL_SERVER=smtp.gmail.com
 MAIL_USERNAME=your-email-username
 MAIL_PASSWORD=your-email-password
 ```
