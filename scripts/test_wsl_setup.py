@@ -397,6 +397,22 @@ def main():
     print("WSL Debian Setup Test")
     print("=" * 50)
 
+    # Check if we're in WSL
+    if os.path.exists("/proc/version"):
+        with open("/proc/version", "r") as f:
+            version_info = f.read()
+            if "microsoft" in version_info.lower():
+                print("✅ Running in WSL - this test is designed for WSL environments")
+            else:
+                print("⚠️  Not running in WSL - this test is designed for WSL environments")
+                print("For production testing, use the production setup script instead.")
+                response = input("Continue anyway? (y/N): ").strip().lower()
+                if response not in ["y", "yes"]:
+                    print("Test cancelled.")
+                    return
+    else:
+        print("⚠️  Could not detect WSL environment")
+
     # Check if user wants to run tests
     response = (
         input("This will test the production server setup. Continue? (y/N): ").strip().lower()

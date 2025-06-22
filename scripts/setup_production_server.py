@@ -14,6 +14,24 @@ import sys
 from pathlib import Path
 
 
+def check_wsl_environment():
+    """Check if we're running in WSL and exit if so."""
+    if os.path.exists("/proc/version"):
+        with open("/proc/version", "r") as f:
+            version_info = f.read()
+            if "microsoft" in version_info.lower():
+                print("❌ This script is not compatible with WSL (Windows Subsystem for Linux)")
+                print("\nWSL does not support:")
+                print("- systemd services (required for production deployment)")
+                print("- proper SSL certificate management")
+                print("- production-grade service management")
+                print("\nFor development/testing in WSL, use:")
+                print("- python3 scripts/test_wsl_setup.py (for testing)")
+                print("- python3 scripts/start_wsl_app.py (for running the app)")
+                print("\nFor production deployment, use a real Linux server or VM.")
+                sys.exit(1)
+
+
 def run_command(command, check=True, capture_output=False):
     """Run a shell command and return the result."""
     print(f"Running: {command}")
@@ -374,6 +392,9 @@ def main():
     """Main setup function."""
     print("OS App Production Server Setup")
     print("=" * 40)
+
+    # Check WSL environment first
+    check_wsl_environment()
 
     # Check system requirements
     check_system_requirements()
