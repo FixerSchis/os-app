@@ -3,7 +3,7 @@ import os
 
 class Config:
     # Use a consistent secret key
-    SECRET_KEY = "your-secret-key-here"  # nosec B105
+    SECRET_KEY = os.environ.get("SECRET_KEY", "your-secret-key-here")
     PERMANENT_SESSION_LIFETIME = 30 * 24 * 60 * 60  # 30 days in seconds
 
     # Database configuration
@@ -23,7 +23,7 @@ class Config:
     MAIL_PORT = 587
     MAIL_USE_TLS = True
     MAIL_USERNAME = "schisveck@gmail.com"
-    MAIL_PASSWORD = "replace-this-in-production"  # nosec B105
+    MAIL_PASSWORD = os.environ.get("MAIL_PASSWORD", "replace-this-in-production")
     MAIL_DEFAULT_SENDER = "Orion Sphere LRP <schisveck-gmail@gmail.com>"
 
     # Application configuration

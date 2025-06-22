@@ -23,7 +23,7 @@ if __name__ == "__main__":
 
     application.run(
         debug=config.get("FLASK_DEBUG", "0") == "1",
-        host=config.get("FLASK_RUN_HOST", "0.0.0.0"),  # nosec B104
+        host=config.get("FLASK_RUN_HOST", "127.0.0.1"),
         port=config.get("DEFAULT_PORT", 5000),
         ssl_context=ssl_context,
     )
