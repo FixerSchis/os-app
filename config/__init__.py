@@ -13,21 +13,25 @@ class Config:
     SQLALCHEMY_DATABASE_URI = f"sqlite:///{os.path.join(DATABASE_PATH, DATABASE_FILE_NAME)}"
 
     # Server configuration
-    DEFAULT_PORT = 443
-    SSL_ENABLED = True
-    SSL_CERT_FILE = os.path.join(basedir, "data", "ssl", "cert.pem")
-    SSL_KEY_FILE = os.path.join(basedir, "data", "ssl", "key.pem")
-
-    # Gmail configuration
-    MAIL_SERVER = "smtp.gmail.com"
-    MAIL_PORT = 587
-    MAIL_USE_TLS = True
-    MAIL_USERNAME = "schisveck@gmail.com"
-    MAIL_PASSWORD = os.environ.get("MAIL_PASSWORD", "replace-this-in-production")
-    MAIL_DEFAULT_SENDER = "Orion Sphere LRP <schisveck-gmail@gmail.com>"
+    DEFAULT_PORT = int(os.environ.get("FLASK_RUN_PORT", 5000))
+    SSL_ENABLED = os.environ.get("SSL_ENABLED", "false").lower() == "true"
+    SSL_CERT_FILE = os.environ.get(
+        "SSL_CERT_FILE", os.path.join(basedir, "data", "ssl", "cert.pem")
+    )
+    SSL_KEY_FILE = os.environ.get("SSL_KEY_FILE", os.path.join(basedir, "data", "ssl", "key.pem"))
 
     # Application configuration
-    BASE_URL = "https://fixer-mc.ddns.net"  # Used for generating verification links
+    BASE_URL = os.environ.get("BASE_URL", "http://localhost")
+
+    # Gmail configuration
+    MAIL_SERVER = os.environ.get("MAIL_SERVER", "smtp.gmail.com")
+    MAIL_PORT = int(os.environ.get("MAIL_PORT", "587"))
+    MAIL_USE_TLS = os.environ.get("MAIL_USE_TLS", "true").lower() == "true"
+    MAIL_USERNAME = os.environ.get("MAIL_USERNAME", "replace-this-in-production")
+    MAIL_PASSWORD = os.environ.get("MAIL_PASSWORD", "replace-this-in-production")
+    MAIL_DEFAULT_SENDER = os.environ.get(
+        "MAIL_DEFAULT_SENDER", "Orion Sphere LRP <replace-this-in-production>"
+    )
 
 
 class TestConfig(Config):
