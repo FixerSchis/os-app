@@ -30,18 +30,22 @@ jobs:
 
     - name: Create deployment package
       run: |
-        # Create a deployment directory
-        mkdir -p deployment
-        cp -r . deployment/
-        cd deployment
-
-        # Remove unnecessary files for deployment
-        rm -rf .git .github tests venv __pycache__ .pytest_cache htmlcov .coverage
-        rm -rf .gitignore .pre-commit-config.yaml pyproject.toml
-        rm -rf scripts/setup_dev_environment.py scripts/setup_dev.py scripts/verify_ci_setup.py
-
-        # Create deployment archive
-        tar -czf ../deployment.tar.gz .
+        # Create deployment archive directly, excluding unnecessary files
+        tar --exclude='.git' \
+            --exclude='.github' \
+            --exclude='tests' \
+            --exclude='venv' \
+            --exclude='__pycache__' \
+            --exclude='.pytest_cache' \
+            --exclude='htmlcov' \
+            --exclude='.coverage' \
+            --exclude='.gitignore' \
+            --exclude='.pre-commit-config.yaml' \
+            --exclude='pyproject.toml' \
+            --exclude='scripts/setup_dev_environment.py' \
+            --exclude='scripts/setup_dev.py' \
+            --exclude='scripts/verify_ci_setup.py' \
+            -czf deployment.tar.gz .
 
     - name: Deploy to server
       uses: appleboy/ssh-action@v1.0.3
