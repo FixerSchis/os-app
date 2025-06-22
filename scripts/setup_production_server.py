@@ -176,45 +176,12 @@ def setup_nginx(port, use_ssl=False, domain=None):
         if not domain:
             print("Domain required for SSL. Disabling SSL.")
             use_ssl = False
+        elif domain.lower() in ["localhost", "127.0.0.1"]:
+            print("SSL cannot be used with localhost. Disabling SSL.")
+            use_ssl = False
 
-    if use_ssl:
-        nginx_config = f"""
-server {{
-    listen 80;
-    server_name {domain};
-    return 301 https://$server_name$request_uri;
-}}
-
-server {{
-    listen 443 ssl http2;
-    server_name {domain};
-
-    ssl_certificate /etc/letsencrypt/live/{domain}/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/{domain}/privkey.pem;
-
-    location / {{
-        proxy_pass http://127.0.0.1:{port};
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }}
-
-    location /static {{
-        alias /opt/os-app/static;
-        expires 30d;
-        add_header Cache-Control "public, immutable";
-    }}
-
-    location /data {{
-        alias /opt/os-app/data;
-        expires 30d;
-        add_header Cache-Control "public, immutable";
-    }}
-}}
-"""
-    else:
-        nginx_config = f"""
+    # Create non-SSL config first (we'll update it later if SSL is enabled)
+    nginx_config = f"""
 server {{
     listen 80;
     server_name _;  # Accept all domains
@@ -248,8 +215,24 @@ server {{
 
     run_command(f"sudo cp /tmp/os-app-nginx.conf {config_path}")
     run_command(f"sudo ln -sf {config_path} /etc/nginx/sites-enabled/")
-    run_command("sudo nginx -t")
-    run_command("sudo systemctl reload nginx")
+
+    # Test Nginx config
+    nginx_test = run_command("sudo nginx -t", check=False, capture_output=True)
+    if nginx_test and hasattr(nginx_test, "returncode") and nginx_test.returncode == 0:
+        print("✅ Nginx configuration test passed")
+        # Only try to reload if systemd is available
+        systemctl_check = run_command("which systemctl", check=False, capture_output=True)
+        if (
+            systemctl_check
+            and hasattr(systemctl_check, "returncode")
+            and systemctl_check.returncode == 0
+        ):
+            run_command("sudo systemctl reload nginx", check=False)
+    else:
+        print("❌ Nginx configuration test failed")
+        if nginx_test and hasattr(nginx_test, "stderr"):
+            print(f"Error: {nginx_test.stderr}")
+        return port, False, domain
 
     print("Nginx configuration created.")
     return port, use_ssl, domain
@@ -372,10 +355,19 @@ WantedBy=multi-user.target
         f.write(service_content)
 
     run_command(f"sudo cp /tmp/os-app.service {service_path}")
-    run_command("sudo systemctl daemon-reload")
-    run_command("sudo systemctl enable os-app")
 
-    print("Systemd service created and enabled.")
+    # Only try systemctl commands if systemd is available
+    systemctl_check = run_command("which systemctl", check=False, capture_output=True)
+    if (
+        systemctl_check
+        and hasattr(systemctl_check, "returncode")
+        and systemctl_check.returncode == 0
+    ):
+        run_command("sudo systemctl daemon-reload", check=False)
+        run_command("sudo systemctl enable os-app", check=False)
+        print("Systemd service created and enabled.")
+    else:
+        print("⚠️  Systemd service file created (systemd not available in WSL)")
 
 
 def main():
