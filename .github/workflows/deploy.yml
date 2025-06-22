@@ -30,22 +30,38 @@ jobs:
 
     - name: Create deployment package
       run: |
-        # Create deployment archive directly, excluding unnecessary files
-        tar --exclude='.git' \
-            --exclude='.github' \
-            --exclude='tests' \
-            --exclude='venv' \
-            --exclude='__pycache__' \
-            --exclude='.pytest_cache' \
-            --exclude='htmlcov' \
-            --exclude='.coverage' \
-            --exclude='.gitignore' \
-            --exclude='.pre-commit-config.yaml' \
-            --exclude='pyproject.toml' \
-            --exclude='scripts/setup_dev_environment.py' \
-            --exclude='scripts/setup_dev.py' \
-            --exclude='scripts/verify_ci_setup.py' \
-            -czf deployment.tar.gz .
+        # Create a temporary directory for deployment files
+        mkdir -p /tmp/deploy-temp
+        cd /tmp/deploy-temp
+
+        # Copy files to temp directory, excluding unnecessary ones
+        rsync -av --exclude='.git' \
+                  --exclude='.github' \
+                  --exclude='tests' \
+                  --exclude='venv' \
+                  --exclude='__pycache__' \
+                  --exclude='.pytest_cache' \
+                  --exclude='htmlcov' \
+                  --exclude='.coverage' \
+                  --exclude='.gitignore' \
+                  --exclude='.pre-commit-config.yaml' \
+                  --exclude='pyproject.toml' \
+                  --exclude='scripts/setup_dev_environment.py' \
+                  --exclude='scripts/setup_dev.py' \
+                  --exclude='scripts/verify_ci_setup.py' \
+                  --exclude='*.pyc' \
+                  --exclude='*.pyo' \
+                  --exclude='*.log' \
+                  --exclude='.DS_Store' \
+                  --exclude='Thumbs.db' \
+                  $GITHUB_WORKSPACE/ .
+
+        # Create deployment archive
+        tar -czf $GITHUB_WORKSPACE/deployment.tar.gz .
+
+        # Clean up temp directory
+        cd $GITHUB_WORKSPACE
+        rm -rf /tmp/deploy-temp
 
     - name: Deploy to server
       uses: appleboy/ssh-action@v1.0.3
