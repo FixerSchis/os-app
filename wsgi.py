@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
 """
-WSGI entry point for Orion Sphere LRP
+WSGI entry point for OS App
 """
 import os
 import sys
 
-from app import create_app
-
 # Add the project directory to the Python path
 project_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, project_dir)
+
+# Import the Flask app factory
+from app import create_app  # noqa: E402
 
 # Create the Flask application
 application = create_app()
