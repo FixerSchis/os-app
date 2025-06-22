@@ -80,7 +80,7 @@ jobs:
 
           # Set up Python virtual environment
           python3 -m venv venv
-          source venv/bin/activate
+          . venv/bin/activate
           pip install --upgrade pip
           pip install -r requirements.txt
 
@@ -96,7 +96,7 @@ jobs:
 
           # Run database migrations
           echo "Running database migrations..."
-          source venv/bin/activate
+          . venv/bin/activate
           export FLASK_APP=app.py
           export FLASK_ENV=production
           flask db upgrade

@@ -290,8 +290,8 @@ def test_python_environment():
         print("❌ Failed to create virtual environment")
         return False
 
-    # Test pip install
-    result = run_command(f"cd {test_dir} && source venv/bin/activate && pip install --upgrade pip")
+    # Test pip install (use . instead of source for WSL compatibility)
+    result = run_command(f"cd {test_dir} && . venv/bin/activate && pip install --upgrade pip")
     if not result:
         print("❌ Failed to upgrade pip")
         return False
@@ -305,7 +305,6 @@ def run_integration_tests():
     print("\nRunning integration tests...")
 
     tests = [
-        ("Check Nginx status", "sudo systemctl is-active nginx"),
         ("Check test directories exist", "ls -la /opt/os-app-test"),
         ("Check test user exists", "id os-app-test"),
         ("Check SSH key exists", "ls -la ~/.ssh/os-app-test-deploy*"),
@@ -313,16 +312,23 @@ def run_integration_tests():
         ("Check systemd service exists", "ls -la /etc/systemd/system/os-app-test.service"),
     ]
 
+    # Only test Nginx if it's available
+    if run_command("which nginx", check=False, capture_output=True):
+        tests.insert(0, ("Check Nginx status", "sudo systemctl is-active nginx"))
+
     passed = 0
     total = len(tests)
 
     for test_name, command in tests:
-        result = run_command(command, check=False, capture_output=True)
-        if result and result.returncode == 0:
-            print(f"✅ {test_name}")
-            passed += 1
-        else:
-            print(f"❌ {test_name}")
+        try:
+            result = run_command(command, check=False, capture_output=True)
+            if result and hasattr(result, "returncode") and result.returncode == 0:
+                print(f"✅ {test_name}")
+                passed += 1
+            else:
+                print(f"❌ {test_name}")
+        except Exception as e:
+            print(f"❌ {test_name}: {e}")
 
     print(f"\nIntegration tests: {passed}/{total} passed")
     return passed == total
@@ -332,18 +338,24 @@ def cleanup_test_environment():
     """Clean up test environment."""
     print("\nCleaning up test environment...")
 
-    # Stop and disable service
-    run_command("sudo systemctl stop os-app-test", check=False)
-    run_command("sudo systemctl disable os-app-test", check=False)
+    # Only try systemctl commands if systemd is available
+    if run_command("which systemctl", check=False, capture_output=True):
+        run_command("sudo systemctl stop os-app-test", check=False)
+        run_command("sudo systemctl disable os-app-test", check=False)
+        run_command("sudo systemctl daemon-reload", check=False)
 
     # Remove service file
     run_command("sudo rm -f /etc/systemd/system/os-app-test.service", check=False)
-    run_command("sudo systemctl daemon-reload", check=False)
 
     # Remove Nginx config
     run_command("sudo rm -f /etc/nginx/sites-enabled/os-app-test", check=False)
     run_command("sudo rm -f /etc/nginx/sites-available/os-app-test", check=False)
-    run_command("sudo nginx -t && sudo systemctl reload nginx", check=False)
+
+    # Test Nginx config and reload if systemd is available
+    nginx_test = run_command("sudo nginx -t", check=False, capture_output=True)
+    if nginx_test and hasattr(nginx_test, "returncode") and nginx_test.returncode == 0:
+        if run_command("which systemctl", check=False, capture_output=True):
+            run_command("sudo systemctl reload nginx", check=False)
 
     # Remove directories
     run_command("sudo rm -rf /opt/os-app-test", check=False)
