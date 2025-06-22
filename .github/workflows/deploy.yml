@@ -121,10 +121,9 @@ jobs:
           sudo chown -R os-app:os-app $DEPLOY_DIR
           sudo chmod -R 755 $DEPLOY_DIR
 
-          # Create systemd service file if it doesn't exist
-          if [ ! -f /etc/systemd/system/$SERVICE_NAME.service ]; then
-            echo "Creating systemd service..."
-            sudo tee /etc/systemd/system/$SERVICE_NAME.service > /dev/null <<EOF
+          # Always overwrite the systemd service file to ensure it's up to date
+          echo "Creating/Updating systemd service..."
+          sudo tee /etc/systemd/system/$SERVICE_NAME.service > /dev/null <<EOF
           [Unit]
           Description=OS App Flask Application
           After=network.target
@@ -144,9 +143,8 @@ jobs:
           WantedBy=multi-user.target
           EOF
 
-            sudo systemctl daemon-reload
-            sudo systemctl enable $SERVICE_NAME
-          fi
+          sudo systemctl daemon-reload
+          sudo systemctl enable $SERVICE_NAME
 
           # Restart the service
           echo "Restarting service..."
