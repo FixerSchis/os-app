@@ -266,6 +266,8 @@ class TestMessagesRoutes:
         assert "messages" in sample_character.character_pack
         assert len(sample_character.character_pack["messages"]) == 1
         assert sample_character.character_pack["messages"][0]["type"] == "sms_response"
+        # Check that the message doesn't have a timestamp
+        assert "timestamp" not in sample_character.character_pack["messages"][0]
 
     def test_respond_to_message_empty_response(self, test_client, npc_user, sample_character, db):
         """Test responding to message with empty response"""

@@ -5,6 +5,7 @@ from sqlalchemy import JSON
 from models.database.mods import Mod
 from models.enums import CharacterAuditAction, CharacterStatus, ScienceType
 from models.extensions import db
+from models.tools.pack import Pack
 
 # Association table for many-to-many relationship between Character and CharacterTag
 character_tags = db.Table(
@@ -59,12 +60,11 @@ class Character(db.Model):
     base_character_points = db.Column(db.Integer, nullable=False, default=10)
     group_id = db.Column(db.Integer, db.ForeignKey("group.id"), nullable=True)
     bank_account = db.Column(db.Integer, nullable=False, default=0)
+    character_pack = db.Column(JSON, default=dict)
     created_at = db.Column(db.DateTime, nullable=False, default=db.func.now())
     updated_at = db.Column(
         db.DateTime, nullable=False, default=db.func.now(), onupdate=db.func.now()
     )
-
-    character_pack = db.Column(JSON, default=dict)
 
     # Downtime-related fields
     known_modifications = db.Column(db.JSON, default=list)  # List of mod IDs
@@ -81,6 +81,16 @@ class Character(db.Model):
     cybernetics_link = db.relationship("CharacterCybernetic", back_populates="character")
     downtime_packs = db.relationship("DowntimePack", back_populates="character")
     event_tickets = db.relationship("EventTicket", back_populates="character")
+
+    @property
+    def pack(self) -> Pack:
+        """Get the character's pack as a structured Pack object."""
+        return Pack.from_dict(self.character_pack or {})
+
+    @pack.setter
+    def pack(self, pack: Pack) -> None:
+        """Set the character's pack from a structured Pack object."""
+        self.character_pack = pack.to_dict()
 
     @classmethod
     def get_by_player_reference(cls, player_reference):
@@ -589,7 +599,7 @@ class CharacterCondition(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     character_id = db.Column(db.Integer, db.ForeignKey("character.id"), nullable=False)
     condition_id = db.Column(db.Integer, db.ForeignKey("conditions.id"), nullable=False)
-    current_stage = db.Column(db.Integer, nullable=False, default=1)
+    current_stage = db.Column(db.Integer, nullable=True, default=1)
     current_duration = db.Column(db.Integer, nullable=False, default=0)
 
     # Relationships
@@ -602,3 +612,70 @@ class CharacterCondition(db.Model):
 
     def __repr__(self):
         return f"<CharacterCondition {self.character.name} - {self.condition.name}>"
+
+    def progress_condition(self) -> dict:
+        """
+        Progress the condition by one event. Returns a dict with the result.
+
+        Returns:
+            dict: Contains 'progressed' (bool), 'message' (str), and 'completed' (bool)
+        """
+        # Get the current stage
+        current_stage_obj = None
+        for stage in self.condition.stages:
+            if stage.stage_number == self.current_stage:
+                current_stage_obj = stage
+                break
+
+        if not current_stage_obj:
+            return {
+                "progressed": False,
+                "message": (
+                    f"Invalid stage {self.current_stage} for condition {self.condition.name}"
+                ),
+                "completed": False,
+            }
+
+        # Deduct one event from the current duration
+        self.current_duration -= 1
+
+        # Check if we've reached 0 events remaining
+        if self.current_duration <= 0:
+            # Find the next stage
+            next_stage = None
+            for stage in self.condition.stages:
+                if stage.stage_number == self.current_stage + 1:
+                    next_stage = stage
+                    break
+
+            if next_stage:
+                # Progress to next stage
+                self.current_stage = next_stage.stage_number
+                self.current_duration = next_stage.duration
+                return {
+                    "progressed": True,
+                    "message": (
+                        f"Condition {self.condition.name} progressed to stage {self.current_stage}"
+                    ),
+                    "completed": False,
+                }
+            else:
+                # No more stages - condition has reached its conclusion
+                # TODO: Implement condition conclusion system
+                self.current_stage = None
+                self.current_duration = 0
+                return {
+                    "progressed": True,
+                    "message": (f"Condition {self.condition.name} has reached its conclusion"),
+                    "completed": True,
+                }
+        else:
+            # Still in the same stage
+            return {
+                "progressed": True,
+                "message": (
+                    f"Condition {self.condition.name} stage {self.current_stage} "
+                    f"has {self.current_duration} events remaining"
+                ),
+                "completed": False,
+            }

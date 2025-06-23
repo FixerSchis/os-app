@@ -42,10 +42,10 @@ def test_new_downtime_period_with_pack(db, character):
         character_id=character.id,
         status=DowntimeTaskStatus.ENTER_PACK,
         energy_credits=100,
-        items=[{"id": 1, "quantity": 2}],
-        exotic_substances=[{"id": 1, "quantity": 1}],
+        items=[1, 2],
+        exotic_substances=[{"id": 1, "amount": 2}, {"id": 2, "amount": 1}],
         conditions=[{"id": 1, "stage": 1}],
-        samples=[{"id": 1}],
+        samples=[1, 2],
         cybernetics=[{"id": 1}],
         research_teams=[1, 2],
         purchases=[{"item_id": 1, "quantity": 1}],
@@ -75,10 +75,10 @@ def test_new_downtime_period_with_pack(db, character):
     assert retrieved_pack.character_id == character.id
     assert retrieved_pack.status == DowntimeTaskStatus.ENTER_PACK
     assert retrieved_pack.energy_credits == 100
-    assert retrieved_pack.items == [{"id": 1, "quantity": 2}]
-    assert retrieved_pack.exotic_substances == [{"id": 1, "quantity": 1}]
+    assert retrieved_pack.items == [1, 2]
+    assert retrieved_pack.exotic_substances == [{"id": 1, "amount": 2}, {"id": 2, "amount": 1}]
     assert retrieved_pack.conditions == [{"id": 1, "stage": 1}]
-    assert retrieved_pack.samples == [{"id": 1}]
+    assert retrieved_pack.samples == [1, 2]
     assert retrieved_pack.cybernetics == [{"id": 1}]
     assert retrieved_pack.research_teams == [1, 2]
     assert retrieved_pack.purchases == [{"item_id": 1, "quantity": 1}]
