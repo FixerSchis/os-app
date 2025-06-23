@@ -1,0 +1,53 @@
+{% extends "_template.html" %}
+
+{% block title %}Audit Log - {{ group.name }}{% endblock %}
+
+{% block head %}
+{{ super() }}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/pages/audit-log.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="audit-log-header">
+        <h1>Audit Log for {{ group.name }}</h1>
+        <a href="{{ url_for('groups.group_list') }}" class="btn btn-secondary">Back to Groups</a>
+    </div>
+
+    <div class="audit-log-container">
+        <div class="audit-log-entries">
+            {% for log in audit_logs %}
+            <div class="audit-entry">
+                <div class="audit-entry-header">
+                    <div class="audit-meta">
+                        <div class="audit-timestamp">
+                            <i class="bi bi-clock"></i>
+                            {{ log.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}
+                        </div>
+                        <div class="audit-editor">
+                            <i class="bi bi-person"></i>
+                            {% if log.editor %}
+                                {{ log.editor.first_name }}{% if log.editor.surname %} {{ log.editor.surname }}{% endif %}
+                                {% if not log.editor.first_name and not log.editor.surname %}{{ log.editor.email }}{% endif %}
+                            {% else %}
+                                {{ log.editor_user_id }}
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="audit-action">
+                        <span class="badge bg-info">{{ GroupAuditAction.descriptions()[log.action.value] if log.action else log.action }}</span>
+                    </div>
+                </div>
+                <div class="audit-changes">
+                    {{ log.changes }}
+                </div>
+            </div>
+            {% else %}
+            <div class="audit-empty">
+                <p>No audit log entries found.</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

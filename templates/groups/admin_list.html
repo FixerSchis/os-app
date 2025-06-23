@@ -54,6 +54,7 @@
                             </td>
                             <td>
                                 <a href="{{ url_for('groups.edit_group_admin', group_id=group.id) }}" class="btn btn-primary btn-sm">Edit</a>
+                                <a href="{{ url_for('groups.group_audit_log', group_id=group.id) }}" class="btn btn-info btn-sm">Audit Log</a>
                                 <button type="button" class="btn btn-danger btn-sm disband-btn" data-disband-url="{{ url_for('groups.disband_group_post', group_id=group.id) }}" data-warning="This action is not reversible and cannot be recovered.">Disband</button>
                             </td>
                         </tr>

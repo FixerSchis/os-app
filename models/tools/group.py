@@ -1,4 +1,4 @@
-from models.enums import GroupType
+from models.enums import GroupAuditAction, GroupType
 from models.extensions import db
 
 
@@ -23,6 +23,7 @@ class Group(db.Model):
     characters = db.relationship("Character", back_populates="group", lazy=True)
     invites = db.relationship("GroupInvite", back_populates="group", cascade="all, delete-orphan")
     samples = db.relationship("Sample", back_populates="group", lazy="dynamic")
+    audit_logs = db.relationship("GroupAuditLog", back_populates="group")
 
     def __repr__(self):
         return f"<Group {self.name}>"
@@ -58,3 +59,25 @@ class GroupInvite(db.Model):
 
     def __repr__(self):
         return f"<GroupInvite {self.group.name} -> {self.character.name}>"
+
+
+class GroupAuditLog(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    group_id = db.Column(db.Integer, db.ForeignKey("group.id"), nullable=False)
+    editor_user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    timestamp = db.Column(db.DateTime, default=db.func.now(), nullable=False)
+    action = db.Column(
+        db.Enum(
+            GroupAuditAction,
+            values_callable=lambda x: [e.value for e in x],
+            native_enum=False,
+        ),
+        nullable=False,
+    )
+    changes = db.Column(db.Text, nullable=True)
+
+    group = db.relationship("Group", back_populates="audit_logs")
+    editor = db.relationship("User")
+
+    def __repr__(self):
+        return f"<GroupAuditLog {self.action} by {self.editor.email}>"

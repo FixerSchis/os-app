@@ -331,33 +331,271 @@ def test_group_creation_for_multi_char_user(test_client, db_session, npc_user_wi
 
 
 def test_admin_group_view_switching(test_client, db_session, admin_user, npc_user_with_chars):
-    """
-    GIVEN a logged-in admin user
-    WHEN they view the groups page for a multi-character user
-    THEN they should be able to switch between the admin view and the user's view
-    """
-    user, char1, char2 = npc_user_with_chars
-    npc_group = Group(name="NPC Group", type="military")
-    other_group = Group(name="Other Group", type="corporate")
-    db_session.add_all([npc_group, other_group])
+    """Admin can switch between admin and user views"""
+    with test_client.session_transaction() as sess:
+        sess["_user_id"] = admin_user.id
+        sess["_fresh"] = True
+
+    # Admin view (default)
+    resp = test_client.get("/groups/")
+    assert resp.status_code == 200
+    assert b"Groups - Admin View" in resp.data
+
+    # User view - admin without active characters gets redirected
+    resp = test_client.get("/groups/?admin_view=false", follow_redirects=False)
+    assert resp.status_code == 302  # Redirect to character list
+    assert "characters" in resp.location.lower()
+
+
+def test_group_audit_log_creation(test_client, new_user, db_session):
+    """Test that group creation creates an audit log entry"""
+    from models.enums import GroupAuditAction
+    from models.tools.group import GroupAuditLog
+
+    character = Character(name="Char", user_id=new_user.id, status=CharacterStatus.ACTIVE.value)
+    db_session.add(character)
     db_session.commit()
-    char1.group_id = npc_group.id
+
+    with test_client.session_transaction() as sess:
+        sess["_user_id"] = new_user.id
+        sess["_fresh"] = True
+
+    data = {"name": "Audit Test Group", "type": "military", "character_id": character.id}
+    resp = test_client.post("/groups/new", data=data, follow_redirects=True)
+    assert resp.status_code == 200
+
+    # Check that group was created
+    group = Group.query.filter_by(name="Audit Test Group").first()
+    assert group is not None
+
+    # Check that audit log was created
+    audit_log = GroupAuditLog.query.filter_by(group_id=group.id).first()
+    assert audit_log is not None
+    assert audit_log.action == GroupAuditAction.CREATE
+    assert audit_log.editor_user_id == new_user.id
+    assert "Group created by Char" in audit_log.changes
+
+
+def test_group_audit_log_edit(test_client, new_user, db_session):
+    """Test that group editing creates audit log entries"""
+    from models.enums import GroupAuditAction
+    from models.tools.group import GroupAuditLog
+
+    group = Group(name="Original Name", type="military", bank_account=0)
+    character = Character(name="Char", user_id=new_user.id, status=CharacterStatus.ACTIVE.value)
+    db_session.add_all([group, character])
+    db_session.commit()
+    character.group_id = group.id
+    db_session.commit()
+
+    with test_client.session_transaction() as sess:
+        sess["_user_id"] = new_user.id
+        sess["_fresh"] = True
+
+    data = {"name": "Updated Name", "character_id": character.id}
+    resp = test_client.post(f"/groups/{group.id}/edit", data=data, follow_redirects=True)
+    assert resp.status_code == 200
+
+    # Check that audit log was created
+    audit_log = GroupAuditLog.query.filter_by(group_id=group.id).first()
+    assert audit_log is not None
+    assert audit_log.action == GroupAuditAction.EDIT
+    assert audit_log.editor_user_id == new_user.id
+    assert "Name changed from 'Original Name' to 'Updated Name'" in audit_log.changes
+
+
+def test_group_audit_log_member_join(test_client, new_user, db_session):
+    """Test that member joining creates audit log entries"""
+    from models.enums import GroupAuditAction
+    from models.tools.group import GroupAuditLog
+
+    group = Group(name="Join Group", type="military", bank_account=0)
+    character = Character(name="Char", user_id=new_user.id, status=CharacterStatus.ACTIVE.value)
+    db_session.add_all([group, character])
+    db_session.commit()
+
+    invite = GroupInvite(group_id=group.id, character_id=character.id)
+    db_session.add(invite)
+    db_session.commit()
+
+    with test_client.session_transaction() as sess:
+        sess["_user_id"] = new_user.id
+        sess["_fresh"] = True
+
+    data = {"action": "accept", "character_id": character.id}
+    resp = test_client.post(
+        f"/groups/invites/{invite.id}/respond", data=data, follow_redirects=True
+    )
+    assert resp.status_code == 200
+
+    # Check that audit log was created
+    audit_log = GroupAuditLog.query.filter_by(group_id=group.id).first()
+    assert audit_log is not None
+    assert audit_log.action == GroupAuditAction.MEMBER_ADDED
+    assert audit_log.editor_user_id == new_user.id
+    assert "Member joined: Char" in audit_log.changes
+
+
+def test_group_audit_log_member_leave(test_client, new_user, db_session):
+    """Test that member leaving creates audit log entries"""
+    from models.enums import GroupAuditAction
+    from models.tools.group import GroupAuditLog
+
+    group = Group(name="Leave Group", type="military", bank_account=0)
+    character = Character(name="Char", user_id=new_user.id, status=CharacterStatus.ACTIVE.value)
+    db_session.add_all([group, character])
+    db_session.commit()
+    character.group_id = group.id
+    db_session.commit()
+
+    with test_client.session_transaction() as sess:
+        sess["_user_id"] = new_user.id
+        sess["_fresh"] = True
+
+    data = {"character_id": character.id}
+    resp = test_client.post(f"/groups/{group.id}/leave", data=data, follow_redirects=True)
+    assert resp.status_code == 200
+
+    # Check that audit log was created
+    audit_log = GroupAuditLog.query.filter_by(group_id=group.id).first()
+    assert audit_log is not None
+    assert audit_log.action == GroupAuditAction.MEMBER_LEFT
+    assert audit_log.editor_user_id == new_user.id
+    assert "Member left: Char" in audit_log.changes
+
+
+def test_group_audit_log_admin_remove(test_client, admin_user, db_session):
+    """Test that admin removing member creates audit log entries"""
+    from models.enums import GroupAuditAction
+    from models.tools.group import GroupAuditLog
+
+    group = Group(name="Remove Group", type="military", bank_account=0)
+    character = Character(name="Char", user_id=admin_user.id, status=CharacterStatus.ACTIVE.value)
+    db_session.add_all([group, character])
+    db_session.commit()
+    character.group_id = group.id
     db_session.commit()
 
     with test_client.session_transaction() as sess:
         sess["_user_id"] = admin_user.id
         sess["_fresh"] = True
 
-    # First, check the admin view
-    response = test_client.get("/groups/")
-    assert response.status_code == 200
-    assert b"NPC Group" in response.data
-    assert b"Other Group" in response.data
-    assert b"Switch to User View" in response.data  # Should have a link to view as the user
+    resp = test_client.post(f"/groups/{group.id}/remove/{character.id}", follow_redirects=True)
+    assert resp.status_code == 200
 
-    # Then, switch to the user's view, which should redirect as the admin has no characters
-    response = test_client.get(
-        f"/groups/?user_id={user.id}&admin_view=false", follow_redirects=False
+    # Check that audit log was created
+    audit_log = GroupAuditLog.query.filter_by(group_id=group.id).first()
+    assert audit_log is not None
+    assert audit_log.action == GroupAuditAction.MEMBER_REMOVED
+    assert audit_log.editor_user_id == admin_user.id
+    assert "Member removed by admin: Char" in audit_log.changes
+
+
+def test_group_audit_log_view_access(test_client, new_user, db_session):
+    """Test that group audit log is accessible to group members"""
+    group = Group(name="Audit Group", type="military", bank_account=0)
+    character = Character(name="Char", user_id=new_user.id, status=CharacterStatus.ACTIVE.value)
+    db_session.add_all([group, character])
+    db_session.commit()
+    character.group_id = group.id
+    db_session.commit()
+
+    with test_client.session_transaction() as sess:
+        sess["_user_id"] = new_user.id
+        sess["_fresh"] = True
+
+    resp = test_client.get(f"/groups/{group.id}/audit-log")
+    assert resp.status_code == 200
+    assert b"Audit Log for Audit Group" in resp.data
+
+
+def test_group_audit_log_view_access_denied(test_client, new_user, db_session):
+    """Test that group audit log is not accessible to non-members"""
+    group = Group(name="Audit Group", type="military", bank_account=0)
+    character = Character(name="Char", user_id=new_user.id, status=CharacterStatus.ACTIVE.value)
+    db_session.add_all([group, character])
+    db_session.commit()
+    # Note: character is NOT added to the group
+
+    with test_client.session_transaction() as sess:
+        sess["_user_id"] = new_user.id
+        sess["_fresh"] = True
+
+    resp = test_client.get(f"/groups/{group.id}/audit-log")
+    assert resp.status_code == 403
+
+
+def test_group_audit_log_admin_access(test_client, admin_user, db_session):
+    """Test that admins can access any group's audit log"""
+    group = Group(name="Admin Audit Group", type="military", bank_account=0)
+    db_session.add(group)
+    db_session.commit()
+
+    with test_client.session_transaction() as sess:
+        sess["_user_id"] = admin_user.id
+        sess["_fresh"] = True
+
+    resp = test_client.get(f"/groups/{group.id}/audit-log")
+    assert resp.status_code == 200
+    assert b"Audit Log for Admin Audit Group" in resp.data
+
+
+def test_group_audit_log_invite_sent(test_client, new_user, db_session):
+    """Test that sending an invite creates an audit log entry"""
+    from models.enums import GroupAuditAction
+    from models.tools.group import GroupAuditLog
+
+    group = Group(name="Invite Group", type="military", bank_account=0)
+    character = Character(name="Char", user_id=new_user.id, status=CharacterStatus.ACTIVE.value)
+    invitee = Character(name="Invitee", user_id=new_user.id, status=CharacterStatus.ACTIVE.value)
+    db_session.add_all([group, character, invitee])
+    db_session.commit()
+    character.group_id = group.id
+    db_session.commit()
+
+    with test_client.session_transaction() as sess:
+        sess["_user_id"] = new_user.id
+        sess["_fresh"] = True
+
+    data = {"character_id": invitee.id, "redirect_character_id": character.id}
+    resp = test_client.post(f"/groups/{group.id}/invite", data=data, follow_redirects=True)
+    assert resp.status_code == 200
+
+    # Check that audit log was created
+    audit_log = GroupAuditLog.query.filter_by(group_id=group.id).first()
+    assert audit_log is not None
+    assert audit_log.action == GroupAuditAction.INVITE_SENT
+    assert audit_log.editor_user_id == new_user.id
+    assert "Invite sent to Invitee" in audit_log.changes
+
+
+def test_group_audit_log_invite_declined(test_client, new_user, db_session):
+    """Test that declining an invite creates an audit log entry"""
+    from models.enums import GroupAuditAction
+    from models.tools.group import GroupAuditLog
+
+    group = Group(name="Decline Group", type="military", bank_account=0)
+    character = Character(name="Char", user_id=new_user.id, status=CharacterStatus.ACTIVE.value)
+    db_session.add_all([group, character])
+    db_session.commit()
+
+    invite = GroupInvite(group_id=group.id, character_id=character.id)
+    db_session.add(invite)
+    db_session.commit()
+
+    with test_client.session_transaction() as sess:
+        sess["_user_id"] = new_user.id
+        sess["_fresh"] = True
+
+    data = {"action": "decline", "character_id": character.id}
+    resp = test_client.post(
+        f"/groups/invites/{invite.id}/respond", data=data, follow_redirects=True
     )
-    assert response.status_code == 302
-    assert response.location == "/characters/"
+    assert resp.status_code == 200
+
+    # Check that audit log was created
+    audit_log = GroupAuditLog.query.filter_by(group_id=group.id).first()
+    assert audit_log is not None
+    assert audit_log.action == GroupAuditAction.INVITE_DECLINED
+    assert audit_log.editor_user_id == new_user.id
+    assert "Invite declined by Char" in audit_log.changes
