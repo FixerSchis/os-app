@@ -8,6 +8,7 @@ import argparse
 import os
 import subprocess  # nosec
 import sys
+import tempfile
 from pathlib import Path
 
 
@@ -55,22 +56,75 @@ def check_requirements():
 
 
 def create_user():
-    """Create the os-app user and group."""
+    """Create the os-app user and group, with a home directory and shell for SSH."""
     print("Creating os-app user and group...")
 
-    # Create group if it doesn't exist
-    try:
-        run_command("sudo groupadd os-app", check=False)
-        print("✅ Group 'os-app' created or already exists")
-    except subprocess.CalledProcessError:
-        print("⚠️  Group creation failed (may already exist)")
+    # Create group if it doesn't exist, without erroring if it does
+    run_command("sudo groupadd -f os-app", check=False)
 
-    # Create user if it doesn't exist
+    # Check if user exists before trying to create it
+    user_exists_result = run_command("id -u os-app", check=False, capture_output=True)
+    if hasattr(user_exists_result, "returncode") and user_exists_result.returncode == 0:
+        print("✅ User 'os-app' already exists. Ensuring shell and home directory are set...")
+        run_command("sudo usermod -s /bin/bash -d /home/os-app os-app", check=False)
+    else:
+        print("Creating new user 'os-app'...")
+        run_command("sudo useradd -m -d /home/os-app -s /bin/bash -g os-app os-app", check=False)
+
+    # Ensure home directory exists and has correct ownership
+    run_command("sudo mkdir -p /home/os-app/.ssh", check=False)
+    run_command("sudo chown -R os-app:os-app /home/os-app", check=False)
+    print("✅ User 'os-app' is configured.")
+
+
+def setup_passwordless_sudo():
+    """Allow the os-app user to run sudo commands without a password."""
+    print("Configuring passwordless sudo for 'os-app' user...")
+    sudoers_file = "/etc/sudoers.d/os-app"
+    sudoers_content = "os-app ALL=(ALL) NOPASSWD:ALL"
+
+    # Write content to a temporary file first
+    with tempfile.NamedTemporaryFile(mode="w", delete=False) as f:
+        f.write(sudoers_content + "\n")
+        tmp_sudoers_file = f.name
+
     try:
-        run_command("sudo useradd -r -s /bin/false -g os-app os-app", check=False)
-        print("✅ User 'os-app' created or already exists")
-    except subprocess.CalledProcessError:
-        print("⚠️  User creation failed (may already exist)")
+        # Use sudo to copy the file into place and set permissions
+        run_command(f"sudo cp {tmp_sudoers_file} {sudoers_file}")
+        run_command(f"sudo chmod 440 {sudoers_file}")
+        print("✅ Passwordless sudo configured.")
+    finally:
+        # Clean up temporary file
+        os.unlink(tmp_sudoers_file)
+
+
+def setup_ssh_for_deploy_user():
+    """Generate and set up SSH keys for the os-app user for deployment."""
+    print("Setting up SSH for 'os-app' user...")
+
+    ssh_setup_script = """
+    set -e
+    chmod 700 ~/.ssh
+    if [ ! -f ~/.ssh/id_ed25519 ]; then
+        echo "Generating new SSH key..."
+        ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519 -N "" > /dev/null
+    fi
+    cat ~/.ssh/id_ed25519.pub > ~/.ssh/authorized_keys
+    chmod 600 ~/.ssh/authorized_keys
+    echo "SSH setup complete for os-app."
+    """
+
+    run_command(f"sudo -u os-app bash -c '{ssh_setup_script}'")
+
+    print("\n" + "=" * 50)
+    print("ACTION REQUIRED: Configure GitHub Secrets")
+    print("=" * 50)
+    print("To enable automated deployments, you must add the private SSH key")
+    print("to your GitHub repository secrets as 'DEPLOY_SSH_KEY'.")
+    print("\nRun the following command on this server to display the key to copy:")
+    print("\n    sudo cat /home/os-app/.ssh/id_ed25519\n")
+    print("Copy the entire output, including the BEGIN and END lines.")
+    print("=" * 50 + "\n")
 
 
 def install_system_packages():
@@ -187,24 +241,31 @@ def create_nginx_config(port):
 """
 
     config_path = "/etc/nginx/sites-available/os-app"
-    with open("/tmp/os-app-nginx", "w") as f:  # nosec
+
+    # Write to temporary file first
+    with tempfile.NamedTemporaryFile(mode="w", delete=False) as f:
         f.write(nginx_config)
+        tmp_nginx_file = f.name
 
-    run_command(f"sudo cp /tmp/os-app-nginx {config_path}")
-
-    # Enable site
-    run_command("sudo ln -sf /etc/nginx/sites-available/os-app /etc/nginx/sites-enabled/")
-
-    # Remove default site if it exists
-    run_command("sudo rm -f /etc/nginx/sites-enabled/default", check=False)
-
-    # Test configuration
     try:
-        run_command("sudo nginx -t")
-        print("✅ Nginx configuration is valid")
-    except subprocess.CalledProcessError:
-        print("❌ Nginx configuration is invalid")
-        sys.exit(1)
+        run_command(f"sudo cp {tmp_nginx_file} {config_path}")
+
+        # Enable site
+        run_command("sudo ln -sf /etc/nginx/sites-available/os-app /etc/nginx/sites-enabled/")
+
+        # Remove default site if it exists
+        run_command("sudo rm -f /etc/nginx/sites-enabled/default", check=False)
+
+        # Test configuration
+        try:
+            run_command("sudo nginx -t")
+            print("✅ Nginx configuration is valid")
+        except subprocess.CalledProcessError:
+            print("❌ Nginx configuration is invalid")
+            sys.exit(1)
+    finally:
+        # Clean up temporary file
+        os.unlink(tmp_nginx_file)
 
 
 def create_systemd_service(port):
@@ -274,7 +335,7 @@ def start_services():
 
 def main():
     """Main setup function."""
-    parser = argparse.ArgumentParser(description="Setup OS App production server")
+    parser = argparse.ArgumentParser(description="Prepare OS App production server for deployment")
     parser.add_argument(
         "--port", type=int, default=5000, help="Port for the Flask application (default: 5000)"
     )
@@ -282,29 +343,30 @@ def main():
 
     args = parser.parse_args()
 
-    print("🚀 OS App Production Server Setup")
+    print("🚀 OS App Production Server Preparation")
     print("=" * 50)
 
     try:
         check_requirements()
-        create_user()
         install_system_packages()
+        create_user()
+        setup_passwordless_sudo()
+        setup_ssh_for_deploy_user()
         setup_application_directory()
-        setup_python_environment()
-        install_python_dependencies()
         create_nginx_config(args.port)
         create_systemd_service(args.port)
+
+        # Enable Nginx, but don't start the app service, as it's not deployed yet
+        run_command("sudo systemctl enable nginx", check=False)
+        run_command("sudo systemctl start nginx", check=False)
+        print("✅ Nginx service started and enabled.")
 
         if not args.skip_ssl:
             setup_ssl()
 
-        start_services()
-
-        print("\n🎉 Setup completed successfully!")
-        print(f"📱 Application is running on port {args.port}")
-        print("🌐 Access via: http://your-server-ip")
-        print("📋 To check status: sudo systemctl status os-app")
-        print("📋 To view logs: sudo journalctl -u os-app -f")
+        print("\n🎉 Server preparation completed successfully!")
+        print("The server is now ready for its first deployment.")
+        print("Configure your GitHub secrets, then push to your main branch to deploy.")
 
     except KeyboardInterrupt:
         print("\n❌ Setup interrupted by user")

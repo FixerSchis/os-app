@@ -63,6 +63,16 @@ jobs:
         cd $GITHUB_WORKSPACE
         rm -rf /tmp/deploy-temp
 
+    - name: Copy deployment package to server
+      uses: appleboy/scp-action@v0.1.7
+      with:
+        host: ${{ secrets.DEPLOY_HOST }}
+        username: os-app
+        key: ${{ secrets.DEPLOY_SSH_KEY }}
+        port: ${{ secrets.DEPLOY_PORT || 22 }}
+        source: "deployment.tar.gz"
+        target: "/tmp"
+
     - name: Deploy to server
       uses: appleboy/ssh-action@v1.0.3
       with:
