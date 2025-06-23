@@ -7,7 +7,14 @@
     <div class="groups-management">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h1>Groups - Admin View</h1>
-            <a href="{{ url_for('groups.create_group_admin') }}" class="btn btn-primary">Create Group</a>
+            <div>
+                <a href="{{ url_for('groups.group_list', admin_view='false') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-user"></i> Switch to User View
+                </a>
+                <a href="{{ url_for('groups.create_group_admin') }}" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> Create Group
+                </a>
+            </div>
         </div>
 
         <div class="card">
@@ -27,7 +34,7 @@
                         {% for group in groups %}
                         <tr>
                             <td>{{ group.name }}</td>
-                            <td>{{ GroupType.descriptions()[group.type] }}</td>
+                            <td>{{ GroupType.descriptions()[group.type.value] }}</td>
                             <td>{{ group.bank_account }}</td>
                             <td>
                                 <ul class="list-unstyled">
@@ -39,7 +46,7 @@
                             <td>
                                 {% if group.samples.count() > 0 %}
                                     {% for sample in group.samples %}
-                                        <span class="badge bg-info text-dark mr-1">{{ sample.name }}</span>
+                                        <span class="badge bg-info text-dark mr-1">{{ sample.name }} (Researched: {{ sample.is_researched }})</span>
                                     {% endfor %}
                                 {% else %}
                                     <span class="text-muted">No samples</span>
@@ -47,7 +54,7 @@
                             </td>
                             <td>
                                 <a href="{{ url_for('groups.edit_group_admin', group_id=group.id) }}" class="btn btn-primary btn-sm">Edit</a>
-                                <button type="button" class="btn btn-danger btn-sm disband-btn" data-disband-url="{{ url_for('groups.disband_group', group_id=group.id) }}" data-warning="This action is not reversible and cannot be recovered.">Disband</button>
+                                <button type="button" class="btn btn-danger btn-sm disband-btn" data-disband-url="{{ url_for('groups.disband_group_post', group_id=group.id) }}" data-warning="This action is not reversible and cannot be recovered.">Disband</button>
                             </td>
                         </tr>
                         {% endfor %}

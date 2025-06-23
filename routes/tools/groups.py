@@ -1,6 +1,7 @@
-from flask import Blueprint, flash, redirect, render_template, request, url_for
+from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
+from models.database.sample import Sample
 from models.enums import CharacterStatus, GroupType, Role
 from models.extensions import db
 from models.tools.character import Character
@@ -18,36 +19,56 @@ groups_bp = Blueprint("groups", __name__)
 @login_required
 @email_verified_required
 def group_list():
-    if current_user.has_role(Role.USER_ADMIN.value):
-        # Show all groups for admins
+    # Admins can switch between admin and user view.
+    # The 'admin_view' parameter will be 'false' when they switch to user view.
+    admin_view_param = request.args.get("admin_view", "true")
+    is_admin_and_wants_admin_view = (
+        current_user.has_role(Role.USER_ADMIN.value) and admin_view_param == "true"
+    )
+
+    if is_admin_and_wants_admin_view:
         groups = Group.query.all()
         return render_template("groups/admin_list.html", groups=groups, GroupType=GroupType)
 
-    # Get active character
-    active_character = Character.query.filter_by(
+    # From here, it's the user view (for non-admins, or admins who've switched)
+    # Get all active characters for the user
+    user_characters = Character.query.filter_by(
         user_id=current_user.id, status=CharacterStatus.ACTIVE.value
-    ).first()
+    ).all()
 
-    if not active_character:
+    if not user_characters:
         flash("You need an active character to access groups", "error")
         return redirect(url_for("characters.character_list"))
+
+    # Determine the selected character
+    selected_character_id = request.args.get("character_id", type=int)
+    if selected_character_id:
+        active_character = next((c for c in user_characters if c.id == selected_character_id), None)
+        if not active_character:
+            flash("Invalid character selected.", "error")
+            return redirect(url_for("characters.character_list"))
+    else:
+        active_character = user_characters[0]
 
     # Get group invites for the character
     invites = GroupInvite.query.filter_by(character_id=active_character.id).all()
 
     # Get list of active characters not in a group for invites
-    active_characters = (
+    active_characters_for_invite = (
         Character.query.filter_by(status=CharacterStatus.ACTIVE.value)
-        .filter(Character.group_id.is_(None))
+        .filter(Character.group_id.is_(None), Character.faction_id == active_character.faction_id)
         .all()
     )
 
     return render_template(
         "groups/list.html",
         character=active_character,
+        user_characters=user_characters,
         invites=invites,
-        active_characters=active_characters,
+        active_characters=active_characters_for_invite,
         GroupType=GroupType,
+        admin_view=admin_view_param,
+        character_id=active_character.id,
     )
 
 
@@ -58,13 +79,15 @@ def create_group():
     return redirect(url_for("groups.group_list"))
 
 
-@groups_bp.route("/create", methods=["POST"])
+@groups_bp.route("/new", methods=["POST"])
 @login_required
 @email_verified_required
 @has_active_character_required
 def create_group_post():
     name = request.form.get("name")
     type = request.form.get("type")
+    character_id = request.form.get("character_id")
+    admin_view = request.form.get("admin_view")
 
     if not name or not type:
         flash("Name and type are required", "error")
@@ -74,9 +97,10 @@ def create_group_post():
         flash("Invalid group type", "error")
         return redirect(url_for("groups.group_list"))
 
-    active_character = Character.query.filter_by(
-        user_id=current_user.id, status=CharacterStatus.ACTIVE.value
-    ).first()
+    active_character = db.session.get(Character, character_id)
+    if not active_character or active_character.user_id != current_user.id:
+        flash("Invalid character selected.", "error")
+        return redirect(url_for("groups.group_list"))
 
     group = Group(
         name=name,
@@ -90,8 +114,10 @@ def create_group_post():
     active_character.group_id = group.id
 
     db.session.commit()
-    flash("Group created successfully", "success")
-    return redirect(url_for("groups.group_list"))
+    flash("Group created successfully.", "success")
+    return redirect(
+        url_for("groups.group_list", admin_view=admin_view, character_id=active_character.id)
+    )
 
 
 @groups_bp.route("/<int:group_id>/edit", methods=["POST"])
@@ -102,6 +128,8 @@ def edit_group_post(group_id):
     name = request.form.get("name")
     type = request.form.get("type")
     bank_account = request.form.get("bank_account")
+    admin_view = request.form.get("admin_view")
+    character_id = request.form.get("character_id")
 
     if not name:
         flash("Name is required", "error")
@@ -121,6 +149,8 @@ def edit_group_post(group_id):
 
     db.session.commit()
     flash("Group updated successfully", "success")
+    if admin_view == "false":
+        return redirect(url_for("groups.group_list", admin_view="false", character_id=character_id))
     return redirect(url_for("groups.group_list"))
 
 
@@ -128,29 +158,40 @@ def edit_group_post(group_id):
 @login_required
 @email_verified_required
 @has_active_character_required
-def invite_character(group_id):
+def invite_to_group(group_id):
     group = Group.query.get_or_404(group_id)
-    active_character = Character.query.filter_by(
-        user_id=current_user.id, status=CharacterStatus.ACTIVE.value
-    ).first()
+    admin_view = request.form.get("admin_view")
+    redirect_character_id = request.form.get("redirect_character_id")
 
-    if active_character.group_id != group.id:
-        flash("You must be a member of the group to invite others", "error")
-        return redirect(url_for("groups.group_list"))
+    if redirect_character_id:
+        character = Character.query.get_or_404(redirect_character_id)
+        if character.user_id != current_user.id:
+            abort(403)
+    else:
+        character = current_user.get_character()
 
-    character_id = request.form.get("character_id")
-    if not character_id:
+    if not character or character.group_id != group.id:
+        abort(403)
+
+    invite_character_id = request.form.get("character_id")
+    if not invite_character_id:
         flash("Character ID is required", "error")
-        return redirect(url_for("groups.group_list"))
+        return redirect(
+            url_for("groups.group_list", admin_view=admin_view, character_id=redirect_character_id)
+        )
 
-    character = db.session.get(Character, character_id)
+    character = db.session.get(Character, invite_character_id)
     if not character:
         flash("Character not found", "error")
-        return redirect(url_for("groups.group_list"))
+        return redirect(
+            url_for("groups.group_list", admin_view=admin_view, character_id=redirect_character_id)
+        )
 
     if character.group_id:
         flash("Character is already in a group", "error")
-        return redirect(url_for("groups.group_list"))
+        return redirect(
+            url_for("groups.group_list", admin_view=admin_view, character_id=redirect_character_id)
+        )
 
     # Check if invite already exists
     existing_invite = GroupInvite.query.filter_by(
@@ -159,105 +200,95 @@ def invite_character(group_id):
 
     if existing_invite:
         flash("Character already has an invite to this group", "error")
-        return redirect(url_for("groups.group_list"))
+        return redirect(
+            url_for("groups.group_list", admin_view=admin_view, character_id=redirect_character_id)
+        )
 
     invite = GroupInvite(group_id=group.id, character_id=character.id)
     db.session.add(invite)
     db.session.commit()
 
-    flash("Invite sent successfully", "success")
-    return redirect(url_for("groups.group_list"))
+    flash(f"Invited {character.name} to the group.", "success")
+    return redirect(
+        url_for("groups.group_list", admin_view=admin_view, character_id=redirect_character_id)
+    )
 
 
-@groups_bp.route("/invite/<int:invite_id>/accept", methods=["POST"])
+@groups_bp.route("/invites/<int:invite_id>/respond", methods=["POST"])
 @login_required
 @email_verified_required
 @has_active_character_required
-def accept_invite(invite_id):
+def respond_to_invite_post(invite_id):
     invite = GroupInvite.query.get_or_404(invite_id)
-    active_character = Character.query.filter_by(
-        user_id=current_user.id, status=CharacterStatus.ACTIVE.value
-    ).first()
+    admin_view = request.form.get("admin_view")
+    character_id = request.form.get("character_id")
+    character = Character.query.get_or_404(character_id)
 
-    if active_character.id != invite.character_id:
-        flash("This invite is not for your character", "error")
-        return redirect(url_for("groups.group_list"))
+    if invite.character_id != character.id or character.user_id != current_user.id:
+        abort(403)
 
-    if active_character.group_id:
-        flash("Your character is already in a group", "error")
-        return redirect(url_for("groups.group_list"))
+    action = request.form.get("action")
+    if action == "accept":
+        character.group_id = invite.group_id
+        flash(f"You have joined {invite.group.name}.", "success")
+        GroupInvite.query.filter_by(character_id=character.id).delete()
+    elif action == "decline":
+        flash(f"You have declined the invitation to {invite.group.name}.", "success")
 
-    # Add character to group
-    active_character.group_id = invite.group_id
-
-    # Delete the invite
     db.session.delete(invite)
     db.session.commit()
 
-    flash("Joined group successfully", "success")
-    return redirect(url_for("groups.group_list"))
-
-
-@groups_bp.route("/invite/<int:invite_id>/decline", methods=["POST"])
-@login_required
-@email_verified_required
-@has_active_character_required
-def decline_invite(invite_id):
-    invite = GroupInvite.query.get_or_404(invite_id)
-    active_character = Character.query.filter_by(
-        user_id=current_user.id, status=CharacterStatus.ACTIVE.value
-    ).first()
-
-    if active_character.id != invite.character_id:
-        flash("This invite is not for your character", "error")
-        return redirect(url_for("groups.group_list"))
-
-    # Delete the invite
-    db.session.delete(invite)
-    db.session.commit()
-
-    flash("Invite declined", "success")
-    return redirect(url_for("groups.group_list"))
+    return redirect(url_for("groups.group_list", admin_view=admin_view, character_id=character_id))
 
 
 @groups_bp.route("/<int:group_id>/leave", methods=["POST"])
 @login_required
 @email_verified_required
 @has_active_character_required
-def leave_group(group_id):
-    Group.query.get_or_404(group_id)
-    character = Character.query.filter_by(
-        user_id=current_user.id, status=CharacterStatus.ACTIVE.value
-    ).first()
+def leave_group_post(group_id):
+    group = Group.query.get_or_404(group_id)
+    admin_view = request.form.get("admin_view")
+    character_id = request.form.get("character_id")
+    character = db.session.get(Character, character_id)
 
-    if character.group_id != group_id:
-        flash("You are not a member of this group", "error")
+    if not character or character.user_id != current_user.id:
+        flash("Invalid character selected.", "error")
         return redirect(url_for("groups.group_list"))
+
+    if character.group_id != group.id:
+        flash("You are not a member of this group", "error")
+        return redirect(url_for("groups.group_list", character_id=character_id))
 
     character.group_id = None
     db.session.commit()
-    flash("You have left the group", "success")
-    return redirect(url_for("groups.group_list"))
+    flash("You have left the group.", "success")
+    return redirect(url_for("groups.group_list", admin_view=admin_view, character_id=character_id))
 
 
 @groups_bp.route("/<int:group_id>/disband", methods=["POST"])
 @login_required
 @email_verified_required
 @has_active_character_required
-def disband_group(group_id):
+def disband_group_post(group_id):
     group = Group.query.get_or_404(group_id)
-    character = Character.query.filter_by(
-        user_id=current_user.id, status=CharacterStatus.ACTIVE.value
-    ).first()
+    admin_view = request.form.get("admin_view")
+    character_id = request.form.get("character_id")
+    character = Character.query.get_or_404(character_id)
 
-    if character.group_id != group_id:
-        flash("You are not a member of this group", "error")
-        return redirect(url_for("groups.group_list"))
+    if character.user_id != current_user.id:
+        abort(403)
+
+    # Must be the last member to disband
+    if len(group.characters) > 1:
+        flash("You do not have permission to disband this group.", "error")
+        return redirect(
+            url_for("groups.group_list", admin_view=admin_view, character_id=character_id)
+        )
 
     # Check if this is the only member
     if len(group.characters) > 1:
         flash("Cannot disband group with multiple members", "error")
-        return redirect(url_for("groups.group_list"))
+        return redirect(url_for("groups.group_list", character_id=character_id))
 
     # Remove character from group
     character.group_id = None
@@ -269,8 +300,8 @@ def disband_group(group_id):
     db.session.delete(group)
     db.session.commit()
 
-    flash("Group has been disbanded", "success")
-    return redirect(url_for("groups.group_list"))
+    flash("Group disbanded.", "success")
+    return redirect(url_for("groups.group_list", admin_view=admin_view, character_id=character_id))
 
 
 @groups_bp.route("/<int:group_id>/remove/<int:character_id>", methods=["POST"])
@@ -331,8 +362,15 @@ def create_group_admin():
 @user_admin_required
 def edit_group_admin(group_id):
     group = Group.query.get_or_404(group_id)
-
-    return render_template("groups/admin_edit.html", group=group, GroupType=GroupType)
+    samples = Sample.query.order_by(Sample.name).all()
+    assigned_sample_ids = {sample.id for sample in group.samples}
+    return render_template(
+        "groups/admin_edit.html",
+        group=group,
+        GroupType=GroupType,
+        samples=samples,
+        assigned_sample_ids=assigned_sample_ids,
+    )
 
 
 @groups_bp.route("/<int:group_id>/edit/admin", methods=["POST"])
@@ -345,6 +383,7 @@ def edit_group_admin_post(group_id):
     name = request.form.get("name")
     type = request.form.get("type")
     bank_account = request.form.get("bank_account")
+    sample_ids = request.form.getlist("sample_ids")
 
     if not name:
         flash("Name is required", "error")
@@ -363,6 +402,13 @@ def edit_group_admin_post(group_id):
     group.name = name
     group.type = type
     group.bank_account = bank_account_int
+
+    # Update samples
+    if sample_ids:
+        new_samples = Sample.query.filter(Sample.id.in_(sample_ids)).all()
+        group.samples = new_samples
+    else:
+        group.samples = []
 
     db.session.commit()
     flash("Group updated successfully", "success")

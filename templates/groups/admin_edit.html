@@ -26,9 +26,18 @@
                         </select>
                     </div>
 
-                    <div class="form-group">
+                    <div class="form-group mb-3">
                         <label for="bank_account">Bank Account</label>
-                        <input type="number" class="form-control" id="bank_account" name="bank_account" value="{{ group.bank_account if group else 0 }}" required>
+                        <input type="text" class="form-control" id="bank_account" name="bank_account" value="{{ group.bank_account if group else '0' }}">
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label for="samples">Assigned Samples</label>
+                        <select class="form-control select2" id="sample_ids" name="sample_ids" multiple>
+                            {% for sample in samples %}
+                                <option value="{{ sample.id }}" {% if sample.id in assigned_sample_ids %}selected{% endif %}>{{ sample.name }} (Researched: {{ sample.is_researched }})</option>
+                            {% endfor %}
+                        </select>
                     </div>
 
                     {% if not group %}
@@ -42,15 +51,6 @@
                         </select>
                     </div>
                     {% endif %}
-
-                    <div class="form-group">
-                        <label for="sample_ids">Group Samples</label>
-                        <select class="form-control select2" id="sample_ids" name="sample_ids" multiple>
-                            {% for sample in all_samples %}
-                            <option value="{{ sample.id }}" {% if sample.group_id == group.id %}selected{% endif %}>{{ sample.name }} ({{ sample.id }})</option>
-                            {% endfor %}
-                        </select>
-                    </div>
 
                     <div class="mt-4">
                         <button type="submit" class="btn btn-primary">{{ 'Update' if group else 'Create' }} Group</button>
@@ -107,7 +107,7 @@
                 </div>
 
                 <div class="mt-4">
-                    <button type="button" class="btn btn-danger disband-btn" data-disband-url="{{ url_for('groups.disband_group', group_id=group.id) }}" data-warning="This action is not reversible and cannot be recovered.">Disband Group</button>
+                    <button type="button" class="btn btn-danger disband-btn" data-disband-url="{{ url_for('groups.disband_group_post', group_id=group.id) }}" data-warning="This action is not reversible and cannot be recovered.">Disband Group</button>
                 </div>
             </div>
         </div>

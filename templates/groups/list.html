@@ -4,181 +4,261 @@
 
 {% block content %}
 <div class="container">
-    <div class="groups-management">
+    <div class="d-flex justify-content-between align-items-center mb-4">
         <h1>Groups</h1>
-
-        {% if character.group %}
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h2>Your Group</h2>
-                </div>
-                <div class="card-body">
-                    <form method="POST" action="{{ url_for('groups.edit_group_post', group_id=character.group.id) }}" class="mb-4">
-                        <div class="form-group">
-                            <label for="name">Group Name</label>
-                            <input type="text" class="form-control" id="name" name="name" value="{{ character.group.name }}" required>
-                        </div>
-
-                        <div class="form-group">
-                            <label>Group Type</label>
-                            <input type="text" class="form-control" value="{{ GroupType.descriptions()[character.group.type.value] if character.group.type.value else GroupType.descriptions()[character.group.type] }}" readonly>
-                        </div>
-
-                        <div class="form-group">
-                            <label>Bank Balance</label>
-                            <input type="text" class="form-control" value="{{ character.group.bank_account }}" readonly>
-                        </div>
-
-                        <button type="submit" class="btn btn-primary">Update Group Name</button>
-                    </form>
-
-                    <h3>Members</h3>
-                    <table class="table">
-                        <thead>
-                            <tr>
-                                <th>Name</th>
-                                <th>Species</th>
-                                <th>Faction</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for member in character.group.characters %}
-                            <tr>
-                                <td>{{ member.name }}</td>
-                                <td>{{ member.species.name }}</td>
-                                <td>{{ member.faction.name }}</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-
-                    <h3>Group Samples</h3>
-                    <div class="mb-3">
-                        {% if character.group.samples.count() > 0 %}
-                            {% for sample in character.group.samples %}
-                                <span class="badge bg-info text-dark mr-1">{{ sample.name }}</span>
-                            {% endfor %}
-                        {% else %}
-                            <span class="text-muted">No samples assigned to this group.</span>
-                        {% endif %}
-                    </div>
-
-                    <div class="mt-4">
-                        <h3>Invite Character</h3>
-                        <form method="POST" action="{{ url_for('groups.invite_character', group_id=character.group.id) }}" class="form-inline">
-                            <div class="form-group mr-2">
-                                <select class="form-control select2" name="character_id" required>
-                                    <option value="">Select a character...</option>
-                                    {% for char in active_characters %}
-                                    <option value="{{ char.id }}">{{ char.name }} ({{ char.faction.name }})</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                            <button type="submit" class="btn btn-primary">Send Invite</button>
-                        </form>
-                    </div>
-
-                    <div class="mt-4">
-                        {% if character.group.characters|length > 1 %}
-                        <form method="POST" action="{{ url_for('groups.leave_group', group_id=character.group.id) }}" style="display: inline;">
-                            <button type="button" class="btn btn-warning leave-btn" data-leave-url="{{ url_for('groups.leave_group', group_id=character.group.id) }}" data-warning="This action is not reversible. You will need to be re-invited to rejoin.">Leave Group</button>
-                        </form>
-                        {% else %}
-                        <form method="POST" action="{{ url_for('groups.disband_group', group_id=character.group.id) }}" style="display: inline;">
-                            <button type="button" class="btn btn-danger disband-btn" data-disband-url="{{ url_for('groups.disband_group', group_id=character.group.id) }}" data-warning="This action is not reversible and cannot be recovered.">Disband Group</button>
-                        </form>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-        {% else %}
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h2>Create Group</h2>
-                </div>
-                <div class="card-body">
-                    <form method="POST" action="{{ url_for('groups.create_group_post') }}">
-                        <div class="form-group">
-                            <label for="name">Group Name</label>
-                            <input type="text" class="form-control" id="name" name="name" required>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="type">Group Type</label>
-                            <select class="form-control form-select" id="type" name="type" required>
-                                <option value="">Select a group type...</option>
-                                {% for type in GroupType.values() %}
-                                <option value="{{ type }}">{{ GroupType.descriptions()[type] }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-
-                        <button type="submit" class="btn btn-primary">Create Group</button>
-                    </form>
-                </div>
-            </div>
-
-            {% if invites %}
-            <div class="card">
-                <div class="card-header">
-                    <h2>Group Invites</h2>
-                </div>
-                <div class="card-body">
-                    <table class="table">
-                        <thead>
-                            <tr>
-                                <th>Group Name</th>
-                                <th>Type</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for invite in invites %}
-                            <tr>
-                                <td>{{ invite.group.name }}</td>
-                                <td>{{ GroupType.descriptions()[invite.group.type] }}</td>
-                                <td>
-                                    <form method="POST" action="{{ url_for('groups.accept_invite', invite_id=invite.id) }}" style="display: inline;">
-                                        <button type="submit" class="btn btn-success btn-sm">Accept</button>
-                                    </form>
-                                    <form method="POST" action="{{ url_for('groups.decline_invite', invite_id=invite.id) }}" style="display: inline;">
-                                        <button type="submit" class="btn btn-danger btn-sm">Decline</button>
-                                    </form>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-            {% endif %}
+        {% if current_user.has_role('user_admin') %}
+            <a href="{{ url_for('groups.group_list', admin_view='true') }}" class="btn btn-outline-secondary">
+                <i class="fas fa-user-shield"></i> Switch to Admin View
+            </a>
         {% endif %}
     </div>
-</div>
 
-<!-- Group Action Modal -->
-<div class="modal fade" id="groupActionModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Confirm Action</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <div id="groupActionWarning" class="alert alert-warning"></div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <form id="groupActionForm" method="POST" style="display: inline;">
-                    <button type="submit" class="btn btn-danger">Confirm</button>
-                </form>
+    {% if user_characters|length > 1 %}
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="input-group">
+                <label class="input-group-text" for="character-selector">Active Character:</label>
+                <select class="form-select" id="character-selector">
+                    {% for char in user_characters %}
+                        <option value="{{ char.id }}" {% if char.id == character.id %}selected{% endif %}>
+                            {{ char.name }}
+                        </option>
+                    {% endfor %}
+                </select>
             </div>
         </div>
     </div>
+    {% endif %}
+
+    {% if character.group %}
+        <div class="card mb-4">
+            <div class="card-header">
+                <h2>Your Group</h2>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('groups.edit_group_post', group_id=character.group.id) }}" class="mb-4">
+                    <input type="hidden" name="admin_view" value="false">
+                    <input type="hidden" name="character_id" value="{{ character.id }}">
+                    <div class="form-group mb-3">
+                        <label for="name">Group Name</label>
+                        <input type="text" class="form-control" id="name" name="name" value="{{ character.group.name }}" required>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label>Group Type</label>
+                        <input type="text" class="form-control" value="{{ GroupType.descriptions()[character.group.type.value] if character.group.type.value else GroupType.descriptions()[character.group.type] }}" readonly>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label>Bank Balance</label>
+                        <input type="text" class="form-control" value="{{ character.group.bank_account }}" readonly>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">Update Group Name</button>
+                </form>
+
+                <h3>Members</h3>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Species</th>
+                            <th>Faction</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for member in character.group.characters %}
+                        <tr>
+                            <td>{{ member.name }}</td>
+                            <td>{{ member.species.name }}</td>
+                            <td>{{ member.faction.name }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+
+                <h3>Group Samples</h3>
+                <div class="mb-3">
+                    {% if character.group.samples.count() > 0 %}
+                        {% for sample in character.group.samples %}
+                            <span class="badge bg-info text-dark mr-1">{{ sample.name }}</span>
+                        {% endfor %}
+                    {% else %}
+                        <span class="text-muted">No samples assigned to this group.</span>
+                    {% endif %}
+                </div>
+
+                <div class="mt-4">
+                    <h3>Invite Character</h3>
+                    <form method="POST" action="{{ url_for('groups.invite_to_group', group_id=character.group.id) }}">
+                        <input type="hidden" name="admin_view" value="false">
+                        <input type="hidden" name="redirect_character_id" value="{{ character.id }}">
+                        <div class="input-group">
+                            <select class="form-control" name="character_id" required>
+                                <option value="">Select Character to Invite</option>
+                                {% for char in active_characters %}
+                                <option value="{{ char.id }}">{{ char.name }} ({{ char.faction.name }})</option>
+                                {% endfor %}
+                            </select>
+                            <button type="submit" class="btn btn-primary">Send Invite</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            <div class="card-footer d-flex">
+                {% if character.group.characters|length > 1 %}
+                    <form method="POST" action="{{ url_for('groups.leave_group_post', group_id=character.group.id) }}" id="leaveGroupForm" class="mr-2">
+                        <input type="hidden" name="admin_view" value="false">
+                        <input type="hidden" name="character_id" value="{{ character.id }}">
+                        <button type="button" class="btn btn-warning confirmation-trigger" data-form="leaveGroupForm" data-message="Are you sure you want to leave the group?">Leave Group</button>
+                    </form>
+                {% else %}
+                    <form method="POST" action="{{ url_for('groups.disband_group_post', group_id=character.group.id) }}" id="disbandGroupForm-last-member" class="mr-2">
+                        <input type="hidden" name="admin_view" value="false">
+                        <input type="hidden" name="character_id" value="{{ character.id }}">
+                        <button type="button" class="btn btn-danger confirmation-trigger" data-form="disbandGroupForm-last-member" data-message="Are you sure you want to disband the group?">Disband Group</button>
+                    </form>
+                {% endif %}
+            </div>
+        </div>
+    {% else %}
+        <div class="card mb-4">
+            <div class="card-header">
+                <h2>Create Group</h2>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('groups.create_group_post') }}">
+                    <input type="hidden" name="admin_view" value="false">
+                    <input type="hidden" name="character_id" value="{{ character.id }}">
+                    <div class="form-group mb-3">
+                        <label for="name">Group Name</label>
+                        <input type="text" class="form-control" id="name" name="name" required>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label for="type">Group Type</label>
+                        <select class="form-control form-select" id="type" name="type" required>
+                            <option value="">Select a group type...</option>
+                            {% for type in GroupType.values() %}
+                            <option value="{{ type }}">{{ GroupType.descriptions()[type] }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">Create Group</button>
+                </form>
+            </div>
+        </div>
+
+        {% if invites %}
+        <div class="card">
+            <div class="card-header">
+                <h2>Group Invites</h2>
+            </div>
+            <div class="card-body">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Group Name</th>
+                            <th>Type</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for invite in invites %}
+                        <tr>
+                            <td>{{ invite.group.name }}</td>
+                            <td>{{ GroupType.descriptions()[invite.group.type.value] }}</td>
+                            <td>
+                                <form method="POST" action="{{ url_for('groups.respond_to_invite_post', invite_id=invite.id) }}" class="d-inline">
+                                    <input type="hidden" name="admin_view" value="false">
+                                    <input type="hidden" name="character_id" value="{{ character.id }}">
+                                    <input type="hidden" name="action" value="accept">
+                                    <button type="submit" class="btn btn-success btn-sm">Accept</button>
+                                </form>
+                                <form method="POST" action="{{ url_for('groups.respond_to_invite_post', invite_id=invite.id) }}" class="d-inline">
+                                    <input type="hidden" name="admin_view" value="false">
+                                    <input type="hidden" name="character_id" value="{{ character.id }}">
+                                    <input type="hidden" name="action" value="decline">
+                                    <button type="submit" class="btn btn-danger btn-sm">Decline</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+    {% endif %}
+</div>
+
+<!-- Confirmation Modal -->
+<div class="modal fade" id="confirmationModal" tabindex="-1" aria-labelledby="confirmationModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="confirmationModalLabel">Confirm Action</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="confirmationModalBody">
+        <!-- Confirmation message will be injected here -->
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="confirmActionBtn">Confirm</button>
+      </div>
+    </div>
+  </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
 {{ super() }}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Character selector logic
+    const selector = document.getElementById('character-selector');
+    if (selector) {
+        selector.addEventListener('change', function() {
+            const selectedCharacterId = this.value;
+            const currentUrl = new URL(window.location.href);
+            currentUrl.searchParams.set('character_id', selectedCharacterId);
+            window.location.href = currentUrl.toString();
+        });
+    }
+
+    // Confirmation modal logic
+    const confirmationModalElement = document.getElementById('confirmationModal');
+    if (!confirmationModalElement) return;
+
+    const confirmationModal = new bootstrap.Modal(confirmationModalElement);
+    const confirmActionBtn = document.getElementById('confirmActionBtn');
+    const modalBody = document.getElementById('confirmationModalBody');
+    let formToSubmit = null;
+
+    document.querySelectorAll('.confirmation-trigger').forEach(button => {
+        button.addEventListener('click', function (event) {
+            event.preventDefault();
+            const message = this.dataset.message;
+            const formId = this.dataset.form;
+            formToSubmit = document.getElementById(formId);
+
+            if(modalBody) {
+                modalBody.textContent = message;
+            }
+            confirmationModal.show();
+        });
+    });
+
+    if(confirmActionBtn) {
+        confirmActionBtn.addEventListener('click', function () {
+            if (formToSubmit) {
+                formToSubmit.submit();
+            }
+        });
+    }
+});
+</script>
 <script src="{{ url_for('static', filename='js/pages/groups-list.js') }}"></script>
 {% endblock %}
