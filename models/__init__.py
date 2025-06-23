@@ -66,6 +66,7 @@ def create_default_data():
     create_default_items()
     create_default_conditions()
     create_default_cybernetics()
+    create_default_samples()
     create_default_events()
     create_default_templates()
 
@@ -763,6 +764,22 @@ def create_default_cybernetics():
                 content=f"<p>Description for {name} cybernetic.</p>",
             )
             db.session.add(wiki_section)
+        db.session.commit()
+
+
+def create_default_samples():
+    if not Sample.query.first():
+        logging.info("Creating default samples")
+        samples = [
+            ("Sample 1", ScienceType.GENERIC, False, "Sample 1 description"),
+            ("Sample 2", ScienceType.GENERIC, True, "Sample 2 description"),
+        ]
+        for name, type, is_researched, description in samples:
+            logging.info(f"Adding sample: {name}")
+            sample = Sample(
+                name=name, type=type, is_researched=is_researched, description=description
+            )
+            db.session.add(sample)
         db.session.commit()
 
 

@@ -1,3 +1,5 @@
+from bs4 import BeautifulSoup
+
 from models.enums import CharacterStatus
 from models.extensions import db
 from models.tools.character import Character
@@ -22,7 +24,7 @@ class TestBankingAccess:
         """Test bank page access for regular user without active character."""
         with test_client as c:
             with c.session_transaction() as sess:
-                sess["_user_id"] = str(regular_user.id)
+                sess["_user_id"] = regular_user.id
             response = c.get("/banking/", follow_redirects=True)
             assert response.status_code == 200
             assert b"You need an active character to access banking" in response.data
@@ -33,7 +35,7 @@ class TestBankingAccess:
         """Test bank page access for regular user with active character."""
         with test_client as c:
             with c.session_transaction() as sess:
-                sess["_user_id"] = str(regular_user.id)
+                sess["_user_id"] = regular_user.id
             response = c.get("/banking/")
             assert response.status_code == 200
             assert character_with_faction.name.encode() in response.data
@@ -42,7 +44,7 @@ class TestBankingAccess:
         """Test bank page access for admin user."""
         with test_client as c:
             with c.session_transaction() as sess:
-                sess["_user_id"] = str(user_admin.id)
+                sess["_user_id"] = user_admin.id
             response = c.get("/banking/")
             assert response.status_code == 200
             assert character_with_faction.name.encode() in response.data
@@ -54,7 +56,7 @@ class TestBankingAccess:
         """Test bank page access for admin user with selected accounts."""
         with test_client as c:
             with c.session_transaction() as sess:
-                sess["_user_id"] = str(user_admin.id)
+                sess["_user_id"] = user_admin.id
             response = c.get(
                 f"/banking/?character_id={character_with_faction.id}&" f"group_id={group.id}"
             )
@@ -76,7 +78,7 @@ class TestUpdateBalance:
         """Test update balance as regular user (should fail)."""
         with test_client as c:
             with c.session_transaction() as sess:
-                sess["_user_id"] = str(regular_user.id)
+                sess["_user_id"] = regular_user.id
             response = c.post(
                 "/banking/update-balance",
                 data={
@@ -91,7 +93,7 @@ class TestUpdateBalance:
         """Test update balance for character as admin."""
         with test_client as c:
             with c.session_transaction() as sess:
-                sess["_user_id"] = str(user_admin.id)
+                sess["_user_id"] = user_admin.id
             response = c.post(
                 "/banking/update-balance",
                 data={
@@ -109,7 +111,7 @@ class TestUpdateBalance:
         """Test update balance for group as admin."""
         with test_client as c:
             with c.session_transaction() as sess:
-                sess["_user_id"] = str(user_admin.id)
+                sess["_user_id"] = user_admin.id
             response = c.post(
                 "/banking/update-balance",
                 data={
@@ -127,7 +129,7 @@ class TestUpdateBalance:
         """Test update balance with invalid amount."""
         with test_client as c:
             with c.session_transaction() as sess:
-                sess["_user_id"] = str(user_admin.id)
+                sess["_user_id"] = user_admin.id
             response = c.post(
                 "/banking/update-balance",
                 data={
@@ -142,7 +144,7 @@ class TestUpdateBalance:
         """Test update balance for nonexistent character."""
         with test_client as c:
             with c.session_transaction() as sess:
-                sess["_user_id"] = str(user_admin.id)
+                sess["_user_id"] = user_admin.id
             response = c.post(
                 "/banking/update-balance",
                 data={
@@ -175,14 +177,14 @@ class TestTransfer:
         """Test transfer from regular user's own character to admin character."""
         with test_client as c:
             with c.session_transaction() as sess:
-                sess["_user_id"] = str(regular_user.id)
+                sess["_user_id"] = regular_user.id
             response = c.post(
                 "/banking/transfer",
                 data={
-                    "source_type": "character",
-                    "source_id": str(character_with_faction.id),
-                    "target_type": "character",
-                    "target_id": str(admin_character.id),
+                    "source_type_hidden": "character",
+                    "source_id_hidden": str(character_with_faction.id),
+                    "target_type_hidden": "character",
+                    "target_id_hidden": str(admin_character.id),
                     "amount": "100",
                 },
             )
@@ -197,14 +199,14 @@ class TestTransfer:
         """Test transfer from regular user's own group to admin character."""
         with test_client as c:
             with c.session_transaction() as sess:
-                sess["_user_id"] = str(regular_user.id)
+                sess["_user_id"] = regular_user.id
             response = c.post(
                 "/banking/transfer",
                 data={
-                    "source_type": "group",
-                    "source_id": str(character_with_group.group_id),
-                    "target_type": "character",
-                    "target_id": str(admin_character.id),
+                    "source_type_hidden": "group",
+                    "source_id_hidden": str(character_with_group.group_id),
+                    "target_type_hidden": "character",
+                    "target_id_hidden": str(admin_character.id),
                     "amount": "100",
                 },
             )
@@ -220,14 +222,14 @@ class TestTransfer:
         """Test transfer between any accounts as admin."""
         with test_client as c:
             with c.session_transaction() as sess:
-                sess["_user_id"] = str(user_admin.id)
+                sess["_user_id"] = user_admin.id
             response = c.post(
                 "/banking/transfer",
                 data={
-                    "source_type": "character",
-                    "source_id": str(character_with_faction.id),
-                    "target_type": "group",
-                    "target_id": str(group.id),
+                    "source_type_hidden": "character",
+                    "source_id_hidden": str(character_with_faction.id),
+                    "target_type_hidden": "group",
+                    "target_id_hidden": str(group.id),
                     "amount": "100",
                 },
             )
@@ -254,14 +256,14 @@ class TestTransfer:
 
         with test_client as c:
             with c.session_transaction() as sess:
-                sess["_user_id"] = str(regular_user.id)
+                sess["_user_id"] = regular_user.id
             response = c.post(
                 "/banking/transfer",
                 data={
-                    "source_type": "character",
-                    "source_id": str(other_character.id),
-                    "target_type": "character",
-                    "target_id": str(regular_user.id),
+                    "source_type_hidden": "character",
+                    "source_id_hidden": str(other_character.id),
+                    "target_type_hidden": "character",
+                    "target_id_hidden": str(regular_user.id),
                     "amount": "100",
                 },
             )
@@ -273,14 +275,14 @@ class TestTransfer:
         """Test transfer from unauthorized group (should fail)."""
         with test_client as c:
             with c.session_transaction() as sess:
-                sess["_user_id"] = str(regular_user.id)
+                sess["_user_id"] = regular_user.id
             response = c.post(
                 "/banking/transfer",
                 data={
-                    "source_type": "group",
-                    "source_id": str(group.id),
-                    "target_type": "character",
-                    "target_id": str(regular_user.id),
+                    "source_type_hidden": "group",
+                    "source_id_hidden": str(group.id),
+                    "target_type_hidden": "character",
+                    "target_id_hidden": str(regular_user.id),
                     "amount": "100",
                 },
             )
@@ -292,14 +294,14 @@ class TestTransfer:
         """Test transfer with insufficient funds."""
         with test_client as c:
             with c.session_transaction() as sess:
-                sess["_user_id"] = str(regular_user.id)
+                sess["_user_id"] = regular_user.id
             response = c.post(
                 "/banking/transfer",
                 data={
-                    "source_type": "character",
-                    "source_id": str(character_with_faction.id),
-                    "target_type": "character",
-                    "target_id": str(admin_character.id),
+                    "source_type_hidden": "character",
+                    "source_id_hidden": str(character_with_faction.id),
+                    "target_type_hidden": "character",
+                    "target_id_hidden": str(admin_character.id),
                     "amount": "1000",  # More than available (500)
                 },
             )
@@ -311,14 +313,14 @@ class TestTransfer:
         """Test transfer with invalid amount."""
         with test_client as c:
             with c.session_transaction() as sess:
-                sess["_user_id"] = str(regular_user.id)
+                sess["_user_id"] = regular_user.id
             response = c.post(
                 "/banking/transfer",
                 data={
-                    "source_type": "character",
-                    "source_id": str(character_with_faction.id),
-                    "target_type": "character",
-                    "target_id": str(admin_character.id),
+                    "source_type_hidden": "character",
+                    "source_id_hidden": str(character_with_faction.id),
+                    "target_type_hidden": "character",
+                    "target_id_hidden": str(admin_character.id),
                     "amount": "invalid",
                 },
             )
@@ -334,10 +336,10 @@ class TestTransfer:
             response = c.post(
                 "/banking/transfer",
                 data={
-                    "source_type": "character",
-                    "source_id": str(character_with_faction.id),
-                    "target_type": "character",
-                    "target_id": str(admin_character.id),
+                    "source_type_hidden": "character",
+                    "source_id_hidden": str(character_with_faction.id),
+                    "target_type_hidden": "character",
+                    "target_id_hidden": str(admin_character.id),
                     "amount": "-100",
                 },
             )
@@ -353,11 +355,78 @@ class TestTransfer:
             response = c.post(
                 "/banking/transfer",
                 data={
-                    "source_type": "character",
-                    "source_id": str(character_with_faction.id),
-                    "target_type": "character",
-                    "target_id": str(admin_character.id),
+                    "source_type_hidden": "character",
+                    "source_id_hidden": str(character_with_faction.id),
+                    "target_type_hidden": "character",
+                    "target_id_hidden": str(admin_character.id),
                     "amount": "0",
                 },
             )
             assert response.status_code == 302  # Redirect on error (zero amount)
+
+
+def test_banking_page_for_multi_char_user(test_client, db, npc_user_with_chars, new_user):
+    """
+    GIVEN a logged-in NPC user with multiple active characters
+    WHEN they visit the banking page
+    THEN the page should only show their own characters in the selection dropdowns
+    """
+    user, char1, char2 = npc_user_with_chars
+    with test_client.session_transaction() as session:
+        session["_user_id"] = user.id
+        session["_fresh"] = True
+
+    response = test_client.get("/banking/")
+    assert response.status_code == 200
+
+    # Check that both characters are present in the page content
+    assert b"NPC Char 1" in response.data
+    assert b"NPC Char 2" in response.data
+
+    # Check that another user's character is not present
+    other_user_char = Character(
+        name="Not Your Char",
+        status=CharacterStatus.ACTIVE.value,
+        user_id=new_user.id,
+        species_id=char1.species_id,
+    )
+    db.session.add(other_user_char)
+    db.session.commit()
+
+    response = test_client.get("/banking/")
+    assert b"Not Your Char" in response.data  # It should be in the target list
+    soup = BeautifulSoup(response.data, "html.parser")
+    source_options = [opt.text for opt in soup.select("#source_account_select option")]
+    assert "Not Your Char (Character)" not in source_options
+
+
+def test_transfer_between_own_characters(test_client, db, npc_user_with_chars):
+    """
+    GIVEN a logged-in NPC user with multiple active characters
+    WHEN they transfer money between their own characters
+    THEN the transfer should succeed and balances should be updated
+    """
+    user, char1, char2 = npc_user_with_chars
+    char1.bank_account = 1000
+    char2.bank_account = 500
+    db.session.commit()
+
+    with test_client.session_transaction() as session:
+        session["_user_id"] = user.id
+        session["_fresh"] = True
+
+    transfer_data = {
+        "source_type_hidden": "character",
+        "source_id_hidden": char1.id,
+        "target_type_hidden": "character",
+        "target_id_hidden": char2.id,
+        "amount": "150",
+    }
+    response = test_client.post("/banking/transfer", data=transfer_data, follow_redirects=True)
+    assert response.status_code == 200
+
+    db.session.refresh(char1)
+    db.session.refresh(char2)
+
+    assert char1.bank_account == 850
+    assert char2.bank_account == 650

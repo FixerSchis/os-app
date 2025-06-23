@@ -38,9 +38,7 @@ def user_management_edit_user(user_id):
     if current_user.has_role(Role.OWNER.value):
         roles.append(Role.ADMIN.value)
 
-    characters = []
-    if user.player_id:
-        characters = Character.query.filter_by(player_id=user.player_id).all()
+    characters = Character.query.filter_by(user_id=user.id).all()
 
     factions = Faction.query.all()
     return render_template(
@@ -159,7 +157,7 @@ def user_management_edit_user_post(user_id):
         new_status = request.form.get("status")
         if character_id and new_status in CharacterStatus.values():
             character = db.session.get(Character, character_id)
-            if character and character.player_id == user.player_id:
+            if character and character.user_id == user.id:
                 character.status = new_status
                 db.session.commit()
                 flash("Character status updated successfully")
@@ -170,9 +168,7 @@ def user_management_edit_user_post(user_id):
     if current_user.has_role(Role.OWNER.value):
         roles.append(Role.ADMIN.value)
 
-    characters = []
-    if user.player_id:
-        characters = Character.query.filter_by(player_id=user.player_id).all()
+    characters = Character.query.filter_by(user_id=user.id).all()
 
     return render_template(
         "user_management/edit.html",

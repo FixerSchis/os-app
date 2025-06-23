@@ -4,164 +4,164 @@
 
 {% block content %}
 <div class="container">
-    <div class="banking-management">
-        <h1>Banking</h1>
+    <h1>Banking</h1>
 
-        <div class="row">
-            <!-- Character Balance -->
-            <div class="col-md-6">
-                <div class="card mb-4">
-                    <div class="card-header">
-                        <h2>Character Balance</h2>
-                    </div>
-                    <div class="card-body">
-                        {% if current_user.has_role('user_admin') %}
-                            <div class="form-group mb-3">
-                                <label for="character_select">Select Character</label>
-                                <select class="form-control select2" id="character_select">
-                                    <option value="">Select a character...</option>
-                                    {% for char in all_characters %}
-                                    <option value="{{ char.id }}" {% if selected_character and selected_character.id == char.id %}selected{% endif %}>
-                                        {{ char.name }}
-                                    </option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                        {% endif %}
-
-                        {% if selected_character or active_character %}
-                            {% set character = selected_character or active_character %}
-                            <div class="balance-display">
-                                <h3>{{ character.name }}</h3>
-                                {% if current_user.has_role('user_admin') %}
-                                    <form method="POST" action="{{ url_for('banking.update_balance') }}" class="form-inline">
-                                        <input type="hidden" name="account_type" value="character">
-                                        <input type="hidden" name="account_id" value="{{ character.id }}">
-                                        <div class="input-group">
-                                            <input type="number" step="1" class="form-control" name="balance" value="{{ character.bank_account }}" required>
-                                            <div class="input-group-append">
-                                                <button type="submit" class="btn btn-primary">Update</button>
-                                            </div>
-                                        </div>
-                                    </form>
-                                {% else %}
-                                    <h4>Balance: {{ character.bank_account }}</h4>
-                                {% endif %}
-                            </div>
-                        {% else %}
-                            <p>No character selected</p>
-                        {% endif %}
-                    </div>
+    <div class="row">
+        <!-- Balances Display -->
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h2>Character Balance</h2>
                 </div>
-            </div>
-
-            <!-- Group Balance -->
-            <div class="col-md-6">
-                <div class="card mb-4">
-                    <div class="card-header">
-                        <h2>Group Balance</h2>
-                    </div>
-                    <div class="card-body">
-                        {% if current_user.has_role('user_admin') %}
-                            <div class="form-group mb-3">
-                                <label for="group_select">Select Group</label>
-                                <select class="form-control select2" id="group_select">
-                                    <option value="">Select a group...</option>
-                                    {% for group in all_groups %}
-                                    <option value="{{ group.id }}" {% if selected_group and selected_group.id == group.id %}selected{% endif %}>
-                                        {{ group.name }}
-                                    </option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                        {% endif %}
-
-                        {% if selected_group or (active_character and active_character.group) %}
-                            {% set group = selected_group or active_character.group %}
-                            <div class="balance-display">
-                                <h3>{{ group.name }}</h3>
-                                {% if current_user.has_role('user_admin') %}
-                                    <form method="POST" action="{{ url_for('banking.update_balance') }}" class="form-inline">
-                                        <input type="hidden" name="account_type" value="group">
-                                        <input type="hidden" name="account_id" value="{{ group.id }}">
-                                        <div class="input-group">
-                                            <input type="number" step="1" class="form-control" name="balance" value="{{ group.bank_account }}" required>
-                                            <div class="input-group-append">
-                                                <button type="submit" class="btn btn-primary">Update</button>
-                                            </div>
-                                        </div>
-                                    </form>
-                                {% else %}
-                                    <h4>Balance: {{ group.bank_account }}</h4>
-                                {% endif %}
-                            </div>
-                        {% else %}
-                            <p>No group selected</p>
-                        {% endif %}
-                    </div>
+                <div class="card-body">
+                    {% if current_user.has_role('user_admin') or (characters_for_select and characters_for_select|length > 1) %}
+                        <div class="form-group mb-3">
+                            <label for="character_select">Select Character</label>
+                            <select class="form-control select2" id="character_select">
+                                <option value="">Select a character...</option>
+                                {% for char in characters_for_select %}
+                                <option value="{{ char.id }}" data-balance="{{ char.bank_account }}">{{ char.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <h4 id="character_balance_display" class="mt-2" style="display:none;">Balance: <span id="character_balance"></span></h4>
+                    {% elif active_character %}
+                        <h3>{{ active_character.name }}</h3>
+                        <h4>Balance: {{ active_character.bank_account }}</h4>
+                    {% endif %}
                 </div>
             </div>
         </div>
 
-        <!-- Transfer Form -->
-        {% if source_accounts %}
-        <div class="card">
-            <div class="card-header">
-                <h2>Transfer Money</h2>
-            </div>
-            <div class="card-body">
-                <form method="POST" action="{{ url_for('banking.transfer') }}">
-                    <div class="row">
-                        <div class="col-md-3">
-                            <div class="form-group">
-                                <label for="source_type">From</label>
-                                <select class="form-control" id="source_type" name="source_type" required>
-                                    <option value="">Select source...</option>
-                                    {% for account in source_accounts %}
-                                    <option value="{{ account.type }}" data-id="{{ account.id }}" data-balance="{{ account.balance }}">
-                                        {{ account.name }}
-                                    </option>
-                                    {% endfor %}
-                                </select>
-                            </div>
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h2>Group Balance</h2>
+                </div>
+                <div class="card-body">
+                    {% if current_user.has_role('user_admin') or (groups_for_select and groups_for_select|length > 0) %}
+                        <div class="form-group mb-3">
+                            <label for="group_select">Select Group</label>
+                            <select class="form-control select2" id="group_select">
+                                <option value="">Select a group...</option>
+                                {% for group in groups_for_select %}
+                                <option value="{{ group.id }}" data-balance="{{ group.bank_account }}">{{ group.name }}</option>
+                                {% endfor %}
+                            </select>
                         </div>
-                        <div class="col-md-3">
-                            <div class="form-group">
-                                <label for="amount">Amount</label>
-                                <input type="number" step="1" class="form-control" id="amount" name="amount" required min="1">
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="form-group">
-                                <label for="target_type">To</label>
-                                <select class="form-control select2" id="target_type" name="target_type" required>
-                                    <option value="">Select target...</option>
-                                    {% for account in target_accounts %}
-                                    <option value="{{ account.type }}" data-id="{{ account.id }}">
-                                        {{ account.name }}
-                                    </option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="form-group">
-                                <label>&nbsp;</label>
-                                <button type="submit" class="btn btn-primary btn-block">Transfer</button>
-                            </div>
-                        </div>
-                    </div>
-                    <input type="hidden" name="source_id" id="source_id">
-                    <input type="hidden" name="target_id" id="target_id">
-                </form>
+                        <h4 id="group_balance_display" class="mt-2" style="display:none;">Balance: <span id="group_balance"></span></h4>
+                    {% elif active_character_group %}
+                        <h3>{{ active_character_group.name }}</h3>
+                        <h4>Balance: {{ active_character_group.bank_account }}</h4>
+                    {% else %}
+                        <p>No group associated with the active character.</p>
+                    {% endif %}
+                </div>
             </div>
         </div>
-        {% endif %}
+    </div>
+
+    <!-- Transfer Form -->
+    <div class="card">
+        <div class="card-header">
+            <h2>Transfer Money</h2>
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('banking.transfer') }}">
+                <div class="row">
+                    <div class="col-md-4">
+                        <label for="source_account">From</label>
+                        {% if show_source_dropdown is defined and not show_source_dropdown %}
+                            <input type="text" class="form-control" value="{{ active_character.name }} (Balance: {{ active_character.bank_account }})" readonly>
+                            <input type="hidden" name="source_type" value="character">
+                            <input type="hidden" name="source_id" value="{{ active_character.id }}">
+                        {% else %}
+                            <select class="form-control select2" id="source_account" name="source_account" required>
+                                <option value="">Select source account...</option>
+                                {% for account in source_accounts %}
+                                <option value="{{ account.type }}_{{ account.id }}">
+                                    {{ account.name }} (Balance: {{ account.balance }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-3">
+                        <label for="amount">Amount</label>
+                        <input type="number" class="form-control" id="amount" name="amount" required value="0">
+                    </div>
+                    <div class="col-md-4">
+                        <label for="target_account">To</label>
+                        <select class="form-control select2" id="target_account" name="target_account" required>
+                            <option value="">Select target account...</option>
+                            {% for account in target_accounts %}
+                            <option value="{{ account.type }}_{{ account.id }}">{{ account.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-1 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary">Transfer</button>
+                    </div>
+                </div>
+                <input type="hidden" name="source_type" id="source_type_hidden">
+                <input type="hidden" name="source_id" id="source_id_hidden">
+                <input type="hidden" name="target_type" id="target_type_hidden">
+                <input type="hidden" name="target_id" id="target_id_hidden">
+            </form>
+        </div>
     </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
 {{ super() }}
-<script src="{{ url_for('static', filename='js/pages/banking.js') }}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // Initialize select2
+    $('.select2').select2({
+        theme: 'bootstrap-5'
+    });
+
+    // Logic to update balance display for dropdowns
+    function setupBalanceDisplay(selectId, balanceDisplayId, balanceSpanId) {
+        const select = document.getElementById(selectId);
+        const display = document.getElementById(balanceDisplayId);
+        const balanceSpan = document.getElementById(balanceSpanId);
+
+        if (select) {
+            select.addEventListener('change', function() {
+                const selectedOption = this.options[this.selectedIndex];
+                if (selectedOption && selectedOption.value) {
+                    const balance = selectedOption.getAttribute('data-balance');
+                    balanceSpan.textContent = balance;
+                    display.style.display = 'block';
+                } else {
+                    display.style.display = 'none';
+                }
+            });
+        }
+    }
+
+    setupBalanceDisplay('character_select', 'character_balance_display', 'character_balance');
+    setupBalanceDisplay('group_select', 'group_balance_display', 'group_balance');
+
+    // Logic to split combined dropdown values into hidden inputs for form submission
+    const transferForm = document.querySelector('form[action="{{ url_for("banking.transfer") }}"]');
+    if (transferForm) {
+        transferForm.addEventListener('submit', function(e) {
+            const sourceSelect = document.getElementById('source_account');
+            if (sourceSelect) {
+                const [sourceType, sourceId] = sourceSelect.value.split('_');
+                document.getElementById('source_type_hidden').value = sourceType;
+                document.getElementById('source_id_hidden').value = sourceId;
+            }
+
+            const targetSelect = document.getElementById('target_account');
+            const [targetType, targetId] = targetSelect.value.split('_');
+            document.getElementById('target_type_hidden').value = targetType;
+            document.getElementById('target_id_hidden').value = targetId;
+        });
+    }
+});
+</script>
 {% endblock %}
