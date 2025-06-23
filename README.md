@@ -488,10 +488,14 @@ Group=www-data
 
 Required environment variables:
 - `SECRET_KEY`: Flask secret key
-- `DATABASE_URL`: Database connection string
+- `DATABASE_PATH`: Database directory path (defaults to `/var/lib/os-app` in production, `./db` in development)
 - `MAIL_SERVER`: SMTP server for email
 - `MAIL_USERNAME`: Email username
 - `MAIL_PASSWORD`: Email password
+
+**Database Configuration:**
+- **Development**: Database is stored in `./db/oslrp.db` (relative to project root)
+- **Production**: Database is stored in `/var/lib/os-app/oslrp.db` (persistent across deployments)
 
 ## License
 

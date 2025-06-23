@@ -205,10 +205,11 @@ The deployment pipeline automatically:
 1. **Creates Deployment Package**: Excludes development files and creates optimized archive
 2. **Backs Up Current Version**: Creates timestamped backup before deployment
 3. **Deploys New Code**: Extracts and sets up new version
-4. **Runs Migrations**: Executes database migrations automatically
-5. **Restarts Service**: Restarts the application with new code
-6. **Health Check**: Verifies the service is running correctly
-7. **Cleanup**: Removes old backups (keeps last 5)
+4. **Preserves Database**: Maintains database in persistent location (`/var/lib/os-app/`)
+5. **Runs Migrations**: Executes database migrations automatically
+6. **Restarts Service**: Restarts the application with new code
+7. **Health Check**: Verifies the service is running correctly
+8. **Cleanup**: Removes old backups (keeps last 5)
 
 ### Manual Deployment
 
@@ -220,6 +221,7 @@ cd /opt/os-app
 git pull origin master
 source venv/bin/activate
 pip install -r requirements.txt
+export DATABASE_PATH=/var/lib/os-app
 flask db upgrade
 sudo systemctl restart os-app
 ```
