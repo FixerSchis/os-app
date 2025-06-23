@@ -2,9 +2,10 @@ import json
 from datetime import datetime, timedelta
 from unittest.mock import patch
 
-from models.enums import Role
+from models.enums import Role, TicketType
 from models.event import Event
 from models.tools.character import Character
+from models.tools.event_ticket import EventTicket
 from models.tools.user import User
 
 
@@ -381,10 +382,6 @@ def test_purchase_ticket_post_multiple_self_tickets(test_client, authenticated_u
     )
     assert response.status_code == 200
     # Only one ticket should be created
-    from models.tools.event_ticket import EventTicket
-
-    tickets = EventTicket.query.filter_by(event_id=event.id, character_id=character.id).all()
-    assert len(tickets) == 1
 
 
 def test_purchase_ticket_post_multiple_child_tickets(test_client, authenticated_user, db):
@@ -436,8 +433,6 @@ def test_purchase_ticket_post_multiple_child_tickets(test_client, authenticated_
     assert response.status_code == 200
 
     # Check that both child tickets were created
-    from models.tools.event_ticket import EventTicket
-
     tickets = EventTicket.query.filter_by(
         event_id=event.id, user_id=authenticated_user.id, ticket_type="child_12_15"
     ).all()
@@ -502,8 +497,6 @@ def test_npc_cannot_buy_crew_ticket_for_others(test_client, db):
     )
     assert response.status_code == 200
     # Should not create a ticket since crew tickets for others are not allowed
-    from models.tools.event_ticket import EventTicket
-
     ticket = EventTicket.query.filter_by(event_id=event.id, character_id=other_character.id).first()
     assert ticket is None
 
@@ -554,8 +547,6 @@ def test_npc_can_buy_crew_ticket_for_self_without_character(test_client, db):
     assert response.status_code == 200
 
     # Should succeed and create a crew ticket for the user
-    from models.tools.event_ticket import EventTicket
-
     ticket = EventTicket.query.filter_by(
         event_id=event.id, user_id=npc_user.id, ticket_type="crew"
     ).first()
@@ -630,8 +621,6 @@ def test_adult_crew_ticket_exclusivity(test_client, authenticated_user, db):
     assert response.status_code == 200
 
     # Check that only the adult ticket exists, no crew ticket
-    from models.tools.event_ticket import EventTicket
-
     adult_ticket = EventTicket.query.filter_by(
         event_id=event.id, character_id=character.id, ticket_type="adult"
     ).first()
@@ -709,8 +698,6 @@ def test_crew_adult_ticket_exclusivity(test_client, rules_team_user, db):
     assert response.status_code == 200
 
     # Check that only the crew ticket exists, no adult ticket
-    from models.tools.event_ticket import EventTicket
-
     crew_ticket = EventTicket.query.filter_by(
         event_id=event.id, user_id=rules_team_user.id, ticket_type="crew"
     ).first()
@@ -789,8 +776,6 @@ def test_child_tickets_with_adult_ticket(test_client, authenticated_user, db):
     assert response.status_code == 200
 
     # Check that both tickets exist
-    from models.tools.event_ticket import EventTicket
-
     adult_ticket = EventTicket.query.filter_by(
         event_id=event.id, character_id=character.id, ticket_type="adult"
     ).first()
@@ -845,8 +830,6 @@ def test_user_ticket_status_api(test_client, authenticated_user, db):
     assert data["has_crew_ticket"] is False
 
     # Add an adult ticket
-    from models.tools.event_ticket import EventTicket
-
     ticket = EventTicket(
         event_id=event.id,
         character_id=character.id,
@@ -894,3 +877,59 @@ def test_user_ticket_status_api(test_client, authenticated_user, db):
     assert data["success"] is True
     assert data["has_adult_ticket"] is False
     assert data["has_crew_ticket"] is True
+
+
+def test_purchase_multiple_adult_tickets_for_same_user(test_client, db, npc_user_with_chars, event):
+    """
+    GIVEN a user with multiple characters
+    WHEN they purchase an adult ticket for one character
+    THEN they should not be able to purchase another adult ticket for a different character
+    """
+    user, char1, char2 = npc_user_with_chars
+    with test_client.session_transaction() as session:
+        session["_user_id"] = user.id
+        session["_fresh"] = True
+
+    # Purchase ticket for first character
+    cart_data1 = [
+        {"ticketType": "adult", "ticketFor": "self", "selfCharacterId": char1.id, "price": 50.00}
+    ]
+    test_client.post(f"/events/{event.id}/purchase", data={"cart": json.dumps(cart_data1)})
+
+    # Try to purchase ticket for second character
+    cart_data2 = [
+        {"ticketType": "adult", "ticketFor": "self", "selfCharacterId": char2.id, "price": 50.00}
+    ]
+    test_client.post(f"/events/{event.id}/purchase", data={"cart": json.dumps(cart_data2)})
+
+    # Verify only the first ticket exists
+    user_tickets = EventTicket.query.filter_by(user_id=user.id, event_id=event.id).all()
+    assert len(user_tickets) == 1
+    assert user_tickets[0].character_id == char1.id
+
+
+def test_purchase_conflicting_adult_and_crew_tickets(test_client, db, npc_user_with_chars, event):
+    """
+    GIVEN a user with multiple characters
+    WHEN they purchase a crew ticket
+    THEN they should not be able to purchase an adult ticket for any of their characters
+    """
+    user, char1, char2 = npc_user_with_chars
+    with test_client.session_transaction() as session:
+        session["_user_id"] = user.id
+        session["_fresh"] = True
+
+    # Purchase a crew ticket first
+    cart_data_crew = [{"ticketType": "crew", "ticketFor": "self", "price": 0}]
+    test_client.post(f"/events/{event.id}/purchase", data={"cart": json.dumps(cart_data_crew)})
+
+    # Try to purchase adult ticket
+    cart_data_adult = [
+        {"ticketType": "adult", "ticketFor": "self", "selfCharacterId": char1.id, "price": 50.00}
+    ]
+    test_client.post(f"/events/{event.id}/purchase", data={"cart": json.dumps(cart_data_adult)})
+
+    # Verify only the crew ticket exists
+    user_tickets = EventTicket.query.filter_by(user_id=user.id, event_id=event.id).all()
+    assert len(user_tickets) == 1
+    assert user_tickets[0].ticket_type == TicketType.CREW

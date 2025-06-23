@@ -1,6 +1,7 @@
 import os
 import sys
 import uuid
+from datetime import datetime, timedelta
 
 import pytest
 
@@ -266,6 +267,26 @@ def npc_user(db_session):
     db_session.add(user)
     db_session.commit()
     return user
+
+
+@pytest.fixture(scope="function")
+def npc_user_with_chars(db_session, npc_user, species):
+    """Fixture for creating an NPC user with multiple active characters."""
+    char1 = Character(
+        name="NPC Char 1",
+        user_id=npc_user.id,
+        status=CharacterStatus.ACTIVE.value,
+        species_id=species.id,
+    )
+    char2 = Character(
+        name="NPC Char 2",
+        user_id=npc_user.id,
+        status=CharacterStatus.ACTIVE.value,
+        species_id=species.id,
+    )
+    db_session.add_all([char1, char2])
+    db_session.commit()
+    return npc_user, char1, char2
 
 
 @pytest.fixture(scope="function")
@@ -646,6 +667,29 @@ def prerequisite_skill(db_session):
     db_session.add(ps)
     db_session.commit()
     return ps
+
+
+@pytest.fixture(scope="function")
+def event(db_session):
+    """Fixture for creating a bookable event."""
+    event = Event(
+        event_number="TEST999",
+        name="Test Event",
+        event_type="mainline",
+        description="A test event for ticket purchasing.",
+        early_booking_deadline=datetime.now() + timedelta(days=30),
+        start_date=datetime.now() + timedelta(days=45),
+        end_date=datetime.now() + timedelta(days=47),
+        location="Test Location",
+        standard_ticket_price=50.00,
+        early_booking_ticket_price=45.00,
+        child_ticket_price_12_15=25.00,
+        child_ticket_price_7_11=15.00,
+        child_ticket_price_under_7=0.00,
+    )
+    db_session.add(event)
+    db_session.commit()
+    return event
 
 
 @pytest.fixture(scope="function")
