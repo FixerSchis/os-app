@@ -64,7 +64,7 @@ jobs:
         rm -rf /tmp/deploy-temp
 
     - name: Copy deployment package to server
-      uses: appleboy/scp-action@v0.1.7
+      uses: appleboy/scp-action@v1.0.0
       with:
         host: ${{ secrets.DEPLOY_HOST }}
         username: os-app
