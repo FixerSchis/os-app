@@ -14,57 +14,9 @@ banking_bp = Blueprint("banking", __name__)
 @login_required
 @email_verified_required
 def bank():
-    if not current_user.has_role("user_admin") and not current_user.has_active_character():
-        flash("You need an active character to access banking", "error")
-        return redirect(url_for("characters.character_list"))
-
-    # Get active character for non-admin users
-    active_character = None
-    if not current_user.has_role("user_admin"):
-        active_character = Character.query.filter_by(
-            user_id=current_user.id, status=CharacterStatus.ACTIVE.value
-        ).first()
-
-    # Get all characters and groups for all users (not just admins)
+    # --- Data for Transfer Target Dropdown (always all active accounts) ---
     all_characters = Character.query.filter_by(status=CharacterStatus.ACTIVE.value).all()
     all_groups = Group.query.all()
-
-    # Get selected accounts if admin
-    selected_character = None
-    selected_group = None
-    if current_user.has_role("user_admin"):
-        character_id = request.args.get("character_id")
-        group_id = request.args.get("group_id")
-
-        if character_id:
-            selected_character = db.session.get(Character, character_id)
-        if group_id:
-            selected_group = db.session.get(Group, group_id)
-
-    # Get available source accounts for transfer
-    source_accounts = []
-    if active_character:
-        for char in all_characters:
-            source_accounts.append(
-                {
-                    "type": "character",
-                    "id": char.id,
-                    "name": f"{char.name} (Character)",
-                    "balance": char.bank_account,
-                }
-            )
-        # Add all group accounts
-        for group in all_groups:
-            source_accounts.append(
-                {
-                    "type": "group",
-                    "id": group.id,
-                    "name": f"{group.name} (Group)",
-                    "balance": group.bank_account,
-                }
-            )
-
-    # Get all target accounts for transfer (now always filled)
     target_accounts = []
     for char in all_characters:
         target_accounts.append(
@@ -73,13 +25,66 @@ def bank():
     for group in all_groups:
         target_accounts.append({"type": "group", "id": group.id, "name": f"{group.name} (Group)"})
 
+    # --- Logic for Admins ---
+    if current_user.has_role("user_admin"):
+        source_accounts = target_accounts  # Admins can source from any account
+        return render_template(
+            "banking/bank.html",
+            characters_for_select=all_characters,
+            groups_for_select=all_groups,
+            source_accounts=source_accounts,
+            target_accounts=target_accounts,
+        )
+
+    # --- Logic for non-admins ---
+    user_characters = Character.query.filter_by(
+        user_id=current_user.id, status=CharacterStatus.ACTIVE.value
+    ).all()
+
+    if not user_characters:
+        flash("You need an active character to access banking", "error")
+        return redirect(url_for("characters.character_list"))
+
+    user_groups = list({char.group for char in user_characters if char.group})
+    source_accounts = []
+    for char in user_characters:
+        source_accounts.append(
+            {
+                "type": "character",
+                "id": char.id,
+                "name": f"{char.name} (Character)",
+                "balance": char.bank_account,
+            }
+        )
+    for group in user_groups:
+        source_accounts.append(
+            {
+                "type": "group",
+                "id": group.id,
+                "name": f"{group.name} (Group)",
+                "balance": group.bank_account,
+            }
+        )
+
+    # --- Multiple active characters ---
+    if len(user_characters) > 1:
+        return render_template(
+            "banking/bank.html",
+            characters_for_select=user_characters,
+            groups_for_select=user_groups,
+            source_accounts=source_accounts,
+            target_accounts=target_accounts,
+        )
+
+    # --- Single active character ---
+    single_character = user_characters[0]
+    show_source_dropdown = single_character.group is not None
+
     return render_template(
         "banking/bank.html",
-        active_character=active_character,
-        selected_character=selected_character,
-        selected_group=selected_group,
-        all_characters=all_characters,
-        all_groups=all_groups,
+        active_character=single_character,
+        active_character_group=single_character.group,
+        show_source_dropdown=show_source_dropdown,
         source_accounts=source_accounts,
         target_accounts=target_accounts,
     )
@@ -116,15 +121,21 @@ def update_balance():
 @login_required
 @email_verified_required
 def transfer():
-    source_type = request.form.get("source_type")
-    source_id = request.form.get("source_id")
-    target_type = request.form.get("target_type")
-    target_id = request.form.get("target_id")
+    source_type = request.form.get("source_type_hidden")
+    source_id = request.form.get("source_id_hidden")
+    target_type = request.form.get("target_type_hidden")
+    target_id = request.form.get("target_id_hidden")
     amount = request.form.get("amount")
+
+    # This handles the case for a single character with no group,
+    # where the hidden fields aren't used.
+    if not source_type and not source_id:
+        source_type = request.form.get("source_type")
+        source_id = request.form.get("source_id")
 
     try:
         amount = int(amount)
-    except ValueError:
+    except (ValueError, TypeError):
         flash("Invalid amount", "error")
         return redirect(url_for("banking.bank"))
 
