@@ -78,6 +78,7 @@
 - [x] Cure Requirement
 - [x] Stage Duration
 - [x] Link to Character w/ Stage
+- [ ] Progression to final stage (Conan)
 
 ## Item Database
 - [x] Item Blueprints
