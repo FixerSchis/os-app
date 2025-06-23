@@ -533,7 +533,6 @@ def create_default_item_blueprints():
             ("AA Energy Field", "Energy Field", 110, []),
             ("AA Scanner", "Scanner", 130, []),
             ("AA Device", "Device", 140, []),
-            ("Artefact", "Artefact", 0, []),
         ]
         from collections import Counter, defaultdict
 
@@ -1001,5 +1000,9 @@ __all__ = [
     "Group",
     "GroupInvite",
     "Sample",
+    "Pack",
+    "PackExotic",
+    "PackMessage",
+    "PackDowntimeResult",
     "setup_relationships",
 ]

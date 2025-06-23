@@ -711,21 +711,19 @@ def process_downtime(period_id):
 
     # Initialize downtime results for all packs
     for pack in packs:
-        # Initialize downtime results for this pack
-        if not pack.character.character_pack:
-            pack.character.character_pack = {}
-        if "downtime_results" not in pack.character.character_pack:
-            pack.character.character_pack["downtime_results"] = {}
-        if str(pack.id) not in pack.character.character_pack["downtime_results"]:
-            pack.character.character_pack["downtime_results"][str(pack.id)] = []
-        if "items" not in pack.character.character_pack:
-            pack.character.character_pack["items"] = []
-        if "exotic_substances" not in pack.character.character_pack:
-            pack.character.character_pack["exotic_substances"] = []
-        if "samples" not in pack.character.character_pack:
-            pack.character.character_pack["samples"] = []
-        if "chits" not in pack.character.character_pack:
-            pack.character.character_pack["chits"] = 0
+        # Initialize the character's pack as a structured object
+        character_pack = pack.character.pack
+
+        # Ensure the pack has the necessary structure
+        if not character_pack.downtime_results:
+            character_pack.downtime_results = {}
+
+        # Initialize downtime results for this specific pack
+        if str(pack.id) not in character_pack.downtime_results:
+            character_pack.downtime_results[str(pack.id)] = []
+
+        # Update the character's pack
+        pack.character.pack = character_pack
 
     # Process modifications
     for pack in packs:
@@ -734,15 +732,15 @@ def process_downtime(period_id):
                 mod = db.session.get(Mod, modification["mod_id"])
                 if mod:
                     pack.character.known_modifications.append(modification["mod_id"])
-                    pack.character.character_pack["downtime_results"][str(pack.id)].append(
-                        f"Learned mod: {mod.name}"
+                    pack.character.pack.add_downtime_result(
+                        str(pack.id), f"Learned mod: {mod.name}"
                     )
             elif modification["type"] == "forgetting":
                 mod = db.session.get(Mod, modification["mod_id"])
                 if mod:
                     pack.character.known_modifications.remove(modification["mod_id"])
-                    pack.character.character_pack["downtime_results"][str(pack.id)].append(
-                        f"Forgot modification: {mod.name}"
+                    pack.character.pack.add_downtime_result(
+                        str(pack.id), f"Forgot modification: {mod.name}"
                     )
 
     # Process purchases
@@ -760,8 +758,8 @@ def process_downtime(period_id):
                     expiry=period.event.event_number + 4,
                 )
                 pack.items.append(new_item)
-                pack.character.character_pack["downtime_results"][str(pack.id)].append(
-                    f"Purchased: {blueprint.name}"
+                pack.character.pack.add_downtime_result(
+                    str(pack.id), f"Purchased: {blueprint.name}"
                 )
                 for engineering in pack.engineering:
                     if engineering.source == "own" and engineering.blueprint_id == blueprint.id:
@@ -769,8 +767,8 @@ def process_downtime(period_id):
                         engineering.blueprint_id = None
                         break
             else:
-                pack.character.character_pack["downtime_results"][str(pack.id)].append(
-                    f"Could not purchase {blueprint.name} - insufficient funds"
+                pack.character.pack.add_downtime_result(
+                    str(pack.id), f"Could not purchase {blueprint.name} - insufficient funds"
                 )
 
     # Process engineering maintenance
@@ -783,12 +781,12 @@ def process_downtime(period_id):
                         item.get_maintenance_cost(), current_user.id, f"Maintenance: {item.name}"
                     )
                     item.expiry = period.event.event_number + 4
-                    pack.character.character_pack["downtime_results"][str(pack.id)].append(
-                        f"Maintained {item.name} - new expiry: E{item.expiry}"
+                    pack.character.pack.add_downtime_result(
+                        str(pack.id), f"Maintained {item.name} - new expiry: E{item.expiry}"
                     )
                 elif not pack.character.can_afford(item.get_maintenance_cost()):
-                    pack.character.character_pack["downtime_results"][str(pack.id)].append(
-                        f"Could not maintain {item.name} - insufficient funds"
+                    pack.character.pack.add_downtime_result(
+                        str(pack.id), f"Could not maintain {item.name} - insufficient funds"
                     )
 
     # Process engineering modifications
@@ -809,17 +807,19 @@ def process_downtime(period_id):
                         f"Modification: {mod.name} on {item.name}",
                     )
                     item.mods_applied.append(mod)
-                    pack.character.character_pack["downtime_results"][str(pack.id)].append(
-                        f"Applied {mod.name} to {item.name}"
+                    pack.character.pack.add_downtime_result(
+                        str(pack.id), f"Applied {mod.name} to {item.name}"
                     )
                 elif not pack.character.can_afford(item.get_modification_cost(engineering.mods)):
-                    pack.character.character_pack["downtime_results"][str(pack.id)].append(
-                        f"Could not apply {mod.name} to {item.name} - " f"insufficient funds"
+                    pack.character.pack.add_downtime_result(
+                        str(pack.id),
+                        f"Could not apply {mod.name} to {item.name} - insufficient funds",
                     )
                 elif not pack.character.known_modifications.contains(mod):
-                    pack.character.character_pack["downtime_results"][str(pack.id)].append(
+                    pack.character.pack.add_downtime_result(
+                        str(pack.id),
                         f"Could not apply {mod.name} to {item.name} - "
-                        f"character does not know the modification"
+                        f"character does not know the modification",
                     )
 
     # Process science
@@ -846,8 +846,8 @@ def process_downtime(period_id):
                             "type": exotic.type.value,
                         }
                     )
-                    pack.character.character_pack["downtime_results"][str(pack.id)].append(
-                        f"Synthesized {exotic.name}"
+                    pack.character.pack.add_downtime_result(
+                        str(pack.id), f"Synthesized {exotic.name}"
                     )
 
             elif science.action == "research_sample":
@@ -856,12 +856,12 @@ def process_downtime(period_id):
                     sample = db.session.get(Sample, sample_id)
                     if sample and not sample.is_researched:
                         sample.is_researched = True
-                        pack.character.character_pack["downtime_results"][str(pack.id)].append(
-                            f"Researched sample: {sample.name}"
+                        pack.character.pack.add_downtime_result(
+                            str(pack.id), f"Researched sample: {sample.name}"
                         )
                     elif sample.is_researched:
-                        pack.character.character_pack["downtime_results"][str(pack.id)].append(
-                            f"Sample {sample.name} already researched"
+                        pack.character.pack.add_downtime_result(
+                            str(pack.id), f"Sample {sample.name} already researched"
                         )
 
             elif science.action == "research_project":
@@ -891,37 +891,37 @@ def process_downtime(period_id):
                                     and req_progress.progress < req_progress.requirement.amount
                                 ):
                                     req_progress.progress += 1
-                                    pack.character.character_pack["downtime_results"][
-                                        str(pack.id)
-                                    ].append(
+                                    pack.character.pack.add_downtime_result(
+                                        str(pack.id),
                                         f"Made progress on "
-                                        f"{target_research.research.project_name}"
+                                        f"{target_research.research.project_name}",
                                     )
                                     made_progress = True
                                     break
                             if not made_progress:
-                                pack.character.character_pack["downtime_results"][
-                                    str(pack.id)
-                                ].append(
+                                pack.character.pack.add_downtime_result(
+                                    str(pack.id),
                                     f"Failed to make progress on "
                                     f"{target_research.research.project_name} for "
-                                    f"{target_research.character.name}"
+                                    f"{target_research.character.name}",
                                 )
                         else:
-                            pack.character.character_pack["downtime_results"][str(pack.id)].append(
+                            pack.character.pack.add_downtime_result(
+                                str(pack.id),
                                 f"No current stage for "
                                 f"{target_research.research.project_name} for "
-                                f"{target_research.character.name}"
+                                f"{target_research.character.name}",
                             )
                     elif target_research.is_complete():
-                        pack.character.character_pack["downtime_results"][str(pack.id)].append(
+                        pack.character.pack.add_downtime_result(
+                            str(pack.id),
                             f"Research already complete for "
                             f"{target_research.research.project_name} for "
-                            f"{target_research.character.name}"
+                            f"{target_research.character.name}",
                         )
                     else:
-                        pack.character.character_pack["downtime_results"][str(pack.id)].append(
-                            f"No research found for {project_id}"
+                        pack.character.pack.add_downtime_result(
+                            str(pack.id), f"No research found for {project_id}"
                         )
 
             elif science.action == "teach_invention":
@@ -963,26 +963,25 @@ def process_downtime(period_id):
 
                                 # Mark stage as completed
                                 target_current_stage.stage_completed = True
-                                pack.character.character_pack["downtime_results"][
-                                    str(pack.id)
-                                ].append(
+                                pack.character.pack.add_downtime_result(
+                                    str(pack.id),
                                     f"Successfully taught "
                                     f"{target_research.research.project_name} to "
-                                    f"{target_research.character.name}"
+                                    f"{target_research.character.name}",
                                 )
                             else:
-                                pack.character.character_pack["downtime_results"][
-                                    str(pack.id)
-                                ].append(
+                                pack.character.pack.add_downtime_result(
+                                    str(pack.id),
                                     f"Failed to teach "
                                     f"{target_research.research.project_name} to "
-                                    f"{target_research.character.name} - no stages to teach"
+                                    f"{target_research.character.name} - no stages to teach",
                                 )
                     else:
-                        pack.character.character_pack["downtime_results"][str(pack.id)].append(
+                        pack.character.pack.add_downtime_result(
+                            str(pack.id),
                             f"Failed to teach "
                             f"{target_research.research.project_name} for "
-                            f"{target_research.character.name} - target has completed this project"
+                            f"{target_research.character.name} - target has completed this project",
                         )
 
         for research in pack.research:
@@ -1036,12 +1035,11 @@ def process_downtime(period_id):
                                                     if pack_exotic.get("quantity", 0) <= 0:
                                                         pack.exotic_substances.remove(pack_exotic)
                                                     break
-                                            pack.character.character_pack["downtime_results"][
-                                                str(pack.id)
-                                            ].append(
+                                            pack.character.pack.add_downtime_result(
+                                                str(pack.id),
                                                 f"Contributed {quantity} {substance.name} to "
                                                 f"{target_research.research.project_name} "
-                                                f"for {research_character.name}"
+                                                f"for {research_character.name}",
                                             )
                                             break
 
@@ -1067,12 +1065,11 @@ def process_downtime(period_id):
                                                 if pack_item.get("id") == item_id:
                                                     pack.items.remove(pack_item)
                                                     break
-                                            pack.character.character_pack["downtime_results"][
-                                                str(pack.id)
-                                            ].append(
+                                            pack.character.pack.add_downtime_result(
+                                                str(pack.id),
                                                 f"Contributed {item.blueprint.name} to "
                                                 f"{target_research.research.project_name} "
-                                                f"for {research_character.name}"
+                                                f"for {research_character.name}",
                                             )
                                             break
 
@@ -1097,12 +1094,11 @@ def process_downtime(period_id):
                                                 if pack_sample.get("id") == sample_id:
                                                     pack.samples.remove(pack_sample)
                                                     break
-                                            pack.character.character_pack["downtime_results"][
-                                                str(pack.id)
-                                            ].append(
+                                            pack.character.pack.add_downtime_result(
+                                                str(pack.id),
                                                 f"Contributed {sample.name} to "
                                                 f"{target_research.research.project_name} "
-                                                f"for {research_character.name}"
+                                                f"for {research_character.name}",
                                             )
                                             break
 
@@ -1158,8 +1154,8 @@ def process_downtime(period_id):
 
                         # Assign character to the research
                         new_research.assign_character(pack.character.id)
-                        pack.character.character_pack["downtime_results"][str(pack.id)].append(
-                            f"New project confirmed: {new_research.project_name}"
+                        pack.character.pack.add_downtime_result(
+                            str(pack.id), f"New project confirmed: {new_research.project_name}"
                         )
 
                     elif manual.get("invention_type") == "improve":
@@ -1197,7 +1193,7 @@ def process_downtime(period_id):
                                             description=new_stage_data["description"],
                                         )
                                         db.session.add(new_stage)
-                                        db.session.flush()  # Get the ID
+                                        db.session.flush()
 
                                         # Create requirements
                                         for req_data in new_stage_data["unlock_requirements"]:
@@ -1234,40 +1230,23 @@ def process_downtime(period_id):
                                         # Set as current stage
                                         char_research.current_stage_id = new_stage.id
 
-                                        pack.character.character_pack["downtime_results"][
-                                            str(pack.id)
-                                        ].append(f"Improved {existing_research.project_name}")
+                                        pack.character.pack.add_downtime_result(
+                                            str(pack.id),
+                                            f"Improved {existing_research.project_name}",
+                                        )
                 elif manual.get("review_status") == "declined":
                     # Add decline reason to character's pack
-                    if not pack.character.character_pack:
-                        pack.character.character_pack = {}
-                    if "messages" not in pack.character.character_pack:
-                        pack.character.character_pack["messages"] = []
-
-                    # Add the decline message
-                    pack.character.character_pack["messages"].append(
-                        {
-                            "type": "invention_declined",
-                            "invention_name": manual.get("invention_name"),
-                            "reason": manual.get("invention_response"),
-                        }
+                    pack.character.pack.add_message(
+                        "invention_declined",
+                        f"Invention '{manual.get('invention_name')}' was declined: "
+                        f"{manual.get('invention_response')}",
                     )
             elif manual.get("type") == "reputation_response":
                 # Add reputation response to character's pack
-                if not pack.character.character_pack:
-                    pack.character.character_pack = {}
-                if "messages" not in pack.character.character_pack:
-                    pack.character.character_pack["messages"] = []
-
-                # Add the reputation response message
-                pack.character.character_pack["messages"].append(
-                    {
-                        "type": "reputation_response",
-                        "faction_id": manual.get("faction_id"),
-                        "faction_name": manual.get("faction_name"),
-                        "question": manual.get("question"),
-                        "response": manual.get("response"),
-                    }
+                pack.character.pack.add_message(
+                    "reputation_response",
+                    f"Reputation response for {manual.get('faction_name')}: "
+                    f"{manual.get('response')}",
                 )
 
     # Process all research stages
@@ -1281,37 +1260,71 @@ def process_downtime(period_id):
                 # If all requirements are met, mark the stage as complete
                 if current_stage.meets_requirements():
                     current_stage.stage_completed = True
-                    pack.character.character_pack["downtime_results"][str(pack.id)].append(
+                    pack.character.pack.add_downtime_result(
+                        str(pack.id),
                         f"Completed stage '{current_stage.name}' of "
-                        f"{research.research.project_name}"
+                        f"{research.research.project_name}",
                     )
 
                 # If the stage is complete (whether just now or previously), advance to next stage
                 if current_stage.stage_completed:
                     next_stage = research.advance_stage()
                     if next_stage:
-                        pack.character.character_pack["downtime_results"][str(pack.id)].append(
+                        pack.character.pack.add_downtime_result(
+                            str(pack.id),
                             f"Advanced to stage '{next_stage.name}' in "
-                            f"{research.research.project_name}"
+                            f"{research.research.project_name}",
                         )
                     else:
-                        pack.character.character_pack["downtime_results"][str(pack.id)].append(
-                            f"Completed all stages of " f"{research.research.project_name}"
+                        pack.character.pack.add_downtime_result(
+                            str(pack.id),
+                            f"Completed all stages of {research.research.project_name}",
                         )
+
+    # Process all character conditions
+    for pack in packs:
+        # Get all active conditions for this character
+        active_conditions = pack.character.active_conditions
+
+        for condition in active_conditions:
+            # Progress the condition
+            result = condition.progress_condition()
+
+            if result["progressed"]:
+                # Add to downtime results using structured pack
+                pack.character.pack.add_downtime_result(str(pack.id), result["message"])
+
+                if result["completed"]:
+                    # TODO: Implement condition conclusion system
+                    # For now, we'll just log that the condition has concluded
+                    pack.character.pack.add_downtime_result(
+                        str(pack.id),
+                        f"TODO: Implement conclusion system for " f"{condition.condition.name}",
+                    )
+            else:
+                # Log any errors
+                pack.character.pack.add_downtime_result(str(pack.id), f"Error: {result['message']}")
 
     # Add items to character's pack
     for pack in packs:
+        # Get the character's pack as a structured object
+        character_pack = pack.character.pack
+
         if pack.items:
             for item in pack.items:
-                pack.character.character_pack["items"].append(item)
+                character_pack.add_item(item["id"])
+
         if pack.exotic_substances:
             for exotic in pack.exotic_substances:
-                pack.character.character_pack["exotic_substances"].append(exotic)
+                character_pack.add_exotic(exotic["id"], exotic["quantity"])
+
         if pack.samples:
             for sample in pack.samples:
-                pack.character.character_pack["samples"].append(sample)
-        # Add character income to their pack
-        pack.character.character_pack["chits"] += 30
+                character_pack.add_sample(sample["id"])
+
+        # Update the character's pack
+        pack.character.pack = character_pack
+
         send_downtime_completed_notification(pack.character.user, pack, pack.character)
 
     period.status = DowntimeStatus.COMPLETED

@@ -1,5 +1,8 @@
+from sqlalchemy import JSON
+
 from models.enums import GroupAuditAction, GroupType
 from models.extensions import db
+from models.tools.pack import Pack
 
 
 class Group(db.Model):
@@ -15,6 +18,7 @@ class Group(db.Model):
     )
     bank_account = db.Column(db.Integer, nullable=False, default=0)
     created_at = db.Column(db.DateTime, nullable=False, default=db.func.now())
+    pack_data = db.Column(JSON, default=dict)
     updated_at = db.Column(
         db.DateTime, nullable=False, default=db.func.now(), onupdate=db.func.now()
     )
@@ -38,6 +42,16 @@ class Group(db.Model):
             self.type = type.value
         else:
             self.type = type
+
+    @property
+    def pack(self) -> Pack:
+        """Get the group's pack as a structured Pack object."""
+        return Pack.from_dict(self.pack_data or {})
+
+    @pack.setter
+    def pack(self, pack: Pack) -> None:
+        """Set the group's pack from a structured Pack object."""
+        self.pack_data = pack.to_dict()
 
     def add_funds(self, amount, editor_user_id, reason):
         """Add funds to the group's bank account with audit logging."""
