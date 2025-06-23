@@ -63,7 +63,7 @@ class Group(db.Model):
         audit_log = GroupAuditLog(
             group_id=self.id,
             editor_user_id=editor_user_id,
-            action=GroupAuditAction.FUNDS_REMOVED,
+            action=GroupAuditAction.FUNDS_WITHDRAWN,
             changes=f"Removed {amount} for {reason}",
         )
         db.session.add(audit_log)

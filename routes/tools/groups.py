@@ -148,9 +148,17 @@ def edit_group_post(group_id):
     changes = []
     if group.name != name:
         changes.append(f"Name changed from '{group.name}' to '{name}'")
-    old_type_str = getattr(group.type, "value", group.type)
-    if old_type_str != type:
-        changes.append(f"Type changed from '{old_type_str}' to '{type}'")
+
+    # Only allow type changes for admins
+    if (
+        current_user.has_role(Role.USER_ADMIN.value)
+        and type
+        and getattr(group.type, "value", group.type) != type
+    ):
+        changes.append(
+            f"Type changed from '{getattr(group.type, 'value', group.type)}' to '{type}'"
+        )
+        group.type = type
 
     # Handle bank account changes using centralized methods
     if current_user.has_role(Role.USER_ADMIN.value):
@@ -158,7 +166,6 @@ def edit_group_post(group_id):
             group.set_funds(bank_account, current_user.id, "Admin group edit")
 
     group.name = name
-    group.type = type
 
     # Create audit log if there were changes
     if changes:
@@ -519,16 +526,24 @@ def edit_group_admin_post(group_id):
     changes = []
     if group.name != name:
         changes.append(f"Name changed from '{group.name}' to '{name}'")
-    old_type_str = getattr(group.type, "value", group.type)
-    if old_type_str != type:
-        changes.append(f"Type changed from '{old_type_str}' to '{type}'")
+
+    # Only allow type changes for admins
+    if (
+        current_user.has_role(Role.USER_ADMIN.value)
+        and type
+        and getattr(group.type, "value", group.type) != type
+    ):
+        changes.append(
+            f"Type changed from '{getattr(group.type, 'value', group.type)}' to '{type}'"
+        )
+        group.type = type
 
     # Handle bank account changes using centralized methods
-    if group.bank_account != bank_account_int:
-        group.set_funds(bank_account_int, current_user.id, "Admin group edit")
+    if current_user.has_role(Role.USER_ADMIN.value):
+        if group.bank_account != bank_account_int:
+            group.set_funds(bank_account_int, current_user.id, "Admin group edit")
 
     group.name = name
-    group.type = type
 
     # Update samples
     if sample_ids:
