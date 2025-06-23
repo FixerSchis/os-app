@@ -966,7 +966,7 @@ a:hover {
 /* Footer styles */
 .footer {
     margin-top: auto;
-    padding: 0.5rem 0;
+    padding: 0;
     border-top: 1px solid var(--border-color);
     background-color: var(--bg-secondary);
     font-size: 0.8rem;
@@ -974,6 +974,9 @@ a:hover {
 
 .footer-content {
     display: flex;
+    padding-top: 0.5rem;
+    padding-bottom: 1rem;
+    flex-direction: column;
     justify-content: center;
     align-items: center;
 }
