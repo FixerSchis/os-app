@@ -182,6 +182,34 @@ def setup_application_directory():
     print("✅ Application directory created: {}".format(app_dir))
 
 
+def setup_persistent_directories():
+    """Set up persistent directories for data that should survive deployments."""
+    print("Setting up persistent directories...")
+
+    # Create persistent database directory
+    db_dir = "/var/lib/os-app"
+    run_command(f"sudo mkdir -p {db_dir}")
+    run_command(f"sudo chown os-app:os-app {db_dir}")
+    run_command(f"sudo chmod 755 {db_dir}")
+
+    # Create backup directory
+    backup_dir = "/opt/backups/os-app"
+    run_command(f"sudo mkdir -p {backup_dir}")
+    run_command(f"sudo chown os-app:os-app {backup_dir}")
+    run_command(f"sudo chmod 755 {backup_dir}")
+
+    # Create log directory
+    log_dir = "/var/log/os-app"
+    run_command(f"sudo mkdir -p {log_dir}")
+    run_command(f"sudo chown os-app:os-app {log_dir}")
+    run_command(f"sudo chmod 755 {log_dir}")
+
+    print("✅ Persistent directories created:")
+    print(f"   - Database: {db_dir}")
+    print(f"   - Backups: {backup_dir}")
+    print(f"   - Logs: {log_dir}")
+
+
 def setup_python_environment():
     """Set up Python virtual environment."""
     print("Setting up Python virtual environment...")
@@ -353,6 +381,7 @@ def main():
         setup_passwordless_sudo()
         setup_ssh_for_deploy_user()
         setup_application_directory()
+        setup_persistent_directories()
         create_nginx_config(args.port)
         create_systemd_service(args.port)
 

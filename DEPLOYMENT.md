@@ -22,6 +22,8 @@ GitHub Repository
    Gunicorn (WSGI server)
        ↓
    Flask Application
+       ↓
+   SQLite Database (/var/lib/os-app/)
 ```
 
 ## Prerequisites
@@ -62,7 +64,7 @@ python3 scripts/setup_production_server.py
 This script will:
 - Check system requirements
 - Create a deployment user
-- Set up necessary directories
+- Set up necessary directories (including persistent database directory)
 - Configure Nginx
 - Generate SSH keys
 - Create environment templates
@@ -81,10 +83,20 @@ sudo usermod -aG sudo os-app
 #### Set Up Directories
 
 ```bash
+# Application directory
 sudo mkdir -p /opt/os-app
+
+# Persistent database directory (survives deployments)
+sudo mkdir -p /var/lib/os-app
+
+# Backup directory
 sudo mkdir -p /opt/backups/os-app
+
+# Log directory
 sudo mkdir -p /var/log/os-app
-sudo chown os-app:os-app /opt/os-app /opt/backups/os-app /var/log/os-app
+
+# Set ownership
+sudo chown os-app:os-app /opt/os-app /var/lib/os-app /opt/backups/os-app /var/log/os-app
 ```
 
 #### Generate SSH Key
@@ -164,8 +176,9 @@ Example configuration:
 
 ```env
 # Database Configuration
-DATABASE_URL=sqlite:///os_app.db
-# For PostgreSQL: postgresql://username:password@localhost/os_app
+DATABASE_PATH=/var/lib/os-app
+# The database will be stored at /var/lib/os-app/oslrp.db
+# This location persists across deployments
 
 # Flask Configuration
 SECRET_KEY=your-very-secure-secret-key-here
@@ -188,6 +201,8 @@ REMEMBER_COOKIE_SECURE=True
 UPLOAD_FOLDER=/opt/os-app/uploads
 MAX_CONTENT_LENGTH=16777216
 ```
+
+**Note**: The `DATABASE_PATH` is automatically set to `/var/lib/os-app` during deployment. This ensures the database persists across deployments and follows Linux Filesystem Hierarchy Standard (FHS) conventions.
 
 ### 5. SSL Setup (Optional but Recommended)
 
@@ -270,10 +285,15 @@ Backups are automatically created before each deployment and stored in `/opt/bac
 cd /opt/os-app
 source venv/bin/activate
 export FLASK_APP=app.py
+export DATABASE_PATH=/var/lib/os-app
 flask db upgrade
 
 # Create database backup
-sqlite3 os_app.db ".backup backup_$(date +%Y%m%d_%H%M%S).db"
+sqlite3 /var/lib/os-app/oslrp.db ".backup /opt/backups/os-app/db_backup_$(date +%Y%m%d_%H%M%S).db"
+
+# Check database location and size
+ls -la /var/lib/os-app/
+du -h /var/lib/os-app/oslrp.db
 ```
 
 ## Troubleshooting
@@ -311,13 +331,22 @@ sqlite3 os_app.db ".backup backup_$(date +%Y%m%d_%H%M%S).db"
 
 1. **Check database file permissions**:
    ```bash
-   ls -la /opt/os-app/os_app.db
+   ls -la /var/lib/os-app/oslrp.db
    ```
-2. **Run migrations manually**:
+2. **Check database directory permissions**:
+   ```bash
+   ls -la /var/lib/os-app/
+   ```
+3. **Run migrations manually**:
    ```bash
    cd /opt/os-app
    source venv/bin/activate
+   export DATABASE_PATH=/var/lib/os-app
    flask db upgrade
+   ```
+4. **Verify database path in environment**:
+   ```bash
+   sudo -u os-app grep DATABASE_PATH /opt/os-app/.env
    ```
 
 ### Performance Optimization

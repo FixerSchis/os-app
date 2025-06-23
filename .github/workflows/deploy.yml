@@ -85,6 +85,7 @@ jobs:
           APP_NAME="os-app"
           DEPLOY_DIR="/opt/$APP_NAME"
           BACKUP_DIR="/opt/backups/$APP_NAME"
+          DB_DIR="/var/lib/$APP_NAME"
           SERVICE_NAME="$APP_NAME"
 
           # Create backup directory if it doesn't exist
@@ -99,6 +100,12 @@ jobs:
             sudo tar -czf "$BACKUP_DIR/backup_$TIMESTAMP.tar.gz" -C /opt $APP_NAME
             sudo rm -rf "$DEPLOY_DIR"
           fi
+
+          # Ensure persistent directories exist and have correct permissions
+          echo "Setting up persistent directories..."
+          sudo mkdir -p $DB_DIR
+          sudo chown os-app:os-app $DB_DIR
+          sudo chmod 755 $DB_DIR
 
           # Create deployment directory
           sudo mkdir -p $DEPLOY_DIR
@@ -116,7 +123,13 @@ jobs:
           # Set up environment variables
           if [ ! -f .env ]; then
             echo "Creating .env file from template..."
-            sudo -u os-app cp .env.example .env 2>/dev/null || sudo -u os-app echo "# Add your environment variables here" > .env
+            sudo -u os-app cp env.example .env 2>/dev/null || sudo -u os-app echo "# Add your environment variables here" > .env
+          fi
+
+          # Ensure DATABASE_PATH is set in .env for production
+          if ! sudo -u os-app grep -q "^DATABASE_PATH=" .env; then
+            echo "Adding DATABASE_PATH to .env..."
+            sudo -u os-app echo "DATABASE_PATH=$DB_DIR" >> .env
           fi
 
           # Get port from .env file or use default
@@ -145,6 +158,7 @@ jobs:
           Environment=PATH=$DEPLOY_DIR/venv/bin
           Environment=FLASK_APP=app.py
           Environment=FLASK_ENV=production
+          Environment=DATABASE_PATH=$DB_DIR
           ExecStart=$DEPLOY_DIR/venv/bin/gunicorn -c gunicorn.conf.py wsgi:application
           Restart=always
           RestartSec=10
@@ -166,6 +180,7 @@ jobs:
           # Check if service is running
           if sudo systemctl is-active --quiet $SERVICE_NAME; then
             echo "Deployment successful! Service is running on port $PORT."
+            echo "Database location: $DB_DIR"
           else
             echo "Deployment failed! Service is not running."
             sudo systemctl status $SERVICE_NAME

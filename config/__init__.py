@@ -8,9 +8,26 @@ class Config:
 
     # Database configuration
     basedir = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))  # Project root
-    DATABASE_PATH = os.path.join(basedir, "db")
+
+    # Use environment variable for database path, with sensible defaults
+    # In production: /var/lib/os-app/
+    # In development: ./db/ (relative to project root)
+    DATABASE_PATH = os.environ.get(
+        "DATABASE_PATH",
+        (
+            "/var/lib/os-app"
+            if os.environ.get("FLASK_ENV") == "production"
+            else os.path.join(basedir, "db")
+        ),
+    )
     DATABASE_FILE_NAME = "oslrp.db"
-    SQLALCHEMY_DATABASE_URI = f"sqlite:///{os.path.join(DATABASE_PATH, DATABASE_FILE_NAME)}"
+
+    # Ensure the database path is absolute for SQLAlchemy
+    db_file_path = os.path.join(DATABASE_PATH, DATABASE_FILE_NAME)
+    if not os.path.isabs(db_file_path):
+        db_file_path = os.path.abspath(db_file_path)
+
+    SQLALCHEMY_DATABASE_URI = f"sqlite:///{db_file_path}"
 
     # Server configuration
     DEFAULT_PORT = int(os.environ.get("FLASK_RUN_PORT", 5000))
