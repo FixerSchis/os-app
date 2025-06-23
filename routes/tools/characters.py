@@ -406,30 +406,30 @@ def kill_character(character_id):
 @email_verified_required
 @user_admin_required
 def restore_character(character_id):
+    """Restores a retired character to active status."""
     character = Character.query.get_or_404(character_id)
+
     if character.status not in [
         CharacterStatus.RETIRED.value,
         CharacterStatus.DEAD.value,
     ]:
         flash("Only retired or dead characters can be restored.", "error")
         return redirect(url_for("characters.character_list"))
-    # Check if user has enough CP
+
     user = User.query.filter_by(player_id=character.player_id).first()
     if not user:
         flash("Could not find character owner.", "error")
         return redirect(url_for("characters.character_list"))
-    total_skill_cost = character.get_total_skill_cost()
-    if total_skill_cost > character.base_character_points and not user.can_spend_character_points(
-        total_skill_cost - character.base_character_points
-    ):
-        flash("Not enough character points to restore character.", "error")
-        return redirect(url_for("characters.character_list"))
-    # Assign character_id if not already set
+
+    if user.has_active_character() and not user.has_role("npc"):
+        flash("This user already has an active character.", "danger")
+        if request.referrer:
+            return redirect(request.referrer)
+        return redirect(url_for("user_management.user_management_edit_user", user_id=user.id))
+
     if character.character_id is None:
         character.character_id = assign_character_id(character.player_id)
-    # Spend CP if needed
-    if total_skill_cost > character.base_character_points:
-        user.spend_character_points(total_skill_cost - character.base_character_points)
+
     character.status = CharacterStatus.ACTIVE.value
     db.session.commit()
     # Audit log for status change
@@ -437,7 +437,7 @@ def restore_character(character_id):
         character_id=character.id,
         editor_user_id=current_user.id,
         action=CharacterAuditAction.STATUS_CHANGE.value,
-        changes=(f"Restored character. Spent {total_skill_cost} character points on skills."),
+        changes="Restored character.",
     )
     db.session.add(audit)
     db.session.commit()
@@ -479,25 +479,32 @@ def activate_character(character_id):
     if character.status != CharacterStatus.DEVELOPING.value:
         flash("Only developing characters can be activated.", "error")
         return redirect(url_for("characters.character_list"))
-    # Check if user has enough CP
+
+    if current_user.has_active_character() and not current_user.has_role("npc"):
+        if current_user.get_active_character().id != character.id:
+            flash("You already have an active character.", "danger")
+            return redirect(url_for("characters.character_list"))
+
     user = User.query.filter_by(player_id=character.player_id).first()
     if not user:
         flash("Could not find character owner.", "error")
         return redirect(url_for("characters.character_list"))
+
     total_skill_cost = character.get_total_skill_cost()
     if total_skill_cost > character.base_character_points and not user.can_spend_character_points(
         total_skill_cost - character.base_character_points
     ):
         flash("Not enough character points to activate character.", "error")
         return redirect(url_for("characters.character_list"))
-    # Assign character_id if not already set
+
     if character.character_id is None:
         character.character_id = assign_character_id(character.player_id)
-    # Spend CP if needed
+
     if total_skill_cost > character.base_character_points:
         user.spend_character_points(total_skill_cost - character.base_character_points)
-    # Activate character
+
     character.status = CharacterStatus.ACTIVE.value
+    db.session.commit()
     # Audit log for activation
     audit = CharacterAuditLog(
         character_id=character.id,

@@ -461,7 +461,7 @@ def get_events():
             query = query.filter(Event.early_booking_deadline > datetime.now())
 
     if has_downtime is not None:
-        from models.downtime import DowntimePeriod
+        from models.tools.downtime import DowntimePeriod
 
         if has_downtime:
             query = query.filter(

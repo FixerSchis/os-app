@@ -1,6 +1,6 @@
 from functools import wraps
 
-from flask import abort, flash, redirect, url_for
+from flask import abort, flash, redirect, request, url_for
 from flask_login import current_user
 
 from models.enums import Role
@@ -85,8 +85,11 @@ def has_active_character_required(f):
 
     @wraps(f)
     def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated:
+            # This should be handled by @login_required, but as a fallback
+            return redirect(url_for("auth.login", next=request.url))
         if not current_user.has_active_character():
-            flash("You need an active character to access this page.", "error")
+            flash("You must have an active character to access this page.", "warning")
             return redirect(url_for("characters.character_list"))
         return f(*args, **kwargs)
 
