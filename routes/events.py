@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
-from models.enums import EventType, Role, TicketType
+from models.enums import CharacterStatus, EventType, Role, TicketType
 from models.event import Event
 from models.extensions import db
 from models.tools.character import Character
@@ -141,11 +141,20 @@ def edit_event_post(event_id):
 @login_required
 def purchase_ticket(event_id):
     event = Event.query.get_or_404(event_id)
-    if not current_user.has_active_character():
+    user_characters = Character.query.filter_by(
+        user_id=current_user.id, status=CharacterStatus.ACTIVE.value
+    ).all()
+
+    if not user_characters:
         flash("You need an active character to purchase tickets.", "error")
         return redirect(url_for("events.event_list"))
+
     return render_template(
-        "events/purchase.html", event=event, TicketType=TicketType, EventType=EventType
+        "events/purchase.html",
+        event=event,
+        TicketType=TicketType,
+        EventType=EventType,
+        user_characters=user_characters,
     )
 
 
@@ -166,8 +175,7 @@ def purchase_ticket_post(event_id):
         return redirect(url_for("events.purchase_ticket", event_id=event_id))
 
     tickets_created = 0
-    self_adult_ticket_added = False
-    self_crew_ticket_added = False
+    self_ticket_added = False
     for item in cart:
         ticket_type = item.get("ticketType")
         meal_ticket = bool(item.get("mealTicket"))
@@ -178,42 +186,56 @@ def purchase_ticket_post(event_id):
         child_name = None
         # --- Adult Ticket ---
         if ticket_type == "adult":
+            character_to_check = None
             if ticket_for == "self":
-                if self_adult_ticket_added:
-                    continue
-                self_adult_ticket_added = True
-                if not current_user.has_active_character():
-                    continue
-                character = current_user.get_active_character()
-                character_id = character.id
-                user_id = character.user_id
-                # Check for existing crew ticket for this user/event
-                existing_crew = EventTicket.query.filter_by(
-                    event_id=event_id, user_id=current_user.id, ticket_type="crew"
-                ).first()
-                if existing_crew:
-                    continue
-            else:
+                self_char_id = item.get("selfCharacterId")
+                if self_char_id:
+                    character_to_check = Character.query.get(self_char_id)
+                    if not character_to_check or character_to_check.user_id != current_user.id:
+                        continue
+                else:
+                    character_to_check = current_user.get_active_character()
+            else:  # ticket_for == 'other'
                 char_id_str = item.get("characterId")
                 if not char_id_str or "." not in char_id_str or not char_id_str.strip():
                     continue
                 u_id, c_id = char_id_str.split(".")
                 try:
-                    u_id = int(u_id)
-                    c_id = int(c_id)
+                    character_to_check = Character.query.filter_by(
+                        user_id=int(u_id), character_id=int(c_id)
+                    ).first()
                 except ValueError:
                     continue
-                character = Character.query.filter_by(user_id=u_id, character_id=c_id).first()
-                if not character:
-                    continue
-                character_id = character.id
-                user_id = character.user_id
-            # Only one adult ticket per character/event
-            existing = EventTicket.query.filter_by(
-                event_id=event_id, character_id=character_id, ticket_type="adult"
-            ).first()
-            if existing:
+
+            if not character_to_check:
                 continue
+
+            target_user = User.query.get(character_to_check.user_id)
+            if not target_user:
+                continue
+
+            # Rule: User can't have a Crew ticket for this event
+            existing_crew = EventTicket.query.filter_by(
+                event_id=event_id, user_id=target_user.id, ticket_type="crew"
+            ).first()
+            if existing_crew:
+                continue
+
+            # Rule: User can't have more than one Adult ticket for this event
+            # (across all their characters)
+            user_character_ids = [c.id for c in target_user.characters]
+            if user_character_ids:
+                existing_adult = EventTicket.query.filter(
+                    EventTicket.event_id == event_id,
+                    EventTicket.character_id.in_(user_character_ids),
+                    EventTicket.ticket_type == "adult",
+                ).first()
+                if existing_adult:
+                    continue
+
+            character_id = character_to_check.id
+            user_id = target_user.id
+
         # --- Crew Ticket ---
         elif ticket_type == "crew":
             # Only users with allowed roles can purchase
@@ -228,9 +250,9 @@ def purchase_ticket_post(event_id):
             ):
                 continue
             if ticket_for == "self":
-                if self_crew_ticket_added:
+                if self_ticket_added:
                     continue
-                self_crew_ticket_added = True
+                self_ticket_added = True
                 user_id = current_user.id
                 character_id = None  # Crew tickets never require a character
                 # Check for any adult ticket for this user (any character) for this event
@@ -524,4 +546,46 @@ def user_ticket_status():
     )
     return jsonify(
         {"success": True, "has_adult_ticket": has_adult_ticket, "has_crew_ticket": has_crew_ticket}
+    )
+
+
+@events_bp.route("/get-user-event-status", methods=["GET"])
+@login_required
+def get_user_event_status():
+    event_id = request.args.get("event_id")
+    user_id = request.args.get("user_id")
+
+    if not event_id or not user_id:
+        return jsonify({"success": False, "error": "Missing parameters"}), 400
+
+    try:
+        user_id = int(user_id)
+    except ValueError:
+        return jsonify({"success": False, "error": "Invalid user ID"}), 400
+
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"success": False, "error": "User not found"}), 404
+
+    # Check for existing crew ticket
+    has_crew_ticket = (
+        EventTicket.query.filter_by(event_id=event_id, user_id=user_id, ticket_type="crew").first()
+        is not None
+    )
+
+    # Check for existing adult ticket across all of the user's characters
+    user_character_ids = [c.id for c in user.characters]
+    has_adult_ticket = False
+    if user_character_ids:
+        has_adult_ticket = (
+            EventTicket.query.filter(
+                EventTicket.event_id == event_id,
+                EventTicket.character_id.in_(user_character_ids),
+                EventTicket.ticket_type == "adult",
+            ).first()
+            is not None
+        )
+
+    return jsonify(
+        {"success": True, "has_crew_ticket": has_crew_ticket, "has_adult_ticket": has_adult_ticket}
     )

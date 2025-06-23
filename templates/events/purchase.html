@@ -83,6 +83,16 @@
                             <div id="character_name" class="mt-1 text-success" style="display: none;"></div>
                             <div class="form-text">Enter the character ID in the format: user_id.character_id</div>
                         </div>
+
+                        <!-- Character selection for self-purchase (if multiple characters) -->
+                        <div id="self_character_selection_section" class="mt-3" style="display: none;">
+                            <label for="self_character_select" class="form-label">Select Your Character</label>
+                            <select class="form-select" id="self_character_select" name="self_character_id">
+                                {% for char in user_characters %}
+                                    <option value="{{ char.id }}">{{ char.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
                     </div>
 
                     <div class="row">
@@ -168,8 +178,11 @@
 <input type="hidden" id="meal_ticket_price" value="{{ event.meal_ticket_price if event.meal_ticket_available else 0 }}">
 
 <input type="hidden" id="event_id" value="{{ event.id }}">
-<input type="hidden" id="has_active_character" value="{{ 'true' if current_user.has_active_character() else 'false' }}">
+<input type="hidden" id="has_multiple_characters" value="{{ 'true' if user_characters|length > 1 else 'false' }}">
 <input type="hidden" id="current_user_id" value="{{ current_user.id }}">
+<input type="hidden" id="current_user_name" value="{{ current_user.first_name }} {{ current_user.surname }}">
+<input type="hidden" id="single_active_character_pk" value="{{ user_characters[0].id if user_characters|length == 1 else '' }}">
+<input type="hidden" id="single_active_character_name" value="{{ user_characters[0].name if user_characters|length == 1 else '' }}">
 <input type="hidden" id="active_character_id" value="{{ current_user.get_active_character().character_id if current_user.has_active_character() else '' }}">
 {% endblock %}
 
@@ -189,12 +202,37 @@ const PRICES = {
 let cart = [];
 let validationTimeout = null;
 const eventId = document.getElementById('event_id').value;
-const hasActiveCharacter = document.getElementById('has_active_character').value === 'true';
+const hasMultipleChars = document.getElementById('has_multiple_characters').value === 'true';
 const currentUserId = document.getElementById('current_user_id').value;
+const currentUserName = document.getElementById('current_user_name').value;
+const singleActiveCharacterPk = document.getElementById('single_active_character_pk').value;
+const singleActiveCharacterName = document.getElementById('single_active_character_name').value;
 const activeCharacterId = document.getElementById('active_character_id').value;
 let lastFetchedTicket = null;
+let userEventStatus = {}; // To store { userId: { has_adult_ticket, has_crew_ticket } }
 
-fetchAndApplyCharacterTicket(currentUserId + '.' + activeCharacterId);
+// New function to fetch user's ticket status for the event
+function fetchUserEventStatus(userId) {
+    if (!userId) return;
+    fetch(`{{ url_for('events.get_user_event_status') }}?event_id=${eventId}&user_id=${userId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                userEventStatus[userId] = {
+                    has_adult_ticket: data.has_adult_ticket,
+                    has_crew_ticket: data.has_crew_ticket
+                };
+            }
+        });
+}
+
+// Helper to get a user-friendly name for error messages
+function getFriendlyUserName(targetUserId, recipientName) {
+    return parseInt(targetUserId) === parseInt(currentUserId) ? 'You' : recipientName;
+}
+
+// Pre-fetch status for the current user
+fetchUserEventStatus(currentUserId);
 
 function formatPrice(price) {
     return '£' + price.toFixed(2);
@@ -257,9 +295,13 @@ document.getElementById('character_id').addEventListener('input', function() {
                     nameElement.textContent = data.character_name;
                     nameElement.style.display = 'block';
 
+                    // Fetch user's event ticket status
+                    const userId = characterId.split('.')[0];
+                    fetchUserEventStatus(userId);
+
                     // Check if this is the user's own character
                     const expectedOwnChar = currentUserId + '.' + activeCharacterId;
-                    if (characterId === expectedOwnChar && hasActiveCharacter) {
+                    if (characterId === expectedOwnChar && hasMultipleChars) {
                         document.getElementById('ticket_for_self').checked = true;
                         document.getElementById('character_id_section').style.display = 'none';
                         document.getElementById('character_id').value = '';
@@ -423,6 +465,7 @@ function updateFormFields() {
     // Hide all conditional fields by default
     document.getElementById('character_id_section').style.display = 'none';
     document.getElementById('child_name_section').style.display = 'none';
+    document.getElementById('self_character_selection_section').style.display = 'none';
 
     // Re-enable "Someone Else" option by default (will be disabled for crew)
     if (document.getElementById('ticket_for_other')) {
@@ -433,6 +476,9 @@ function updateFormFields() {
     if (ticketType === 'adult') {
         document.getElementById('ticket_recipient_section').style.display = '';
         if (ticketForSelf) {
+            if (hasMultipleChars) {
+                document.getElementById('self_character_selection_section').style.display = '';
+            }
             document.getElementById('character_id_section').style.display = 'none';
             // Fetch existing ticket info for current character when switching to adult
             if (previousTicketType && previousTicketType !== ticketType) {
@@ -516,7 +562,11 @@ function addToCart() {
     }
 
     let characterId = null;
+    let selfCharacterId = null;
     let childName = null;
+    let recipientName = 'N/A'; // Default value
+    let targetUserId = null;
+
     // Adult: require character selection
     if (ticketType === 'adult') {
         if (ticketFor === 'other') {
@@ -525,54 +575,94 @@ function addToCart() {
                 showFlashMessage('Please enter a valid character ID.');
                 return;
             }
+            recipientName = document.getElementById('character_name').textContent || `Character ID: ${characterId}`;
+            targetUserId = characterId.split('.')[0];
+        } else { // ticketFor === 'self'
+            if (hasMultipleChars) {
+                const select = document.getElementById('self_character_select');
+                selfCharacterId = select.value;
+                recipientName = select.options[select.selectedIndex].text;
+            } else {
+                selfCharacterId = singleActiveCharacterPk;
+                recipientName = singleActiveCharacterName;
+            }
+            targetUserId = currentUserId;
         }
+
+        const friendlyName = getFriendlyUserName(targetUserId, recipientName);
+        const status = userEventStatus[targetUserId] || {};
+
+        if (status.has_adult_ticket) {
+            showFlashMessage(`${friendlyName} already ha${parseInt(targetUserId) === parseInt(currentUserId) ? 've' : 's'} an adult ticket for this event.`);
+            return;
+        }
+        if (status.has_crew_ticket) {
+            showFlashMessage(`${friendlyName} already ha${parseInt(targetUserId) === parseInt(currentUserId) ? 've' : 's'} a crew ticket and cannot also have an adult ticket.`);
+            return;
+        }
+        if (cart.some(i => i.ticketType === 'adult' && i.targetUserId === targetUserId)) {
+            showFlashMessage(`${friendlyName} already ha${parseInt(targetUserId) === parseInt(currentUserId) ? 've' : 's'} an adult ticket in the basket.`);
+            return;
+        }
+        if (cart.some(i => i.ticketType === 'crew' && i.targetUserId === targetUserId)) {
+            showFlashMessage(`${friendlyName} already ha${parseInt(targetUserId) === parseInt(currentUserId) ? 've' : 's'} a crew ticket in the basket and cannot also have an adult ticket.`);
+            return;
+        }
+
     }
     // Crew: only allow self, no character
-    if (ticketType === 'crew') {
+    else if (ticketType === 'crew') {
         ticketFor = 'self';
         characterId = null;
+        recipientName = currentUserName;
+        targetUserId = currentUserId;
+
+        const friendlyName = "You";
+        const status = userEventStatus[targetUserId] || {};
+
+        if (status.has_crew_ticket) {
+            showFlashMessage("You already have a crew ticket for this event.");
+            return;
+        }
+        if (status.has_adult_ticket) {
+            showFlashMessage("You already have an adult ticket and cannot also have a crew ticket.");
+            return;
+        }
+        if (cart.some(i => i.ticketType === 'crew' && i.targetUserId === targetUserId)) {
+            showFlashMessage("You already have a crew ticket in the basket.");
+            return;
+        }
+        if (cart.some(i => i.ticketType === 'adult' && i.targetUserId === targetUserId)) {
+            showFlashMessage("You already have an adult ticket in the basket and cannot also have a crew ticket.");
+            return;
+        }
+
     }
     // Child: require child name
-    if (["child_12_15", "child_7_11", "child_under_7"].includes(ticketType)) {
+    else if (["child_12_15", "child_7_11", "child_under_7"].includes(ticketType)) {
         childName = document.getElementById('child_name').value.trim();
         if (!childName) {
             showFlashMessage("Please enter the child's name.");
             return;
         }
         characterId = null;
+        recipientName = childName;
     }
-    // Prevent duplicate self-tickets for adult/crew
-    if ((ticketType === 'adult' || ticketType === 'crew') && ticketFor === 'self') {
-        if (cart.some(item => item.ticketType === ticketType && item.ticketFor === 'self')) {
-            showFlashMessage(`You can only add one ${ticketType_name} ticket for yourself.`);
-            return;
-        }
-    }
-    // Prevent duplicate adult tickets for same character
-    if (ticketType === 'adult' && ticketFor === 'other') {
-        if (cart.some(item => item.ticketType === 'adult' && item.characterId === characterId)) {
-            showFlashMessage('This character already has an adult ticket in your cart.');
-            return;
-        }
-    }
-    // Prevent duplicate crew tickets for same user
-    if (ticketType === 'crew') {
-        if (cart.some(item => item.ticketType === 'crew' && item.ticketFor === 'self')) {
-            showFlashMessage('You can only add one crew ticket for yourself.');
-            return;
-        }
-    }
+
     // Add to cart
     const price = getTicketPrice(ticketType);
     cart.push({
-        ticketType,
-        ticketType_name,
-        mealTicket,
-        requiresBunk,
-        ticketFor,
-        characterId,
-        childName,
-        price
+        ticketType: ticketType,
+        ticketType_name: ticketType_name,
+        mealTicket: mealTicket,
+        requiresBunk: requiresBunk,
+        ticketFor: ticketFor,
+        characterId: characterId,
+        selfCharacterId: selfCharacterId,
+        childName: childName,
+        price: price,
+        recipientName: recipientName,
+        targetUserId: targetUserId
     });
     updateCartDisplay();
 }
@@ -590,12 +680,12 @@ function resetForm() {
     if (document.getElementById('requires_bunk')) {
         document.getElementById('requires_bunk').checked = false;
     }
-    if (hasActiveCharacter) {
+    if (hasMultipleChars) {
         document.getElementById('ticket_for_self').checked = true;
         document.getElementById('character_id_section').style.display = 'none';
     }
     document.getElementById('character_id').value = '';
-    document.getElementById('character_id').required = !hasActiveCharacter;
+    document.getElementById('character_id').required = !hasMultipleChars;
     document.getElementById('character_name').style.display = 'none';
     document.getElementById('character_id_status').innerHTML = '<i class="fas fa-question text-muted"></i>';
     document.getElementById('child_name').value = '';
@@ -611,11 +701,11 @@ function updateCartDisplay() {
     const checkoutBtn = document.getElementById('checkoutBtn');
     const cartDataInput = document.getElementById('cart');
 
-    // Clear current cart display
     cartItems.innerHTML = '';
+    let subtotal = 0;
 
     if (cart.length === 0) {
-        cartItems.innerHTML = '<p class="text-muted">Your cart is empty</p>';
+        cartItems.innerHTML = '<p class="text-muted">Your cart is empty.</p>';
         subtotalElement.textContent = formatPrice(0);
         totalElement.textContent = formatPrice(0);
         checkoutBtn.disabled = true;
@@ -623,38 +713,27 @@ function updateCartDisplay() {
         return;
     }
 
-    // Calculate totals
-    let subtotal = 0;
     cart.forEach((item, index) => {
-        subtotal += item.price;
-
-        // Determine recipient display
-        let recipientDisplay = '';
-        if (["child_12_15", "child_7_11", "child_under_7"].includes(item.ticketType) && item.childName) {
-            recipientDisplay = `For: ${item.childName}`;
-        } else if (item.ticketFor === 'other' && item.characterName) {
-            recipientDisplay = `For: ${item.characterName}`;
-        } else if (item.ticketFor === 'other' && item.characterId) {
-            recipientDisplay = `For: ${item.characterId}`;
-        } else {
-            recipientDisplay = 'For: Self';
+        let itemTotal = item.price;
+        if (item.mealTicket) {
+            itemTotal += PRICES.meal_ticket;
         }
+        subtotal += itemTotal;
 
-        // Create cart item element
         const itemElement = document.createElement('div');
         itemElement.className = 'd-flex justify-content-between align-items-center mb-2';
+
+        const recipientDisplay = `For: ${item.recipientName}`;
 
         itemElement.innerHTML = `
             <div>
                 <div>${item.ticketType_name}${item.mealTicket ? ' + Meal' : ''}${item.requiresBunk ? ' + Bunk' : ''}</div>
                 <small class="text-muted">
-                    ${formatPrice(item.price)} each
-                    <br>
                     ${recipientDisplay}
                 </small>
             </div>
             <div class="d-flex align-items-center">
-                <span class="me-2">${formatPrice(item.price)}</span>
+                <span class="me-2">${formatPrice(itemTotal)}</span>
                 <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeFromCart(${index})">
                     <i class="fas fa-times"></i>
                 </button>
@@ -731,5 +810,14 @@ function applyTicketExclusivity() {
 }
 window.addEventListener('DOMContentLoaded', applyTicketExclusivity);
 document.getElementById('ticket_type').addEventListener('focus', applyTicketExclusivity);
+
+// Add an event listener to the self-character select dropdown
+const selfCharSelect = document.getElementById('self_character_select');
+if (selfCharSelect) {
+    selfCharSelect.addEventListener('change', function() {
+        // The user ID is always the current user for this dropdown
+        fetchUserEventStatus(currentUserId);
+    });
+}
 </script>
 {% endblock %}
