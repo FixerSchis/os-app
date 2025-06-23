@@ -13,7 +13,7 @@ def get_bip39_wordlist():
         wordlist_path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
             "data",
-            "bip39_english.txt",
+            "bip39_verse.txt",
         )
         with open(wordlist_path, "r", encoding="utf-8") as f:
             _bip39_wordlist = [line.strip() for line in f if line.strip()]

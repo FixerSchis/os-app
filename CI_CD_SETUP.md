@@ -11,7 +11,7 @@ The CI/CD pipeline ensures that all code changes meet quality standards before b
 ### 1. GitHub Actions Workflows
 
 #### `ci.yml` - Main CI Pipeline
-- **Triggers**: Every commit and pull request to master/develop
+- **Triggers**: Every commit and pull request to master
 - **Jobs**:
   - **Tests and Linting**: Runs tests across Python 3.10-3.12, linting, formatting checks
   - **Security Checks**: Bandit security analysis and Safety vulnerability checks
@@ -26,12 +26,12 @@ The CI/CD pipeline ensures that all code changes meet quality standards before b
   - **Rollback Support**: Automatic rollback on failure
 
 #### `setup-branch-protection.yml` - Branch Protection Setup
-- **Triggers**: Manual dispatch or push to master/develop
+- **Triggers**: Manual dispatch or push to master
 - **Purpose**: Automatically configures branch protection rules
 
 #### `initial-setup.yml` - Repository Initialization
 - **Triggers**: Manual dispatch or first push to master
-- **Purpose**: Sets up repository settings, creates develop branch, configures protection
+- **Purpose**: Sets up repository settings and configures protection for the master branch.
 
 #### `release.yml` - Release Management
 - **Triggers**: Manual dispatch
@@ -43,14 +43,6 @@ The CI/CD pipeline ensures that all code changes meet quality standards before b
 - ✅ Required status checks: All CI jobs must pass
 - ✅ Pull request reviews: At least 1 approval required
 - ✅ Code owner reviews: Required
-- ✅ Stale review dismissal: Enabled
-- ❌ Force pushes: Disabled
-- ❌ Branch deletions: Disabled
-
-#### Develop Branch
-- ✅ Required status checks: All CI jobs must pass
-- ✅ Pull request reviews: At least 1 approval required
-- ❌ Code owner reviews: Not required
 - ✅ Stale review dismissal: Enabled
 - ❌ Force pushes: Disabled
 - ❌ Branch deletions: Disabled
