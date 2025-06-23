@@ -39,6 +39,47 @@ class Group(db.Model):
         else:
             self.type = type
 
+    def add_funds(self, amount, editor_user_id, reason):
+        """Add funds to the group's bank account with audit logging."""
+        self.bank_account += amount
+
+        # Create an audit log for the addition
+        audit_log = GroupAuditLog(
+            group_id=self.id,
+            editor_user_id=editor_user_id,
+            action=GroupAuditAction.FUNDS_ADDED,
+            changes=f"Added {amount} for {reason}",
+        )
+        db.session.add(audit_log)
+
+    def remove_funds(self, amount, editor_user_id, reason):
+        """Remove funds from the group's bank account with audit logging."""
+        if self.bank_account < amount:
+            raise ValueError("Not enough funds")
+
+        self.bank_account -= amount
+
+        # Create an audit log for the removal
+        audit_log = GroupAuditLog(
+            group_id=self.id,
+            editor_user_id=editor_user_id,
+            action=GroupAuditAction.FUNDS_REMOVED,
+            changes=f"Removed {amount} for {reason}",
+        )
+        db.session.add(audit_log)
+
+    def set_funds(self, new_balance, editor_user_id, reason):
+        """Set the group's bank account to a specific value with audit logging."""
+        old_balance = self.bank_account
+        self.bank_account = new_balance
+        audit_log = GroupAuditLog(
+            group_id=self.id,
+            editor_user_id=editor_user_id,
+            action=GroupAuditAction.FUNDS_SET,
+            changes=f"Funds set from {old_balance} to {new_balance} for {reason}",
+        )
+        db.session.add(audit_log)
+
 
 class GroupInvite(db.Model):
     id = db.Column(db.Integer, primary_key=True)

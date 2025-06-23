@@ -3,9 +3,9 @@ from flask_login import current_user, login_required
 
 from models.database.faction import Faction
 from models.database.skills import Skill
-from models.enums import CharacterStatus
+from models.enums import CharacterAuditAction, CharacterStatus
 from models.extensions import db
-from models.tools.character import Character, CharacterSkill
+from models.tools.character import Character, CharacterAuditLog, CharacterSkill
 from utils.decorators import (
     character_owner_or_user_admin_required,
     email_verified_required,
@@ -160,8 +160,24 @@ def purchase_skill(character_id):
     skill = Skill.query.get_or_404(skill_id)
 
     try:
+        # Get current skill level before purchase
+        character_skill = CharacterSkill.query.filter_by(
+            character_id=character.id, skill_id=skill.id
+        ).first()
+        current_level = character_skill.times_purchased if character_skill else 0
+
         # Purchase the skill
         character.purchase_skill(skill, current_user)
+
+        new_level = current_level + 1
+        audit = CharacterAuditLog(
+            character_id=character.id,
+            editor_user_id=current_user.id,
+            action=CharacterAuditAction.SKILL_CHANGE.value,
+            changes=f"Skill purchased: {skill.name} (Level {new_level})",
+        )
+        db.session.add(audit)
+
         db.session.commit()
         flash(f"Successfully purchased {skill.name}.", "success")
     except ValueError as e:
@@ -200,7 +216,32 @@ def refund_skill(character_id):
             return redirect(url_for("character_skills.character_skills", character_id=character_id))
 
     try:
+        # Get current skill level before refund
+        character_skill = CharacterSkill.query.filter_by(
+            character_id=character.id, skill_id=skill.id
+        ).first()
+        if not character_skill:
+            flash("Character does not have this skill.", "error")
+            return redirect(url_for("character_skills.character_skills", character_id=character_id))
+
+        current_level = character_skill.times_purchased
+
         character.refund_skill(skill, current_user)
+
+        new_level = current_level - 1
+        if new_level == 0:
+            changes = f"Skill refunded: {skill.name} (removed entirely)"
+        else:
+            changes = f"Skill refunded: {skill.name} (Level {new_level})"
+
+        audit = CharacterAuditLog(
+            character_id=character.id,
+            editor_user_id=current_user.id,
+            action=CharacterAuditAction.SKILL_CHANGE.value,
+            changes=changes,
+        )
+        db.session.add(audit)
+
         db.session.commit()
         flash(f"Successfully refunded {skill.name}.", "success")
     except ValueError as e:

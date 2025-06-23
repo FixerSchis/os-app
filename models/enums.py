@@ -129,7 +129,13 @@ class CharacterAuditAction(Enum):
     STATUS_CHANGE = "status_change"
     SKILL_CHANGE = "skill_change"
     REPUTATION_CHANGE = "reputation_change"
-    FUNDS_SPENT = "funds_spent"
+    FUNDS_ADDED = "funds_added"
+    FUNDS_REMOVED = "funds_removed"
+    FUNDS_SET = "funds_set"
+    GROUP_JOINED = "group_joined"
+    GROUP_LEFT = "group_left"
+    CONDITION_CHANGE = "condition_change"
+    CYBERNETICS_CHANGE = "cybernetics_change"
 
     @classmethod
     def descriptions(cls):
@@ -139,7 +145,13 @@ class CharacterAuditAction(Enum):
             cls.STATUS_CHANGE.value: "Status Changed",
             cls.SKILL_CHANGE.value: "Skills Modified",
             cls.REPUTATION_CHANGE.value: "Reputation Changed",
-            cls.FUNDS_SPENT.value: "Funds Spent",
+            cls.FUNDS_ADDED.value: "Funds Added",
+            cls.FUNDS_REMOVED.value: "Funds Removed",
+            cls.FUNDS_SET.value: "Funds Set",
+            cls.GROUP_JOINED.value: "Joined Group",
+            cls.GROUP_LEFT.value: "Left Group",
+            cls.CONDITION_CHANGE.value: "Condition Changed",
+            cls.CYBERNETICS_CHANGE.value: "Cybernetic Changed",
         }
 
 
@@ -153,6 +165,7 @@ class GroupAuditAction(Enum):
     MEMBER_LEFT = "member_left"
     FUNDS_ADDED = "funds_added"
     FUNDS_WITHDRAWN = "funds_withdrawn"
+    FUNDS_SET = "funds_set"
     DISBANDED = "disbanded"
 
     @classmethod
@@ -167,6 +180,7 @@ class GroupAuditAction(Enum):
             cls.MEMBER_LEFT.value: "Member Left",
             cls.FUNDS_ADDED.value: "Funds Added",
             cls.FUNDS_WITHDRAWN.value: "Funds Withdrawn",
+            cls.FUNDS_SET.value: "Funds Set",
             cls.DISBANDED.value: "Disbanded",
         }
 

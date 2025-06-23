@@ -461,7 +461,8 @@ class Character(db.Model):
     def can_afford(self, amount):
         return self.get_available_funds() >= amount
 
-    def spend_funds(self, amount, editor_user_id, reason):
+    def remove_funds(self, amount, editor_user_id, reason):
+        """Remove funds from the character's bank account with audit logging."""
         if not self.can_afford(amount):
             raise ValueError("Not enough funds")
 
@@ -469,13 +470,16 @@ class Character(db.Model):
         character_contribution = min(self.bank_account, amount)
         group_contribution = amount - character_contribution
 
-        # Deduct from character balance first
+        # Deduct remaining from group balance
+        # Perform first to fail if group doesn't have enough funds
+        if group_contribution > 0 and self.group:
+            self.group.remove_funds(
+                group_contribution, editor_user_id, f"Character {self.name} spent on: {reason}"
+            )
+
+        # Deduct from character balance
         if character_contribution > 0:
             self.bank_account -= character_contribution
-
-        # Deduct remaining from group balance if needed
-        if group_contribution > 0 and self.group:
-            self.group.bank_account -= group_contribution
 
         # Create an audit log for the expenditure
         changes_parts = []
@@ -484,13 +488,38 @@ class Character(db.Model):
         if group_contribution > 0:
             changes_parts.append(f"Group: {group_contribution}")
 
-        changes_text = f"Spent {amount} on {reason} ({', '.join(changes_parts)})"
+        changes_text = f"Removed {amount} for {reason} ({', '.join(changes_parts)})"
 
         audit_log = CharacterAuditLog(
             character_id=self.id,
             editor_user_id=editor_user_id,
-            action=CharacterAuditAction.FUNDS_SPENT,
+            action=CharacterAuditAction.FUNDS_REMOVED,
             changes=changes_text,
+        )
+        db.session.add(audit_log)
+
+    def add_funds(self, amount, editor_user_id, reason):
+        """Add funds to the character's bank account with audit logging."""
+        self.bank_account += amount
+
+        # Create an audit log for the addition
+        audit_log = CharacterAuditLog(
+            character_id=self.id,
+            editor_user_id=editor_user_id,
+            action=CharacterAuditAction.FUNDS_ADDED,
+            changes=f"Added {amount} for {reason}",
+        )
+        db.session.add(audit_log)
+
+    def set_funds(self, new_balance, editor_user_id, reason):
+        """Set the character's bank account to a specific value with audit logging."""
+        old_balance = self.bank_account
+        self.bank_account = new_balance
+        audit_log = CharacterAuditLog(
+            character_id=self.id,
+            editor_user_id=editor_user_id,
+            action=CharacterAuditAction.FUNDS_SET,
+            changes=f"Funds set from {old_balance} to {new_balance} for {reason}",
         )
         db.session.add(audit_log)
 

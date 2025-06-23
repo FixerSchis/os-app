@@ -107,12 +107,16 @@ def update_balance():
 
     if account_type == "character":
         account = Character.query.get_or_404(account_id)
+        old_balance = account.bank_account
+        if new_balance != old_balance:
+            account.set_funds(new_balance, current_user.id, "Admin balance update")
     else:
         account = Group.query.get_or_404(account_id)
+        old_balance = account.bank_account
+        if new_balance != old_balance:
+            account.set_funds(new_balance, current_user.id, "Admin balance update")
 
-    account.bank_account = new_balance
     db.session.commit()
-
     flash("Balance updated successfully", "success")
     return redirect(url_for("banking.bank"))
 
@@ -149,6 +153,7 @@ def transfer():
         if not current_user.has_role("user_admin") and source.user_id != current_user.id:
             flash("You do not have access to this account", "error")
             return redirect(url_for("banking.bank"))
+        source_name = source.name
     else:
         source = Group.query.get_or_404(source_id)
         if not current_user.has_role("user_admin"):
@@ -158,6 +163,7 @@ def transfer():
             if not active_character or active_character.group_id != source.id:
                 flash("You do not have access to this account", "error")
                 return redirect(url_for("banking.bank"))
+        source_name = source.name
 
     # Check if source has enough money
     if source.bank_account < amount:
@@ -167,12 +173,26 @@ def transfer():
     # Get target account
     if target_type == "character":
         target = Character.query.get_or_404(target_id)
+        target_name = target.name
     else:
         target = Group.query.get_or_404(target_id)
+        target_name = target.name
 
-    # Perform transfer
-    source.bank_account -= amount
-    target.bank_account += amount
+    # Perform transfer using centralized methods
+    if source_type == "character":
+        # Remove funds from source character
+        source.remove_funds(amount, current_user.id, f"Transfer to {target_name}")
+    else:
+        # Source is a group
+        source.remove_funds(amount, current_user.id, f"Transfer to {target_name}")
+
+    if target_type == "character":
+        # Add funds to target character
+        target.add_funds(amount, current_user.id, f"Transfer from {source_name}")
+    else:
+        # Add funds to target group
+        target.add_funds(amount, current_user.id, f"Transfer from {source_name}")
+
     db.session.commit()
 
     flash("Transfer completed successfully", "success")
