@@ -12,6 +12,7 @@ from models.extensions import db
 from models.tools.character import (
     Character,
     CharacterAuditLog,
+    CharacterCondition,
     CharacterStatus,
     CharacterTag,
     assign_character_id,
@@ -255,14 +256,41 @@ def edit_post(character_id):
             species_list=species_list,
         )
 
+    # Track basic information changes for EDIT action
+    basic_changes = []
+
+    if character.name != name:
+        basic_changes.append(f"Name changed from '{character.name}' to '{name}'")
+    if character.pronouns_subject != pronouns_subject:
+        basic_changes.append(
+            f"Pronouns (subject) changed from '{character.pronouns_subject}' "
+            f"to '{pronouns_subject}'"
+        )
+    if character.pronouns_object != pronouns_object:
+        basic_changes.append(
+            f"Pronouns (object) changed from '{character.pronouns_object}' to '{pronouns_object}'"
+        )
+    if character.faction_id != int(faction_id):
+        old_faction = Faction.query.get(character.faction_id)
+        new_faction = Faction.query.get(faction_id)
+        old_name = old_faction.name if old_faction else "None"
+        new_name = new_faction.name if new_faction else "None"
+        basic_changes.append(f"Faction changed from '{old_name}' to '{new_name}'")
+    if character.species_id != int(species_id):
+        old_species = Species.query.get(character.species_id)
+        new_species = Species.query.get(species_id)
+        old_name = old_species.name if old_species else "None"
+        new_name = new_species.name if new_species else "None"
+        basic_changes.append(f"Species changed from '{old_name}' to '{new_name}'")
+
     character.name = name
     character.pronouns_subject = pronouns_subject
     character.pronouns_object = pronouns_object
     character.faction_id = faction_id
     character.species_id = species_id
 
-    # --- Active Conditions Logic (user_admin only) ---
-    from models.tools.character import CharacterCondition
+    # Track condition changes for CONDITION_CHANGE action
+    condition_changes = []
 
     if current_user.has_role("user_admin"):
         # Remove condition
@@ -272,6 +300,7 @@ def edit_post(character_id):
                 id=remove_condition_id, character_id=character.id
             ).first()
             if cc:
+                condition_changes.append(f"Condition removed: {cc.condition.name}")
                 db.session.delete(cc)
                 db.session.commit()
                 flash("Condition removed.", "success")
@@ -286,6 +315,10 @@ def edit_post(character_id):
                     character_id=character.id, condition_id=cond_id
                 ).first()
                 if not exists:
+                    condition = Condition.query.get(cond_id)
+                    condition_changes.append(
+                        f"Condition added: {condition.name} (Stage {stage}, Duration {duration})"
+                    )
                     new_cc = CharacterCondition(
                         character_id=character.id,
                         condition_id=cond_id,
@@ -300,20 +333,48 @@ def edit_post(character_id):
         for cc in character.active_conditions:
             stage_val = request.form.get(f"active_condition_stage_{cc.id}")
             duration_val = request.form.get(f"active_condition_duration_{cc.id}")
-            if stage_val is not None:
+            if stage_val is not None and int(stage_val) != cc.current_stage:
+                condition_changes.append(
+                    f"Condition {cc.condition.name} stage changed from {cc.current_stage} "
+                    f"to {stage_val}"
+                )
                 cc.current_stage = int(stage_val)
-            if duration_val is not None:
+            if duration_val is not None and int(duration_val) != cc.current_duration:
+                condition_changes.append(
+                    f"Condition {cc.condition.name} duration changed from {cc.current_duration} "
+                    f"to {duration_val}"
+                )
                 cc.current_duration = int(duration_val)
+
+        # Track cybernetic changes for CYBERNETICS_CHANGE action
+        cybernetic_changes = []
+
         # Update cybernetics if user_admin
         selected_cyber_ids = request.form.getlist("cybernetic_ids[]")
+        current_cyber_ids = {cc.cybernetic_id for cc in character.cybernetics_link}
+        new_cyber_ids = set(int(cid) for cid in selected_cyber_ids if cid.isdigit())
+
+        # Track cybernetic changes
+        added_cybernetics = new_cyber_ids - current_cyber_ids
+        removed_cybernetics = current_cyber_ids - new_cyber_ids
+
+        for cyber_id in added_cybernetics:
+            cyber = Cybernetic.query.get(cyber_id)
+            if cyber:
+                cybernetic_changes.append(f"Cybernetic added: {cyber.name}")
+
+        for cyber_id in removed_cybernetics:
+            cyber = Cybernetic.query.get(cyber_id)
+            if cyber:
+                cybernetic_changes.append(f"Cybernetic removed: {cyber.name}")
+
         # Remove all current
         CharacterCybernetic.query.filter_by(character_id=character.id).delete()
         # Add new
         for cid in selected_cyber_ids:
             db.session.add(CharacterCybernetic(character_id=character.id, cybernetic_id=cid))
-        db.session.commit()
 
-    # Update faction reputations if user is admin
+    # Update faction reputations if user is admin (handled by set_reputation method)
     if current_user.has_role("user_admin"):
         for faction in factions:
             reputation = request.form.get(f"reputation_{faction.id}")
@@ -323,7 +384,7 @@ def edit_post(character_id):
                     character.set_reputation(faction.id, reputation_value, current_user.id)
                 except ValueError:
                     pass
-        # Handle tag updates
+        # Handle tag updates (no audit logging for tags as requested)
         tag_ids = request.form.getlist("tag_ids[]")
         current_tags = set(tag.id for tag in character.tags)
         new_tags = set()
@@ -345,6 +406,35 @@ def edit_post(character_id):
             tag = db.session.get(CharacterTag, tag_id)
             if tag and tag not in character.tags:
                 character.tags.append(tag)
+
+    # Create separate audit logs for different types of changes
+    if basic_changes:
+        audit = CharacterAuditLog(
+            character_id=character.id,
+            editor_user_id=current_user.id,
+            action=CharacterAuditAction.EDIT.value,
+            changes="; ".join(basic_changes),
+        )
+        db.session.add(audit)
+
+    if condition_changes:
+        audit = CharacterAuditLog(
+            character_id=character.id,
+            editor_user_id=current_user.id,
+            action=CharacterAuditAction.CONDITION_CHANGE.value,
+            changes="; ".join(condition_changes),
+        )
+        db.session.add(audit)
+
+    if cybernetic_changes:
+        audit = CharacterAuditLog(
+            character_id=character.id,
+            editor_user_id=current_user.id,
+            action=CharacterAuditAction.CYBERNETICS_CHANGE.value,
+            changes="; ".join(cybernetic_changes),
+        )
+        db.session.add(audit)
+
     db.session.commit()
     flash("Character updated successfully")
     if admin_context:
@@ -392,6 +482,15 @@ def kill_character(character_id):
         flash("Only active characters can be killed.", "error")
         return redirect(url_for("characters.character_list"))
     character.status = CharacterStatus.DEAD.value
+    db.session.commit()
+    # Audit log for status change
+    audit = CharacterAuditLog(
+        character_id=character.id,
+        editor_user_id=current_user.id,
+        action=CharacterAuditAction.STATUS_CHANGE.value,
+        changes="Character marked as dead",
+    )
+    db.session.add(audit)
     db.session.commit()
     flash("Character marked as dead.", "success")
     if admin_context:

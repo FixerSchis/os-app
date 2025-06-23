@@ -173,7 +173,7 @@ def test_character_funds(db, new_user, character):
     assert not character.can_afford(101)
 
     # Spend funds
-    character.spend_funds(30, new_user.id, "Test purchase")
+    character.remove_funds(30, new_user.id, "Test purchase")
     db.session.commit()
     db.session.refresh(character)
 
@@ -181,7 +181,7 @@ def test_character_funds(db, new_user, character):
 
     # Check audit log
     log = CharacterAuditLog.query.filter_by(
-        character_id=character.id, action=CharacterAuditAction.FUNDS_SPENT
+        character_id=character.id, action=CharacterAuditAction.FUNDS_REMOVED
     ).first()
     assert log is not None
     assert log.editor_user_id == new_user.id
@@ -190,7 +190,7 @@ def test_character_funds(db, new_user, character):
 
     # Test spending too much
     with pytest.raises(ValueError, match="Not enough funds"):
-        character.spend_funds(100, new_user.id, "This should fail")
+        character.remove_funds(100, new_user.id, "This should fail")
 
     # Verify funds did not change
     assert character.get_available_funds() == 70
@@ -212,7 +212,7 @@ def test_character_funds_with_group(db, new_user, character, group):
     db.session.refresh(group)
 
     # Test spending from character funds only
-    character.spend_funds(30, new_user.id, "Test purchase")
+    character.remove_funds(30, new_user.id, "Test purchase")
     db.session.commit()
     db.session.refresh(character)
     db.session.refresh(group)
@@ -222,7 +222,7 @@ def test_character_funds_with_group(db, new_user, character, group):
     assert character.get_available_funds() == 120  # 20 + 100
 
     # Test spending more than character has (should use group funds)
-    character.spend_funds(50, new_user.id, "Large purchase")
+    character.remove_funds(50, new_user.id, "Large purchase")
     db.session.commit()
     db.session.refresh(character)
     db.session.refresh(group)
@@ -232,7 +232,7 @@ def test_character_funds_with_group(db, new_user, character, group):
     assert character.get_available_funds() == 70  # 0 + 70
 
     # Test spending from group funds only
-    character.spend_funds(40, new_user.id, "Group purchase")
+    character.remove_funds(40, new_user.id, "Group purchase")
     db.session.commit()
     db.session.refresh(character)
     db.session.refresh(group)
@@ -243,7 +243,7 @@ def test_character_funds_with_group(db, new_user, character, group):
 
     # Test spending more than available (should fail)
     with pytest.raises(ValueError, match="Not enough funds"):
-        character.spend_funds(50, new_user.id, "This should fail")
+        character.remove_funds(50, new_user.id, "This should fail")
 
     # Verify balances didn't change
     db.session.refresh(character)
@@ -254,7 +254,7 @@ def test_character_funds_with_group(db, new_user, character, group):
     # Check audit logs
     logs = (
         CharacterAuditLog.query.filter_by(
-            character_id=character.id, action=CharacterAuditAction.FUNDS_SPENT
+            character_id=character.id, action=CharacterAuditAction.FUNDS_REMOVED
         )
         .order_by(CharacterAuditLog.timestamp)
         .all()
@@ -278,7 +278,7 @@ def test_character_funds_no_group(db, new_user, character):
     db.session.refresh(character)
 
     # Test spending from character funds only
-    character.spend_funds(50, new_user.id, "Test purchase")
+    character.remove_funds(50, new_user.id, "Test purchase")
     db.session.commit()
     db.session.refresh(character)
 
@@ -287,7 +287,7 @@ def test_character_funds_no_group(db, new_user, character):
 
     # Test spending more than character has (should fail)
     with pytest.raises(ValueError, match="Not enough funds"):
-        character.spend_funds(100, new_user.id, "This should fail")
+        character.remove_funds(100, new_user.id, "This should fail")
 
     # Verify balance didn't change
     db.session.refresh(character)
@@ -295,7 +295,7 @@ def test_character_funds_no_group(db, new_user, character):
 
     # Check audit log
     log = CharacterAuditLog.query.filter_by(
-        character_id=character.id, action=CharacterAuditAction.FUNDS_SPENT
+        character_id=character.id, action=CharacterAuditAction.FUNDS_REMOVED
     ).first()
     assert log is not None
     assert "Character: 50" in log.changes
@@ -317,7 +317,7 @@ def test_character_funds_zero_character_balance(db, new_user, character, group):
     db.session.refresh(group)
 
     # Test spending from group funds only
-    character.spend_funds(50, new_user.id, "Group purchase")
+    character.remove_funds(50, new_user.id, "Group purchase")
     db.session.commit()
     db.session.refresh(character)
     db.session.refresh(group)
@@ -328,7 +328,7 @@ def test_character_funds_zero_character_balance(db, new_user, character, group):
 
     # Check audit log
     log = CharacterAuditLog.query.filter_by(
-        character_id=character.id, action=CharacterAuditAction.FUNDS_SPENT
+        character_id=character.id, action=CharacterAuditAction.FUNDS_REMOVED
     ).first()
     assert log is not None
     assert "Group: 50" in log.changes

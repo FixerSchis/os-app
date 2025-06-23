@@ -303,30 +303,62 @@ def enter_pack_contents_post(period_id, character_id):
                 sample = db.session.get(Sample, sample_id)
                 if sample and sample not in pack.character.group.samples:
                     pack.character.group.samples.append(sample)
-        # Add conditions to player
+
+        # Add conditions to player with audit logging
         if pack.conditions:
+            from models.enums import CharacterAuditAction
+            from models.tools.character import CharacterAuditLog
+
             for condition in pack.conditions:
                 if condition and condition not in pack.character.active_conditions:
-                    pack.character.active_conditions.append(
-                        CharacterCondition(
+                    condition_obj = db.session.get(Condition, condition["id"])
+                    if condition_obj:
+                        # Create audit log for condition addition
+                        audit = CharacterAuditLog(
                             character_id=pack.character.id,
-                            condition_id=condition["id"],
-                            current_stage=1,
-                            current_duration=condition["duration"],
+                            editor_user_id=current_user.id,
+                            action=CharacterAuditAction.CONDITION_CHANGE.value,
+                            changes=f"Condition added via downtime: {condition_obj.name} "
+                            "(Stage 1, Duration {condition['duration']})",
                         )
-                    )
-        # Add cybernetics to character
+                        db.session.add(audit)
+
+                        pack.character.active_conditions.append(
+                            CharacterCondition(
+                                character_id=pack.character.id,
+                                condition_id=condition["id"],
+                                current_stage=1,
+                                current_duration=condition["duration"],
+                            )
+                        )
+
+        # Add cybernetics to character with audit logging
         if pack.cybernetics:
+            from models.enums import CharacterAuditAction
+            from models.tools.character import CharacterAuditLog
+
             for cybernetic_id in pack.cybernetics:
                 cybernetic = db.session.get(Cybernetic, cybernetic_id)
                 if cybernetic and cybernetic not in pack.character.cybernetics:
+                    # Create audit log for cybernetic addition
+                    audit = CharacterAuditLog(
+                        character_id=pack.character.id,
+                        editor_user_id=current_user.id,
+                        action=CharacterAuditAction.CYBERNETICS_CHANGE.value,
+                        changes=f"Cybernetic added via downtime: {cybernetic.name}",
+                    )
+                    db.session.add(audit)
+
                     db.session.add(
                         CharacterCybernetic(
                             character_id=pack.character.id, cybernetic_id=cybernetic_id
                         )
                     )
         pack.status = DowntimeTaskStatus.ENTER_DOWNTIME
-        pack.character.bank_account += pack.energy_credits
+        if pack.energy_credits > 0:
+            pack.character.add_funds(
+                pack.energy_credits, current_user.id, f"Energy credits from downtime pack {pack.id}"
+            )
         send_downtime_pack_enter_notification(pack.character.user, pack.character, pack)
     db.session.commit()
     flash("Pack contents entered successfully.", "success")
@@ -718,7 +750,9 @@ def process_downtime(period_id):
         for purchase in pack.purchases:
             blueprint = db.session.get(ItemBlueprint, purchase["blueprint_id"])
             if pack.character.can_afford(blueprint.base_cost):
-                pack.character.spend_funds(blueprint.base_cost)
+                pack.character.remove_funds(
+                    blueprint.base_cost, current_user.id, f"Purchase: {blueprint.name}"
+                )
                 new_item = Item(
                     character_id=pack.character.id,
                     blueprint_id=blueprint.id,
@@ -745,7 +779,9 @@ def process_downtime(period_id):
             if engineering.action == "maintain":
                 item = db.session.get(Item, engineering.item_id)
                 if item and pack.character.can_afford(item.get_maintenance_cost()):
-                    pack.character.spend_funds(item.get_maintenance_cost())
+                    pack.character.remove_funds(
+                        item.get_maintenance_cost(), current_user.id, f"Maintenance: {item.name}"
+                    )
                     item.expiry = period.event.event_number + 4
                     pack.character.character_pack["downtime_results"][str(pack.id)].append(
                         f"Maintained {item.name} - new expiry: E{item.expiry}"
@@ -767,7 +803,11 @@ def process_downtime(period_id):
                     and pack.character.can_afford(item.get_modification_cost(engineering.mods))
                     and pack.character.known_modifications.contains(mod)
                 ):
-                    pack.character.spend_funds(item.get_modification_cost(engineering.mods))
+                    pack.character.remove_funds(
+                        item.get_modification_cost(engineering.mods),
+                        current_user.id,
+                        f"Modification: {mod.name} on {item.name}",
+                    )
                     item.mods_applied.append(mod)
                     pack.character.character_pack["downtime_results"][str(pack.id)].append(
                         f"Applied {mod.name} to {item.name}"
@@ -1270,6 +1310,7 @@ def process_downtime(period_id):
         if pack.samples:
             for sample in pack.samples:
                 pack.character.character_pack["samples"].append(sample)
+        # Add character income to their pack
         pack.character.character_pack["chits"] += 30
         send_downtime_completed_notification(pack.character.user, pack, pack.character)
 

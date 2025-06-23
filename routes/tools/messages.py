@@ -83,7 +83,9 @@ def send_message():
 
     # Deduct funds only after the message is successfully created
     if not paid_in_cash:
-        sender.spend_funds(10, editor_user_id=current_user.id, reason="Send message")
+        sender.remove_funds(
+            10, editor_user_id=current_user.id, reason=f"Sent message to {recipient_name}"
+        )
 
     db.session.commit()
 

@@ -2,9 +2,9 @@ from flask import Blueprint, abort, flash, redirect, render_template, request, u
 from flask_login import current_user, login_required
 
 from models.database.sample import Sample
-from models.enums import CharacterStatus, GroupAuditAction, GroupType, Role
+from models.enums import CharacterAuditAction, CharacterStatus, GroupAuditAction, GroupType, Role
 from models.extensions import db
-from models.tools.character import Character
+from models.tools.character import Character, CharacterAuditLog
 from models.tools.group import Group, GroupAuditLog, GroupInvite
 from utils.decorators import (
     email_verified_required,
@@ -149,27 +149,23 @@ def edit_group_post(group_id):
     if group.name != name:
         changes.append(f"Name changed from '{group.name}' to '{name}'")
 
-    old_bank_account = group.bank_account
-    old_type_str = getattr(group.type, "value", group.type)
+    # Only allow type changes for admins
+    if (
+        current_user.has_role(Role.USER_ADMIN.value)
+        and type
+        and getattr(group.type, "value", group.type) != type
+    ):
+        changes.append(
+            f"Type changed from '{getattr(group.type, 'value', group.type)}' to '{type}'"
+        )
+        group.type = type
+
+    # Handle bank account changes using centralized methods
+    if current_user.has_role(Role.USER_ADMIN.value):
+        if group.bank_account != bank_account:
+            group.set_funds(bank_account, current_user.id, "Admin group edit")
 
     group.name = name
-
-    if current_user.has_role(Role.USER_ADMIN.value):
-        if type and old_type_str != type:
-            changes.append(f"Type changed from '{old_type_str}' to '{type}'")
-            group.type = type
-        if bank_account is not None:
-            try:
-                new_bank_account = int(bank_account)
-                if old_bank_account != new_bank_account:
-                    if new_bank_account > old_bank_account:
-                        changes.append(f"Funds added: {new_bank_account - old_bank_account}")
-                    else:
-                        changes.append(f"Funds withdrawn: {old_bank_account - new_bank_account}")
-                group.bank_account = new_bank_account
-            except ValueError:
-                flash("Bank account must be a number", "error")
-                return redirect(url_for("groups.group_list"))
 
     # Create audit log if there were changes
     if changes:
@@ -275,7 +271,7 @@ def respond_to_invite_post(invite_id):
     if action == "accept":
         character.group_id = invite.group_id
 
-        # Create audit log for member joining
+        # Create audit log for member joining (group audit)
         audit_log = GroupAuditLog(
             group_id=invite.group_id,
             editor_user_id=current_user.id,
@@ -283,6 +279,17 @@ def respond_to_invite_post(invite_id):
             changes=f"Member joined: {character.name}",
         )
         db.session.add(audit_log)
+
+        # Create audit log for character joining group (character audit)
+        from models.enums import CharacterAuditAction
+
+        character_audit = CharacterAuditLog(
+            character_id=character.id,
+            editor_user_id=current_user.id,
+            action=CharacterAuditAction.GROUP_JOINED.value,
+            changes=f"Joined group: {invite.group.name}",
+        )
+        db.session.add(character_audit)
 
         flash(f"You have joined {invite.group.name}.", "success")
         GroupInvite.query.filter_by(character_id=character.id).delete()
@@ -322,7 +329,7 @@ def leave_group_post(group_id):
         flash("You are not a member of this group", "error")
         return redirect(url_for("groups.group_list", character_id=character_id))
 
-    # Create audit log for member leaving
+    # Create audit log for member leaving (group audit)
     audit_log = GroupAuditLog(
         group_id=group.id,
         editor_user_id=current_user.id,
@@ -330,6 +337,17 @@ def leave_group_post(group_id):
         changes=f"Member left: {character.name}",
     )
     db.session.add(audit_log)
+
+    # Create audit log for character leaving group (character audit)
+    from models.enums import CharacterAuditAction
+
+    character_audit = CharacterAuditLog(
+        character_id=character.id,
+        editor_user_id=current_user.id,
+        action=CharacterAuditAction.GROUP_LEFT.value,
+        changes=f"Left group: {group.name}",
+    )
+    db.session.add(character_audit)
 
     character.group_id = None
     db.session.commit()
@@ -401,6 +419,15 @@ def remove_character(group_id, character_id):
         changes=f"Member removed by admin: {character.name}",
     )
     db.session.add(audit_log)
+
+    # Create audit log for character being removed from group (character audit)
+    character_audit = CharacterAuditLog(
+        character_id=character.id,
+        editor_user_id=current_user.id,
+        action=CharacterAuditAction.GROUP_LEFT.value,
+        changes=f"Removed from group by admin: {group.name}",
+    )
+    db.session.add(character_audit)
 
     character.group_id = None
     db.session.commit()
@@ -499,18 +526,24 @@ def edit_group_admin_post(group_id):
     changes = []
     if group.name != name:
         changes.append(f"Name changed from '{group.name}' to '{name}'")
-    old_type_str = getattr(group.type, "value", group.type)
-    if old_type_str != type:
-        changes.append(f"Type changed from '{old_type_str}' to '{type}'")
-    if group.bank_account != bank_account_int:
-        if bank_account_int > group.bank_account:
-            changes.append(f"Funds added: {bank_account_int - group.bank_account}")
-        else:
-            changes.append(f"Funds withdrawn: {group.bank_account - bank_account_int}")
+
+    # Only allow type changes for admins
+    if (
+        current_user.has_role(Role.USER_ADMIN.value)
+        and type
+        and getattr(group.type, "value", group.type) != type
+    ):
+        changes.append(
+            f"Type changed from '{getattr(group.type, 'value', group.type)}' to '{type}'"
+        )
+        group.type = type
+
+    # Handle bank account changes using centralized methods
+    if current_user.has_role(Role.USER_ADMIN.value):
+        if group.bank_account != bank_account_int:
+            group.set_funds(bank_account_int, current_user.id, "Admin group edit")
 
     group.name = name
-    group.type = type
-    group.bank_account = bank_account_int
 
     # Update samples
     if sample_ids:
