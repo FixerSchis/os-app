@@ -10,7 +10,7 @@ Werkzeug==3.0.1
 qrcode[pil]==7.4.2
 WeasyPrint==65.1
 cryptography==42.0.5
-pyOpenSSL==24.1.0
+pyOpenSSL==25.1.0
 pytest
 pydyf==0.11.0
 gunicorn==21.2.0

@@ -19,7 +19,7 @@ dependencies = [
     "qrcode[pil]==8.2",
     "WeasyPrint==65.1",
     "cryptography==45.0.4",
-    "pyOpenSSL==24.1.0",
+    "pyOpenSSL==25.1.0",
     "pytest"
 ]
 
