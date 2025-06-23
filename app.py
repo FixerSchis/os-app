@@ -190,10 +190,6 @@ def create_app(config_class=None):
 
     if app.config.get("TESTING"):
 
-        @app.route("/test-page")
-        def test_page():
-            return render_template("test_page.html")
-
         @app.route("/protected")
         @login_required
         def protected_route():
