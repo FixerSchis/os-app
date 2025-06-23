@@ -143,6 +143,34 @@ class CharacterAuditAction(Enum):
         }
 
 
+class GroupAuditAction(Enum):
+    CREATE = "create"
+    EDIT = "edit"
+    INVITE_SENT = "invite_sent"
+    INVITE_DECLINED = "invite_declined"
+    MEMBER_ADDED = "member_added"
+    MEMBER_REMOVED = "member_removed"
+    MEMBER_LEFT = "member_left"
+    FUNDS_ADDED = "funds_added"
+    FUNDS_WITHDRAWN = "funds_withdrawn"
+    DISBANDED = "disbanded"
+
+    @classmethod
+    def descriptions(cls):
+        return {
+            cls.CREATE.value: "Created",
+            cls.EDIT.value: "Edited",
+            cls.INVITE_SENT.value: "Invite Sent",
+            cls.INVITE_DECLINED.value: "Invite Declined",
+            cls.MEMBER_ADDED.value: "Member Added",
+            cls.MEMBER_REMOVED.value: "Member Removed",
+            cls.MEMBER_LEFT.value: "Member Left",
+            cls.FUNDS_ADDED.value: "Funds Added",
+            cls.FUNDS_WITHDRAWN.value: "Funds Withdrawn",
+            cls.DISBANDED.value: "Disbanded",
+        }
+
+
 class GroupType(Enum):
     MILITARY = "military"
     SCIENTIFIC = "scientific"

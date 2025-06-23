@@ -152,3 +152,20 @@
         padding: 0.75rem;
     }
 }
+
+/* Dark mode support for audit log */
+[data-theme="dark"] .audit-log-container {
+    background: var(--card-bg) !important;
+    color: var(--text-primary) !important;
+}
+[data-theme="dark"] .audit-log-entries {
+    background: var(--card-bg) !important;
+}
+[data-theme="dark"] .audit-entry {
+    background: var(--card-bg) !important;
+    color: var(--text-primary) !important;
+}
+[data-theme="dark"] .audit-changes {
+    background: #23272e !important;
+    color: var(--text-primary) !important;
+}

@@ -32,8 +32,11 @@
 
     {% if character.group %}
         <div class="card mb-4">
-            <div class="card-header">
+            <div class="card-header d-flex justify-content-between align-items-center">
                 <h2>Your Group</h2>
+                <a href="{{ url_for('groups.group_audit_log', group_id=character.group.id) }}" class="btn btn-outline-info">
+                    <i class="fas fa-history me-1"></i> View Audit Log
+                </a>
             </div>
             <div class="card-body">
                 <form method="POST" action="{{ url_for('groups.edit_group_post', group_id=character.group.id) }}" class="mb-4">

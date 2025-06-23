@@ -2,10 +2,10 @@ from flask import Blueprint, abort, flash, redirect, render_template, request, u
 from flask_login import current_user, login_required
 
 from models.database.sample import Sample
-from models.enums import CharacterStatus, GroupType, Role
+from models.enums import CharacterStatus, GroupAuditAction, GroupType, Role
 from models.extensions import db
 from models.tools.character import Character
-from models.tools.group import Group, GroupInvite
+from models.tools.group import Group, GroupAuditLog, GroupInvite
 from utils.decorators import (
     email_verified_required,
     has_active_character_required,
@@ -113,6 +113,15 @@ def create_group_post():
     # Add character to group
     active_character.group_id = group.id
 
+    # Create audit log for group creation
+    audit_log = GroupAuditLog(
+        group_id=group.id,
+        editor_user_id=current_user.id,
+        action=GroupAuditAction.CREATE.value,
+        changes=f"Group created by {active_character.name}",
+    )
+    db.session.add(audit_log)
+
     db.session.commit()
     flash("Group created successfully.", "success")
     return redirect(
@@ -135,17 +144,42 @@ def edit_group_post(group_id):
         flash("Name is required", "error")
         return redirect(url_for("groups.group_list"))
 
+    # Track changes for audit log
+    changes = []
+    if group.name != name:
+        changes.append(f"Name changed from '{group.name}' to '{name}'")
+
+    old_bank_account = group.bank_account
+    old_type_str = getattr(group.type, "value", group.type)
+
     group.name = name
 
     if current_user.has_role(Role.USER_ADMIN.value):
-        if type:
+        if type and old_type_str != type:
+            changes.append(f"Type changed from '{old_type_str}' to '{type}'")
             group.type = type
         if bank_account is not None:
             try:
-                group.bank_account = int(bank_account)
+                new_bank_account = int(bank_account)
+                if old_bank_account != new_bank_account:
+                    if new_bank_account > old_bank_account:
+                        changes.append(f"Funds added: {new_bank_account - old_bank_account}")
+                    else:
+                        changes.append(f"Funds withdrawn: {old_bank_account - new_bank_account}")
+                group.bank_account = new_bank_account
             except ValueError:
                 flash("Bank account must be a number", "error")
                 return redirect(url_for("groups.group_list"))
+
+    # Create audit log if there were changes
+    if changes:
+        audit_log = GroupAuditLog(
+            group_id=group.id,
+            editor_user_id=current_user.id,
+            action=GroupAuditAction.EDIT.value,
+            changes="; ".join(changes),
+        )
+        db.session.add(audit_log)
 
     db.session.commit()
     flash("Group updated successfully", "success")
@@ -206,6 +240,16 @@ def invite_to_group(group_id):
 
     invite = GroupInvite(group_id=group.id, character_id=character.id)
     db.session.add(invite)
+
+    # Create audit log for invite sent
+    audit_log = GroupAuditLog(
+        group_id=group.id,
+        editor_user_id=current_user.id,
+        action=GroupAuditAction.INVITE_SENT.value,
+        changes=f"Invite sent to {character.name}",
+    )
+    db.session.add(audit_log)
+
     db.session.commit()
 
     flash(f"Invited {character.name} to the group.", "success")
@@ -230,9 +274,28 @@ def respond_to_invite_post(invite_id):
     action = request.form.get("action")
     if action == "accept":
         character.group_id = invite.group_id
+
+        # Create audit log for member joining
+        audit_log = GroupAuditLog(
+            group_id=invite.group_id,
+            editor_user_id=current_user.id,
+            action=GroupAuditAction.MEMBER_ADDED.value,
+            changes=f"Member joined: {character.name}",
+        )
+        db.session.add(audit_log)
+
         flash(f"You have joined {invite.group.name}.", "success")
         GroupInvite.query.filter_by(character_id=character.id).delete()
     elif action == "decline":
+        # Create audit log for invite declined
+        audit_log = GroupAuditLog(
+            group_id=invite.group_id,
+            editor_user_id=current_user.id,
+            action=GroupAuditAction.INVITE_DECLINED.value,
+            changes=f"Invite declined by {character.name}",
+        )
+        db.session.add(audit_log)
+
         flash(f"You have declined the invitation to {invite.group.name}.", "success")
 
     db.session.delete(invite)
@@ -259,6 +322,15 @@ def leave_group_post(group_id):
         flash("You are not a member of this group", "error")
         return redirect(url_for("groups.group_list", character_id=character_id))
 
+    # Create audit log for member leaving
+    audit_log = GroupAuditLog(
+        group_id=group.id,
+        editor_user_id=current_user.id,
+        action=GroupAuditAction.MEMBER_LEFT.value,
+        changes=f"Member left: {character.name}",
+    )
+    db.session.add(audit_log)
+
     character.group_id = None
     db.session.commit()
     flash("You have left the group.", "success")
@@ -280,21 +352,26 @@ def disband_group_post(group_id):
 
     # Must be the last member to disband
     if len(group.characters) > 1:
-        flash("You do not have permission to disband this group.", "error")
-        return redirect(
-            url_for("groups.group_list", admin_view=admin_view, character_id=character_id)
-        )
-
-    # Check if this is the only member
-    if len(group.characters) > 1:
         flash("Cannot disband group with multiple members", "error")
         return redirect(url_for("groups.group_list", character_id=character_id))
+
+    # Create audit log for group disbanding
+    audit_log = GroupAuditLog(
+        group_id=group.id,
+        editor_user_id=current_user.id,
+        action=GroupAuditAction.DISBANDED.value,
+        changes=f"Group disbanded by {character.name}",
+    )
+    db.session.add(audit_log)
 
     # Remove character from group
     character.group_id = None
 
     # Delete all invites for this group
     GroupInvite.query.filter_by(group_id=group_id).delete()
+
+    # Delete all audit logs for this group
+    GroupAuditLog.query.filter_by(group_id=group_id).delete()
 
     # Delete the group
     db.session.delete(group)
@@ -315,6 +392,15 @@ def remove_character(group_id, character_id):
     if character.group_id != group.id:
         flash("Character is not a member of this group", "error")
         return redirect(url_for("groups.group_list"))
+
+    # Create audit log for member removal
+    audit_log = GroupAuditLog(
+        group_id=group.id,
+        editor_user_id=current_user.id,
+        action=GroupAuditAction.MEMBER_REMOVED.value,
+        changes=f"Member removed by admin: {character.name}",
+    )
+    db.session.add(audit_log)
 
     character.group_id = None
     db.session.commit()
@@ -350,8 +436,18 @@ def create_group_admin():
 
     group = Group(name=name, type=type, bank_account=bank_account_int)
     db.session.add(group)
-    db.session.commit()
+    db.session.flush()  # Flush to get the group ID
 
+    # Create audit log for admin group creation
+    audit_log = GroupAuditLog(
+        group_id=group.id,
+        editor_user_id=current_user.id,
+        action=GroupAuditAction.CREATE.value,
+        changes=f"Group created by admin with {bank_account_int} starting funds",
+    )
+    db.session.add(audit_log)
+
+    db.session.commit()
     flash("Group created successfully", "success")
     return redirect(url_for("groups.group_list"))
 
@@ -399,6 +495,19 @@ def edit_group_admin_post(group_id):
         flash("Bank account must be a number", "error")
         return redirect(url_for("groups.admin_edit", group_id=group.id, GroupType=GroupType))
 
+    # Track changes for audit log
+    changes = []
+    if group.name != name:
+        changes.append(f"Name changed from '{group.name}' to '{name}'")
+    old_type_str = getattr(group.type, "value", group.type)
+    if old_type_str != type:
+        changes.append(f"Type changed from '{old_type_str}' to '{type}'")
+    if group.bank_account != bank_account_int:
+        if bank_account_int > group.bank_account:
+            changes.append(f"Funds added: {bank_account_int - group.bank_account}")
+        else:
+            changes.append(f"Funds withdrawn: {group.bank_account - bank_account_int}")
+
     group.name = name
     group.type = type
     group.bank_account = bank_account_int
@@ -409,6 +518,16 @@ def edit_group_admin_post(group_id):
         group.samples = new_samples
     else:
         group.samples = []
+
+    # Create audit log if there were changes
+    if changes:
+        audit_log = GroupAuditLog(
+            group_id=group.id,
+            editor_user_id=current_user.id,
+            action=GroupAuditAction.EDIT.value,
+            changes="; ".join(changes),
+        )
+        db.session.add(audit_log)
 
     db.session.commit()
     flash("Group updated successfully", "success")
@@ -436,8 +555,53 @@ def add_character_admin(group_id):
         flash("Character is already in a group", "error")
         return redirect(url_for("groups.group_list"))
 
+    # Create audit log for admin adding member
+    audit_log = GroupAuditLog(
+        group_id=group_id,
+        editor_user_id=current_user.id,
+        action=GroupAuditAction.MEMBER_ADDED.value,
+        changes=f"Member added by admin: {character.name}",
+    )
+    db.session.add(audit_log)
+
     character.group_id = group_id
     db.session.commit()
 
     flash("Character added to group", "success")
     return redirect(url_for("groups.group_list"))
+
+
+@groups_bp.route("/<int:group_id>/audit-log")
+@login_required
+@email_verified_required
+def group_audit_log(group_id):
+    group = Group.query.get_or_404(group_id)
+
+    # Check if user has access to this group
+    # User can view audit log if they are a member of the group or an admin
+    user_has_access = False
+    if current_user.has_role(Role.USER_ADMIN.value):
+        user_has_access = True
+    else:
+        # Check if any of user's characters are in this group
+        user_characters = Character.query.filter_by(user_id=current_user.id).all()
+        for character in user_characters:
+            if character.group_id == group.id:
+                user_has_access = True
+                break
+
+    if not user_has_access:
+        abort(403)
+
+    audit_logs = (
+        GroupAuditLog.query.filter_by(group_id=group_id)
+        .order_by(GroupAuditLog.timestamp.desc())
+        .all()
+    )
+
+    return render_template(
+        "groups/audit_log.html",
+        group=group,
+        audit_logs=audit_logs,
+        GroupAuditAction=GroupAuditAction,
+    )
