@@ -1,0 +1,134 @@
+{% extends "_template.html" %}
+
+{% block title %}{% if group_type %}Edit Group Type{% else %}Create Group Type{% endif %}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>{% if group_type %}Edit Group Type{% else %}Create Group Type{% endif %}</h1>
+
+    <form method="POST" class="mt-4">
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label for="name" class="form-label">Name *</label>
+                <input type="text" class="form-control" id="name" name="name"
+                       value="{{ group_type.name if group_type else '' }}" required>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-12 mb-3">
+                <label for="description" class="form-label">Description</label>
+                <textarea class="form-control" id="description" name="description" rows="3">{{ group_type.description if group_type else '' }}</textarea>
+            </div>
+        </div>
+
+        <h3 class="mt-4 mb-3">Income Settings</h3>
+
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label for="income_items_discount" class="form-label">Income Items Discount</label>
+                <input type="number" class="form-control" id="income_items_discount" name="income_items_discount"
+                       value="{{ (group_type.income_items_discount * 100) if group_type else 50 }}" min="0" max="100" step="0.1">
+                <div class="form-text">Discount percentage for income items (0-100%).</div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="income_substances" name="income_substances"
+                           {% if group_type and group_type.income_substances %}checked{% endif %}>
+                    <label class="form-check-label" for="income_substances">
+                        Income Substances
+                    </label>
+                </div>
+            </div>
+            <div class="col-md-6 mb-3">
+                <label for="income_substance_cost" class="form-label">Income Substance Cost</label>
+                <input type="number" class="form-control" id="income_substance_cost" name="income_substance_cost"
+                       value="{{ group_type.income_substance_cost if group_type else 0 }}" min="0">
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="income_medicaments" name="income_medicaments"
+                           {% if group_type and group_type.income_medicaments %}checked{% endif %}>
+                    <label class="form-check-label" for="income_medicaments">
+                        Income Medicaments
+                    </label>
+                </div>
+            </div>
+            <div class="col-md-6 mb-3">
+                <label for="income_medicament_cost" class="form-label">Income Medicament Cost</label>
+                <input type="number" class="form-control" id="income_medicament_cost" name="income_medicament_cost"
+                       value="{{ group_type.income_medicament_cost if group_type else 0 }}" min="0">
+            </div>
+        </div>
+
+        <h3 class="mt-4 mb-3">Income Distribution (Percentages)</h3>
+        <p class="text-muted">Set the percentage distribution for each category. Total should equal 100%.</p>
+
+        <div class="row">
+            <div class="col-md-3 mb-3">
+                <label for="items_ratio" class="form-label">Items (%)</label>
+                <input type="number" class="form-control" id="items_ratio" name="items_ratio"
+                       value="{{ group_type.income_distribution_dict.get('items', 0) if group_type else 0 }}" min="0" max="100">
+            </div>
+            <div class="col-md-3 mb-3">
+                <label for="exotics_ratio" class="form-label">Exotics (%)</label>
+                <input type="number" class="form-control" id="exotics_ratio" name="exotics_ratio"
+                       value="{{ group_type.income_distribution_dict.get('exotics', 0) if group_type else 0 }}" min="0" max="100">
+            </div>
+            <div class="col-md-3 mb-3">
+                <label for="medicaments_ratio" class="form-label">Medicaments (%)</label>
+                <input type="number" class="form-control" id="medicaments_ratio" name="medicaments_ratio"
+                       value="{{ group_type.income_distribution_dict.get('medicaments', 0) if group_type else 0 }}" min="0" max="100">
+            </div>
+            <div class="col-md-3 mb-3">
+                <label for="chits_ratio" class="form-label">Chits (%)</label>
+                <input type="number" class="form-control" id="chits_ratio" name="chits_ratio"
+                       value="{{ group_type.income_distribution_dict.get('chits', 0) if group_type else 0 }}" min="0" max="100">
+            </div>
+        </div>
+
+        <div class="mt-4">
+            <button type="submit" class="btn btn-primary">
+                {% if group_type %}Update{% else %}Create{% endif %} Group Type
+            </button>
+            <a href="{{ url_for('group_types.list_group_types') }}" class="btn btn-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Calculate total percentage
+function updateTotal() {
+    const items = parseInt(document.getElementById('items_ratio').value) || 0;
+    const exotics = parseInt(document.getElementById('exotics_ratio').value) || 0;
+    const medicaments = parseInt(document.getElementById('medicaments_ratio').value) || 0;
+    const chits = parseInt(document.getElementById('chits_ratio').value) || 0;
+
+    const total = items + exotics + medicaments + chits;
+
+    // Update total display if it exists
+    const totalElement = document.getElementById('total_percentage');
+    if (totalElement) {
+        totalElement.textContent = total;
+        totalElement.className = total === 100 ? 'text-success' : 'text-danger';
+    }
+}
+
+// Add event listeners
+document.getElementById('items_ratio').addEventListener('input', updateTotal);
+document.getElementById('exotics_ratio').addEventListener('input', updateTotal);
+document.getElementById('medicaments_ratio').addEventListener('input', updateTotal);
+document.getElementById('chits_ratio').addEventListener('input', updateTotal);
+
+// Initial calculation
+updateTotal();
+</script>
+{% endblock %}

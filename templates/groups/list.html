@@ -49,7 +49,7 @@
 
                     <div class="form-group mb-3">
                         <label>Group Type</label>
-                        <input type="text" class="form-control" value="{{ GroupType.descriptions()[character.group.type.value] if character.group.type.value else GroupType.descriptions()[character.group.type] }}" readonly>
+                        <input type="text" class="form-control" value="{{ character.group.group_type.name }}" readonly>
                     </div>
 
                     <div class="form-group mb-3">
@@ -142,8 +142,8 @@
                         <label for="type">Group Type</label>
                         <select class="form-control form-select" id="type" name="type" required>
                             <option value="">Select a group type...</option>
-                            {% for type in GroupType.values() %}
-                            <option value="{{ type }}">{{ GroupType.descriptions()[type] }}</option>
+                            {% for group_type in group_types %}
+                            <option value="{{ group_type.id }}">{{ group_type.name }}</option>
                             {% endfor %}
                         </select>
                     </div>
@@ -171,7 +171,7 @@
                         {% for invite in invites %}
                         <tr>
                             <td>{{ invite.group.name }}</td>
-                            <td>{{ GroupType.descriptions()[invite.group.type.value] }}</td>
+                            <td>{{ invite.group.group_type.name }}</td>
                             <td>
                                 <form method="POST" action="{{ url_for('groups.respond_to_invite_post', invite_id=invite.id) }}" class="d-inline">
                                     <input type="hidden" name="admin_view" value="false">

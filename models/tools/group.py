@@ -1,29 +1,23 @@
 from sqlalchemy import JSON
 
-from models.enums import GroupAuditAction, GroupType
+from models.enums import GroupAuditAction
 from models.extensions import db
-from models.tools.pack import Pack
 
 
 class Group(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
-    type = db.Column(
-        db.Enum(
-            GroupType,
-            native_enum=False,
-            values_callable=lambda obj: [e.value for e in obj],
-        ),
-        nullable=False,
-    )
+    group_type_id = db.Column(db.Integer, db.ForeignKey("group_types.id"), nullable=False)
     bank_account = db.Column(db.Integer, nullable=False, default=0)
+    group_pack = db.Column(db.String, nullable=True)  # JSON string
+    pack_complete = db.Column(db.Boolean, nullable=False, default=False)
     created_at = db.Column(db.DateTime, nullable=False, default=db.func.now())
-    pack_data = db.Column(JSON, default=dict)
     updated_at = db.Column(
         db.DateTime, nullable=False, default=db.func.now(), onupdate=db.func.now()
     )
 
     # Relationships
+    group_type = db.relationship("GroupType", back_populates="groups")
     characters = db.relationship("Character", back_populates="group", lazy=True)
     invites = db.relationship("GroupInvite", back_populates="group", cascade="all, delete-orphan")
     samples = db.relationship("Sample", back_populates="group", lazy="dynamic")
@@ -31,27 +25,6 @@ class Group(db.Model):
 
     def __repr__(self):
         return f"<Group {self.name}>"
-
-    @property
-    def type_enum(self):
-        return GroupType(self.type)
-
-    @type_enum.setter
-    def type_enum(self, type):
-        if isinstance(type, GroupType):
-            self.type = type.value
-        else:
-            self.type = type
-
-    @property
-    def pack(self) -> Pack:
-        """Get the group's pack as a structured Pack object."""
-        return Pack.from_dict(self.pack_data or {})
-
-    @pack.setter
-    def pack(self, pack: Pack) -> None:
-        """Set the group's pack from a structured Pack object."""
-        self.pack_data = pack.to_dict()
 
     def add_funds(self, amount, editor_user_id, reason):
         """Add funds to the group's bank account with audit logging."""
@@ -93,6 +66,17 @@ class Group(db.Model):
             changes=f"Funds set from {old_balance} to {new_balance} for {reason}",
         )
         db.session.add(audit_log)
+
+    @property
+    def pack(self):
+        from models.tools.pack import Pack
+
+        return Pack.from_json(self.group_pack)
+
+    @pack.setter
+    def pack(self, pack):
+        self.group_pack = pack.to_json()
+        self.pack_complete = pack.is_complete()
 
 
 class GroupInvite(db.Model):

@@ -48,6 +48,12 @@
                     </div>
                     {% endif %}
 
+                    {% if not event.is_booking_available() %}
+                    <div class="mb-3">
+                        <span class="text-danger">Booking closed (deadline: {{ event.booking_deadline.strftime('%d %b %Y') }})</span>
+                    </div>
+                    {% endif %}
+
                     <div class="mb-3">
                         <strong>Location:</strong><br>
                         {{ event.location }}
@@ -83,10 +89,17 @@
 
                     <div class="d-flex gap-2 mt-3">
                         {% if not show_previous %}
-                        <a href="{{ url_for('events.purchase_ticket', event_id=event.id) }}" class="btn btn-success btn-sm">Purchase</a>
+                            {% if event.is_booking_available() %}
+                            <a href="{{ url_for('events.purchase_ticket', event_id=event.id) }}" class="btn btn-success btn-sm">Purchase</a>
+                            {% else %}
+                            <button class="btn btn-secondary btn-sm" disabled title="Booking closed">Purchase</button>
+                            {% endif %}
                         {% endif %}
                         {% if current_user.is_authenticated and current_user.has_role('user_admin') %}
                         <a href="{{ url_for('events.view_attendees', event_id=event.id) }}" class="btn btn-info btn-sm">View Attendees</a>
+                        {% endif %}
+                        {% if current_user.is_authenticated and current_user.has_role('admin') %}
+                        <a href="{{ url_for('events.view_packs', event_id=event.id) }}" class="btn btn-warning btn-sm">Packs</a>
                         {% endif %}
                         {% if current_user.is_authenticated and current_user.has_role('user_admin') %}
                         <a href="{{ url_for('events.edit_event', event_id=event.id) }}" class="btn btn-primary btn-sm">Edit</a>

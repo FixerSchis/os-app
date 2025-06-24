@@ -17,10 +17,9 @@ class Ability(db.Model):
         ),
         nullable=False,
     )
-    # For starting skills: list of skill IDs (JSON)
     starting_skills = db.Column(db.String, nullable=True)
-    # For skill discounts: map of skill_id to discount (JSON)
     skill_discounts = db.Column(db.String, nullable=True)
+    additional_group_income = db.Column(db.Integer, nullable=True)
 
     @property
     def starting_skills_list(self):

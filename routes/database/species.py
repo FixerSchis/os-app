@@ -105,6 +105,9 @@ def edit_species_post(species_id):
     ability_names = extract_indexed_fields("ability_name", request.form)
     ability_types = extract_indexed_fields("ability_type", request.form)
     ability_descriptions = extract_indexed_fields("ability_description", request.form)
+    ability_additional_group_income = extract_indexed_fields(
+        "ability_additional_group_income", request.form
+    )
     ability_starting_skills = extract_indexed_multifields("ability_starting_skills", request.form)
 
     if not all([name, wiki_page, body_hits_type, body_hits, death_count, permitted_factions]):
@@ -150,6 +153,8 @@ def edit_species_post(species_id):
                     for skill_id in skills:
                         discounts[skill_id] = int(value)
                 ab.skill_discounts_dict = discounts
+            elif ab_type == AbilityType.GROUP_INCOME.value:
+                ab.additional_group_income = int(ability_additional_group_income[i])
             db.session.add(ab)
         db.session.commit()
         flash("Species updated successfully.", "success")
@@ -202,6 +207,9 @@ def new_species_post():
     ability_names = extract_indexed_fields("ability_name", request.form)
     ability_types = extract_indexed_fields("ability_type", request.form)
     ability_descriptions = extract_indexed_fields("ability_description", request.form)
+    ability_additional_group_income = extract_indexed_fields(
+        "ability_additional_group_income", request.form
+    )
     ability_starting_skills = extract_indexed_multifields("ability_starting_skills", request.form)
     # Skill discounts
     if not all([name, wiki_page, body_hits_type, body_hits, death_count, permitted_factions]):
@@ -245,6 +253,8 @@ def new_species_post():
                     for skill_id in skills:
                         discounts[skill_id] = int(value)
                 ab.skill_discounts_dict = discounts
+            elif ab_type == AbilityType.GROUP_INCOME.value:
+                ab.additional_group_income = int(ability_additional_group_income[i])
             db.session.add(ab)
         db.session.commit()
         flash("Species created successfully.", "success")

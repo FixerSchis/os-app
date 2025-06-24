@@ -34,7 +34,7 @@
                         {% for group in groups %}
                         <tr>
                             <td>{{ group.name }}</td>
-                            <td>{{ GroupType.descriptions()[group.type.value] }}</td>
+                            <td>{{ group.group_type.name }}</td>
                             <td>{{ group.bank_account }}</td>
                             <td>
                                 <ul class="list-unstyled">

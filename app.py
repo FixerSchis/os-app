@@ -21,7 +21,7 @@ from flask_migrate import Migrate  # noqa: E402
 from sqlalchemy.orm import sessionmaker  # noqa: E402
 
 from config import Config  # noqa: E402
-from models import create_default_data, db, init_app, login_manager  # noqa: E402
+from models import db, init_app, login_manager  # noqa: E402
 from models.enums import DowntimeStatus, DowntimeTaskStatus  # noqa: E402
 from models.tools.character import Character  # noqa: E402
 from models.tools.downtime import DowntimePeriod  # noqa: E402
@@ -31,6 +31,8 @@ from routes.database.conditions import conditions_bp  # noqa: E402
 from routes.database.cybernetics import cybernetics_bp  # noqa: E402
 from routes.database.exotic_substances import exotic_substances_bp  # noqa: E402
 from routes.database.factions import factions_bp  # noqa: E402
+from routes.database.global_settings import global_settings_bp  # noqa: E402
+from routes.database.group_types import group_types_bp  # noqa: E402
 from routes.database.item_blueprints import item_blueprints_bp  # noqa: E402
 from routes.database.item_types import item_types_bp  # noqa: E402
 from routes.database.items import items_bp  # noqa: E402
@@ -73,7 +75,6 @@ def create_app(config_class=None):
         # Only create default data if not in testing mode
         if not app.config.get("TESTING"):
             initialize_database()
-            create_default_data()
 
     mail.init_app(app)
 
@@ -146,6 +147,8 @@ def create_app(config_class=None):
     app.register_blueprint(cybernetics_bp, url_prefix="/db/cybernetics")
     app.register_blueprint(exotic_substances_bp, url_prefix="/db/exotic-substances")
     app.register_blueprint(factions_bp, url_prefix="/db/factions")
+    app.register_blueprint(global_settings_bp, url_prefix="/db/global-settings")
+    app.register_blueprint(group_types_bp, url_prefix="/db/group-types")
     app.register_blueprint(item_blueprints_bp, url_prefix="/db/item-blueprints")
     app.register_blueprint(item_types_bp, url_prefix="/db/item-types")
     app.register_blueprint(items_bp, url_prefix="/db/items")

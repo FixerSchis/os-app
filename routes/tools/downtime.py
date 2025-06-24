@@ -25,6 +25,7 @@ from models.extensions import db
 from models.tools.character import Character, CharacterCondition
 from models.tools.downtime import DowntimePack, DowntimePeriod
 from models.tools.event_ticket import EventTicket
+from models.tools.group import Group
 from models.tools.research import (
     CharacterResearch,
     CharacterResearchStage,
@@ -199,6 +200,28 @@ def start_downtime():
 
     period = DowntimePeriod(status=DowntimeStatus.PENDING, event_id=event.id)
     db.session.add(period)
+
+    # Clear all character packs
+    for character in Character.query.all():
+        pack = character.pack
+        pack.items.clear()
+        pack.samples.clear()
+        pack.exotics.clear()
+        pack.medicaments.clear()
+        pack.energy_chits = 0
+        pack.completion.clear()
+        character.pack = pack
+
+    # Clear all group packs
+    for group in Group.query.all():
+        pack = group.pack
+        pack.items.clear()
+        pack.samples.clear()
+        pack.exotics.clear()
+        pack.medicaments.clear()
+        pack.energy_chits = 0
+        pack.completion.clear()
+        group.pack = pack
 
     for character in EventTicket.query.filter_by(event_id=event_id).all():
         pack = DowntimePack(

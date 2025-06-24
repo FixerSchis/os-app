@@ -27,6 +27,7 @@
                                 {% endif %}
                             </p>
                             <p><strong>Dates:</strong> {{ event.start_date.strftime('%d %B %Y') }} - {{ event.end_date.strftime('%d %B %Y') }}</p>
+                            <p><strong>Booking Deadline:</strong> {{ event.booking_deadline.strftime('%d %B %Y') }}</p>
                         </div>
                         <div class="ms-4" style="min-width:220px;">
                             <strong>Ticket Prices:</strong>

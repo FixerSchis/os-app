@@ -1,16 +1,26 @@
 import json
+import logging
+import random
 from datetime import datetime, timezone
 
 from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
+from models.database.exotic_substances import ExoticSubstance
+from models.database.global_settings import GlobalSettings
+from models.database.item import Item
+from models.database.item_blueprint import ItemBlueprint
+from models.database.medicaments import Medicament
+from models.database.sample import Sample
 from models.enums import CharacterStatus, EventType, Role, TicketType
 from models.event import Event
 from models.extensions import db
 from models.tools.character import Character
 from models.tools.event_ticket import EventTicket
+from models.tools.group import Group
+from models.tools.pack import Pack
 from models.tools.user import User
-from utils.decorators import user_admin_required
+from utils.decorators import admin_required, user_admin_required
 from utils.email import (
     send_event_details_updated_notification,
     send_event_ticket_assigned_notification_to_user,
@@ -62,6 +72,7 @@ def create_event_post():
         early_booking_deadline=datetime.strptime(
             request.form["early_booking_deadline"], "%Y-%m-%d"
         ),
+        booking_deadline=datetime.strptime(request.form["booking_deadline"], "%Y-%m-%d"),
         start_date=datetime.strptime(request.form["start_date"], "%Y-%m-%d"),
         end_date=datetime.strptime(request.form["end_date"], "%Y-%m-%d"),
         location=request.form["location"],
@@ -110,6 +121,7 @@ def edit_event_post(event_id):
     event.early_booking_deadline = datetime.strptime(
         request.form["early_booking_deadline"], "%Y-%m-%d"
     )
+    event.booking_deadline = datetime.strptime(request.form["booking_deadline"], "%Y-%m-%d")
     event.start_date = datetime.strptime(request.form["start_date"], "%Y-%m-%d")
     event.end_date = datetime.strptime(request.form["end_date"], "%Y-%m-%d")
     event.location = request.form["location"]
@@ -141,6 +153,16 @@ def edit_event_post(event_id):
 @login_required
 def purchase_ticket(event_id):
     event = Event.query.get_or_404(event_id)
+
+    # Check if booking is still available
+    if not event.is_booking_available():
+        flash(
+            "Booking for this event has closed. The booking deadline was "
+            + event.booking_deadline.strftime("%d %b %Y"),
+            "error",
+        )
+        return redirect(url_for("events.event_list"))
+
     user_characters = Character.query.filter_by(
         user_id=current_user.id, status=CharacterStatus.ACTIVE.value
     ).all()
@@ -162,6 +184,15 @@ def purchase_ticket(event_id):
 @login_required
 def purchase_ticket_post(event_id):
     event = Event.query.get_or_404(event_id)
+
+    # Check if booking is still available
+    if not event.is_booking_available():
+        flash(
+            "Booking for this event has closed. The booking deadline was "
+            + event.booking_deadline.strftime("%d %b %Y"),
+            "error",
+        )
+        return redirect(url_for("events.event_list"))
 
     cart_data = request.form.get("cart")
     if not cart_data:
@@ -300,13 +331,16 @@ def purchase_ticket_post(event_id):
             child_name=child_name,
         )
         db.session.add(ticket)
-        # Only send notification if ticket is for a character with a user
+
+        # Reset group pack if character has a group
         if character_id:
             character = db.session.get(Character, character_id)
-            if character and character.user:
-                send_event_ticket_assigned_notification_to_user(
-                    character.user, ticket, event, character
-                )
+            if character and character.group:
+                # Reset the group pack - unmark as generated and clear contents except items
+                if not character.group.pack:
+                    character.group.pack = Pack()
+                character.group.pack.is_generated = False
+
         tickets_created += 1
 
     db.session.commit()
@@ -330,7 +364,6 @@ def assign_ticket(event_id):
 @login_required
 @user_admin_required
 def assign_ticket_post(event_id):
-    event = Event.query.get_or_404(event_id)
     ticket_type = request.form["ticket_type"]
     price_paid = 0 if ticket_type == "crew" else float(request.form["price_paid"])
     user_id = None
@@ -389,13 +422,16 @@ def assign_ticket_post(event_id):
         child_name=child_name,
     )
     db.session.add(ticket)
-    # Only send notification if ticket is for a character with a user
+
+    # Reset group pack if character has a group
     if character_id:
         character = db.session.get(Character, character_id)
-        if character and character.user:
-            send_event_ticket_assigned_notification_to_user(
-                character.user, ticket, event, character
-            )
+        if character and character.group:
+            # Reset the group pack - unmark as generated and clear contents except items
+            if not character.group.pack:
+                character.group.pack = Pack()
+            character.group.pack.is_generated = False
+
     db.session.commit()
     flash("Ticket assigned successfully!", "success")
     return redirect(url_for("events.view_attendees", event_id=event_id))
@@ -417,6 +453,583 @@ def view_attendees(event_id):
     return render_template(
         "events/attendees.html", event=event, tickets=tickets, TicketType=TicketType
     )
+
+
+@events_bp.route("/<int:event_id>/packs", methods=["GET"])
+@login_required
+@admin_required
+def view_packs(event_id):
+    event = Event.query.get_or_404(event_id)
+
+    # Get all characters with tickets for this event
+    character_tickets = (
+        EventTicket.query.filter_by(event_id=event_id)
+        .filter(EventTicket.character_id.isnot(None))
+        .all()
+    )
+    character_packs = []
+
+    for ticket in character_tickets:
+        character = Character.query.get(ticket.character_id)
+        if character:
+            pack = character.pack or Pack()
+            character_packs.append(
+                {
+                    "character": character,
+                    "ticket": ticket,
+                    "pack": pack,
+                    "user": character.user,
+                    "faction": character.faction,
+                }
+            )
+
+    # Sort character packs: incomplete first, then by user name
+    character_packs.sort(
+        key=lambda x: (
+            x["pack"].is_completed,  # False (incomplete) comes before True (complete)
+            x["user"].first_name + " " + x["user"].surname,
+        )
+    )
+
+    # Get all groups with members who have tickets for this event
+    group_packs = []
+    groups_with_tickets = set()
+
+    for ticket in character_tickets:
+        character = Character.query.get(ticket.character_id)
+        if character and character.group:
+            groups_with_tickets.add(character.group.id)
+
+    for group_id in groups_with_tickets:
+        group = Group.query.get(group_id)
+        if group:
+            pack = group.pack or Pack()
+
+            # Get characters from this group attending the event
+            group_characters = []
+            for ticket in character_tickets:
+                character = Character.query.get(ticket.character_id)
+                if character and character.group_id == group_id:
+                    group_characters.append(
+                        {
+                            "user": character.user,
+                            "character": character,
+                            "species": character.species,
+                        }
+                    )
+
+            group_packs.append({"group": group, "pack": pack, "characters": group_characters})
+
+    # Sort group packs: incomplete first, then by group name
+    group_packs.sort(
+        key=lambda x: (
+            x["pack"].is_completed,  # False (incomplete) comes before True (complete)
+            x["group"].name,
+        )
+    )
+
+    # Get global settings for character income
+    settings = GlobalSettings.query.first()
+    character_income_ec = settings.character_income_ec if settings else 0
+
+    # Get all item blueprints, exotics, and medicaments for lookup
+    # Convert to dictionaries for JSON serialization
+    item_blueprints = {}
+    for bp in ItemBlueprint.query.all():
+        item_blueprints[bp.id] = {"name": bp.name, "full_code": bp.full_code}
+
+    # Get all items for lookup (to get item full_code)
+    items = {}
+    for item in Item.query.all():
+        items[item.id] = {
+            "blueprint_name": item.blueprint.name if item.blueprint else "Unknown",
+            "full_code": item.full_code,
+        }
+
+    exotic_substances = {}
+    for ex in ExoticSubstance.query.all():
+        exotic_substances[ex.id] = {"name": ex.name}
+
+    medicaments = {}
+    for med in Medicament.query.all():
+        medicaments[med.id] = {"name": med.name}
+
+    # Get all samples for lookup
+    samples = {}
+    for sample in Sample.query.all():
+        samples[sample.id] = {"name": sample.name}
+
+    return render_template(
+        "events/packs.html",
+        event=event,
+        character_packs=character_packs,
+        group_packs=group_packs,
+        item_blueprints=item_blueprints,
+        items=items,
+        exotic_substances=exotic_substances,
+        medicaments=medicaments,
+        samples=samples,
+        character_income_ec=character_income_ec,
+    )
+
+
+@events_bp.route("/<int:event_id>/packs/character/<int:character_id>/update", methods=["POST"])
+@login_required
+@admin_required
+def update_character_pack(event_id, character_id):
+    """Update character pack completion status."""
+    character = Character.query.get_or_404(character_id)
+
+    logging.debug(f"[PACK UPDATE] Raw request.data: {request.data}")
+    data = request.get_json(force=True, silent=True) or {}
+    logging.debug(f"[PACK UPDATE] Raw data: {data}")
+    completion = data.get("completion", {})
+    logging.debug(f"[PACK UPDATE] Before: {character.pack.completion}")
+    pack = character.pack
+    pack.completion = completion
+    character.pack = pack  # This triggers the setter and updates character_pack
+    logging.debug(f"[PACK UPDATE] After: {character.pack.completion}")
+    db.session.commit()
+
+    return jsonify({"success": True, "is_completed": character.pack.is_completed})
+
+
+@events_bp.route("/<int:event_id>/packs/group/<int:group_id>/generate", methods=["POST"])
+@login_required
+@admin_required
+def generate_group_pack(event_id, group_id):
+    """Generate group pack contents based on group type settings."""
+    group = Group.query.get_or_404(group_id)
+    _ = Event.query.get_or_404(event_id)
+
+    if not group.pack:
+        group.pack = Pack()
+
+    # Mark as generated
+    group.pack.is_generated = True
+
+    # Get global settings
+    settings = GlobalSettings.query.first()
+    if not settings:
+        flash("Global settings not found", "error")
+        return jsonify({"success": False, "error": "Global settings not found"})
+
+    # Get characters from this group attending the event
+    group_characters = (
+        Character.query.filter_by(group_id=group_id)
+        .join(EventTicket)
+        .filter(EventTicket.event_id == event_id)
+        .all()
+    )
+
+    if not group_characters:
+        flash("No characters from this group are attending the event", "error")
+        return jsonify({"success": False, "error": "No characters attending"})
+
+    # Calculate EC pool based on global settings and species abilities
+    ec_pool = 0
+    for character in group_characters:
+        # Base character income
+        character_ec = settings.character_income_ec
+
+        # Add species additional group income
+        if character.species:
+            for ability in character.species.abilities:
+                if ability.type == "group_income" and ability.additional_group_income:
+                    character_ec += ability.additional_group_income
+
+        ec_pool += character_ec
+
+    # Apply income distribution from group type
+    if group.group_type and group.group_type.income_distribution_dict:
+        distribution = group.group_type.income_distribution_dict
+
+        # Calculate budget for each category
+        items_budget = int(ec_pool * (distribution.get("items", 0) / 100))
+        exotics_budget = int(ec_pool * (distribution.get("exotics", 0) / 100))
+        medicaments_budget = int(ec_pool * (distribution.get("medicaments", 0) / 100))
+        chits_budget = int(ec_pool * (distribution.get("chits", 0) / 100))
+
+        # Add items randomly until budget is exhausted
+        if items_budget > 0 and group.group_type.income_items_list:
+            available_blueprints = ItemBlueprint.query.filter(
+                ItemBlueprint.id.in_(group.group_type.income_items_list),
+                ItemBlueprint.purchaseable,
+            ).all()
+
+            # Count the cost of existing items in the pack
+            for item in group.pack.items:
+                item_blueprint = ItemBlueprint.query.get(item)
+                if item_blueprint:
+                    item_cost = int(
+                        item_blueprint.base_cost * (1 - group.group_type.income_items_discount)
+                    )
+                    items_budget -= item_cost
+
+            if available_blueprints and items_budget > 0:
+                # Shuffle blueprints for randomness
+                random.shuffle(available_blueprints)
+
+                for blueprint in available_blueprints:
+                    # Calculate cost with group type discount
+                    discounted_cost = int(
+                        blueprint.base_cost * (1 - group.group_type.income_items_discount)
+                    )
+
+                    if discounted_cost <= items_budget:
+                        # Add item to pack
+                        group.pack.items.append(blueprint.id)
+                        items_budget -= discounted_cost
+                    else:
+                        # Can't afford this item, stop adding items
+                        break
+
+        # Clear exotics and add them randomly
+        group.pack.exotics = []
+        if exotics_budget > 0 and group.group_type.income_substances:
+            available_exotics = ExoticSubstance.query.all()
+
+            if available_exotics:
+                # Shuffle exotics for randomness
+                random.shuffle(available_exotics)
+
+                for exotic in available_exotics:
+                    exotic_cost = group.group_type.income_substance_cost
+
+                    if exotic_cost <= exotics_budget:
+                        # Add exotic to pack
+                        group.pack.exotics.append(exotic.id)
+                        exotics_budget -= exotic_cost
+                    else:
+                        # Can't afford this exotic, stop adding exotics
+                        break
+
+        # Clear medicaments and add them randomly
+        group.pack.medicaments = []
+        if medicaments_budget > 0 and group.group_type.income_medicaments:
+            available_medicaments = Medicament.query.all()
+
+            if available_medicaments:
+                # Shuffle medicaments for randomness
+                random.shuffle(available_medicaments)
+
+                for medicament in available_medicaments:
+                    medicament_cost = group.group_type.income_medicament_cost
+
+                    if medicament_cost <= medicaments_budget:
+                        # Add medicament to pack
+                        group.pack.medicaments.append(medicament.id)
+                        medicaments_budget -= medicament_cost
+                    else:
+                        # Can't afford this medicament, stop adding medicaments
+                        break
+
+        # Add remaining EC to the pack
+        remaining_ec = items_budget + exotics_budget + medicaments_budget + chits_budget
+        group.pack.energy_chits = remaining_ec
+
+    db.session.commit()
+
+    return jsonify({"success": True, "pack": group.pack.to_dict()})
+
+
+@events_bp.route("/<int:event_id>/packs/group/<int:group_id>/update", methods=["POST"])
+@login_required
+@admin_required
+def update_group_pack(event_id, group_id):
+    """Update group pack completion status."""
+    group = Group.query.get_or_404(group_id)
+
+    # Get completion data from request
+    data = request.get_json()
+    completion = data.get("completion", {})
+
+    # Update pack completion
+    if not group.pack:
+        group.pack = Pack()
+
+    group.pack.completion = completion
+    db.session.commit()
+
+    return jsonify({"success": True, "is_completed": group.pack.is_completed})
+
+
+@events_bp.route("/<int:event_id>/packs/print/character-sheets")
+@login_required
+@admin_required
+def print_character_sheets(event_id):
+    """Print character sheets for incomplete character packs."""
+    import base64
+
+    from models.enums import PrintTemplateType
+    from models.tools.print_template import PrintTemplate
+    from utils.print_layout import PrintLayout
+
+    event = Event.query.get_or_404(event_id)
+
+    # Get all characters with tickets for this event
+    character_tickets = (
+        EventTicket.query.filter_by(event_id=event_id)
+        .filter(EventTicket.character_id.isnot(None))
+        .all()
+    )
+    characters_to_print = []
+
+    for ticket in character_tickets:
+        character = Character.query.get(ticket.character_id)
+        if character:
+            pack = character.pack or Pack()
+            # Only include characters whose character sheet is not marked as complete
+            if not pack.completion.get("character_sheet", False):
+                characters_to_print.append(character)
+
+    if not characters_to_print:
+        flash("No character sheets to print - all are marked as complete.", "info")
+        return redirect(url_for("events.view_packs", event_id=event_id))
+
+    # Get the template for character sheets
+    template = PrintTemplate.query.filter_by(type=PrintTemplateType.CHARACTER_SHEET).first()
+    if not template:
+        flash("No character sheet template found. Please create one first.", "error")
+        return redirect(url_for("events.view_packs", event_id=event_id))
+
+    # Generate PDF
+    layout_manager = PrintLayout()
+    try:
+        pdf = layout_manager.generate_character_sheets_pdf(characters_to_print, template)
+        pdf.seek(0)
+
+        # Return PDF for inline preview
+        from flask import send_file
+
+        return send_file(
+            pdf,
+            mimetype="application/pdf",
+            as_attachment=False,
+            download_name=f"character_sheets_event_{event.event_number}.pdf",
+        )
+    except Exception as e:
+        flash(f"Error generating PDF: {str(e)}", "error")
+        return redirect(url_for("events.view_packs", event_id=event_id))
+
+
+@events_bp.route("/<int:event_id>/packs/print/character-id-badges")
+@login_required
+@admin_required
+def print_character_id_badges(event_id):
+    """Print character ID badges for incomplete character packs."""
+    from models.enums import PrintTemplateType
+    from models.tools.print_template import PrintTemplate
+    from utils.print_layout import PrintLayout
+
+    event = Event.query.get_or_404(event_id)
+
+    # Get all characters with tickets for this event
+    character_tickets = (
+        EventTicket.query.filter_by(event_id=event_id)
+        .filter(EventTicket.character_id.isnot(None))
+        .all()
+    )
+    characters_to_print = []
+
+    for ticket in character_tickets:
+        character = Character.query.get(ticket.character_id)
+        if character:
+            pack = character.pack or Pack()
+            # Only include characters whose ID badge is not marked as complete
+            if not pack.completion.get("character_id_badge", False):
+                characters_to_print.append(character)
+
+    if not characters_to_print:
+        flash("No character ID badges to print - all are marked as complete.", "info")
+        return redirect(url_for("events.view_packs", event_id=event_id))
+
+    # Get the template for character ID badges
+    template = PrintTemplate.query.filter_by(type=PrintTemplateType.CHARACTER_ID).first()
+    if not template:
+        flash("No character ID badge template found. Please create one first.", "error")
+        return redirect(url_for("events.view_packs", event_id=event_id))
+
+    # Generate PDF
+    layout_manager = PrintLayout()
+    try:
+        pdf = layout_manager.generate_character_id_pdf(characters_to_print, template)
+        pdf.seek(0)
+
+        # Return PDF for inline preview
+        from flask import send_file
+
+        return send_file(
+            pdf,
+            mimetype="application/pdf",
+            as_attachment=False,
+            download_name=f"character_id_badges_event_{event.event_number}.pdf",
+        )
+    except Exception as e:
+        flash(f"Error generating PDF: {str(e)}", "error")
+        return redirect(url_for("events.view_packs", event_id=event_id))
+
+
+@events_bp.route("/<int:event_id>/packs/print/items")
+@login_required
+@admin_required
+def print_items(event_id):
+    """Print items for incomplete character and group packs."""
+    from models.database.item_blueprint import ItemBlueprint
+    from models.enums import PrintTemplateType
+    from models.tools.print_template import PrintTemplate
+    from utils.print_layout import PrintLayout
+
+    event = Event.query.get_or_404(event_id)
+
+    # Get all characters with tickets for this event
+    character_tickets = (
+        EventTicket.query.filter_by(event_id=event_id)
+        .filter(EventTicket.character_id.isnot(None))
+        .all()
+    )
+    items_to_print = []
+
+    # Character items
+    for ticket in character_tickets:
+        character = Character.query.get(ticket.character_id)
+        if character:
+            pack = character.pack or Pack()
+            # Only include characters whose items are not marked as complete
+            if not pack.completion.get("items", False) and pack.items:
+                for item_id in pack.items:
+                    # Get the item blueprint
+                    item = Item.query.get(item_id)
+                    if item:
+                        items_to_print.append(item)
+
+    # Group items
+    groups_with_tickets = set()
+    for ticket in character_tickets:
+        character = Character.query.get(ticket.character_id)
+        if character and character.group:
+            groups_with_tickets.add(character.group.id)
+
+    for group_id in groups_with_tickets:
+        group = Group.query.get(group_id)
+        if group:
+            pack = group.pack or Pack()
+            # Only include groups whose items are not marked as complete
+            if not pack.completion.get("items", False) and pack.items:
+                for item_id in pack.items:
+                    # Get the item blueprint
+                    item = Item.query.get(item_id)
+                    if item:
+                        items_to_print.append(item)
+
+    if not items_to_print:
+        flash("No items to print - all are marked as complete.", "info")
+        return redirect(url_for("events.view_packs", event_id=event_id))
+
+    # Get the template for item cards
+    template = PrintTemplate.query.filter_by(type=PrintTemplateType.ITEM_CARD).first()
+    if not template:
+        flash("No item card template found. Please create one first.", "error")
+        return redirect(url_for("events.view_packs", event_id=event_id))
+
+    # Generate PDF
+    layout_manager = PrintLayout()
+    try:
+        pdf = layout_manager.generate_item_cards_pdf(items_to_print, template)
+        pdf.seek(0)
+
+        # Return PDF for inline preview
+        from flask import send_file
+
+        return send_file(
+            pdf,
+            mimetype="application/pdf",
+            as_attachment=False,
+            download_name=f"items_event_{event.event_number}.pdf",
+        )
+    except Exception as e:
+        flash(f"Error generating PDF: {str(e)}", "error")
+        return redirect(url_for("events.view_packs", event_id=event_id))
+
+
+@events_bp.route("/<int:event_id>/packs/print/medicaments")
+@login_required
+@admin_required
+def print_medicaments(event_id):
+    """Print medicaments for incomplete character and group packs."""
+    from models.database.medicaments import Medicament
+    from models.enums import PrintTemplateType
+    from models.tools.print_template import PrintTemplate
+    from utils.print_layout import PrintLayout
+
+    event = Event.query.get_or_404(event_id)
+
+    # Get all characters with tickets for this event
+    character_tickets = (
+        EventTicket.query.filter_by(event_id=event_id)
+        .filter(EventTicket.character_id.isnot(None))
+        .all()
+    )
+    medicaments_to_print = []
+
+    # Character medicaments
+    for ticket in character_tickets:
+        character = Character.query.get(ticket.character_id)
+        if character:
+            pack = character.pack or Pack()
+            # Only include characters whose medicaments are not marked as complete
+            if not pack.completion.get("medicaments", False) and pack.medicaments:
+                for medicament_id in pack.medicaments:
+                    medicament = Medicament.query.get(medicament_id)
+                    if medicament:
+                        medicaments_to_print.append(medicament)
+
+    # Group medicaments
+    groups_with_tickets = set()
+    for ticket in character_tickets:
+        character = Character.query.get(ticket.character_id)
+        if character and character.group:
+            groups_with_tickets.add(character.group.id)
+
+    for group_id in groups_with_tickets:
+        group = Group.query.get(group_id)
+        if group:
+            pack = group.pack or Pack()
+            # Only include groups whose medicaments are not marked as complete
+            if not pack.completion.get("medicaments", False) and pack.medicaments:
+                for medicament_id in pack.medicaments:
+                    medicament = Medicament.query.get(medicament_id)
+                    if medicament:
+                        medicaments_to_print.append(medicament)
+
+    if not medicaments_to_print:
+        flash("No medicaments to print - all are marked as complete.", "info")
+        return redirect(url_for("events.view_packs", event_id=event_id))
+
+    # Get the template for medicament cards
+    template = PrintTemplate.query.filter_by(type=PrintTemplateType.MEDICAMENT_CARD).first()
+    if not template:
+        flash("No medicament card template found. Please create one first.", "error")
+        return redirect(url_for("events.view_packs", event_id=event_id))
+
+    # Generate PDF
+    layout_manager = PrintLayout()
+    try:
+        pdf = layout_manager.generate_medicament_sheet_pdf(medicaments_to_print, template)
+        pdf.seek(0)
+
+        # Return PDF for inline preview
+        from flask import send_file
+
+        return send_file(
+            pdf,
+            mimetype="application/pdf",
+            as_attachment=False,
+            download_name=f"medicaments_event_{event.event_number}.pdf",
+        )
+    except Exception as e:
+        flash(f"Error generating PDF: {str(e)}", "error")
+        return redirect(url_for("events.view_packs", event_id=event_id))
 
 
 @events_bp.route("/api/get_character_ticket")
@@ -589,3 +1202,48 @@ def get_user_event_status():
     return jsonify(
         {"success": True, "has_crew_ticket": has_crew_ticket, "has_adult_ticket": has_adult_ticket}
     )
+
+
+@events_bp.route("/<int:event_id>/packs/debug", methods=["GET"])
+@login_required
+@admin_required
+def debug_packs(event_id):
+    """Debug route to see what pack data looks like."""
+    # event = Event.query.get_or_404(event_id)  # Remove unused variable
+
+    # Get all characters with tickets for this event
+    character_tickets = (
+        EventTicket.query.filter_by(event_id=event_id)
+        .filter(EventTicket.character_id.isnot(None))
+        .all()
+    )
+
+    debug_data = []
+    for ticket in character_tickets:
+        character = Character.query.get(ticket.character_id)
+        if character:
+            pack = character.pack or Pack()
+            try:
+                pack_dict = pack.to_dict()
+                import json
+
+                json_str = json.dumps(pack_dict)
+                debug_data.append(
+                    {
+                        "character_id": character.id,
+                        "character_name": character.name,
+                        "pack_dict": pack_dict,
+                        "json_str": json_str,
+                        "json_length": len(json_str),
+                    }
+                )
+            except Exception as e:
+                debug_data.append(
+                    {
+                        "character_id": character.id,
+                        "character_name": character.name,
+                        "error": str(e),
+                    }
+                )
+
+    return jsonify(debug_data)

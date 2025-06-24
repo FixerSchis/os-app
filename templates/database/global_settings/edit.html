@@ -1,0 +1,41 @@
+{% extends "_template.html" %}
+
+{% block title %}Edit Global Settings{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>Edit Global Settings</h1>
+
+    <form method="POST" class="mt-4">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Income Settings</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="character_income_ec" class="form-label">Character Income (EC)</label>
+                            <input type="number" class="form-control" id="character_income_ec" name="character_income_ec"
+                                   value="{{ settings.character_income_ec if settings else 0 }}" min="0" required>
+                            <div class="form-text">Base EC income for characters per downtime period.</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="group_income_contribution" class="form-label">Group Income Contribution (EC)</label>
+                            <input type="number" class="form-control" id="group_income_contribution" name="group_income_contribution"
+                                   value="{{ settings.group_income_contribution if settings else 0 }}" min="0" required>
+                            <div class="form-text">Base EC contribution from groups per downtime period.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-4">
+            <button type="submit" class="btn btn-primary">Update Settings</button>
+            <a href="{{ url_for('global_settings.list_global_settings') }}" class="btn btn-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

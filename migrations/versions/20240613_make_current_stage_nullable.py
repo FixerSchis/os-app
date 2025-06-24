@@ -16,12 +16,10 @@ depends_on = None
 
 
 def upgrade():
-    op.alter_column(
-        "character_conditions", "current_stage", existing_type=sa.Integer(), nullable=True
-    )
+    with op.batch_alter_table("character_conditions", schema=None) as batch_op:
+        batch_op.alter_column("current_stage", existing_type=sa.Integer(), nullable=True)
 
 
 def downgrade():
-    op.alter_column(
-        "character_conditions", "current_stage", existing_type=sa.Integer(), nullable=False
-    )
+    with op.batch_alter_table("character_conditions", schema=None) as batch_op:
+        batch_op.alter_column("current_stage", existing_type=sa.Integer(), nullable=False)
