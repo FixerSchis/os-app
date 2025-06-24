@@ -156,9 +156,12 @@ def purchase_ticket(event_id):
 
     # Check if booking is still available
     if not event.is_booking_available():
+        if event.booking_deadline:
+            deadline_msg = f"The booking deadline was {event.booking_deadline.strftime('%d %b %Y')}"
+        else:
+            deadline_msg = "The event has already started"
         flash(
-            "Booking for this event has closed. The booking deadline was "
-            + event.booking_deadline.strftime("%d %b %Y"),
+            f"Booking for this event has closed. {deadline_msg}.",
             "error",
         )
         return redirect(url_for("events.event_list"))
@@ -187,9 +190,12 @@ def purchase_ticket_post(event_id):
 
     # Check if booking is still available
     if not event.is_booking_available():
+        if event.booking_deadline:
+            deadline_msg = f"The booking deadline was {event.booking_deadline.strftime('%d %b %Y')}"
+        else:
+            deadline_msg = "The event has already started"
         flash(
-            "Booking for this event has closed. The booking deadline was "
-            + event.booking_deadline.strftime("%d %b %Y"),
+            f"Booking for this event has closed. {deadline_msg}.",
             "error",
         )
         return redirect(url_for("events.event_list"))
@@ -1123,6 +1129,11 @@ def get_events():
                     "start_date": event.start_date.strftime("%Y-%m-%d"),
                     "end_date": event.end_date.strftime("%Y-%m-%d"),
                     "early_booking_deadline": event.early_booking_deadline.strftime("%Y-%m-%d"),
+                    "booking_deadline": (
+                        event.booking_deadline.strftime("%Y-%m-%d")
+                        if event.booking_deadline
+                        else None
+                    ),
                     "event_type": event.event_type.value,
                 }
                 for event in events
