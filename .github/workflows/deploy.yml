@@ -142,6 +142,7 @@ jobs:
 
           # Populate default data
           echo "Populating default data..."
+          cd $DEPLOY_DIR
           sudo -u os-app venv/bin/python scripts/populate_default_data.py
 
           # Set proper permissions
