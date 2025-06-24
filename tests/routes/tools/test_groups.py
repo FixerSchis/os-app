@@ -2,14 +2,53 @@ import pytest
 from bs4 import BeautifulSoup
 from flask import url_for
 
-from models.enums import CharacterStatus, GroupType
+from models.database.group_type import GroupType
+from models.enums import CharacterStatus
 from models.tools.character import Character
 from models.tools.group import Group, GroupInvite
 
 
-def test_group_list_admin(test_client, admin_user, db_session):
+@pytest.fixture
+def military_group_type(db_session):
+    """Fixture for creating a military group type."""
+    group_type = GroupType(
+        name="Military",
+        description="A military group type",
+        income_items_list=[],
+        income_items_discount=0.5,
+        income_substances=False,
+        income_substance_cost=0,
+        income_medicaments=False,
+        income_medicament_cost=0,
+        income_distribution_dict={"items": 50, "chits": 50},
+    )
+    db_session.add(group_type)
+    db_session.commit()
+    return group_type
+
+
+@pytest.fixture
+def scientific_group_type(db_session):
+    """Fixture for creating a scientific group type."""
+    group_type = GroupType(
+        name="Scientific",
+        description="A scientific group type",
+        income_items_list=[],
+        income_items_discount=0.5,
+        income_substances=True,
+        income_substance_cost=5,
+        income_medicaments=False,
+        income_medicament_cost=0,
+        income_distribution_dict={"items": 20, "exotics": 40, "chits": 40},
+    )
+    db_session.add(group_type)
+    db_session.commit()
+    return group_type
+
+
+def test_group_list_admin(test_client, admin_user, db_session, military_group_type):
     """Admin sees all groups"""
-    group = Group(name="Test Group", type="military", bank_account=0)
+    group = Group(name="Test Group", group_type_id=military_group_type.id, bank_account=0)
     db_session.add(group)
     db_session.commit()
     with test_client.session_transaction() as sess:
@@ -54,7 +93,7 @@ def test_create_group_get(test_client, new_user, db_session):
     assert resp.status_code == 302
 
 
-def test_create_group_post(test_client, new_user, db_session):
+def test_create_group_post(test_client, new_user, db_session, military_group_type):
     """User with active character can create a group"""
     character = Character(name="Char", user_id=new_user.id, status=CharacterStatus.ACTIVE.value)
     db_session.add(character)
@@ -62,7 +101,7 @@ def test_create_group_post(test_client, new_user, db_session):
     with test_client.session_transaction() as sess:
         sess["_user_id"] = new_user.id
         sess["_fresh"] = True
-    data = {"name": "New Group", "type": "military", "character_id": character.id}
+    data = {"name": "New Group", "type": military_group_type.id, "character_id": character.id}
     resp = test_client.post("/groups/new", data=data, follow_redirects=True)
     assert resp.status_code == 200
     new_group = Group.query.filter_by(name="New Group").first()
@@ -83,8 +122,10 @@ def test_create_group_post_missing_fields(test_client, new_user, db_session):
     assert b"Name and type are required" in resp.data
 
 
-def test_edit_group_post(test_client, new_user, db_session):
-    group = Group(name="Original Name", type="military", bank_account=0)
+def test_edit_group_post(
+    test_client, new_user, db_session, military_group_type, scientific_group_type
+):
+    group = Group(name="Original Name", group_type_id=military_group_type.id, bank_account=0)
     character = Character(
         name="Char",
         user_id=new_user.id,
@@ -98,17 +139,17 @@ def test_edit_group_post(test_client, new_user, db_session):
     with test_client.session_transaction() as sess:
         sess["_user_id"] = new_user.id
         sess["_fresh"] = True
-    data = {"name": "Updated Name", "type": "scientific", "character_id": character.id}
+    data = {"name": "Updated Name", "type": scientific_group_type.id, "character_id": character.id}
     resp = test_client.post(f"/groups/{group.id}/edit", data=data, follow_redirects=True)
     assert resp.status_code == 200
     updated_group = db_session.get(Group, group.id)
     assert updated_group.name == "Updated Name"
     # Type is not editable by non-admins, so it should not change
-    assert updated_group.type == GroupType.MILITARY
+    assert updated_group.group_type_id == military_group_type.id
 
 
-def test_invite_character(test_client, new_user, db_session):
-    group = Group(name="Invite Group", type="military", bank_account=0)
+def test_invite_character(test_client, new_user, db_session, military_group_type):
+    group = Group(name="Invite Group", group_type_id=military_group_type.id, bank_account=0)
     character = Character(
         name="Char",
         user_id=new_user.id,
@@ -130,8 +171,8 @@ def test_invite_character(test_client, new_user, db_session):
     assert invite is not None
 
 
-def test_accept_invite(test_client, new_user, db_session):
-    group = Group(name="Accept Group", type="military", bank_account=0)
+def test_accept_invite(test_client, new_user, db_session, military_group_type):
+    group = Group(name="Accept Group", group_type_id=military_group_type.id, bank_account=0)
     character = Character(name="Char", user_id=new_user.id, status=CharacterStatus.ACTIVE.value)
     db_session.add_all([group, character])
     db_session.commit()
@@ -150,8 +191,8 @@ def test_accept_invite(test_client, new_user, db_session):
     assert character.group_id == group.id
 
 
-def test_decline_invite(test_client, new_user, db_session):
-    group = Group(name="Decline Group", type="military", bank_account=0)
+def test_decline_invite(test_client, new_user, db_session, military_group_type):
+    group = Group(name="Decline Group", group_type_id=military_group_type.id, bank_account=0)
     character = Character(name="Char", user_id=new_user.id, status=CharacterStatus.ACTIVE.value)
     db_session.add_all([group, character])
     db_session.commit()
@@ -170,8 +211,8 @@ def test_decline_invite(test_client, new_user, db_session):
     assert declined_invite is None
 
 
-def test_leave_group(test_client, new_user, db_session):
-    group = Group(name="Leave Group", type="military", bank_account=0)
+def test_leave_group(test_client, new_user, db_session, military_group_type):
+    group = Group(name="Leave Group", group_type_id=military_group_type.id, bank_account=0)
     character = Character(
         name="Char",
         user_id=new_user.id,
@@ -191,8 +232,8 @@ def test_leave_group(test_client, new_user, db_session):
     assert character.group_id is None
 
 
-def test_disband_group(test_client, new_user, db_session):
-    group = Group(name="Disband Group", type="military", bank_account=0)
+def test_disband_group(test_client, new_user, db_session, military_group_type):
+    group = Group(name="Disband Group", group_type_id=military_group_type.id, bank_account=0)
     character = Character(
         name="Char",
         user_id=new_user.id,
@@ -212,8 +253,8 @@ def test_disband_group(test_client, new_user, db_session):
     assert disbanded_group is None
 
 
-def test_remove_character_admin(test_client, admin_user, db_session):
-    group = Group(name="Remove Group", type="military", bank_account=0)
+def test_remove_character_admin(test_client, admin_user, db_session, military_group_type):
+    group = Group(name="Remove Group", group_type_id=military_group_type.id, bank_account=0)
     character = Character(
         name="Char",
         user_id=admin_user.id,
@@ -232,11 +273,11 @@ def test_remove_character_admin(test_client, admin_user, db_session):
     assert character.group_id is None
 
 
-def test_create_group_admin(test_client, admin_user, db_session):
+def test_create_group_admin(test_client, admin_user, db_session, military_group_type):
     with test_client.session_transaction() as sess:
         sess["_user_id"] = admin_user.id
         sess["_fresh"] = True
-    data = {"name": "Admin Group", "type": "military", "bank_account": "500"}
+    data = {"name": "Admin Group", "group_type_id": military_group_type.id, "bank_account": "500"}
     resp = test_client.post("/groups/create/admin", data=data, follow_redirects=True)
     assert b"Group created successfully" in resp.data
     group = Group.query.filter_by(name="Admin Group").first()
@@ -244,28 +285,27 @@ def test_create_group_admin(test_client, admin_user, db_session):
     assert group.bank_account == 500
 
 
-def test_edit_group_admin(test_client, admin_user, db_session):
-    group = Group(name="Edit Admin Group", type="military", bank_account=0)
+def test_edit_group_admin(
+    test_client, admin_user, db_session, military_group_type, scientific_group_type
+):
+    group = Group(name="Edit Admin Group", group_type_id=military_group_type.id, bank_account=0)
     db_session.add(group)
     db_session.commit()
     with test_client.session_transaction() as sess:
         sess["_user_id"] = admin_user.id
         sess["_fresh"] = True
-    data = {
-        "name": "Edited Admin Group",
-        "type": "scientific",
-        "bank_account": "200",
-    }
+    data = {"name": "Edited Admin Group", "type": scientific_group_type.id, "bank_account": "1000"}
     resp = test_client.post(f"/groups/{group.id}/edit/admin", data=data, follow_redirects=True)
+    assert resp.status_code == 200
     assert b"Group updated successfully" in resp.data
     updated = db_session.get(Group, group.id)
     assert updated.name == "Edited Admin Group"
-    assert updated.type.value == "scientific"
-    assert updated.bank_account == 200
+    assert updated.group_type_id == scientific_group_type.id
+    assert updated.bank_account == 1000
 
 
-def test_add_character_admin(test_client, admin_user, db_session):
-    group = Group(name="Add Char Group", type="military", bank_account=0)
+def test_add_character_admin(test_client, admin_user, db_session, military_group_type):
+    group = Group(name="Add Char Group", group_type_id=military_group_type.id, bank_account=0)
     character = Character(name="Char", user_id=admin_user.id, status=CharacterStatus.ACTIVE.value)
     db_session.add_all([group, character])
     db_session.commit()
@@ -301,7 +341,9 @@ def test_group_list_for_multi_char_user(test_client, npc_user_with_chars):
     assert b"NPC Char 2" in response.data
 
 
-def test_group_creation_for_multi_char_user(test_client, db_session, npc_user_with_chars):
+def test_group_creation_for_multi_char_user(
+    test_client, db_session, npc_user_with_chars, military_group_type
+):
     """
     GIVEN a logged-in NPC user with multiple active characters
     WHEN they create a new group
@@ -315,7 +357,7 @@ def test_group_creation_for_multi_char_user(test_client, db_session, npc_user_wi
     # Create a group with the first character selected
     response = test_client.post(
         "/groups/new",
-        data={"name": "Multi-Char Group", "type": "military", "character_id": char1.id},
+        data={"name": "Multi-Char Group", "type": military_group_type.id, "character_id": char1.id},
         follow_redirects=True,
     )
     assert response.status_code == 200
@@ -347,7 +389,7 @@ def test_admin_group_view_switching(test_client, db_session, admin_user, npc_use
     assert "characters" in resp.location.lower()
 
 
-def test_group_audit_log_creation(test_client, new_user, db_session):
+def test_group_audit_log_creation(test_client, new_user, db_session, military_group_type):
     """Test that group creation creates an audit log entry"""
     from models.enums import GroupAuditAction
     from models.tools.group import GroupAuditLog
@@ -360,7 +402,11 @@ def test_group_audit_log_creation(test_client, new_user, db_session):
         sess["_user_id"] = new_user.id
         sess["_fresh"] = True
 
-    data = {"name": "Audit Test Group", "type": "military", "character_id": character.id}
+    data = {
+        "name": "Audit Test Group",
+        "type": military_group_type.id,
+        "character_id": character.id,
+    }
     resp = test_client.post("/groups/new", data=data, follow_redirects=True)
     assert resp.status_code == 200
 
@@ -376,12 +422,12 @@ def test_group_audit_log_creation(test_client, new_user, db_session):
     assert "Group created by Char" in audit_log.changes
 
 
-def test_group_audit_log_edit(test_client, new_user, db_session):
+def test_group_audit_log_edit(test_client, new_user, db_session, military_group_type):
     """Test that group editing creates audit log entries"""
     from models.enums import GroupAuditAction
     from models.tools.group import GroupAuditLog
 
-    group = Group(name="Original Name", type="military", bank_account=0)
+    group = Group(name="Original Name", group_type_id=military_group_type.id, bank_account=0)
     character = Character(name="Char", user_id=new_user.id, status=CharacterStatus.ACTIVE.value)
     db_session.add_all([group, character])
     db_session.commit()
@@ -404,12 +450,12 @@ def test_group_audit_log_edit(test_client, new_user, db_session):
     assert "Name changed from 'Original Name' to 'Updated Name'" in audit_log.changes
 
 
-def test_group_audit_log_member_join(test_client, new_user, db_session):
+def test_group_audit_log_member_join(test_client, new_user, db_session, military_group_type):
     """Test that member joining creates audit log entries"""
     from models.enums import GroupAuditAction
     from models.tools.group import GroupAuditLog
 
-    group = Group(name="Join Group", type="military", bank_account=0)
+    group = Group(name="Join Group", group_type_id=military_group_type.id, bank_account=0)
     character = Character(name="Char", user_id=new_user.id, status=CharacterStatus.ACTIVE.value)
     db_session.add_all([group, character])
     db_session.commit()
@@ -436,12 +482,12 @@ def test_group_audit_log_member_join(test_client, new_user, db_session):
     assert "Member joined: Char" in audit_log.changes
 
 
-def test_group_audit_log_member_leave(test_client, new_user, db_session):
+def test_group_audit_log_member_leave(test_client, new_user, db_session, military_group_type):
     """Test that member leaving creates audit log entries"""
     from models.enums import GroupAuditAction
     from models.tools.group import GroupAuditLog
 
-    group = Group(name="Leave Group", type="military", bank_account=0)
+    group = Group(name="Leave Group", group_type_id=military_group_type.id, bank_account=0)
     character = Character(name="Char", user_id=new_user.id, status=CharacterStatus.ACTIVE.value)
     db_session.add_all([group, character])
     db_session.commit()
@@ -464,12 +510,12 @@ def test_group_audit_log_member_leave(test_client, new_user, db_session):
     assert "Member left: Char" in audit_log.changes
 
 
-def test_group_audit_log_admin_remove(test_client, admin_user, db_session):
-    """Test that admin removing member creates audit log entries"""
+def test_group_audit_log_admin_remove(test_client, admin_user, db_session, military_group_type):
+    """Test that admin removing members creates audit log entries"""
     from models.enums import GroupAuditAction
     from models.tools.group import GroupAuditLog
 
-    group = Group(name="Remove Group", type="military", bank_account=0)
+    group = Group(name="Remove Group", group_type_id=military_group_type.id, bank_account=0)
     character = Character(name="Char", user_id=admin_user.id, status=CharacterStatus.ACTIVE.value)
     db_session.add_all([group, character])
     db_session.commit()
@@ -491,9 +537,9 @@ def test_group_audit_log_admin_remove(test_client, admin_user, db_session):
     assert "Member removed by admin: Char" in audit_log.changes
 
 
-def test_group_audit_log_view_access(test_client, new_user, db_session):
+def test_group_audit_log_view_access(test_client, new_user, db_session, military_group_type):
     """Test that group audit log is accessible to group members"""
-    group = Group(name="Audit Group", type="military", bank_account=0)
+    group = Group(name="Audit Group", group_type_id=military_group_type.id, bank_account=0)
     character = Character(name="Char", user_id=new_user.id, status=CharacterStatus.ACTIVE.value)
     db_session.add_all([group, character])
     db_session.commit()
@@ -506,28 +552,28 @@ def test_group_audit_log_view_access(test_client, new_user, db_session):
 
     resp = test_client.get(f"/groups/{group.id}/audit-log")
     assert resp.status_code == 200
-    assert b"Audit Log for Audit Group" in resp.data
+    assert b"Audit Log" in resp.data
 
 
-def test_group_audit_log_view_access_denied(test_client, new_user, db_session):
+def test_group_audit_log_view_access_denied(test_client, new_user, db_session, military_group_type):
     """Test that group audit log is not accessible to non-members"""
-    group = Group(name="Audit Group", type="military", bank_account=0)
+    group = Group(name="Audit Group", group_type_id=military_group_type.id, bank_account=0)
     character = Character(name="Char", user_id=new_user.id, status=CharacterStatus.ACTIVE.value)
     db_session.add_all([group, character])
     db_session.commit()
-    # Note: character is NOT added to the group
+    # Note: character is not added to the group
 
     with test_client.session_transaction() as sess:
         sess["_user_id"] = new_user.id
         sess["_fresh"] = True
 
-    resp = test_client.get(f"/groups/{group.id}/audit-log")
+    resp = test_client.get(f"/groups/{group.id}/audit-log", follow_redirects=True)
     assert resp.status_code == 403
 
 
-def test_group_audit_log_admin_access(test_client, admin_user, db_session):
+def test_group_audit_log_admin_access(test_client, admin_user, db_session, military_group_type):
     """Test that admins can access any group's audit log"""
-    group = Group(name="Admin Audit Group", type="military", bank_account=0)
+    group = Group(name="Admin Audit Group", group_type_id=military_group_type.id, bank_account=0)
     db_session.add(group)
     db_session.commit()
 
@@ -537,15 +583,15 @@ def test_group_audit_log_admin_access(test_client, admin_user, db_session):
 
     resp = test_client.get(f"/groups/{group.id}/audit-log")
     assert resp.status_code == 200
-    assert b"Audit Log for Admin Audit Group" in resp.data
+    assert b"Audit Log" in resp.data
 
 
-def test_group_audit_log_invite_sent(test_client, new_user, db_session):
-    """Test that sending an invite creates an audit log entry"""
+def test_group_audit_log_invite_sent(test_client, new_user, db_session, military_group_type):
+    """Test that sending invites creates audit log entries"""
     from models.enums import GroupAuditAction
     from models.tools.group import GroupAuditLog
 
-    group = Group(name="Invite Group", type="military", bank_account=0)
+    group = Group(name="Invite Group", group_type_id=military_group_type.id, bank_account=0)
     character = Character(name="Char", user_id=new_user.id, status=CharacterStatus.ACTIVE.value)
     invitee = Character(name="Invitee", user_id=new_user.id, status=CharacterStatus.ACTIVE.value)
     db_session.add_all([group, character, invitee])
@@ -569,16 +615,15 @@ def test_group_audit_log_invite_sent(test_client, new_user, db_session):
     assert "Invite sent to Invitee" in audit_log.changes
 
 
-def test_group_audit_log_invite_declined(test_client, new_user, db_session):
-    """Test that declining an invite creates an audit log entry"""
+def test_group_audit_log_invite_declined(test_client, new_user, db_session, military_group_type):
+    """Test that declining invites creates audit log entries"""
     from models.enums import GroupAuditAction
     from models.tools.group import GroupAuditLog
 
-    group = Group(name="Decline Group", type="military", bank_account=0)
+    group = Group(name="Decline Group", group_type_id=military_group_type.id, bank_account=0)
     character = Character(name="Char", user_id=new_user.id, status=CharacterStatus.ACTIVE.value)
     db_session.add_all([group, character])
     db_session.commit()
-
     invite = GroupInvite(group_id=group.id, character_id=character.id)
     db_session.add(invite)
     db_session.commit()

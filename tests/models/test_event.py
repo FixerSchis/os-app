@@ -9,6 +9,7 @@ def test_new_event_with_methods(db):
     # Create dates for testing
     now = datetime.now()
     early_deadline = now + timedelta(days=30)
+    booking_deadline = now + timedelta(days=45)
     start_date = now + timedelta(days=60)
     end_date = now + timedelta(days=63)
 
@@ -18,6 +19,7 @@ def test_new_event_with_methods(db):
         event_type=EventType.MAINLINE,
         description="A test event for testing purposes",
         early_booking_deadline=early_deadline,
+        booking_deadline=booking_deadline,
         start_date=start_date,
         end_date=end_date,
         location="Test Location",
@@ -66,6 +68,7 @@ def test_new_event_with_methods(db):
         name="Past Event",
         event_type=EventType.MAINLINE,
         early_booking_deadline=now - timedelta(days=1),  # Past deadline
+        booking_deadline=now + timedelta(days=15),  # Still in future
         start_date=start_date,
         end_date=end_date,
         standard_ticket_price=100.0,

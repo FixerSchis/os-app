@@ -1,12 +1,28 @@
+from models.database.group_type import GroupType
 from models.database.sample import Sample, SampleTag
-from models.enums import GroupType, ScienceType
+from models.enums import ScienceType
 from models.tools.group import Group
 
 
 def test_new_sample_with_group_and_tags(db):
     """Test creation of a new Sample with Group and SampleTag relationships."""
-    # Create a group first
-    group = Group(name="Test Group", type=GroupType.SCIENTIFIC, bank_account=500)
+    # Create a group type first
+    group_type = GroupType(
+        name="Scientific",
+        description="A scientific group type",
+        income_items_list=[],
+        income_items_discount=0.5,
+        income_substances=True,
+        income_substance_cost=5,
+        income_medicaments=False,
+        income_medicament_cost=0,
+        income_distribution_dict={"items": 20, "exotics": 40, "chits": 40},
+    )
+    db.session.add(group_type)
+    db.session.commit()
+
+    # Create a group
+    group = Group(name="Test Group", group_type_id=group_type.id, bank_account=500)
     db.session.add(group)
     db.session.commit()
 

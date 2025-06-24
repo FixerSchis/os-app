@@ -60,7 +60,7 @@ class Character(db.Model):
     base_character_points = db.Column(db.Integer, nullable=False, default=10)
     group_id = db.Column(db.Integer, db.ForeignKey("group.id"), nullable=True)
     bank_account = db.Column(db.Integer, nullable=False, default=0)
-    character_pack = db.Column(db.String, nullable=True)  # JSON string
+    character_pack = db.Column(db.JSON, nullable=True)  # JSON data
     pack_complete = db.Column(db.Boolean, nullable=False, default=False)
     created_at = db.Column(db.DateTime, nullable=False, default=db.func.now())
     updated_at = db.Column(
@@ -85,21 +85,16 @@ class Character(db.Model):
 
     @property
     def pack(self):
-        if not self.character_pack:
-            return Pack()
         try:
-            pack = Pack.from_json(self.character_pack)
+            # character_pack is always JSON data (dict) since we control the data
+            pack = Pack(**self.character_pack)
             return pack
-        except Exception as e:
-            print(f"DEBUG: Error in Pack.from_json: {e}")
-            import traceback
-
-            traceback.print_exc()
+        except Exception:
             return Pack()
 
     @pack.setter
     def pack(self, pack):
-        self.character_pack = pack.to_json()
+        self.character_pack = pack.to_dict()
         self.pack_complete = pack.is_complete()
 
     @classmethod

@@ -153,15 +153,10 @@ def edit_group_post(group_id):
         changes.append(f"Name changed from '{group.name}' to '{name}'")
 
     # Only allow type changes for admins
-    if (
-        current_user.has_role(Role.USER_ADMIN.value)
-        and type
-        and getattr(group.type, "value", group.type) != type
-    ):
-        changes.append(
-            f"Type changed from '{getattr(group.type, 'value', group.type)}' to '{type}'"
-        )
-        group.type = type
+    if current_user.has_role(Role.USER_ADMIN.value) and type and group.group_type_id != int(type):
+        group_type = GroupType.query.get(type)
+        changes.append(f"Type changed from '{group.group_type.name}' to '{group_type.name}'")
+        group.group_type_id = int(type)
 
     # Handle bank account changes using centralized methods
     if current_user.has_role(Role.USER_ADMIN.value):
@@ -544,7 +539,9 @@ def edit_group_admin_post(group_id):
             url_for("groups.edit_group_admin", group_id=group.id, group_types=group_types)
         )
 
-    if type not in group_types:
+    # Validate group type
+    group_type = GroupType.query.get(type)
+    if not group_type:
         flash("Invalid group type", "error")
         return redirect(
             url_for("groups.edit_group_admin", group_id=group.id, group_types=group_types)
@@ -554,7 +551,9 @@ def edit_group_admin_post(group_id):
         bank_account_int = int(bank_account) if bank_account else 0
     except ValueError:
         flash("Bank account must be a number", "error")
-        return redirect(url_for("groups.admin_edit", group_id=group.id, group_types=group_types))
+        return redirect(
+            url_for("groups.edit_group_admin", group_id=group.id, group_types=group_types)
+        )
 
     # Track changes for audit log
     changes = []
@@ -562,15 +561,9 @@ def edit_group_admin_post(group_id):
         changes.append(f"Name changed from '{group.name}' to '{name}'")
 
     # Only allow type changes for admins
-    if (
-        current_user.has_role(Role.USER_ADMIN.value)
-        and type
-        and getattr(group.type, "value", group.type) != type
-    ):
-        changes.append(
-            f"Type changed from '{getattr(group.type, 'value', group.type)}' to '{type}'"
-        )
-        group.type = type
+    if current_user.has_role(Role.USER_ADMIN.value) and type and group.group_type_id != int(type):
+        changes.append(f"Type changed from '{group.group_type.name}' to '{group_type.name}'")
+        group.group_type_id = int(type)
 
     # Handle bank account changes using centralized methods
     if current_user.has_role(Role.USER_ADMIN.value):

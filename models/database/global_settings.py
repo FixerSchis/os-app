@@ -17,3 +17,8 @@ class GlobalSettings(db.Model):
             f"<GlobalSettings character_income_ec={self.character_income_ec} "
             f"group_contribution={self.group_income_contribution}>"
         )
+
+    @classmethod
+    def create_default_settings(cls):
+        """Create default global settings."""
+        return cls(character_income_ec=30, group_income_contribution=30)
