@@ -420,6 +420,7 @@ def print_template_preview(template_id):
         "width_mm": template.width_mm,
         "height_mm": template.height_mm,
         "is_landscape": template.is_landscape,
+        "has_back_side": template.has_back_side,
         "items_per_row": template.items_per_row,
         "items_per_column": template.items_per_column,
         "margin_top_mm": template.margin_top_mm,
@@ -434,19 +435,42 @@ def print_template_preview(template_id):
     }
 
     try:
-        # Update template with preview values
-        template.width_mm = data.get("width_mm", template.width_mm)
-        template.height_mm = data.get("height_mm", template.height_mm)
-        template.is_landscape = data.get("is_landscape", False)
-        template.has_back_side = data.get("has_back_side", False)
-        template.items_per_row = data.get("items_per_row", 1)
-        template.items_per_column = data.get("items_per_column", 1)
-        template.margin_top_mm = data.get("margin_top_mm", 10.0)
-        template.margin_bottom_mm = data.get("margin_bottom_mm", 10.0)
-        template.margin_left_mm = data.get("margin_left_mm", 10.0)
-        template.margin_right_mm = data.get("margin_right_mm", 10.0)
-        template.gap_horizontal_mm = data.get("gap_horizontal_mm", 2.0)
-        template.gap_vertical_mm = data.get("gap_vertical_mm", 2.0)
+        # Check if layout settings are provided (layout page) or just content (edit page)
+        has_layout_settings = any(
+            key in data
+            for key in [
+                "width_mm",
+                "height_mm",
+                "is_landscape",
+                "has_back_side",
+                "items_per_row",
+                "items_per_column",
+                "margin_top_mm",
+                "margin_bottom_mm",
+                "margin_left_mm",
+                "margin_right_mm",
+                "gap_horizontal_mm",
+                "gap_vertical_mm",
+            ]
+        )
+
+        if has_layout_settings:
+            # Layout page: use form values for layout settings
+            template.width_mm = data.get("width_mm", template.width_mm)
+            template.height_mm = data.get("height_mm", template.height_mm)
+            template.is_landscape = data.get("is_landscape", False)
+            template.has_back_side = data.get("has_back_side", False)
+            template.items_per_row = data.get("items_per_row", 1)
+            template.items_per_column = data.get("items_per_column", 1)
+            template.margin_top_mm = data.get("margin_top_mm", 10.0)
+            template.margin_bottom_mm = data.get("margin_bottom_mm", 10.0)
+            template.margin_left_mm = data.get("margin_left_mm", 10.0)
+            template.margin_right_mm = data.get("margin_right_mm", 10.0)
+            template.gap_horizontal_mm = data.get("gap_horizontal_mm", 2.0)
+            template.gap_vertical_mm = data.get("gap_vertical_mm", 2.0)
+        # Edit page: keep template's saved layout settings
+
+        # Always update content from form
         template.front_html = data.get("front_html", template.front_html)
         template.back_html = data.get("back_html", template.back_html)
         template.css_styles = data.get("css_styles", template.css_styles)
@@ -562,3 +586,45 @@ def template_layout(template_id):
     return render_template(
         "templates/layout.html", template=template, PrintTemplateType=PrintTemplateType
     )
+
+
+@templates_bp.route("/print/exotics-sheet", methods=["POST"])
+@login_required
+@admin_required
+def print_exotics_sheet():
+    """Generate PDF for exotic substances."""
+    layout_manager = PrintLayout()
+    try:
+        # Get exotic substance IDs from request
+        data = request.get_json()
+        exotic_ids = data.get("exotic_ids", [])
+
+        if not exotic_ids:
+            return jsonify({"error": "No exotic substance IDs provided."}), 400
+
+        # Get exotic substances
+        from models.database.exotic_substances import ExoticSubstance
+
+        exotics = ExoticSubstance.query.filter(ExoticSubstance.id.in_(exotic_ids)).all()
+
+        if not exotics:
+            return jsonify({"error": "No exotic substances found."}), 404
+
+        # Get the template for exotic substance labels
+        template = PrintTemplate.query.filter_by(
+            type=PrintTemplateType.EXOTIC_SUBSTANCE_LABEL
+        ).first()
+        if not template:
+            return jsonify({"error": "No exotic substance label template found."}), 400
+
+        # If only one exotic substance, duplicate it to fill the sheet
+        if len(exotics) == 1:
+            # Calculate how many copies we need to fill a sheet
+            items_per_sheet = template.items_per_row * template.items_per_column
+            exotics = exotics * items_per_sheet
+
+        pdf = layout_manager.generate_exotic_substance_labels_pdf(exotics, template)
+
+        return jsonify({"pdf_base64": base64.b64encode(pdf.read()).decode("utf-8")})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400

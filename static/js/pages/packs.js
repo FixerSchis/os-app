@@ -36,7 +36,6 @@ document.addEventListener('DOMContentLoaded', function() {
     window.printMedicaments = function() {
         const url = `/events/${currentEventId}/packs/print/medicaments`;
         window.open(url, '_blank');
-        window.location.href = url;
         bootstrap.Modal.getInstance(document.getElementById('printModal')).hide();
     };
 

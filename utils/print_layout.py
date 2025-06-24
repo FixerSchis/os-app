@@ -155,35 +155,16 @@ class PrintLayout:
         )
 
         items_per_page = front_layout["items_per_page"]
-        arranged_items = []
+        arranged_pages = []  # Each entry is a list of items for a single page
 
         if not double_sided:
             # Single-sided: just add layout info to each item
-            for idx, item in enumerate(items):
-                if idx >= len(front_layout["positions"]):
-                    break
-
-                arranged_items.append(
-                    {
-                        "width_mm": width,
-                        "height_mm": height,
-                        "html": item.get("front_html", ""),
-                        "css": item.get("css", ""),
-                        "position": front_layout["positions"][idx],
-                        "layout": front_layout,
-                    }
-                )
-        else:
-            # Double-sided: arrange items so fronts and backs match up when printed
             for page_start in range(0, len(items), items_per_page):
-                page_items = items[page_start : page_start + items_per_page]
-
-                # Front page
-                for idx, item in enumerate(page_items):
+                page_items = []
+                for idx, item in enumerate(items[page_start : page_start + items_per_page]):
                     if idx >= len(front_layout["positions"]):
                         break
-
-                    arranged_items.append(
+                    page_items.append(
                         {
                             "width_mm": width,
                             "height_mm": height,
@@ -193,33 +174,59 @@ class PrintLayout:
                             "layout": front_layout,
                         }
                     )
+                arranged_pages.append(page_items)
+        else:
+            # Double-sided: arrange items so fronts and backs match up when printed
+            for page_start in range(0, len(items), items_per_page):
+                page_items = items[page_start : page_start + items_per_page]
 
-                back_items = []
-                items_per_row = template.items_per_row
-
-                # Group items into rows and reverse each row
-                for row_start in range(0, len(page_items), items_per_row):
-                    row_items = page_items[row_start : row_start + items_per_row]
-                    back_items.extend(reversed(row_items))
-
-                # Add back sides with reversed positions
-                for idx, item in enumerate(back_items):
-                    if idx >= len(back_layout["positions"]):
+                # Front page
+                front_page = []
+                for idx, item in enumerate(page_items):
+                    if idx >= len(front_layout["positions"]):
                         break
-
-                    arranged_items.append(
+                    front_page.append(
                         {
                             "width_mm": width,
                             "height_mm": height,
-                            "html": item.get("back_html", ""),
+                            "html": item.get("front_html", ""),
                             "css": item.get("css", ""),
-                            "position": back_layout["positions"][idx],
-                            "layout": back_layout,
+                            "position": front_layout["positions"][idx],
+                            "layout": front_layout,
                         }
                     )
+                arranged_pages.append(front_page)
+
+                # Back page
+                back_page = []
+                items_per_row = template.items_per_row
+                num_rows = math.ceil(len(page_items) / items_per_row)
+                for row_idx in range(num_rows):
+                    row_start = row_idx * items_per_row
+                    row_items = page_items[row_start : row_start + items_per_row]
+                    reversed_row_items = list(reversed(row_items))
+                    # For back page, assign items to positions in reverse order within each row
+                    # This ensures the first item goes to the rightmost position
+                    for col_idx, item in enumerate(reversed_row_items):
+                        # Calculate position index in reverse order for this row
+                        # If items_per_row is 3, positions are: 2, 1, 0 (right to left)
+                        pos_idx = row_idx * items_per_row + (items_per_row - 1 - col_idx)
+                        if pos_idx >= len(back_layout["positions"]):
+                            break
+                        back_page.append(
+                            {
+                                "width_mm": width,
+                                "height_mm": height,
+                                "html": item.get("back_html", ""),
+                                "css": item.get("css", ""),
+                                "position": back_layout["positions"][pos_idx],
+                                "layout": back_layout,
+                            }
+                        )
+                arranged_pages.append(back_page)
 
         # Generate the HTML
-        html_content = self._generate_print_html(arranged_items, template.type)
+        html_content = self._generate_print_html(arranged_pages, template.type)
 
         # Create PDF using WeasyPrint with minimal options
         pdf_buffer = BytesIO()
@@ -228,9 +235,9 @@ class PrintLayout:
         pdf_buffer.seek(0)
         return pdf_buffer
 
-    def _generate_print_html(self, items: List[Dict], template_type: str) -> str:
+    def _generate_print_html(self, pages: List[List[Dict]], template_type: str) -> str:
         """Internal method to generate print-ready HTML."""
-        if not items:
+        if not pages or not pages[0]:
             raise ValueError("No items provided for layout calculation")
 
         # Get template for layout settings
@@ -286,25 +293,12 @@ class PrintLayout:
         html.append("</head>")
         html.append("<body>")
 
-        # Calculate pages needed
-        items_per_page = items[0]["layout"]["items_per_page"]
-        total_pages = math.ceil(len(items) / items_per_page)
-
         # Generate pages
-        for page in range(total_pages):
-            # Create a new page div
+        for page_items in pages:
             html.append('<div class="page">')
-
-            # Add items for this page
-            start_idx = page * items_per_page
-            page_items = items[start_idx : start_idx + items_per_page]
-
-            # Add each item at its calculated position
             for item in page_items:
                 x, y = item["position"]
                 item_html = item.get("html", "")
-
-                # Create a scoped container for each item with its own CSS
                 html.append(
                     f"""
                 <div class="item" style="
@@ -330,8 +324,6 @@ class PrintLayout:
                 </div>
                 """
                 )
-
-            # Add cut guides for this page
             for guide in item["layout"]["cut_guides"]:
                 html.append(
                     f"""
@@ -345,8 +337,6 @@ class PrintLayout:
                 "></div>
                 """
                 )
-
-            # Close the page div
             html.append("</div>")
 
         html.append("</body></html>")

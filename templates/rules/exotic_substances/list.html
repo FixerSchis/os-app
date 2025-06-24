@@ -38,7 +38,9 @@
                             <a href="{{ url_for('exotic_substances.edit', id=substance.id) }}" class="btn btn-sm btn-outline-primary">Edit</a>
                             {% endif %}
                             {% if current_user.has_role('admin') %}
-                            <button type="button" class="btn btn-sm btn-outline-secondary print-exotic-btn" data-exotic-id="{{ substance.id }}">Print</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary print-sheet-btn" data-exotic-id="{{ substance.id }}">
+                                <i class="fas fa-print"></i> Print Sheet
+                            </button>
                             {% endif %}
                         </div>
                     </td>
