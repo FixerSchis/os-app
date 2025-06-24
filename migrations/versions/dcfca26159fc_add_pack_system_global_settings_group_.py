@@ -6,6 +6,8 @@ Create Date: 2025-06-24 09:55:31.113693
 
 """
 
+from datetime import datetime, timedelta
+
 import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import sqlite
@@ -84,8 +86,26 @@ def upgrade():
     with op.batch_alter_table("character_conditions", schema=None) as batch_op:
         batch_op.alter_column("current_stage", existing_type=sa.INTEGER(), nullable=True)
 
+    # Fix for SQLite NOT NULL column issue: Add booking_deadline as nullable first
     with op.batch_alter_table("events", schema=None) as batch_op:
-        batch_op.add_column(sa.Column("booking_deadline", sa.DateTime(), nullable=False))
+        batch_op.add_column(sa.Column("booking_deadline", sa.DateTime(), nullable=True))
+
+    # Update existing events to set booking_deadline to early_booking_deadline + 10 days
+    connection = op.get_bind()
+    events = connection.execute(
+        sa.text("SELECT id, early_booking_deadline FROM events WHERE booking_deadline IS NULL")
+    )
+    for event in events:
+        early_deadline = datetime.fromisoformat(event.early_booking_deadline.replace("Z", "+00:00"))
+        booking_deadline = early_deadline + timedelta(days=10)
+        connection.execute(
+            sa.text("UPDATE events SET booking_deadline = :booking_deadline WHERE id = :event_id"),
+            {"booking_deadline": booking_deadline.isoformat(), "event_id": event.id},
+        )
+
+    # Now make the column NOT NULL
+    with op.batch_alter_table("events", schema=None) as batch_op:
+        batch_op.alter_column("booking_deadline", nullable=False)
 
     with op.batch_alter_table("group", schema=None) as batch_op:
         batch_op.add_column(sa.Column("group_type_id", sa.Integer(), nullable=False))

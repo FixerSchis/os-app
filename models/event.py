@@ -46,6 +46,10 @@ class Event(db.Model):
         return datetime.now() < self.early_booking_deadline
 
     def is_booking_available(self):
+        # Handle case where booking_deadline might be null during migration
+        # If booking_deadline is null, booking is available until the event starts
+        if self.booking_deadline is None:
+            return datetime.now() < self.start_date
         return datetime.now() < self.booking_deadline
 
     def get_adult_ticket_price(self):
