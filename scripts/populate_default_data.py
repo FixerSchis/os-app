@@ -9,6 +9,10 @@ import sys
 import uuid
 from datetime import datetime, timedelta
 
+# Add the project root to the Python path BEFORE any other imports
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+# flake8: noqa: E402
 from app import create_app
 from models import db
 from models.database.conditions import Condition, ConditionStage
@@ -36,9 +40,6 @@ from models.enums import (
 from models.event import Event
 from models.tools.print_template import PrintTemplate
 from models.wiki import WikiPage, WikiPageVersion, WikiSection, WikiTag
-
-# Add the project root to the Python path
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
 def create_default_global_settings():
