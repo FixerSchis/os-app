@@ -91,7 +91,12 @@
                     <div class="form-group mb-2">
                         <label>Description *</label>
                         <textarea class="form-control" name="ability_description_{{ loop.index0 }}" required>{{ ability.description }}</textarea>
-
+                    </div>
+                    <div class="form-group mb-2">
+                        <label>Additional Group Income (EC)</label>
+                        <input type="number" class="form-control" name="ability_additional_group_income_{{ loop.index0 }}"
+                               value="{{ ability.additional_group_income if ability.additional_group_income else 0 }}" min="0" placeholder="0">
+                        <div class="form-text">Additional EC income for groups when this ability is active.</div>
                     </div>
                     <div class="form-group mb-2 ability-extra ability-starting-skills" {% if not is_starting_skills %}style="display:none;"{% endif %}>
                         <label>Starting Skills</label>

@@ -1,0 +1,256 @@
+{% extends "_template.html" %}
+
+{% block title %}Packs - Event {{ event.event_number }} - {{ event.name }}{% endblock %}
+
+{% block head %}
+{{ super() }}
+<style>
+.modal {
+    z-index: 2000 !important;
+}
+.modal-backdrop {
+    z-index: 1990 !important;
+}
+header, .navbar, .site-header {
+    z-index: 100 !important;
+}
+.form-check-label {
+    margin-left: 0.25em;
+}
+.form-check-input {
+    margin-right: 0.5em;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1 class="mb-0">Packs for Event {{ event.event_number }} - {{ event.name }}</h1>
+        <div class="d-flex gap-2">
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#printModal">
+                <i class="fas fa-print"></i> Print...
+            </button>
+            <a href="{{ url_for('events.event_list') }}" class="btn btn-secondary">Back to Events</a>
+            <a href="{{ url_for('events.view_attendees', event_id=event.id) }}" class="btn btn-info">View Attendees</a>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Character Packs -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Character Packs</h5>
+                </div>
+                <div class="card-body">
+                    {% if character_packs %}
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Character</th>
+                                    <th>Faction</th>
+                                    <th>Packed</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for pack_data in character_packs %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ pack_data.user.first_name }} {{ pack_data.user.surname }}</strong><br>
+                                        <small>{{ pack_data.character.name }}</small>
+                                    </td>
+                                    <td>{{ pack_data.faction.name if pack_data.faction else 'No Faction' }}</td>
+                                    <td>
+                                        {% if pack_data.pack.is_completed %}
+                                            <i class="fas fa-check text-success"></i>
+                                        {% else %}
+                                            <i class="fas fa-times text-danger"></i>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <button class="btn btn-sm btn-primary"
+                                                data-character-id="{{ pack_data.character.id }}"
+                                                onclick="viewCharacterPack(this)">
+                                            View Contents
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> No character packs found for this event.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Group Packs -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Group Packs</h5>
+                </div>
+                <div class="card-body">
+                    {% if group_packs %}
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Group</th>
+                                    <th>Faction</th>
+                                    <th>Packed</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for pack_data in group_packs %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ pack_data.group.name }}</strong>
+                                    </td>
+                                    <td>{{ pack_data.group.faction.name if pack_data.group.faction else 'No Faction' }}</td>
+                                    <td>
+                                        {% if pack_data.pack.is_completed %}
+                                            <i class="fas fa-check text-success"></i>
+                                        {% else %}
+                                            <i class="fas fa-times text-danger"></i>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <button class="btn btn-sm btn-primary"
+                                                data-group-id="{{ pack_data.group.id }}"
+                                                onclick="viewGroupPack(this)">
+                                            View Contents
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> No group packs found for this event.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Print Modal -->
+<div class="modal fade" id="printModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Print Options</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="d-grid gap-2">
+                    <button type="button" class="btn btn-outline-primary" onclick="printCharacterSheets()">
+                        <i class="fas fa-file-alt"></i> Print Character Sheets
+                    </button>
+                    <button type="button" class="btn btn-outline-primary" onclick="printCharacterIdBadges()">
+                        <i class="fas fa-id-card"></i> Print Character ID Badges
+                    </button>
+                    <button type="button" class="btn btn-outline-primary" onclick="printItems()">
+                        <i class="fas fa-box"></i> Print Items
+                    </button>
+                    <button type="button" class="btn btn-outline-primary" onclick="printMedicaments()">
+                        <i class="fas fa-pills"></i> Print Medicaments
+                    </button>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Character Pack Modal -->
+<div class="modal fade" id="characterPackModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Character Pack Contents</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="characterPackContent">
+                    <!-- Content will be loaded here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="saveCharacterPack()">Save Progress</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Group Pack Modal -->
+<div class="modal fade" id="groupPackModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Group Pack Contents</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="groupPackContent">
+                    <!-- Content will be loaded here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="saveGroupPack()">Save Progress</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Hidden field for event ID -->
+<div id="event-id-data" style="display: none;" data-event-id="{{ event.id }}"></div>
+
+<!-- Lookup Data -->
+<div id="lookup-data" style="display: none;"
+     data-item-blueprints='{{ item_blueprints | tojson | safe }}'
+     data-items='{{ items | tojson | safe }}'
+     data-exotic-substances='{{ exotic_substances | tojson | safe }}'
+     data-medicaments='{{ medicaments | tojson | safe }}'
+     data-samples='{{ samples | tojson | safe }}'
+     data-character-income-ec='{{ character_income_ec }}'>
+</div>
+
+<!-- Pack Data -->
+{% for pack_data in character_packs %}
+<div id="pack-data-{{ pack_data.character.id }}" style="display: none;"
+     data-pack='{{ pack_data.pack.to_dict() | tojson | safe }}'
+     data-user-name='{{ pack_data.user.first_name }} {{ pack_data.user.surname }}'
+     data-character-name='{{ pack_data.character.name }}'
+     data-user-id='{{ pack_data.user.id }}'
+     data-character-id='{{ pack_data.character.character_id }}'>
+</div>
+{% endfor %}
+
+{% for pack_data in group_packs %}
+<div id="group-pack-data-{{ pack_data.group.id }}" style="display: none;"
+     data-pack='{{ pack_data.pack.to_dict() | tojson | safe }}'
+     data-characters='{{ pack_data.characters | tojson | safe }}'>
+</div>
+{% endfor %}
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/pages/packs.js') }}"></script>
+{% endblock %}

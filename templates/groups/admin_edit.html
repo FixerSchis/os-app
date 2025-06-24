@@ -8,9 +8,11 @@
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h1>{{ 'Edit' if group else 'Create' }} Group - Admin</h1>
             <div>
+                {% if group %}
                 <a href="{{ url_for('groups.group_audit_log', group_id=group.id) }}" class="btn btn-outline-info">
                     <i class="fas fa-history me-1"></i> View Audit Log
                 </a>
+                {% endif %}
             </div>
         </div>
 
@@ -23,11 +25,11 @@
                     </div>
 
                     <div class="form-group">
-                        <label for="type">Group Type</label>
-                        <select class="form-control" id="type" name="type" required>
-                            {% for type in GroupType.values() %}
-                            <option value="{{ type }}" {% if group and type == group.type %}selected{% endif %}>
-                                {{ GroupType.descriptions()[type] }}
+                        <label for="group_type_id">Group Type</label>
+                        <select class="form-control" id="group_type_id" name="group_type_id" required>
+                            {% for group_type in group_types %}
+                            <option value="{{ group_type.id }}" {% if group and group_type.id == group.group_type_id %}selected{% endif %}>
+                                {{ group_type.name }}
                             </option>
                             {% endfor %}
                         </select>

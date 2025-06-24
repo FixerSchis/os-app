@@ -20,6 +20,7 @@ class Event(db.Model):
     )
     description = db.Column(db.String(1000))
     early_booking_deadline = db.Column(db.DateTime, nullable=False)
+    booking_deadline = db.Column(db.DateTime, nullable=False)
     start_date = db.Column(db.DateTime, nullable=False)
     end_date = db.Column(db.DateTime, nullable=False)
     location = db.Column(db.String(500))
@@ -43,6 +44,9 @@ class Event(db.Model):
 
     def is_early_booking_available(self):
         return datetime.now() < self.early_booking_deadline
+
+    def is_booking_available(self):
+        return datetime.now() < self.booking_deadline
 
     def get_adult_ticket_price(self):
         if self.is_early_booking_available():

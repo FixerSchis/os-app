@@ -11,6 +11,7 @@ def test_new_downtime_period_with_pack(db, character):
 
     now = datetime.now()
     early_deadline = now + timedelta(days=30)
+    booking_deadline = now + timedelta(days=40)
     start_date = now + timedelta(days=60)
     end_date = now + timedelta(days=63)
 
@@ -19,6 +20,7 @@ def test_new_downtime_period_with_pack(db, character):
         name="Test Event 3",
         event_type="mainline",
         early_booking_deadline=early_deadline,
+        booking_deadline=booking_deadline,
         start_date=start_date,
         end_date=end_date,
         standard_ticket_price=100.0,

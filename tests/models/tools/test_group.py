@@ -1,12 +1,26 @@
-from models.enums import GroupType
+from models.database.group_type import GroupType
 from models.tools.group import Group, GroupInvite
 
 
 def test_new_group_with_invite(db, character):
     """Test creation of a new Group with an invite."""
-    group_name = "Test Group"
+    # Create a group type first
+    group_type = GroupType(
+        name="Military",
+        description="A military group type",
+        income_items_list=[],
+        income_items_discount=0.5,
+        income_substances=False,
+        income_substance_cost=0,
+        income_medicaments=False,
+        income_medicament_cost=0,
+        income_distribution_dict={"items": 50, "chits": 50},
+    )
+    db.session.add(group_type)
+    db.session.commit()
 
-    group = Group(name=group_name, type=GroupType.MILITARY, bank_account=1000)
+    group_name = "Test Group"
+    group = Group(name=group_name, group_type_id=group_type.id, bank_account=1000)
 
     db.session.add(group)
     db.session.commit()
@@ -22,7 +36,8 @@ def test_new_group_with_invite(db, character):
 
     assert retrieved_group is not None
     assert retrieved_group.name == group_name
-    assert retrieved_group.type_enum == GroupType.MILITARY
+    assert retrieved_group.group_type_id == group_type.id
+    assert retrieved_group.group_type.name == "Military"
     assert retrieved_group.bank_account == 1000
     assert retrieved_group.id is not None
 

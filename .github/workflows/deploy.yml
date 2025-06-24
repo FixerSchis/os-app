@@ -140,6 +140,10 @@ jobs:
           echo "Running database migrations..."
           sudo -u os-app venv/bin/flask db upgrade
 
+          # Populate default data
+          echo "Populating default data..."
+          sudo -u os-app venv/bin/python scripts/populate_default_data.py
+
           # Set proper permissions
           sudo chown -R os-app:os-app $DEPLOY_DIR
           sudo chmod -R 755 $DEPLOY_DIR

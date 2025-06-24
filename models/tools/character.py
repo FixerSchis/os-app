@@ -60,7 +60,8 @@ class Character(db.Model):
     base_character_points = db.Column(db.Integer, nullable=False, default=10)
     group_id = db.Column(db.Integer, db.ForeignKey("group.id"), nullable=True)
     bank_account = db.Column(db.Integer, nullable=False, default=0)
-    character_pack = db.Column(JSON, default=dict)
+    character_pack = db.Column(db.JSON, nullable=True)  # JSON data
+    pack_complete = db.Column(db.Boolean, nullable=False, default=False)
     created_at = db.Column(db.DateTime, nullable=False, default=db.func.now())
     updated_at = db.Column(
         db.DateTime, nullable=False, default=db.func.now(), onupdate=db.func.now()
@@ -83,14 +84,18 @@ class Character(db.Model):
     event_tickets = db.relationship("EventTicket", back_populates="character")
 
     @property
-    def pack(self) -> Pack:
-        """Get the character's pack as a structured Pack object."""
-        return Pack.from_dict(self.character_pack or {})
+    def pack(self):
+        try:
+            # character_pack is always JSON data (dict) since we control the data
+            pack = Pack(**self.character_pack)
+            return pack
+        except Exception:
+            return Pack()
 
     @pack.setter
-    def pack(self, pack: Pack) -> None:
-        """Set the character's pack from a structured Pack object."""
+    def pack(self, pack):
         self.character_pack = pack.to_dict()
+        self.pack_complete = pack.is_complete()
 
     @classmethod
     def get_by_player_reference(cls, player_reference):

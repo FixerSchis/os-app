@@ -38,6 +38,13 @@
                 <input type="date" class="form-control" id="early_booking_deadline" name="early_booking_deadline" value="{{ event.early_booking_deadline.strftime('%Y-%m-%d') if event else '' }}" required>
             </div>
             <div class="col-md-4 mb-3">
+                <label for="booking_deadline" class="form-label">Booking Deadline</label>
+                <input type="date" class="form-control" id="booking_deadline" name="booking_deadline" value="{{ event.booking_deadline.strftime('%Y-%m-%d') if event else '' }}" required>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-4 mb-3">
                 <label for="start_date" class="form-label">Start Date</label>
                 <input type="date" class="form-control" id="start_date" name="start_date" value="{{ event.start_date.strftime('%Y-%m-%d') if event else '' }}" required>
             </div>

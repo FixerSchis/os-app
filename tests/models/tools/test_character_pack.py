@@ -1,7 +1,7 @@
 import pytest
 
 from models.tools.character import Character
-from models.tools.pack import Pack, PackDowntimeResult, PackExotic, PackMessage
+from models.tools.pack import Pack
 
 
 class TestCharacterPack:
@@ -19,47 +19,46 @@ class TestCharacterPack:
         pack = character.pack
         assert isinstance(pack, Pack)
         assert pack.items == []
-        assert pack.exotic_substances == []
+        assert pack.exotics == []
         assert pack.samples == []
-        assert pack.chits == 0
-        assert pack.messages == []
-        assert pack.downtime_results == {}
-        assert pack.metadata == {}
+        assert pack.medicaments == []
+        assert pack.energy_chits == 0
+        assert pack.completion == {}
+        assert pack.is_generated is False
 
     def test_character_pack_with_data(self, db, new_user, species):
         """Test character pack property with existing data."""
+        # Create a pack first
+        pack = Pack(
+            items=[1, 2, 3],
+            exotics=[1, 2],
+            samples=[1, 2],
+            medicaments=[1],
+            energy_chits=100,
+            completion={"character_sheet": True, "character_id_badge": True},
+            is_generated=True,
+        )
+
         character = Character(
             name="Test Character",
             user_id=new_user.id,
             species_id=species.id,
             status="active",
-            character_pack={
-                "items": [1, 2, 3],
-                "exotic_substances": [{"id": 1, "amount": 5}],
-                "samples": [1, 2],
-                "chits": 100,
-                "messages": [{"type": "sms", "content": "Test message"}],
-                "downtime_results": {"pack1": [{"message": "Test result"}]},
-                "metadata": {"key": "value"},
-            },
         )
+        character.pack = pack  # This will convert to JSON
         db.session.add(character)
         db.session.commit()
 
         # Test pack retrieval
-        pack = character.pack
-        assert isinstance(pack, Pack)
-        assert pack.items == [1, 2, 3]
-        assert len(pack.exotic_substances) == 1
-        assert pack.exotic_substances[0].id == 1
-        assert pack.exotic_substances[0].amount == 5
-        assert pack.samples == [1, 2]
-        assert pack.chits == 100
-        assert len(pack.messages) == 1
-        assert pack.messages[0].type == "sms"
-        assert pack.messages[0].content == "Test message"
-        assert "pack1" in pack.downtime_results
-        assert pack.metadata["key"] == "value"
+        retrieved_pack = character.pack
+        assert isinstance(retrieved_pack, Pack)
+        assert retrieved_pack.items == [1, 2, 3]
+        assert retrieved_pack.exotics == [1, 2]
+        assert retrieved_pack.samples == [1, 2]
+        assert retrieved_pack.medicaments == [1]
+        assert retrieved_pack.energy_chits == 100
+        assert retrieved_pack.completion == {"character_sheet": True, "character_id_badge": True}
+        assert retrieved_pack.is_generated is True
 
     def test_character_pack_setter(self, db, new_user, species):
         """Test setting character pack property."""
@@ -72,12 +71,12 @@ class TestCharacterPack:
         # Create a pack
         pack = Pack(
             items=[1, 2],
-            exotic_substances=[PackExotic(id=1, amount=3)],
+            exotics=[1],
             samples=[1],
-            chits=50,
-            messages=[PackMessage(type="email", content="Test email")],
-            downtime_results={"pack1": [PackDowntimeResult(message="Success")]},
-            metadata={"test": "data"},
+            medicaments=[1],
+            energy_chits=50,
+            completion={"character_sheet": True, "character_id_badge": True},
+            is_generated=True,
         )
 
         # Set the pack
@@ -87,13 +86,15 @@ class TestCharacterPack:
         # Verify the pack was stored correctly
         db.session.refresh(character)
         assert character.character_pack is not None
-        assert character.character_pack["items"] == [1, 2]
-        assert character.character_pack["exotic_substances"] == [{"id": 1, "amount": 3}]
-        assert character.character_pack["samples"] == [1]
-        assert character.character_pack["chits"] == 50
-        assert character.character_pack["messages"] == [{"type": "email", "content": "Test email"}]
-        assert character.character_pack["downtime_results"] == {"pack1": [{"message": "Success"}]}
-        assert character.character_pack["metadata"] == {"test": "data"}
+        # character_pack should be JSON data (dict)
+        pack_data = character.character_pack
+        assert pack_data["items"] == [1, 2]
+        assert pack_data["exotics"] == [1]
+        assert pack_data["samples"] == [1]
+        assert pack_data["medicaments"] == [1]
+        assert pack_data["energy_chits"] == 50
+        assert pack_data["completion"] == {"character_sheet": True, "character_id_badge": True}
+        assert pack_data["is_generated"] is True
 
     def test_character_pack_none(self, db, new_user, species):
         """Test character pack property with None character_pack."""
@@ -111,12 +112,12 @@ class TestCharacterPack:
         pack = character.pack
         assert isinstance(pack, Pack)
         assert pack.items == []
-        assert pack.exotic_substances == []
+        assert pack.exotics == []
         assert pack.samples == []
-        assert pack.chits == 0
-        assert pack.messages == []
-        assert pack.downtime_results == {}
-        assert pack.metadata == {}
+        assert pack.medicaments == []
+        assert pack.energy_chits == 0
+        assert pack.completion == {}
+        assert pack.is_generated is False
 
     def test_character_pack_empty_dict(self, db, new_user, species):
         """Test character pack property with empty dictionary."""
@@ -125,8 +126,9 @@ class TestCharacterPack:
             user_id=new_user.id,
             species_id=species.id,
             status="active",
-            character_pack={},
         )
+        # Set an empty pack
+        character.pack = Pack()
         db.session.add(character)
         db.session.commit()
 
@@ -134,12 +136,12 @@ class TestCharacterPack:
         pack = character.pack
         assert isinstance(pack, Pack)
         assert pack.items == []
-        assert pack.exotic_substances == []
+        assert pack.exotics == []
         assert pack.samples == []
-        assert pack.chits == 0
-        assert pack.messages == []
-        assert pack.downtime_results == {}
-        assert pack.metadata == {}
+        assert pack.medicaments == []
+        assert pack.energy_chits == 0
+        assert pack.completion == {}
+        assert pack.is_generated is False
 
     def test_character_pack_modification(self, db, new_user, species):
         """Test modifying character pack through the property."""
@@ -152,8 +154,8 @@ class TestCharacterPack:
         # Get the pack and modify it
         pack = character.pack
         pack.items.append(1)
-        pack.chits = 25
-        pack.messages.append(PackMessage(type="sms", content="New message"))
+        pack.energy_chits = 25
+        pack.completion["character_sheet"] = True
 
         # Set the modified pack
         character.pack = pack
@@ -163,7 +165,5 @@ class TestCharacterPack:
         db.session.refresh(character)
         new_pack = character.pack
         assert new_pack.items == [1]
-        assert new_pack.chits == 25
-        assert len(new_pack.messages) == 1
-        assert new_pack.messages[0].type == "sms"
-        assert new_pack.messages[0].content == "New message"
+        assert new_pack.energy_chits == 25
+        assert new_pack.completion["character_sheet"] is True

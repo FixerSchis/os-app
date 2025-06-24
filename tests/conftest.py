@@ -11,6 +11,8 @@ from models.database.conditions import Condition, ConditionStage
 from models.database.cybernetic import CharacterCybernetic, Cybernetic
 from models.database.exotic_substances import ExoticSubstance
 from models.database.faction import Faction
+from models.database.global_settings import GlobalSettings
+from models.database.group_type import GroupType
 from models.database.item import Item
 from models.database.item_blueprint import ItemBlueprint
 from models.database.item_type import ItemType
@@ -19,15 +21,9 @@ from models.database.mods import Mod
 from models.database.sample import Sample, SampleTag
 from models.database.skills import Skill
 from models.database.species import Ability, Species
-from models.enums import (
-    CharacterStatus,
-    DowntimeStatus,
-    DowntimeTaskStatus,
-    GroupType,
-    Role,
-    ScienceType,
-    WikiPageVersionStatus,
-)
+from models.enums import CharacterStatus, DowntimeStatus, DowntimeTaskStatus
+from models.enums import GroupType as GroupTypeEnum
+from models.enums import Role, ScienceType, WikiPageVersionStatus
 from models.event import Event
 from models.extensions import db as _db
 from models.tools.character import (
@@ -678,6 +674,7 @@ def event(db_session):
         event_type="mainline",
         description="A test event for ticket purchasing.",
         early_booking_deadline=datetime.now() + timedelta(days=30),
+        booking_deadline=datetime.now() + timedelta(days=40),
         start_date=datetime.now() + timedelta(days=45),
         end_date=datetime.now() + timedelta(days=47),
         location="Test Location",
@@ -693,12 +690,32 @@ def event(db_session):
 
 
 @pytest.fixture(scope="function")
-def group(db_session):
+def group_type(db_session):
+    """Fixture for creating a basic group type."""
+    unique_id = uuid.uuid4().hex
+    gt = GroupType(
+        name=f"Test Group Type {unique_id}",
+        description="A test group type",
+        income_items_list=[],
+        income_items_discount=0.5,
+        income_substances=False,
+        income_substance_cost=0,
+        income_medicaments=False,
+        income_medicament_cost=0,
+        income_distribution_dict={"items": 50, "chits": 50},
+    )
+    db_session.add(gt)
+    db_session.commit()
+    return gt
+
+
+@pytest.fixture(scope="function")
+def group(db_session, group_type):
     """Fixture for creating a basic group."""
     unique_id = uuid.uuid4().hex
     g = Group(
         name=f"Test Group {unique_id}",
-        type=GroupType.MILITARY.value,
+        group_type_id=group_type.id,
         bank_account=500,
     )
     db_session.add(g)

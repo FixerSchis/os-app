@@ -65,6 +65,7 @@ def test_register_success_first_user(test_client, db, wiki_index_page):
         event_type="mainline",
         description="A test event",
         early_booking_deadline=datetime.now(timezone.utc) + timedelta(days=30),
+        booking_deadline=datetime.now(timezone.utc) + timedelta(days=40),
         start_date=datetime.now(timezone.utc) + timedelta(days=45),
         end_date=datetime.now(timezone.utc) + timedelta(days=47),
         location="Test Location",

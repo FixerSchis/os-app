@@ -32,9 +32,14 @@
                 <li class="dropdown">
                     <a href="#" class="dropbtn">Database <i class="fas fa-caret-down"></i></a>
                     <div class="dropdown-content">
+                        {% if current_user.is_authenticated and current_user.has_role('rules_team') %}
+                            <a href="{{ url_for('global_settings.list_global_settings') }}">Global Settings</a>
+                            <hr>
+                        {% endif %}
                         <a href="{{ url_for('factions.faction_list') }}">Factions</a>
                         <a href="{{ url_for('species.species_list') }}">Species</a>
                         <a href="{{ url_for('skills.skills_list') }}">Skills</a>
+                        <a href="{{ url_for('group_types.list_group_types') }}">Group Types</a>
                         <hr>
                         {% if current_user.is_authenticated and current_user.has_role('rules_team') %}
                             <a href="{{ url_for('item_types.list') }}">Item Types</a>
