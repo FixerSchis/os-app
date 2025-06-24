@@ -13,7 +13,7 @@ The CI/CD pipeline ensures that all code changes meet quality standards before b
 #### `ci.yml` - Main CI Pipeline
 - **Triggers**: Every commit and pull request to master
 - **Jobs**:
-  - **Tests and Linting**: Runs tests across Python 3.10-3.12, linting, formatting checks
+  - **Tests and Linting**: Runs tests on Python 3.10, linting, formatting checks
   - **Security Checks**: Bandit security analysis and Safety vulnerability checks
   - **Pre-commit Checks**: Runs all pre-commit hooks on all files
 
@@ -24,6 +24,10 @@ The CI/CD pipeline ensures that all code changes meet quality standards before b
   - **Backup Management**: Creates backups before deployment
   - **Health Checks**: Verifies deployment success
   - **Rollback Support**: Automatic rollback on failure
+
+#### `delete-branch.yml` - Automatic Branch Cleanup
+- **Triggers**: When a pull request is merged
+- **Purpose**: Automatically deletes the source branch after successful merge
 
 #### `setup-branch-protection.yml` - Branch Protection Setup
 - **Triggers**: Manual dispatch or push to master
@@ -162,6 +166,7 @@ GitHub Repository
 6. **Automatic Deployment**:
    - When merged to master, CI runs
    - If CI passes, CD automatically deploys to production
+   - Source branch is automatically deleted after successful merge
    - Monitor deployment in GitHub Actions
 
 ### Hotfix Workflow
@@ -249,7 +254,7 @@ sudo systemctl start os-app
 - **Framework**: pytest
 - **Coverage**: pytest-cov
 - **Mocking**: pytest-mock
-- **Parallel**: Tests run across Python 3.10-3.12
+- **Python Version**: Tests run on Python 3.10
 
 ## Monitoring and Maintenance
 
