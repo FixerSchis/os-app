@@ -192,9 +192,14 @@ class TestCharacterSkills:
         db.session.commit()
         login_user(test_client, regular_user)
         response = test_client.post(
-            self.url(admin_character.id, "/refund"), data={"skill_id": skill.id}
+            self.url(admin_character.id, "/refund"),
+            data={"skill_id": skill.id},
+            follow_redirects=True,
         )
-        assert response.status_code == 403
+        assert response.status_code == 200
+        db.session.refresh(cs)
+        assert cs.times_purchased == 1
+        assert b"Only admins can refund skills for non-developing characters." in response.data
 
     def test_refund_skill_prereq(
         self, test_client, user_admin, admin_character, skill, prerequisite_skill

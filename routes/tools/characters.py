@@ -110,6 +110,19 @@ def create_character_post():
             all_cybernetics=all_cybernetics,
         )
 
+    # Validate species is permitted for faction
+    if not (current_user.has_role("user_admin") or current_user.has_role("npc")):
+        species = db.session.get(Species, species_id)
+        if not species or faction.id not in species.permitted_factions_list:
+            flash("Selected species is not permitted for the chosen faction.", "error")
+            return render_template(
+                "characters/edit.html",
+                admin_context=admin_context,
+                factions=factions,
+                species_list=species_list,
+                all_cybernetics=all_cybernetics,
+            )
+
     # Set base character points based on NPC role
     base_character_points = 30 if current_user.has_role("npc") else 10
 
@@ -242,6 +255,19 @@ def edit_post(character_id):
             factions=factions,
             species_list=species_list,
         )
+
+    # Validate species is permitted for faction
+    if not (current_user.has_role("user_admin") or current_user.has_role("npc")):
+        species = db.session.get(Species, species_id)
+        if not species or faction.id not in species.permitted_factions_list:
+            flash("Selected species is not permitted for the chosen faction.", "error")
+            return render_template(
+                "characters/edit.html",
+                character=character,
+                admin_context=admin_context,
+                factions=factions,
+                species_list=species_list,
+            )
 
     # Track basic information changes for EDIT action
     basic_changes = []
