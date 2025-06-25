@@ -54,6 +54,7 @@ def get_sample_character():
     tags = [CharacterTag(name="Veteran"), CharacterTag(name="Technician")]
     character = Character(
         id=1,
+        user_id=1,
         name="Alex Chen",
         character_id=1,
         pronouns_subject="they",
