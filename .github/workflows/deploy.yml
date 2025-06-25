@@ -98,6 +98,13 @@ jobs:
           if [ -d "$DEPLOY_DIR" ]; then
             echo "Creating backup of current deployment..."
             sudo tar -czf "$BACKUP_DIR/backup_$TIMESTAMP.tar.gz" -C /opt $APP_NAME
+
+            # Preserve .env file if it exists
+            if [ -f "$DEPLOY_DIR/.env" ]; then
+              echo "Preserving .env file..."
+              sudo cp "$DEPLOY_DIR/.env" "/tmp/os-app.env.backup"
+            fi
+
             sudo rm -rf "$DEPLOY_DIR"
           fi
 
@@ -115,12 +122,19 @@ jobs:
           cd $DEPLOY_DIR
           tar -xzf /tmp/deployment.tar.gz
 
+          # Restore .env file if it was preserved
+          if [ -f "/tmp/os-app.env.backup" ]; then
+            echo "Restoring .env file from backup..."
+            sudo -u os-app cp "/tmp/os-app.env.backup" ".env"
+            sudo rm "/tmp/os-app.env.backup"
+          fi
+
           # Set up Python virtual environment
           sudo -u os-app python3 -m venv venv
           sudo -u os-app venv/bin/pip install --upgrade pip
           sudo -u os-app venv/bin/pip install -r requirements.txt
 
-          # Set up environment variables
+          # Set up environment variables (only if .env doesn't exist)
           if [ ! -f .env ]; then
             echo "Creating .env file from template..."
             sudo -u os-app cp env.example .env 2>/dev/null || sudo -u os-app echo "# Add your environment variables here" > .env
