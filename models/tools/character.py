@@ -358,16 +358,17 @@ class Character(db.Model):
             )
             db.session.add(reputation)
 
-        # Log the change
-        log = CharacterAuditLog(
-            character_id=self.id,
-            editor_user_id=editor_user_id,
-            action=CharacterAuditAction.REPUTATION_CHANGE,
-            changes=(
-                f"Reputation with faction {faction_id} changed from {old_value} " f"to {value}"
-            ),
-        )
-        db.session.add(log)
+        # Only log the change if the value actually changed
+        if old_value != value:
+            log = CharacterAuditLog(
+                character_id=self.id,
+                editor_user_id=editor_user_id,
+                action=CharacterAuditAction.REPUTATION_CHANGE,
+                changes=(
+                    f"Reputation with faction {faction_id} changed from {old_value} " f"to {value}"
+                ),
+            )
+            db.session.add(log)
 
         return True
 
