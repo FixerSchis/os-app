@@ -21,19 +21,15 @@
 
         <div class="settings-section">
             <h2>Account Information</h2>
-            <div class="info-group">
-                <label>Player ID:</label>
-                <span>{{ current_user.player_id or 'Not set' }}</span>
+            <div class="setting-item">
+                <span class="setting-label">Email:</span>
+                <span>{{ current_user.email }}</span>
             </div>
-            <div class="info-group">
-                <label>Character Points:</label>
+            <div class="setting-item">
+                <span class="setting-label">Character Points:</span>
                 <span>{{ current_user.character_points }}</span>
             </div>
             <div class="info-group email-group">
-                <div class="email-label-value">
-                    <label>Email:</label>
-                    <span>{{ current_user.email }}</span>
-                </div>
                 <div class="email-actions">
                     <a href="{{ url_for('settings.change_email') }}" class="btn btn-sm btn-outline-primary">Change Email</a>
                     {% if not current_user.email_verified %}

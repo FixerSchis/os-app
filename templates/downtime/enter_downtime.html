@@ -77,7 +77,7 @@
           data-bank-balance='{{ bank_balance }}'
           data-group-bank-balance='{{ group_bank_balance if group_bank_balance is not none else 0 }}'
           data-character-id='{{ character.id }}'
-          data-player-id='{{ character.player_id }}'
+          data-user-id='{{ character.user_id }}'
           data-pack-purchases='{{ pack_purchases|tojson|safe }}'
           data-pack-modifications='{{ pack_modifications|tojson|safe }}'
           data-pack-engineering='{{ pack_engineering|tojson|safe }}'
@@ -448,7 +448,7 @@
 <input type="hidden" id="pack-exotics-json" value='{{ pack_exotics|tojson }}'>
 <input type="hidden" id="my-projects-data" value='{{ my_projects|tojson }}'>
 <input type="hidden" id="group-projects-data" value='{{ group_projects|tojson }}'>
-<input type="hidden" id="current-character-id" value="{{ character.player_id }}.{{ character.id }}">
+<input type="hidden" id="current-character-id" value="{{ character.user_id }}.{{ character.id }}">
 {% endblock %}
 
 {% block scripts %}

@@ -270,12 +270,6 @@ function updateHiddenFields() {
     document.getElementById('css_styles').value = monacoContents.css;
 }
 
-// Template preview functionality
-function previewTemplate() {
-    // TODO: Implement template preview functionality when model is created
-    alert('Template preview functionality will be implemented when the model is created.');
-}
-
 // Live preview functionality
 function updatePreview() {
     const frontHtml = getEditorContent('frontHtml') || '';

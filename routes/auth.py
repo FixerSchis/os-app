@@ -35,66 +35,13 @@ def register():
             surname=surname,
         )
         user.set_password(password)
+
         if User.query.count() == 0:
             user.add_role(Role.OWNER.value)
-            user.player_id = 1  # Set player ID to 1 for the first user
             user.email_verified = True  # First user is automatically verified
             db.session.add(user)
 
-            # Create a default character for the user
-            species = Species.query.filter_by(name="Ascendancy Terran").first()
-            faction = Faction.query.filter_by(name="Terran Ascendancy").first()
-            mod = Mod.query.first()
-            character = Character(
-                name="Default Character",
-                user_id=user.id,
-                character_id=1,
-                status=CharacterStatus.ACTIVE.value,
-                species_id=species.id,
-                faction_id=faction.id,
-                known_modifications=[mod.id],
-            )
-            db.session.add(character)
-
-            for skill in Skill.query.all():
-                character_skill = CharacterSkill(
-                    character_id=character.id,
-                    skill_id=skill.id,
-                    times_purchased=1,
-                    purchased_at=datetime.now(timezone.utc),
-                    purchased_by_user_id=user.id,
-                )
-                if skill.name == "Engineering":
-                    character_skill.times_purchased = 3
-                db.session.add(character_skill)
-
-            cybernetic = Cybernetic.query.filter_by(name="Neural Interface").first()
-            character_cybernetic = CharacterCybernetic(
-                character_id=character.id,
-                cybernetic_id=cybernetic.id,
-            )
-            db.session.add(character_cybernetic)
-            db.session.flush()
-
-            prev_event = Event.query.filter_by(event_number="1").first()
-            ticket = EventTicket(
-                event_id=prev_event.id,
-                character_id=character.id,
-                user_id=user.id,
-                ticket_type=TicketType.ADULT.value,
-                price_paid=prev_event.standard_ticket_price,
-                meal_ticket=False,
-                requires_bunk=False,
-                assigned_by_id=user.id,
-                assigned_at=datetime.now(timezone.utc),
-            )
-            db.session.add(ticket)
-            db.session.commit()
-
         else:
-            # Get the highest player_id and add 1
-            highest_id = db.session.query(db.func.max(User.player_id)).scalar() or 0
-            user.player_id = highest_id + 1
             db.session.add(user)
             # Send verification email
             try:

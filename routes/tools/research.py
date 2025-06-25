@@ -34,7 +34,7 @@ def research_to_dict(project):
             {
                 "character_id": cr.character_id,
                 "character_name": cr.character.name,
-                "player_id": cr.character.player_id,
+                "user_id": cr.character.user_id,
                 "current_stage_id": cr.current_stage_id,
                 "character_research_id": cr.id,
             }
@@ -648,11 +648,11 @@ def project_info():
     result["valid"] = False
 
     if target_id:
-        # Parse player_id.character_id
+        # Parse user_id.character_id
         if "." in target_id:
             try:
-                player_id_str, char_id_str = target_id.split(".")
-                player_id = int(player_id_str)
+                user_id_str, char_id_str = target_id.split(".")
+                user_id = int(user_id_str)
                 char_id = int(char_id_str)
             except Exception:
                 result["error"] = "Invalid character ID format."
@@ -660,7 +660,7 @@ def project_info():
             cr = CharacterResearch.query.filter_by(
                 research_id=project.id, character_id=char_id
             ).first()
-            if cr and cr.character.player_id == player_id:
+            if cr and cr.character.user_id == user_id:
                 result["valid"] = True
                 result["character_name"] = cr.character.name
                 current_stage = cr.get_current_stage()
@@ -674,7 +674,7 @@ def project_info():
                 char = db.session.get(Character, char_id)
                 if (
                     char
-                    and char.player_id == player_id
+                    and char.user_id == user_id
                     and (
                         char.user_id == current_user.id
                         or current_user.has_role(Role.DOWNTIME_TEAM.value)
@@ -701,9 +701,7 @@ def project_info():
                                 req_to_dict(req) for req in current_stage.stage.unlock_requirements
                             ]
                 else:
-                    result["error"] = (
-                        "Character not assigned to this project or player ID mismatch."
-                    )
+                    result["error"] = "Character not assigned to this project or user ID mismatch."
         else:
             result["error"] = "Invalid character ID format."
     return jsonify(result)
@@ -764,7 +762,7 @@ def can_teach_character():
                     {
                         "character_id": cr.character_id,
                         "character_name": cr.character.name,
-                        "player_id": cr.character.player_id,
+                        "user_id": cr.character.user_id,
                         "current_stage_id": cr.current_stage_id,
                         "character_research_id": cr.id,
                     }
@@ -792,7 +790,7 @@ def can_teach_character():
                     {
                         "character_id": cr.character_id,
                         "character_name": cr.character.name,
-                        "player_id": cr.character.player_id,
+                        "user_id": cr.character.user_id,
                         "current_stage_id": cr.current_stage_id,
                         "character_research_id": cr.id,
                     }
@@ -806,8 +804,8 @@ def can_teach_character():
     # Get the target character
     if "." in character_id:
         try:
-            player_id_str, char_id_str = character_id.split(".")
-            player_id = int(player_id_str)
+            user_id_str, char_id_str = character_id.split(".")
+            user_id = int(user_id_str)
             char_id = int(char_id_str)
         except Exception:
             return jsonify(
@@ -818,7 +816,7 @@ def can_teach_character():
                 }
             )
 
-    target_character = Character.query.filter_by(user_id=player_id, character_id=char_id).first()
+    target_character = Character.query.filter_by(user_id=user_id, character_id=char_id).first()
     if not target_character:
         return jsonify(
             {
@@ -831,7 +829,7 @@ def can_teach_character():
                     {
                         "character_id": cr.character_id,
                         "character_name": cr.character.name,
-                        "player_id": cr.character.player_id,
+                        "user_id": cr.character.user_id,
                         "current_stage_id": cr.current_stage_id,
                         "character_research_id": cr.id,
                     }
@@ -866,7 +864,7 @@ def can_teach_character():
                         {
                             "character_id": cr.character_id,
                             "character_name": cr.character.name,
-                            "player_id": cr.character.player_id,
+                            "user_id": cr.character.user_id,
                             "current_stage_id": cr.current_stage_id,
                             "character_research_id": cr.id,
                         }
@@ -895,7 +893,7 @@ def can_teach_character():
                         {
                             "character_id": cr.character_id,
                             "character_name": cr.character.name,
-                            "player_id": cr.character.player_id,
+                            "user_id": cr.character.user_id,
                             "current_stage_id": cr.current_stage_id,
                             "character_research_id": cr.id,
                         }
@@ -917,7 +915,7 @@ def can_teach_character():
                     {
                         "character_id": cr.character_id,
                         "character_name": cr.character.name,
-                        "player_id": cr.character.player_id,
+                        "user_id": cr.character.user_id,
                         "current_stage_id": cr.current_stage_id,
                         "character_research_id": cr.id,
                     }
@@ -942,7 +940,7 @@ def can_teach_character():
                     {
                         "character_id": cr.character_id,
                         "character_name": cr.character.name,
-                        "player_id": cr.character.player_id,
+                        "user_id": cr.character.user_id,
                         "current_stage_id": cr.current_stage_id,
                         "character_research_id": cr.id,
                     }
@@ -972,7 +970,7 @@ def can_teach_character():
                     {
                         "character_id": cr.character_id,
                         "character_name": cr.character.name,
-                        "player_id": cr.character.player_id,
+                        "user_id": cr.character.user_id,
                         "current_stage_id": cr.current_stage_id,
                         "character_research_id": cr.id,
                     }
@@ -994,7 +992,7 @@ def can_teach_character():
                 {
                     "character_id": cr.character_id,
                     "character_name": cr.character.name,
-                    "player_id": cr.character.player_id,
+                    "user_id": cr.character.user_id,
                     "current_stage_id": cr.current_stage_id,
                     "character_research_id": cr.id,
                 }

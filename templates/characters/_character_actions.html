@@ -9,14 +9,13 @@
     {% endif %}
     {% if character.status == 'active' %}
         {% if user_is_owner or user_is_admin %}
-            <button type="button" class="btn btn-warning btn-sm action-btn" data-action-url="{{ url_for('characters.retire_character', player_id=character.player_id, character_id=character.character_id, admin_context=1 if admin_context else None) }}" data-action-label="Retire {{ character.name }}?" data-warning="This action is not reversible without admin intervention, and even then, restoration is not guaranteed.">Retire</button>
+            <button type="button" class="btn btn-warning btn-sm action-btn" data-action-url="{{ url_for('characters.retire_character', character_id=character.character_id, admin_context=1 if admin_context else None) }}" data-action-label="Retire {{ character.name }}?" data-warning="This action is not reversible without admin intervention.">Retire</button>
         {% endif %}
         {% if user_is_admin %}
-            <button type="button" class="btn btn-danger btn-sm action-btn" data-action-url="{{ url_for('characters.kill_character', player_id=character.player_id, character_id=character.character_id, admin_context=1 if admin_context else None) }}" data-action-label="Mark {{ character.name }} as Dead?" data-warning="This action is not reversible without admin intervention, and even then, restoration is not guaranteed.">Mark Dead</button>
+            <button type="button" class="btn btn-danger btn-sm action-btn" data-action-url="{{ url_for('characters.kill_character', character_id=character.character_id, admin_context=1 if admin_context else None) }}" data-action-label="Mark {{ character.name }} as Dead?" data-warning="This action is not reversible without admin intervention.">Mark Dead</button>
         {% endif %}
     {% elif character.status in ['retired', 'dead'] and user_is_admin and not has_active %}
-        <form method="POST" action="{{ url_for('characters.restore_character', player_id=character.player_id, character_id=character.character_id) }}" class="d-inline-block">
-            {% if admin_context %}<input type="hidden" name="admin_context" value="1">{% endif %}
+        <form method="POST" action="{{ url_for('characters.restore_character', character_id=character.character_id) }}" class="d-inline-block">
             <button type="submit" class="btn btn-success btn-sm">Restore</button>
         </form>
     {% endif %}

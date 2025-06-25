@@ -61,10 +61,9 @@ def test_roles_required_with_custom_condition():
     mock_user = MagicMock()
     mock_user.is_authenticated = True
     mock_user.has_role.return_value = False
-    mock_user.player_id = 1
 
     def custom_condition(user):
-        return user.player_id == 1
+        return True
 
     @roles_required(condition_func=custom_condition)
     def test_function():
@@ -80,10 +79,9 @@ def test_roles_required_with_both_roles_and_condition():
     mock_user = MagicMock()
     mock_user.is_authenticated = True
     mock_user.has_role.return_value = False
-    mock_user.player_id = 1
 
     def custom_condition(user):
-        return user.player_id == 1
+        return True
 
     @roles_required(roles=[Role.ADMIN.value], condition_func=custom_condition)
     def test_function():

@@ -43,17 +43,6 @@ class TestTemplatesRoutes:
         assert resp.status_code == 200
         assert b"Character Sheet" in resp.data
 
-    def test_template_new_post(self, test_client, admin_user, db):
-        self.clear_templates(db)
-        self.login_admin(test_client, admin_user)
-        resp = test_client.post(
-            "/templates/new",
-            data={"type": PrintTemplateType.EXOTIC_SUBSTANCE_LABEL},
-            follow_redirects=True,
-        )
-        assert resp.status_code == 200
-        assert b"Template creation not yet implemented" in resp.data
-
     def test_template_edit_get(self, test_client, admin_user, db):
         self.clear_templates(db)
         self.login_admin(test_client, admin_user)

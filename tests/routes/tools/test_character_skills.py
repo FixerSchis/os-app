@@ -62,13 +62,11 @@ class TestCharacterSkills:
         )
         other_user.username = f"other_{uuid.uuid4().hex[:8]}"
         other_user.set_password("password123")
-        other_user.player_id = uuid.uuid4().int >> 96
         db.session.add(other_user)
         db.session.commit()
         print(
-            f"DEBUG: other_user.id={other_user.id}, player_id={other_user.player_id}, "
+            f"DEBUG: other_user.id={other_user.id}, "
             f"char.user_id={character_with_faction.user_id}, "
-            f"char.player_id={character_with_faction.player_id}"
         )
         login_user(test_client, other_user)
         response = test_client.get(self.url(character_with_faction.id))
@@ -153,7 +151,6 @@ class TestCharacterSkills:
         )
         other_user.username = f"other_{uuid.uuid4().hex[:8]}"
         other_user.set_password("password123")
-        other_user.player_id = uuid.uuid4().int >> 96
         db.session.add(other_user)
         db.session.commit()
         login_user(test_client, other_user)

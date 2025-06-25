@@ -229,8 +229,9 @@ The deployment is triggered when:
 2. **Backup**: Creates a backup of the current deployment
 3. **Deployment**: Extracts new code and sets up the environment
 4. **Database Migration**: Runs any pending database migrations
-5. **Service Restart**: Restarts the application service
-6. **Health Check**: Verifies the service is running correctly
+5. **Default Data Population**: Populates any required default data
+6. **Service Restart**: Restarts the application service
+7. **Health Check**: Verifies the service is running correctly
 
 ### Rollback
 

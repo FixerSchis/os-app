@@ -36,26 +36,6 @@ def template_list():
     )
 
 
-@templates_bp.route("/new", methods=["GET"])
-@login_required
-@admin_required
-def template_new():
-    """Create a new template"""
-    return render_template(
-        "templates/edit.html", template=None, PrintTemplateType=PrintTemplateType
-    )
-
-
-@templates_bp.route("/new", methods=["POST"])
-@login_required
-@admin_required
-def template_new_post():
-    """Handle new template creation"""
-    # TODO: Implement template creation logic when model is created
-    flash("Template creation not yet implemented.", "info")
-    return redirect(url_for("templates.template_list"))
-
-
 @templates_bp.route("/<int:template_id>/edit", methods=["GET"])
 @login_required
 @admin_required

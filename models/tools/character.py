@@ -100,18 +100,14 @@ class Character(db.Model):
     @classmethod
     def get_by_player_reference(cls, player_reference):
         if "." in player_reference:
-            player_id, char_id = player_reference.split(".")
-            return cls.get_by_player_id_and_char_id(player_id, char_id)
+            user_id, char_id = player_reference.split(".")
+            return cls.get_by_user_id_and_char_id(user_id, char_id)
         else:
             return None
 
     @classmethod
-    def get_by_player_id_and_char_id(cls, player_id, char_id):
-        return cls.query.filter_by(user_id=player_id, character_id=char_id).first()
-
-    @property
-    def player_id(self):
-        return self.user.player_id if self.user else None
+    def get_by_user_id_and_char_id(cls, user_id, char_id):
+        return cls.query.filter_by(user_id=user_id, character_id=char_id).first()
 
     def __repr__(self):
         return f"<Character {self.name}>"
@@ -206,7 +202,7 @@ class Character(db.Model):
     def can_purchase_skill(self, skill, user):
         """Check if the character can purchase a skill."""
         # Check if user has permission
-        if not (user.player_id == self.player_id or user.has_role("user_admin")):
+        if not (user.id == self.user_id or user.has_role("user_admin")):
             return False, "You don't have permission to modify this character's skills"
 
         # Check character status
@@ -284,7 +280,7 @@ class Character(db.Model):
     def refund_skill(self, skill, user):
         """Refund a skill purchase for the character."""
         # Check if user has permission
-        if not (user.player_id == self.player_id or user.has_role("user_admin")):
+        if not (user.id == self.user_id or user.has_role("user_admin")):
             raise ValueError("You don't have permission to modify this character's skills")
 
         # Check character status
@@ -539,14 +535,14 @@ class Character(db.Model):
         db.session.add(audit_log)
 
 
-def assign_character_id(player_id):
-    """Assign a new character ID for a player."""
-    # Get the highest character_id for this player
+def assign_character_id(user_id):
+    """Assign a new character ID for a user."""
+    # Get the highest character_id for this user
     highest_id = (
-        Character.query.filter_by(user_id=player_id).order_by(Character.character_id.desc()).first()
+        Character.query.filter_by(user_id=user_id).order_by(Character.character_id.desc()).first()
     )
 
-    # If no characters exist for this player, start with ID 1
+    # If no characters exist for this user, start with ID 1
     if not highest_id or highest_id.character_id is None:
         return 1
 
