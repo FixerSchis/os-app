@@ -24,9 +24,17 @@
         <div class="nav-wrapper">
             <a href="{{ url_for('index') }}" class="brand-logo">
                 <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Orion Sphere LRP Logo">
-                Orion Sphere LRP
+                <span class="brand-text">Orion Sphere LRP</span>
             </a>
-            <ul class="right">
+            <!-- Hamburger menu button for mobile -->
+            <button class="hamburger-menu-btn" id="hamburger-menu-btn" aria-label="Toggle navigation menu">
+                <span class="hamburger-line"></span>
+                <span class="hamburger-line"></span>
+                <span class="hamburger-line"></span>
+            </button>
+            <!-- Single nav list for both desktop and mobile -->
+            <ul class="main-nav" id="main-nav">
+                <li class="mobile-close-btn-li"><button id="mobile-nav-close" class="mobile-nav-close" aria-label="Close navigation menu"><i class="fas fa-times"></i></button></li>
                 <li><a href="{{ url_for('wiki.wiki_view', slug='index') }}">Home</a></li>
                 <li><a href="{{ url_for('events.event_list') }}">Events</a></li>
                 <li class="dropdown">
@@ -120,9 +128,14 @@
     <footer class="footer">
         <div class="footer-content">
             <p class="dev-notice">This application is under active development. If you encounter any issues or have feedback, please report them below.</p>
-            <a href="https://github.com/FixerSchis/os-app/issues" target="_blank" rel="noopener noreferrer" class="footer-link">
-                <i class="fas fa-bug"></i> Report Issues
-            </a>
+            <div class="footer-actions">
+                <button class="mobile-dev-notice-btn" id="mobile-dev-notice-btn" aria-label="Development notice">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </button>
+                <a href="https://github.com/FixerSchis/os-app/issues" target="_blank" rel="noopener noreferrer" class="footer-link">
+                    <i class="fas fa-bug"></i> Report Issues
+                </a>
+            </div>
         </div>
     </footer>
 
@@ -131,6 +144,7 @@
     <script src="{{ url_for('static', filename='external/js/bootstrap.bundle.min.js') }}"></script>
     <script src="{{ url_for('static', filename='js/components/wiki-page-select.js') }}"></script>
     <script src="{{ url_for('static', filename='js/components/dark-mode.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/components/mobile-nav.js') }}"></script>
     {% block scripts %}{% endblock %}
 </body>
 </html>
