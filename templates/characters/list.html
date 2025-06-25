@@ -11,12 +11,6 @@
         {% endif %}
     </div>
 
-    {% if needs_player_id %}
-        <div class="alert alert-warning">
-            You need a player ID to create characters. Please contact an administrator.
-        </div>
-    {% else %}
-        {% include 'characters/_character_list.html' with context %}
-    {% endif %}
+    {% include 'characters/_character_list.html' with context %}
 </div>
 {% endblock %}

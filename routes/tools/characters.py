@@ -34,14 +34,10 @@ characters_bp = Blueprint("characters", __name__)
 @login_required
 @email_verified_required
 def character_list():
-    if not current_user.is_authenticated:
-        flash("Please log in to view characters.")
-        return redirect(url_for("index"))
-
     characters = []
     if current_user.has_role(Role.USER_ADMIN.value):
         characters = Character.query.all()
-    elif current_user.player_id:
+    else:
         characters = Character.query.filter_by(user_id=current_user.id).all()
 
     return render_template(
@@ -57,9 +53,6 @@ def character_list():
 @email_verified_required
 def create_character():
     admin_context = request.args.get("admin_context") == "1"
-    if not current_user.player_id:
-        flash("You need a player ID to create characters", "error")
-        return redirect(url_for("characters.character_list"))
     factions = Faction.query.all()
     species_list = Species.query.all()
     all_cybernetics = Cybernetic.query.order_by(Cybernetic.name).all()
@@ -77,9 +70,6 @@ def create_character():
 @email_verified_required
 def create_character_post():
     admin_context = request.form.get("admin_context") == "1"
-    if not current_user.player_id:
-        flash("You need a player ID to create characters", "error")
-        return redirect(url_for("characters.character_list"))
     name = request.form.get("name")
     pronouns_subject = request.form.get("pronouns_subject")
     pronouns_object = request.form.get("pronouns_object")
@@ -160,10 +150,7 @@ def create_character_post():
 def edit(character_id):
     character = Character.query.get_or_404(character_id)
     admin_context = request.args.get("admin_context") == "1"
-    user_id = None
-    if admin_context:
-        user = User.query.filter_by(player_id=character.player_id).first()
-        user_id = user.id if user else None
+    user_id = character.user_id if admin_context else None
     species_list = Species.query.all()
     factions = Faction.query.all()
     all_cybernetics = Cybernetic.query.order_by(Cybernetic.name).all()
@@ -214,7 +201,7 @@ def edit(character_id):
 def edit_post(character_id):
     character = Character.query.get_or_404(character_id)
     admin_context = request.form.get("admin_context") == "1"
-    user = User.query.filter_by(player_id=character.player_id).first() if admin_context else None
+    user = User.query.get(character.user_id) if admin_context else None
 
     name = request.form.get("name")
     pronouns_subject = request.form.get("pronouns_subject")
@@ -465,7 +452,7 @@ def retire_character(character_id):
     db.session.commit()
     flash("Character retired.", "success")
     if admin_context:
-        user = User.query.filter_by(player_id=character.player_id).first()
+        user = User.query.filter_by(id=character.user_id).first()
         if user:
             return redirect(url_for("user_management.user_management_edit_user", user_id=user.id))
     return redirect(url_for("characters.character_list"))
@@ -494,7 +481,7 @@ def kill_character(character_id):
     db.session.commit()
     flash("Character marked as dead.", "success")
     if admin_context:
-        user = User.query.filter_by(player_id=character.player_id).first()
+        user = User.query.filter_by(id=character.user_id).first()
         if user:
             return redirect(url_for("user_management.user_management_edit_user", user_id=user.id))
     return redirect(url_for("characters.character_list"))
@@ -515,7 +502,7 @@ def restore_character(character_id):
         flash("Only retired or dead characters can be restored.", "error")
         return redirect(url_for("characters.character_list"))
 
-    user = User.query.filter_by(player_id=character.player_id).first()
+    user = User.query.filter_by(id=character.user_id).first()
     if not user:
         flash("Could not find character owner.", "error")
         return redirect(url_for("characters.character_list"))
@@ -527,7 +514,7 @@ def restore_character(character_id):
         return redirect(url_for("user_management.user_management_edit_user", user_id=user.id))
 
     if character.character_id is None:
-        character.character_id = assign_character_id(character.player_id)
+        character.character_id = assign_character_id(character.user_id)
 
     character.status = CharacterStatus.ACTIVE.value
     db.session.commit()
@@ -563,7 +550,7 @@ def delete_character(character_id):
     db.session.commit()
     flash("Character deleted.", "success")
     if admin_context:
-        user = User.query.filter_by(player_id=character.player_id).first()
+        user = User.query.filter_by(id=character.user_id).first()
         if user:
             return redirect(url_for("user_management.user_management_edit_user", user_id=user.id))
     return redirect(url_for("characters.character_list"))
@@ -584,7 +571,7 @@ def activate_character(character_id):
             flash("You already have an active character.", "danger")
             return redirect(url_for("characters.character_list"))
 
-    user = User.query.filter_by(player_id=character.player_id).first()
+    user = User.query.filter_by(id=character.user_id).first()
     if not user:
         flash("Could not find character owner.", "error")
         return redirect(url_for("characters.character_list"))
@@ -597,7 +584,7 @@ def activate_character(character_id):
         return redirect(url_for("characters.character_list"))
 
     if character.character_id is None:
-        character.character_id = assign_character_id(character.player_id)
+        character.character_id = assign_character_id(character.user_id)
 
     if total_skill_cost > character.base_character_points:
         user.spend_character_points(total_skill_cost - character.base_character_points)
@@ -617,37 +604,36 @@ def activate_character(character_id):
     return redirect(url_for("characters.character_list"))
 
 
-@characters_bp.route("/new/<int:player_id>", methods=["GET"])
+@characters_bp.route("/new/<int:user_id>", methods=["GET"])
 @login_required
 @email_verified_required
 @user_admin_required
-def create_for_player(player_id):
-    user = User.query.filter_by(player_id=player_id).first()
+def create_for_player(user_id):
+    user = User.query.get(user_id)
     if not user:
-        flash("Player not found.", "error")
+        flash("User not found.", "error")
         return redirect(url_for("characters.character_list"))
-    species_list = Species.query.all()
     factions = Faction.query.all()
+    species_list = Species.query.all()
     all_cybernetics = Cybernetic.query.order_by(Cybernetic.name).all()
     return render_template(
         "characters/edit.html",
-        player_id=player_id,
+        user_id=user_id,
         admin_context=True,
         factions=factions,
-        user_id=user.id,
         species_list=species_list,
         all_cybernetics=all_cybernetics,
     )
 
 
-@characters_bp.route("/new/<int:player_id>", methods=["POST"])
+@characters_bp.route("/new/<int:user_id>", methods=["POST"])
 @login_required
 @email_verified_required
 @user_admin_required
-def create_for_player_post(player_id):
-    user = User.query.filter_by(player_id=player_id).first()
+def create_for_player_post(user_id):
+    user = User.query.get(user_id)
     if not user:
-        flash("Player not found.", "error")
+        flash("User not found.", "error")
         return redirect(url_for("characters.character_list"))
     name = request.form.get("name")
     pronouns_subject = request.form.get("pronouns_subject")
@@ -661,10 +647,9 @@ def create_for_player_post(player_id):
         flash("Character name, faction, and species are required", "error")
         return render_template(
             "characters/edit.html",
-            player_id=player_id,
+            user_id=user_id,
             admin_context=True,
             factions=factions,
-            user_id=user.id,
             species_list=species_list,
             all_cybernetics=all_cybernetics,
         )
@@ -674,10 +659,9 @@ def create_for_player_post(player_id):
         flash("Invalid faction selected", "error")
         return render_template(
             "characters/edit.html",
-            player_id=player_id,
+            user_id=user_id,
             admin_context=True,
             factions=factions,
-            user_id=user.id,
             species_list=species_list,
             all_cybernetics=all_cybernetics,
         )
@@ -687,10 +671,9 @@ def create_for_player_post(player_id):
         flash("You do not have permission to select this faction.", "error")
         return render_template(
             "characters/edit.html",
-            player_id=player_id,
+            user_id=user_id,
             admin_context=True,
             factions=factions,
-            user_id=user.id,
             species_list=species_list,
             all_cybernetics=all_cybernetics,
         )
@@ -702,10 +685,9 @@ def create_for_player_post(player_id):
             flash("Selected species is not permitted for the chosen faction.", "error")
             return render_template(
                 "characters/edit.html",
-                player_id=player_id,
+                user_id=user_id,
                 admin_context=True,
                 factions=factions,
-                user_id=user.id,
                 species_list=species_list,
                 all_cybernetics=all_cybernetics,
             )
@@ -812,7 +794,7 @@ def view(character_id):
     # Determine edit URL based on permissions
     edit_url = None
     if current_user.is_authenticated and (
-        character.player_id == current_user.player_id or current_user.has_role("user_admin")
+        character.user_id == current_user.id or current_user.has_role("user_admin")
     ):
         edit_url = url_for("characters.edit", character_id=character.id)
 

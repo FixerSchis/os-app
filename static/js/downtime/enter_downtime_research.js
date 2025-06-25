@@ -118,7 +118,7 @@ function getProjectOptions(projects) {
 
 function getGroupMemberOptions(members) {
     return members.map(function(m) {
-        return `<option value="${m.player_id}.${m.id}">${m.name}</option>`;
+        return `<option value="${m.user_id}.${m.id}">${m.name}</option>`;
     }).join('');
 }
 

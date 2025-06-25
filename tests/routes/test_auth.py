@@ -100,7 +100,6 @@ def test_register_success_first_user(test_client, db, wiki_index_page):
         assert user.surname == "User"
         assert user.has_role(Role.OWNER.value)
         assert user.email_verified is True
-        assert user.player_id == 1
 
 
 def test_register_duplicate_email(test_client, db, new_user):
@@ -143,12 +142,6 @@ def test_register_subsequent_user(test_client, db, new_user):
         assert user.surname == "User2"
         assert not user.has_role(Role.OWNER.value)
         assert user.email_verified is False
-        # The registration logic gets the highest player_id and adds 1
-        # Since new_user already exists, the new user should have player_id = max + 1
-        if new_user.player_id is not None:
-            assert user.player_id > new_user.player_id
-        else:
-            assert user.player_id is not None
 
         # Check that verification email was sent
         mock_send_email.assert_called_once_with(user)

@@ -1,7 +1,7 @@
 {% set user_is_admin = current_user.has_role('user_admin') %}
 {% set has_active = false %}
 {% for c in characters %}
-    {% if c.status == 'active' and c.player_id == c.player_id %}
+    {% if c.status == 'active' and c.user_id == current_user.id %}
         {% set has_active = true %}
     {% endif %}
 {% endfor %}
@@ -22,9 +22,9 @@
                 <tbody>
                     {% if admin_context %}<input type="hidden" name="admin_context" value="1">{% endif %}
                     {% for character in characters %}
-                    {% set user_is_owner = character.player_id == current_user.player_id %}
+                    {% set user_is_owner = character.user_id == current_user.id %}
                     <tr>
-                        <td>{{ character.player_id }}.{{ character.character_id if character.character_id is not none else 0 }} - {{ character.name }}</td>
+                        <td>{{ character.user_id }}.{{ character.character_id if character.character_id is not none else 0 }} - {{ character.name }}</td>
                         <td>
                             {{ character.faction.name if character.faction else 'No Faction' }}
                             -
@@ -47,10 +47,10 @@
         <!-- Mobile Card View -->
         <div class="character-cards d-md-none">
             {% for character in characters %}
-            {% set user_is_owner = character.player_id == current_user.player_id %}
+            {% set user_is_owner = character.user_id == current_user.id %}
             <div class="character-card">
                 <div class="character-card-header">
-                    <h3 class="character-name">{{ character.player_id }}.{{ character.character_id if character.character_id is not none else 0 }} - {{ character.name }}</h3>
+                    <h3 class="character-name">{{ character.user_id }}.{{ character.character_id if character.character_id is not none else 0 }} - {{ character.name }}</h3>
                     <span class="status-badge status-{{ character.status }}">{{ CharacterStatus.descriptions()[character.status] }}</span>
                 </div>
                 <div class="character-card-body">

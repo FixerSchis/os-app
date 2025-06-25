@@ -66,7 +66,6 @@ class TestUserManagementRoutes:
             "surname": "Name",
             "pronouns_subject": "they",
             "pronouns_object": "them",
-            "player_id": "123",
             "character_points": "50.0",
         }
 
@@ -84,93 +83,7 @@ class TestUserManagementRoutes:
         assert updated_user.surname == "Name"
         assert updated_user.pronouns_subject == "they"
         assert updated_user.pronouns_object == "them"
-        assert updated_user.player_id == 123
         assert updated_user.character_points == 50.0
-
-    def test_update_user_clear_player_id(self, test_client, admin_user, regular_user, db):
-        """Test clearing user player ID"""
-        regular_user.player_id = 123
-        db.session.commit()
-
-        with test_client.session_transaction() as sess:
-            sess["_user_id"] = admin_user.id
-            sess["_fresh"] = True
-
-        data = {
-            "update_user": "1",
-            "email": regular_user.email,
-            "first_name": regular_user.first_name,
-            "surname": regular_user.surname,
-            "player_id": "",
-            "character_points": "0.0",
-        }
-
-        response = test_client.post(
-            f"/users/user-management/user/{regular_user.id}",
-            data=data,
-            follow_redirects=True,
-        )
-        assert response.status_code == 200
-
-        updated_user = db.session.get(User, regular_user.id)
-        assert updated_user.player_id is None
-
-    def test_update_user_invalid_player_id(self, test_client, admin_user, regular_user, db):
-        """Test updating user with invalid player ID"""
-        with test_client.session_transaction() as sess:
-            sess["_user_id"] = admin_user.id
-            sess["_fresh"] = True
-
-        data = {
-            "update_user": "1",
-            "email": regular_user.email,
-            "first_name": regular_user.first_name,
-            "surname": regular_user.surname,
-            "player_id": "invalid",
-            "character_points": "0.0",
-        }
-
-        response = test_client.post(
-            f"/users/user-management/user/{regular_user.id}",
-            data=data,
-            follow_redirects=True,
-        )
-        assert response.status_code == 200
-        assert b"Player ID must be an integer" in response.data
-
-    def test_update_user_duplicate_player_id(self, test_client, admin_user, regular_user, db):
-        """Test updating user with duplicate player ID"""
-        # Create another user with player_id 123
-        other_user = User(
-            email="other@example.com",
-            password_hash="hash",
-            first_name="Other",
-            surname="User",
-        )
-        other_user.player_id = 123
-        db.session.add(other_user)
-        db.session.commit()
-
-        with test_client.session_transaction() as sess:
-            sess["_user_id"] = admin_user.id
-            sess["_fresh"] = True
-
-        data = {
-            "update_user": "1",
-            "email": regular_user.email,
-            "first_name": regular_user.first_name,
-            "surname": regular_user.surname,
-            "player_id": "123",
-            "character_points": "0.0",
-        }
-
-        response = test_client.post(
-            f"/users/user-management/user/{regular_user.id}",
-            data=data,
-            follow_redirects=True,
-        )
-        assert response.status_code == 200
-        assert b"Player ID already in use" in response.data
 
     def test_update_user_negative_character_points(self, test_client, admin_user, regular_user, db):
         """Test updating user with negative character points"""
@@ -183,7 +96,6 @@ class TestUserManagementRoutes:
             "email": regular_user.email,
             "first_name": regular_user.first_name,
             "surname": regular_user.surname,
-            "player_id": "",
             "character_points": "-10.0",
         }
 
@@ -206,7 +118,6 @@ class TestUserManagementRoutes:
             "email": regular_user.email,
             "first_name": regular_user.first_name,
             "surname": regular_user.surname,
-            "player_id": "",
             "character_points": "invalid",
         }
 

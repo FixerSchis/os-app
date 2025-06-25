@@ -41,11 +41,6 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="player_id">Player ID:</label>
-                    <input type="number" id="player_id" name="player_id" value="{{ user.player_id or '' }}" class="form-control">
-                </div>
-
-                <div class="form-group">
                     <label for="character_points">Character Points:</label>
                     <input type="number" id="character_points" name="character_points" value="{{ user.character_points }}" class="form-control" step="0.5" min="0">
                 </div>
@@ -87,15 +82,13 @@
                 </div>
             </div>
 
-            {% if user.player_id %}
             <div class="characters-section">
                 <h2>Characters</h2>
                 <div class="mb-3">
-                    <a href="{{ url_for('characters.create_for_player', player_id=user.player_id) }}" class="btn btn-success">Create Character</a>
+                    <a href="{{ url_for('characters.create_for_player', user_id=user.id) }}" class="btn btn-success">Create Character</a>
                 </div>
                 {% include 'characters/_character_list.html' with context %}
             </div>
-            {% endif %}
         </div>
     </div>
 </div>

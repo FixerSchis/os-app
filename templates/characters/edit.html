@@ -32,12 +32,6 @@
                             <h5 class="mb-0">Basic Information</h5>
                         </div>
                         <div class="card-body">
-                            {% if player_id %}
-                            <div class="form-group">
-                                <label for="player_id" class="form-label">Player ID</label>
-                                <input type="text" id="player_id" name="player_id" class="form-control" value="{{ player_id }}" readonly>
-                            </div>
-                            {% endif %}
                             {% set is_readonly = character and character.status in ['retired', 'dead'] and not current_user.has_role('user_admin') %}
                             <div class="form-group mb-3">
                                 <label for="name" class="form-label">Character Name *</label>
@@ -79,7 +73,7 @@
                         <div class="card-body">
                             <div class="form-group">
                                 <label for="faction" class="form-label">Faction *</label>
-                                {% set can_edit_faction = (current_user.has_role('user_admin') or (character and character.status != 'active' and character.player_id == current_user.player_id) or (not character)) and not is_readonly %}
+                                {% set can_edit_faction = (current_user.has_role('user_admin') or (character and character.status != 'active' and character.user_id == current_user.id) or (not character)) and not is_readonly %}
                                 {% set owner = user if user is defined else current_user %}
                                 {% set show_megacorps = owner.has_role('npc') %}
                                 {% if can_edit_faction %}
@@ -103,7 +97,7 @@
                                 <label for="species_id" class="form-label">Species *</label>
                                 {% set user_is_admin = current_user.has_role('user_admin') %}
                                 {% set user_is_npc = current_user.has_role('npc') %}
-                                {% set can_edit_species = (user_is_admin or user_is_npc or (character and character.status != 'active' and character.player_id == current_user.player_id) or (not character)) and not is_readonly %}
+                                {% set can_edit_species = (user_is_admin or user_is_npc or (character and character.status != 'active' and character.user_id == current_user.id) or (not character)) and not is_readonly %}
                                 {% if can_edit_species %}
                                 <select id="species_id" name="species_id" class="form-select select2-species" style="width: 100%;" data-placeholder="Select species..." required {% if is_readonly %}disabled{% endif %}>
                                     <option value="">Select a species</option>

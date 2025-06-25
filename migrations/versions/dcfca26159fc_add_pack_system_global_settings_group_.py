@@ -223,9 +223,16 @@ def downgrade():
 
             # Drop foreign key if it exists
             foreign_keys = inspector.get_foreign_keys("group")
-            fk_exists = any(fk["referred_table"] == "group_types" for fk in foreign_keys)
-            if fk_exists:
-                batch_op.drop_constraint(None, type_="foreignkey")
+            fk_name = None
+            for fk in foreign_keys:
+                if (
+                    fk["referred_table"] == "group_types"
+                    and "group_type_id" in fk["constrained_columns"]
+                ):
+                    fk_name = fk["name"]
+                    break
+            if fk_name:
+                batch_op.drop_constraint(fk_name, type_="foreignkey")
 
             if "pack_complete" in group_columns:
                 batch_op.drop_column("pack_complete")

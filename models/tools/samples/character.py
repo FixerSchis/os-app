@@ -17,7 +17,6 @@ def get_sample_character():
         pronouns_object="them",
         roles="admin",
         character_points=1,
-        player_id=1,
     )
     faction = Faction(
         id=2,

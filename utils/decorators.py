@@ -154,9 +154,7 @@ def character_owner_or_user_admin_required(f):
         character = Character.query.get_or_404(character_id)
 
         # User is owner of the character or a user_admin
-        if character.player_id == current_user.player_id or current_user.has_role(
-            Role.USER_ADMIN.value
-        ):
+        if character.user_id == current_user.id or current_user.has_role(Role.USER_ADMIN.value):
             return f(*args, **kwargs)
 
         abort(403)

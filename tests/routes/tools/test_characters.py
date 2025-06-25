@@ -12,7 +12,7 @@ def test_activate_multiple_characters_for_npc(test_client, db):
     THEN all selected characters should become active
     """
     # Create an NPC user
-    npc_user = User(email="npc@example.com", first_name="NPC", surname="User", player_id=99999)
+    npc_user = User(email="npc@example.com", first_name="NPC", surname="User")
     npc_user.set_password("password")
     npc_user.email_verified = True
     npc_user.add_role(Role.NPC.value)
@@ -51,9 +51,7 @@ def test_activate_single_character_for_normal_user(test_client, db):
     THEN only the second character should be active
     """
     # Create a standard user
-    normal_user = User(
-        email="player@example.com", first_name="Normal", surname="Player", player_id=11111
-    )
+    normal_user = User(email="player@example.com", first_name="Normal", surname="Player")
     normal_user.set_password("password")
     normal_user.email_verified = True
     db.session.add(normal_user)

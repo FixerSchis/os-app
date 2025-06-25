@@ -68,30 +68,6 @@ def user_management_edit_user_post(user_id):
         user.pronouns_subject = request.form.get("pronouns_subject")
         user.pronouns_object = request.form.get("pronouns_object")
 
-        # Update player ID
-        new_player_id = request.form.get("player_id")
-        if new_player_id == "" or new_player_id is None:
-            user.player_id = None
-        else:
-            try:
-                new_player_id_int = int(new_player_id)
-                if new_player_id_int != user.player_id:
-                    existing_user = User.query.filter_by(player_id=new_player_id_int).first()
-                    if existing_user:
-                        flash("Player ID already in use", "error")
-                        return redirect(
-                            url_for(
-                                "user_management.user_management_edit_user",
-                                user_id=user.id,
-                            )
-                        )
-                    user.player_id = new_player_id_int
-            except (ValueError, TypeError):
-                flash("Player ID must be an integer.", "error")
-                return redirect(
-                    url_for("user_management.user_management_edit_user", user_id=user.id)
-                )
-
         # Update character points
         try:
             new_cp = float(request.form.get("character_points"))
