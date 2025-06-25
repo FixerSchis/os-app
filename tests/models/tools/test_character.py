@@ -153,6 +153,48 @@ def test_character_reputation(db, new_user, character, faction):
     assert "-5" in logs[0].changes
 
 
+def test_character_reputation_no_change_no_audit(db, new_user, character, faction):
+    """Test that setting reputation to the same value doesn't create audit logs."""
+    from models.enums import CharacterAuditAction
+    from models.tools.character import CharacterAuditLog
+
+    # Initially, reputation should be 0
+    assert character.get_reputation(faction.id) == 0
+
+    # Set reputation to 10
+    character.set_reputation(faction.id, 10, new_user.id)
+    db.session.commit()
+
+    # Check that an audit log was created
+    logs = CharacterAuditLog.query.filter_by(character_id=character.id).all()
+    assert len(logs) == 1
+    assert logs[0].action == CharacterAuditAction.REPUTATION_CHANGE
+
+    # Set reputation to the same value (10)
+    character.set_reputation(faction.id, 10, new_user.id)
+    db.session.commit()
+
+    # Check that no additional audit log was created
+    logs = CharacterAuditLog.query.filter_by(character_id=character.id).all()
+    assert len(logs) == 1  # Still only one log entry
+
+    # Set reputation to 0 (which is the default)
+    character.set_reputation(faction.id, 0, new_user.id)
+    db.session.commit()
+
+    # Check that another audit log was created for the change from 10 to 0
+    logs = CharacterAuditLog.query.filter_by(character_id=character.id).all()
+    assert len(logs) == 2  # Now two log entries
+
+    # Set reputation to 0 again
+    character.set_reputation(faction.id, 0, new_user.id)
+    db.session.commit()
+
+    # Check that no additional audit log was created
+    logs = CharacterAuditLog.query.filter_by(character_id=character.id).all()
+    assert len(logs) == 2  # Still only two log entries
+
+
 def test_character_funds(db, new_user, character):
     """Test character fund management."""
     from models.enums import CharacterAuditAction
