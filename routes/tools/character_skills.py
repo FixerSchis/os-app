@@ -193,7 +193,7 @@ def purchase_skill(character_id):
 @character_skills_bp.route("/characters/<int:character_id>/skills/refund", methods=["POST"])
 @login_required
 @email_verified_required
-@user_admin_required
+@character_owner_or_user_admin_required
 def refund_skill(character_id):
     character = Character.query.get_or_404(character_id)
     skill_id = request.form.get("skill_id", type=int)
@@ -203,6 +203,12 @@ def refund_skill(character_id):
         return redirect(url_for("character_skills.character_skills", character_id=character_id))
 
     skill = Skill.query.get_or_404(skill_id)
+
+    # Only allow non-admins to refund skills for their own character if it's in development
+    if not current_user.has_role("user_admin"):
+        if character.status != CharacterStatus.DEVELOPING.value:
+            flash("Only admins can refund skills for non-developing characters.", "error")
+            return redirect(url_for("character_skills.character_skills", character_id=character_id))
 
     # Check if this skill is a prerequisite for any other skills the character has
     character_skills = CharacterSkill.query.filter_by(character_id=character.id).all()

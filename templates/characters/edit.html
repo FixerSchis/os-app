@@ -72,8 +72,8 @@
                         </div>
                         <div class="card-body">
                             <div class="form-group">
-                                <label for="faction" class="form-label">Faction *</label>
-                                {% set can_edit_faction = (current_user.has_role('user_admin') or (character and character.status != 'active' and character.user_id == current_user.id) or (not character)) and not is_readonly %}
+                                <label for="faction" class="form-label">Faction{% if can_edit_faction %} *{% endif %}</label>
+                                {% set can_edit_faction = (current_user.has_role('user_admin') or current_user.has_role('npc')) and not is_readonly %}
                                 {% set owner = user if user is defined else current_user %}
                                 {% set show_megacorps = owner.has_role('npc') %}
                                 {% if can_edit_faction %}
@@ -94,10 +94,10 @@
                             </div>
 
                             <div class="form-group mb-0">
-                                <label for="species_id" class="form-label">Species *</label>
+                                <label for="species_id" class="form-label">Species{% if can_edit_species %} *{% endif %}</label>
                                 {% set user_is_admin = current_user.has_role('user_admin') %}
                                 {% set user_is_npc = current_user.has_role('npc') %}
-                                {% set can_edit_species = (user_is_admin or user_is_npc or (character and character.status != 'active' and character.user_id == current_user.id) or (not character)) and not is_readonly %}
+                                {% set can_edit_species = (user_is_admin or user_is_npc) and not is_readonly %}
                                 {% if can_edit_species %}
                                 <select id="species_id" name="species_id" class="form-select select2-species" style="width: 100%;" data-placeholder="Select species..." required {% if is_readonly %}disabled{% endif %}>
                                     <option value="">Select a species</option>
@@ -106,7 +106,8 @@
                                     {% endfor %}
                                 </select>
                                 {% else %}
-                                <p class="mb-0">{{ character.species.name if character and character.species else 'No species selected' }}</p>
+                                <input type="text" class="form-control" value="{{ character.species.name if character and character.species else '' }}" readonly>
+                                <input type="hidden" name="species_id" value="{{ character.species_id if character and character.species else '' }}">
                                 {% endif %}
                             </div>
                         </div>
