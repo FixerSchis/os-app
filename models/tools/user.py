@@ -130,12 +130,18 @@ class User(UserMixin, db.Model):
         if (
             self.verification_token
             and self.verification_token == token
-            and self.verification_token_expires > datetime.now(timezone.utc)
+            and self.verification_token_expires
         ):
-            self.email_verified = True
-            self.verification_token = None
-            self.verification_token_expires = None
-            return True
+            # Ensure both datetimes are timezone-aware for comparison
+            expires = self.verification_token_expires
+            if expires.tzinfo is None:
+                expires = expires.replace(tzinfo=timezone.utc)
+
+            if expires > datetime.now(timezone.utc):
+                self.email_verified = True
+                self.verification_token = None
+                self.verification_token_expires = None
+                return True
         return False
 
     def is_verified(self):
@@ -160,16 +166,21 @@ class User(UserMixin, db.Model):
         if (
             self.email_change_token
             and self.email_change_token == token
-            and self.email_change_token_expires.replace(tzinfo=timezone.utc)
-            > datetime.now(timezone.utc)
+            and self.email_change_token_expires
             and self.new_email
         ):
-            # Update email address
-            self.email = self.new_email
-            self.new_email = None
-            self.email_change_token = None
-            self.email_change_token_expires = None
-            return True
+            # Ensure both datetimes are timezone-aware for comparison
+            expires = self.email_change_token_expires
+            if expires.tzinfo is None:
+                expires = expires.replace(tzinfo=timezone.utc)
+
+            if expires > datetime.now(timezone.utc):
+                # Update email address
+                self.email = self.new_email
+                self.new_email = None
+                self.email_change_token = None
+                self.email_change_token_expires = None
+                return True
         return False
 
     def generate_reset_token(self):
@@ -180,12 +191,14 @@ class User(UserMixin, db.Model):
 
     def verify_reset_token(self, token):
         """Verify that the reset token is valid."""
-        if (
-            self.reset_token
-            and self.reset_token == token
-            and self.reset_token_expires > datetime.now(timezone.utc)
-        ):
-            return True
+        if self.reset_token and self.reset_token == token and self.reset_token_expires:
+            # Ensure both datetimes are timezone-aware for comparison
+            expires = self.reset_token_expires
+            if expires.tzinfo is None:
+                expires = expires.replace(tzinfo=timezone.utc)
+
+            if expires > datetime.now(timezone.utc):
+                return True
         return False
 
     def reset_password(self, token, new_password):
