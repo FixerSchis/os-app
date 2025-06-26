@@ -119,12 +119,26 @@ def create_app(config_class=None):
             data = request.get_json()
             theme = data.get("theme", "dark") if data else "dark"
 
-            # Set cookie for non-authenticated users
+            # Handle None theme value
+            if theme is None:
+                theme = "dark"
+
+            # Check if user has accepted cookies
+            cookie_consent = request.cookies.get("cookie_consent")
+
+            # Only set cookie if user has accepted cookies
             response = jsonify({"success": True, "theme": theme})
-            response.set_cookie("theme", theme, max_age=30 * 24 * 60 * 60, path="/")  # 30 days
+            if cookie_consent == "accepted":
+                response.set_cookie("theme", theme, max_age=30 * 24 * 60 * 60, path="/")  # 30 days
+
             return response
         except Exception as e:
             return jsonify({"success": False, "error": str(e)}), 400
+
+    @app.route("/test-cookie-consent")
+    def test_cookie_consent():
+        """Test page for cookie consent functionality."""
+        return render_template("test_cookie_consent.html")
 
     # Register blueprints
     app.register_blueprint(auth_bp, url_prefix="/auth")
