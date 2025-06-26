@@ -1,0 +1,136 @@
+{% extends "_template.html" %}
+
+{% block title %}Cookie Consent Test{% endblock %}
+
+{% block content %}
+<div class="test-page">
+    <h1>Cookie Consent Test Page</h1>
+
+    <div class="test-section">
+        <h2>Current Cookie Status</h2>
+        <p><strong>Cookies Enabled:</strong> <span id="cookies-status">Loading...</span></p>
+        <p><strong>Theme Cookie:</strong> <span id="theme-cookie">Loading...</span></p>
+        <p><strong>Consent Cookie:</strong> <span id="consent-cookie">Loading...</span></p>
+    </div>
+
+    <div class="test-section">
+        <h2>Test Theme Toggle</h2>
+        <p>Try toggling the theme using the button in the navbar. If cookies are disabled, the preference won't be saved.</p>
+        <button onclick="testThemeToggle()" class="btn btn-primary">Test Theme Toggle</button>
+    </div>
+
+    <div class="test-section">
+        <h2>Reset Cookie Consent</h2>
+        <p>Click this button to reset your cookie consent choice and see the popup again:</p>
+        <button onclick="resetCookieConsent()" class="btn btn-secondary">Reset Cookie Consent</button>
+        <button onclick="forceShowPopup()" class="btn btn-warning">Force Show Popup</button>
+    </div>
+
+    <div class="test-section">
+        <h2>Manual Cookie Control</h2>
+        <p>Manually enable or disable cookies (this will persist your choice):</p>
+        <button onclick="enableCookies()" class="btn btn-success">Enable Cookies</button>
+        <button onclick="disableCookies()" class="btn btn-danger">Disable Cookies</button>
+    </div>
+</div>
+
+<script>
+function updateStatus() {
+    // Update cookies status
+    document.getElementById('cookies-status').textContent = window.cookiesEnabled ? 'Enabled' : 'Disabled';
+
+    // Update theme cookie status
+    const themeCookie = document.cookie.split('; ').find(row => row.startsWith('theme='));
+    document.getElementById('theme-cookie').textContent = themeCookie ? themeCookie.split('=')[1] : 'Not set';
+
+    // Update consent cookie status
+    const consentCookie = document.cookie.split('; ').find(row => row.startsWith('cookie_consent='));
+    document.getElementById('consent-cookie').textContent = consentCookie ? consentCookie.split('=')[1] : 'Not set';
+}
+
+function testThemeToggle() {
+    if (window.darkModeManager) {
+        window.darkModeManager.toggleTheme();
+        setTimeout(updateStatus, 100);
+    }
+}
+
+function resetCookieConsent() {
+    // Delete the consent cookie
+    document.cookie = 'cookie_consent=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;';
+
+    // Reset the cookie consent manager
+    if (window.cookieConsentManager) {
+        window.cookieConsentManager.init();
+    }
+
+    setTimeout(updateStatus, 100);
+}
+
+function forceShowPopup() {
+    // Delete the consent cookie
+    document.cookie = 'cookie_consent=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;';
+
+    // Force show the popup
+    if (window.cookieConsentManager) {
+        window.cookieConsentManager.showConsentPopup();
+    }
+
+    setTimeout(updateStatus, 100);
+}
+
+function enableCookies() {
+    // Set the consent cookie to accepted
+    if (window.cookieConsentManager) {
+        window.cookieConsentManager.setCookie('cookie_consent', 'accepted', 365);
+        window.cookieConsentManager.enableCookies();
+    }
+    updateStatus();
+}
+
+function disableCookies() {
+    // Set the consent cookie to declined
+    if (window.cookieConsentManager) {
+        window.cookieConsentManager.setCookie('cookie_consent', 'declined', 365);
+        window.cookieConsentManager.disableCookies();
+    }
+    updateStatus();
+}
+
+// Update status when page loads
+document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(updateStatus, 500);
+});
+</script>
+
+<style>
+.test-page {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+.test-section {
+    margin-bottom: 2rem;
+    padding: 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--surface-color);
+}
+
+.test-section h2 {
+    margin-top: 0;
+    color: var(--text-color);
+}
+
+.btn {
+    margin-right: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+#cookies-status, #theme-cookie, #consent-cookie {
+    font-weight: bold;
+    color: var(--primary-color);
+}
+</style>
+{% endblock %}

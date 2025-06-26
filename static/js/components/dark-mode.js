@@ -7,6 +7,9 @@ class DarkModeManager {
         // Check if user is authenticated by looking for settings link
         this.isAuthenticated = document.querySelector('a[href*="/settings/"]') !== null;
 
+        // Initialize cookies enabled state
+        this.cookiesEnabled = window.cookiesEnabled !== false;
+
         this.init();
     }
 
@@ -32,14 +35,17 @@ class DarkModeManager {
             return;
         }
 
-        // No server theme, check for session cookie
-        const sessionTheme = this.getCookie('theme');
-        if (sessionTheme) {
-            this.setTheme(sessionTheme);
-        } else {
-            // No preference found, default to dark mode
-            this.setTheme('dark');
+        // No server theme, check for session cookie (only if cookies are enabled)
+        if (this.cookiesEnabled) {
+            const sessionTheme = this.getCookie('theme');
+            if (sessionTheme) {
+                this.setTheme(sessionTheme);
+                return;
+            }
         }
+
+        // No preference found, default to dark mode
+        this.setTheme('dark');
     }
 
     toggleTheme() {
@@ -77,10 +83,11 @@ class DarkModeManager {
         if (this.isAuthenticated) {
             // For authenticated users, save to server
             this.saveToServer(theme);
-        } else {
-            // For non-authenticated users, save to session cookie
+        } else if (this.cookiesEnabled) {
+            // For non-authenticated users, save to session cookie (only if cookies are enabled)
             this.setCookie('theme', theme, 30); // 30 days
         }
+        // If cookies are disabled, don't persist the preference
     }
 
     async saveToServer(theme) {
@@ -104,6 +111,10 @@ class DarkModeManager {
     }
 
     getCookie(name) {
+        if (!this.cookiesEnabled) {
+            return null;
+        }
+
         const value = `; ${document.cookie}`;
         const parts = value.split(`; ${name}=`);
         if (parts.length === 2) return parts.pop().split(';').shift();
@@ -111,6 +122,10 @@ class DarkModeManager {
     }
 
     setCookie(name, value, days) {
+        if (!this.cookiesEnabled) {
+            return;
+        }
+
         const expires = new Date();
         expires.setTime(expires.getTime() + (days * 24 * 60 * 60 * 1000));
         document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/`;
@@ -119,5 +134,5 @@ class DarkModeManager {
 
 // Initialize dark mode manager when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
-    new DarkModeManager();
+    window.darkModeManager = new DarkModeManager();
 });
