@@ -412,6 +412,64 @@ function gatherSectionData() {
         }
     });
 
+    // Collect restriction values from all form elements
+    sections.forEach((section, idx) => {
+        // Get restriction type
+        const restrictionTypeSelect = document.getElementById(`section-restriction-type-${idx}`);
+        if (restrictionTypeSelect) {
+            section.restriction_type = restrictionTypeSelect.value;
+        }
+
+        // Get restriction value based on type
+        switch (section.restriction_type) {
+            case 'role':
+                const roleSelect = document.getElementById(`section-restriction-value-${idx}`);
+                if (roleSelect) {
+                    section.restriction_value = roleSelect.value;
+                }
+                break;
+            case 'faction':
+            case 'species':
+            case 'skill':
+                const multiSelect = document.getElementById(`section-restriction-value-${idx}`);
+                if (multiSelect && $(multiSelect).data('select2')) {
+                    const val = $(multiSelect).val();
+                    section.restriction_value = JSON.stringify(val && val.length ? val : []);
+                }
+                break;
+            case 'tag':
+                const tagSelect = document.getElementById(`section-restriction-value-${idx}`);
+                if (tagSelect && $(tagSelect).data('select2')) {
+                    const val = $(tagSelect).val();
+                    section.restriction_value = JSON.stringify(val && val.length ? val : []);
+                }
+                break;
+            case 'cybernetic':
+                const cyberSelect = document.getElementById(`section-restriction-value-${idx}`);
+                if (cyberSelect && $(cyberSelect).data('select2')) {
+                    const val = $(cyberSelect).val();
+                    section.restriction_value = JSON.stringify(val && val.length ? val : []);
+                }
+                break;
+            case 'reputation':
+                const factionSelect = document.getElementById(`section-restriction-value-${idx}-faction`);
+                const repValueInput = document.getElementById(`section-restriction-value-${idx}-value`);
+                if (factionSelect && repValueInput) {
+                    const factionId = $(factionSelect).val();
+                    const repValue = repValueInput.value;
+                    if (factionId && repValue) {
+                        section.restriction_value = JSON.stringify([parseInt(factionId), parseInt(repValue)]);
+                    } else {
+                        section.restriction_value = '';
+                    }
+                }
+                break;
+            default:
+                section.restriction_value = '';
+                break;
+        }
+    });
+
     return sections;
 }
 
