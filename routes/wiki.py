@@ -780,7 +780,9 @@ def wiki_pending_changes_post():
 
 @wiki_bp.route("/changes/log")
 def wiki_change_log():
-    logs = WikiChangeLog.query.order_by(WikiChangeLog.timestamp.desc()).all()
+    logs = WikiChangeLog.query.order_by(
+        WikiChangeLog.timestamp.desc(), WikiChangeLog.id.desc()
+    ).all()
     return render_template("wiki/change_log.html", logs=logs)
 
 

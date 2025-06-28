@@ -4,6 +4,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const mainNav = document.getElementById('main-nav');
     const dropdowns = document.querySelectorAll('.main-nav .dropdown');
     const desktopDarkModeToggle = document.getElementById('dark-mode-toggle');
+    const mobileDarkModeToggle = document.getElementById('mobile-dark-mode-toggle');
     const mobileDevNoticeBtn = document.getElementById('mobile-dev-notice-btn');
     const body = document.body;
     const mobileNavClose = document.getElementById('mobile-nav-close');

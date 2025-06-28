@@ -169,3 +169,23 @@
     background: #23272e !important;
     color: var(--text-primary) !important;
 }
+
+/* Dark mode support for diff display */
+[data-theme="dark"] .diff {
+    background: #1e1e1e !important;
+    border-color: #404040 !important;
+}
+
+[data-theme="dark"] .diff-add {
+    color: #4ade80 !important;
+    background: #064e3b !important;
+}
+
+[data-theme="dark"] .diff-remove {
+    color: #f87171 !important;
+    background: #450a0a !important;
+}
+
+[data-theme="dark"] .diff-context {
+    color: #9ca3af !important;
+}

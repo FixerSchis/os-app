@@ -61,6 +61,93 @@
     margin-left: 0.25rem;
 }
 
+.ck-wiki-pages-list {
+    height: 400px;
+    overflow-y: auto;
+}
+
 [data-theme="dark"] .wiki-slug {
     color: var(--bs-gray-600);
+}
+
+[data-theme="dark"] .ck-wiki-modal-content {
+    background: var(--card-bg);
+}
+
+[data-theme="dark"] .ck-wiki-modal-header {
+    background: var(--card-bg);
+}
+
+[data-theme="dark"] .ck-wiki-search-input {
+    background: var(--card-bg);
+}
+
+/* Pending Changes Page Styles */
+.wiki-section-review {
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+
+.wiki-section-review h4 {
+    margin-bottom: 1rem;
+    color: var(--text-primary);
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+/* Ensure checkboxes are properly styled in the card header */
+.card-header .form-check {
+    margin: 0;
+    padding: 0;
+}
+
+.card-header .form-check-input {
+    margin: 0;
+    cursor: pointer;
+}
+
+/* Dark mode support for pending changes */
+[data-theme="dark"] .wiki-section-review {
+    background: var(--bg-secondary);
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] .wiki-section-review h4 {
+    color: var(--text-primary);
+}
+
+/* Change Log Styles */
+.wiki-changelog-message {
+    margin-top: 0.5rem;
+    padding: 0.75rem;
+    background: var(--bg-secondary);
+    border-radius: 6px;
+    border-left: 4px solid var(--link-color);
+}
+
+.list-group-item .wiki-changelog-message {
+    margin-bottom: 1rem;
+}
+
+/* Highlight recent changes (first few items) */
+.list-group-item:nth-child(-n+3) {
+    border-left: 4px solid var(--link-color);
+    background-color: rgba(13, 110, 253, 0.05);
+}
+
+[data-theme="dark"] .list-group-item:nth-child(-n+3) {
+    background-color: rgba(13, 110, 253, 0.1);
+}
+
+/* Add visual indicator for timestamp */
+.list-group-item .timestamp {
+    font-weight: 600;
+    color: var(--link-color);
+}
+
+[data-theme="dark"] .list-group-item .timestamp {
+    color: var(--link-color);
 }

@@ -76,6 +76,14 @@ function initWikiEditor() {
     TAGS = safeParseJSONDataAttr('#tags-data', []);
     CYBERNETICS = safeParseJSONDataAttr('#cybernetics-data', []);
 
+    console.log('Loaded sections:', sections);
+    console.log('Available roles:', AVAILABLE_ROLES.length);
+    console.log('Factions:', FACTIONS.length);
+    console.log('Species:', SPECIES.length);
+    console.log('Skills:', SKILLS.length);
+    console.log('Tags:', TAGS.length);
+    console.log('Cybernetics:', CYBERNETICS.length);
+
     if (sections.length === 0) {
         sections = [{
             id: null,
@@ -192,6 +200,13 @@ function initializeSelect2() {
     document.querySelectorAll('.restriction-multiselect').forEach(function(sel) {
         let idx = parseInt(sel.id.split('-').pop());
         let section = sections[idx];
+
+        // Safety check: ensure section exists
+        if (!section) {
+            console.warn('Section not found for index:', idx);
+            return;
+        }
+
         let data = [];
         let selected = [];
 
@@ -215,7 +230,9 @@ function initializeSelect2() {
         $(sel).val(selected).trigger('change');
         $(sel).on('change', function() {
             const val = $(this).val();
-            sections[idx].restriction_value = JSON.stringify(val && val.length ? val : []);
+            if (sections[idx]) {
+                sections[idx].restriction_value = JSON.stringify(val && val.length ? val : []);
+            }
         });
     });
 
@@ -223,8 +240,33 @@ function initializeSelect2() {
     document.querySelectorAll('.restriction-multiselect-tags').forEach(function(sel) {
         let idx = parseInt(sel.id.split('-').pop());
         let section = sections[idx];
+
+        // Safety check: ensure section exists
+        if (!section) {
+            console.warn('Section not found for index:', idx);
+            return;
+        }
+
         let data = TAGS.map(t => ({id: t.id, text: t.name}));
-        let selected = section.restriction_value ? JSON.parse(section.restriction_value) : [];
+        let selected = [];
+
+        if (section.restriction_value) {
+            try {
+                const parsedValues = JSON.parse(section.restriction_value);
+                selected = parsedValues.map(val => {
+                    // Check if it's a numeric ID (existing tag)
+                    if (!isNaN(val)) {
+                        const existingTag = TAGS.find(t => t.id == val);
+                        return existingTag ? {id: existingTag.id, text: existingTag.name} : {id: val, text: val};
+                    } else {
+                        // It's a custom tag string
+                        return {id: val, text: val};
+                    }
+                });
+            } catch (e) {
+                console.warn('Failed to parse tag restriction value:', e);
+            }
+        }
 
         $(sel).select2({
             data: data,
@@ -240,10 +282,17 @@ function initializeSelect2() {
                 };
             }
         });
-        $(sel).val(selected).trigger('change');
+
+        // Set the selected values
+        if (selected.length > 0) {
+            $(sel).val(selected.map(s => s.id)).trigger('change');
+        }
+
         $(sel).on('change', function() {
             const val = $(this).val();
-            sections[idx].restriction_value = JSON.stringify(val && val.length ? val : []);
+            if (sections[idx]) {
+                sections[idx].restriction_value = JSON.stringify(val && val.length ? val : []);
+            }
         });
     });
 
@@ -258,20 +307,30 @@ function initializeSelect2() {
 
         let idx = parseInt(sel.id.split('-')[4]);
         let section = sections[idx];
-        if (section.restriction_type === 'reputation' && section.restriction_value) {
+
+        // Safety check: ensure section exists
+        if (section && section.restriction_type === 'reputation' && section.restriction_value) {
             try {
                 const values = JSON.parse(section.restriction_value);
                 if (values.length === 2) {
                     $(sel).val(values[0].toString()).trigger('change');
                 }
-            } catch (e) {}
+            } catch (e) {
+                console.warn('Failed to parse reputation restriction value:', e);
+            }
         }
 
         $(sel).on('change', function() {
             let idx = parseInt(this.id.split('-')[4]);
             let section = sections[idx];
-            let minRep = $(this).closest('.row').find('.reputation-value').val();
-            section.restriction_value = JSON.stringify([parseInt($(this).val()), parseInt(minRep)]);
+            if (section) {
+                let minRep = $(this).closest('.row').find('.reputation-value').val();
+                if ($(this).val() && minRep) {
+                    section.restriction_value = JSON.stringify([parseInt($(this).val()), parseInt(minRep)]);
+                } else {
+                    section.restriction_value = '';
+                }
+            }
         });
     });
 
@@ -280,8 +339,14 @@ function initializeSelect2() {
         $(inp).on('input', function() {
             let idx = parseInt(this.id.split('-')[4]);
             let section = sections[idx];
-            let factionId = $(this).closest('.row').find('.reputation-faction').val();
-            section.restriction_value = JSON.stringify([parseInt(factionId), parseInt($(this).val())]);
+            if (section) {
+                let factionId = $(this).closest('.row').find('.reputation-faction').val();
+                if (factionId && this.value) {
+                    section.restriction_value = JSON.stringify([parseInt(factionId), parseInt(this.value)]);
+                } else {
+                    section.restriction_value = '';
+                }
+            }
         });
     });
 
@@ -289,6 +354,13 @@ function initializeSelect2() {
     document.querySelectorAll('.restriction-multiselect-cybernetics').forEach(function(sel) {
         let idx = parseInt(sel.id.split('-').pop());
         let section = sections[idx];
+
+        // Safety check: ensure section exists
+        if (!section) {
+            console.warn('Section not found for index:', idx);
+            return;
+        }
+
         let data = CYBERNETICS.map(c => ({id: c.id, text: c.name}));
         let selected = section.restriction_value ? JSON.parse(section.restriction_value) : [];
 
@@ -302,7 +374,9 @@ function initializeSelect2() {
         $(sel).val(selected).trigger('change');
         $(sel).on('change', function() {
             const val = $(this).val();
-            sections[idx].restriction_value = JSON.stringify(val && val.length ? val : []);
+            if (sections[idx]) {
+                sections[idx].restriction_value = JSON.stringify(val && val.length ? val : []);
+            }
         });
     });
 }
@@ -328,15 +402,28 @@ function renderRestrictionValueField(section, idx) {
         case 'cybernetic':
             return `<select id="section-restriction-value-${idx}" class="form-control restriction-multiselect-cybernetics" multiple style="margin-left: 8px; width: 300px;"></select>`;
         case 'reputation':
+            let factionId = '';
+            let repValue = 1;
+            if (section.restriction_value) {
+                try {
+                    const values = JSON.parse(section.restriction_value);
+                    if (values.length === 2) {
+                        factionId = values[0];
+                        repValue = values[1];
+                    }
+                } catch (e) {
+                    console.warn('Failed to parse reputation value:', e);
+                }
+            }
             return `<div class="row">
                 <div class="col-md-6">
                     <select id="section-restriction-value-${idx}-faction" class="form-control reputation-faction" style="margin-left: 8px; width: 300px;">
                         <option value="">Select Faction</option>
-                        ${FACTIONS.map(f => `<option value="${f.id}">${f.name}</option>`).join('')}
+                        ${FACTIONS.map(f => `<option value="${f.id}" ${f.id == factionId ? 'selected' : ''}>${f.name}</option>`).join('')}
                     </select>
                 </div>
                 <div class="col-md-6">
-                    <input type="number" id="section-restriction-value-${idx}-value" class="form-control reputation-value" value="${section.restriction_value ? (JSON.parse(section.restriction_value)[1] || 1) : 1}" min="-100" max="100">
+                    <input type="number" id="section-restriction-value-${idx}-value" class="form-control reputation-value" value="${repValue}" min="-100" max="100">
                 </div>
             </div>`;
         default:

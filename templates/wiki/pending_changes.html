@@ -1,4 +1,4 @@
-{% extends "wiki/_template.html" %}
+{% extends "wiki/_wiki_template.html" %}
 {% block title %}Pending Wiki Changes - Orion Sphere LRP{% endblock %}
 {% block wiki_content %}
 <div class="container">
@@ -17,11 +17,14 @@
         {% for page in pending_pages %}
         <div class="card mb-4">
             <div class="card-header d-flex align-items-center">
-                <input type="checkbox" name="selected_pages" value="{{ page.slug }}" class="mr-2 page-checkbox">
+                <div class="form-check me-2">
+                    <input type="checkbox" name="selected_pages" value="{{ page.slug }}" class="form-check-input page-checkbox" id="page-{{ loop.index }}">
+                    <label class="form-check-label visually-hidden" for="page-{{ loop.index }}">Select {{ page.title }}</label>
+                </div>
                 <a href="{{ url_for('wiki.wiki_edit', slug=page.slug) }}"><strong>{{ page.title }}</strong></a>
-                <span class="ml-3">Version: {{ page.version_number }}</span>
-                <span class="ml-3">Last Edited: {{ page.created_at.strftime('%Y-%m-%d %H:%M') if page.created_at else '' }}</span>
-                <button type="button" class="btn btn-sm btn-outline-secondary ml-auto toggle-section-btn" data-target="section-{{ loop.index }}">Show Changes</button>
+                <span class="ms-3">Version: {{ page.version_number }}</span>
+                <span class="ms-3">Last Edited: {{ page.created_at.strftime('%Y-%m-%d %H:%M') if page.created_at else '' }}</span>
+                <button type="button" class="btn btn-sm btn-outline-secondary ms-auto toggle-section-btn" data-target="section-{{ loop.index }}">Show Changes</button>
             </div>
             <div class="card-body section-collapse" id="section-{{ loop.index }}" style="display: none;">
                 {% for d in page.diffs %}

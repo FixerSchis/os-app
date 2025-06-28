@@ -186,3 +186,11 @@
     background-color: var(--bg-secondary) !important;
     color: var(--text-primary) !important;
 }
+
+[data-theme="dark"] .ck.ck-list {
+    background: var(--card-bg) !important;
+}
+
+[data-theme="dark"] .ck.ck-balloon-panel {
+    background: var(--card-bg) !important;
+}
