@@ -11,7 +11,13 @@
             <div><strong>By:</strong>
                 {% if log.user %}
                     {{ log.user.first_name }}{% if log.user.surname %} {{ log.user.surname }}{% endif %}
-                    {% if not log.user.first_name and not log.user.surname %}{{ log.user.email }}{% endif %}
+                    {% if not log.user.first_name and not log.user.surname %}
+                        {% if is_admin %}
+                            {{ log.user.email }}
+                        {% else %}
+                            {{ mask_email(log.user.email) }}
+                        {% endif %}
+                    {% endif %}
                 {% else %}
                     Unknown
                 {% endif %}

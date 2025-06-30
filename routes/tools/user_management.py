@@ -7,6 +7,7 @@ from models.extensions import db
 from models.tools.character import Character, CharacterStatus, CharacterTag
 from models.tools.user import User
 from utils.decorators import email_verified_required, user_admin_required
+from utils.mask_email import mask_email
 
 user_management_bp = Blueprint("user_management", __name__)
 
@@ -17,11 +18,16 @@ user_management_bp = Blueprint("user_management", __name__)
 @user_admin_required
 def user_management():
     users = User.query.all()
+    # Check if current user has admin role (not just user_admin)
+    is_admin = current_user.has_role(Role.ADMIN.value)
+
     return render_template(
         "user_management/list.html",
         users=users,
         Role=Role,
         CharacterStatus=CharacterStatus,
+        is_admin=is_admin,
+        mask_email=mask_email,
     )
 
 
