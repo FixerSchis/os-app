@@ -31,7 +31,7 @@ dev = [
     "black==23.11.0",
     "isort==5.12.0",
     "flake8==6.1.0",
-    "bandit==1.7.5",
+    "bandit==1.8.5",
     "safety==3.5.2",
     "pre-commit==4.2.0"
 ]
