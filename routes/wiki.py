@@ -25,6 +25,7 @@ from models.wiki import (
 )
 from utils.decorators import plot_team_required
 from utils.email import send_wiki_published_notification_to_all
+from utils.mask_email import mask_email
 
 wiki_bp = Blueprint("wiki", __name__)
 
@@ -783,7 +784,12 @@ def wiki_change_log():
     logs = WikiChangeLog.query.order_by(
         WikiChangeLog.timestamp.desc(), WikiChangeLog.id.desc()
     ).all()
-    return render_template("wiki/change_log.html", logs=logs)
+    # Check if current user has admin role (not just user_admin)
+    is_admin = current_user.is_authenticated and current_user.has_role(Role.ADMIN.value)
+
+    return render_template(
+        "wiki/change_log.html", logs=logs, is_admin=is_admin, mask_email=mask_email
+    )
 
 
 @wiki_bp.route("/search")

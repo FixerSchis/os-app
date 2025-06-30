@@ -26,6 +26,7 @@ from utils.email import (
     send_event_ticket_assigned_notification_to_user,
     send_new_event_notification_to_all,
 )
+from utils.mask_email import mask_email
 
 events_bp = Blueprint("events", __name__)
 
@@ -363,7 +364,17 @@ def purchase_ticket_post(event_id):
 def assign_ticket(event_id):
     event = Event.query.get_or_404(event_id)
     users = User.query.order_by(User.first_name, User.surname).all()
-    return render_template("events/assign.html", event=event, TicketType=TicketType, users=users)
+    # Check if current user has admin role (not just user_admin)
+    is_admin = current_user.has_role(Role.ADMIN.value)
+
+    return render_template(
+        "events/assign.html",
+        event=event,
+        TicketType=TicketType,
+        users=users,
+        is_admin=is_admin,
+        mask_email=mask_email,
+    )
 
 
 @events_bp.route("/<int:event_id>/assign", methods=["POST"])

@@ -21,7 +21,13 @@
                     <tbody>
                         {% for user in users %}
                         <tr>
-                            <td>{{ user.email }}</td>
+                            <td>
+                                {% if is_admin %}
+                                    {{ user.email }}
+                                {% else %}
+                                    {{ mask_email(user.email) }}
+                                {% endif %}
+                            </td>
                             <td>{{ user.first_name }} {{ user.surname }}</td>
                             <td>{{ user.character_points }}</td>
                             <td>
