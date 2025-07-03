@@ -10,7 +10,6 @@
 {% block content %}
 <div class="editor-banner d-flex justify-content-between align-items-center">
     <div class="d-flex flex-wrap gap-2">
-        <a href="{{ url_for('wiki.wiki_view', slug='index') }}" class="btn btn-secondary btn-sm">Wiki Home</a>
         <a href="{{ url_for('wiki.wiki_change_log') }}" class="btn btn-info btn-sm">Change Log</a>
         <a href="{{ url_for('wiki.wiki_list') }}" class="btn btn-primary btn-sm">Index</a>
         {% if current_user.is_authenticated and current_user.has_role("plot_team") %}
