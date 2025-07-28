@@ -114,6 +114,52 @@
                     </div>
                 </div>
 
+                <!-- Character Background -->
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Character Background</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-12">
+                                    <div class="form-group">
+                                        <label for="background" class="form-label">Background</label>
+                                        <textarea id="background"
+                                                  name="background"
+                                                  class="form-control"
+                                                  rows="4"
+                                                  placeholder="Enter character background..."
+                                                  {% if is_readonly %}readonly{% endif %}>{{ character.background if character else '' }}</textarea>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="goals" class="form-label">Goals</label>
+                                        <textarea id="goals"
+                                                  name="goals"
+                                                  class="form-control"
+                                                  rows="4"
+                                                  placeholder="Enter character goals..."
+                                                  {% if is_readonly %}readonly{% endif %}>{{ character.goals if character else '' }}</textarea>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="concept" class="form-label">Concept</label>
+                                        <textarea id="concept"
+                                                  name="concept"
+                                                  class="form-control"
+                                                  rows="4"
+                                                  placeholder="Enter character concept..."
+                                                  {% if is_readonly %}readonly{% endif %}>{{ character.concept if character else '' }}</textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 {% if character %}
                 <!-- Cybernetics -->
                 {% if current_user.has_role('user_admin') or character.cybernetics %}

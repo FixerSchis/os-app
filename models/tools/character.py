@@ -70,6 +70,11 @@ class Character(db.Model):
     # Downtime-related fields
     known_modifications = db.Column(db.JSON, default=list)  # List of mod IDs
 
+    # Character background fields
+    background = db.Column(db.Text, nullable=True)
+    goals = db.Column(db.Text, nullable=True)
+    concept = db.Column(db.Text, nullable=True)
+
     # Relationships
     user = db.relationship("User", back_populates="characters")
     faction = db.relationship("Faction", back_populates="characters")
@@ -681,3 +686,46 @@ class CharacterCondition(db.Model):
                 ),
                 "completed": False,
             }
+
+
+class CharacterBackground(db.Model):
+    __tablename__ = "character_backgrounds"
+    id = db.Column(db.Integer, primary_key=True)
+    character_id = db.Column(db.Integer, db.ForeignKey("character.id"), nullable=False)
+    background = db.Column(db.Text, nullable=True)
+    goals = db.Column(db.Text, nullable=True)
+    concept = db.Column(db.Text, nullable=True)
+    needs_review = db.Column(db.Boolean, nullable=False, default=False)
+    reviewed_at = db.Column(db.DateTime, nullable=True)
+    reviewed_by_user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=db.func.now())
+    updated_at = db.Column(
+        db.DateTime, nullable=False, default=db.func.now(), onupdate=db.func.now()
+    )
+
+    # Relationships
+    character = db.relationship("Character", backref=db.backref("backgrounds", lazy="dynamic"))
+    reviewed_by = db.relationship("User")
+
+    def __repr__(self):
+        return f"<CharacterBackground {self.character.name} - Review: {self.needs_review}>"
+
+    @classmethod
+    def get_or_create_for_character(cls, character_id):
+        """Get existing background or create a new one for the character."""
+        background = cls.query.filter_by(character_id=character_id).first()
+        if not background:
+            background = cls(character_id=character_id)
+        return background
+
+    def mark_for_review(self):
+        """Mark this background as needing review."""
+        self.needs_review = True
+        self.reviewed_at = None
+        self.reviewed_by_user_id = None
+
+    def mark_as_reviewed(self, reviewer_user_id):
+        """Mark this background as reviewed."""
+        self.needs_review = False
+        self.reviewed_at = db.func.now()
+        self.reviewed_by_user_id = reviewer_user_id
