@@ -299,7 +299,8 @@ class DowntimeTaskStatus(Enum):
 
 class EventType(Enum):
     MAINLINE = "mainline"
-    SANCTIONED = "sanctioned"
+    SANCTIONED_CONTINUITY = "sanctioned-continuity"
+    SANCTIONED_CHRONICLE = "sanctioned-chronicle"
     ONLINE = "online"
 
     @classmethod
@@ -310,7 +311,8 @@ class EventType(Enum):
     def descriptions(cls):
         return {
             cls.MAINLINE.value: "Mainline Event",
-            cls.SANCTIONED.value: "Sanctioned Event",
+            cls.SANCTIONED_CONTINUITY.value: "Sanctioned Continuity Event",
+            cls.SANCTIONED_CHRONICLE.value: "Sanctioned Chronicle Event",
             cls.ONLINE.value: "Online Event",
         }
 
