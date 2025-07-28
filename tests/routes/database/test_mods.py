@@ -43,7 +43,7 @@ def test_mod_description_formatting(db):
     assert mod2.format_applied(1) == "[30s]"
     assert mod2.format_applied(2) == "[60s]"
     assert mod2.format_applied(3) == "[90s]"
-    assert mod2.format_unapplied() == "[30s]"
+    assert mod2.format_unapplied() == "[(30/rank)s]"
 
     # Test with no description
     mod3 = Mod(name="No Description Mod", wiki_slug="no-desc-mod")
