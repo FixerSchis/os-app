@@ -127,6 +127,11 @@ def create_character_post():
     # Set base character points based on NPC role
     base_character_points = 30 if current_user.has_role("npc") else 10
 
+    # Get background fields from form
+    background = request.form.get("background", "").strip()
+    goals = request.form.get("goals", "").strip()
+    concept = request.form.get("concept", "").strip()
+
     character = Character(
         user_id=current_user.id,
         name=name,
@@ -136,9 +141,24 @@ def create_character_post():
         faction_id=faction.id,
         species_id=int(species_id),
         base_character_points=base_character_points,
+        background=background,
+        goals=goals,
+        concept=concept,
     )
     db.session.add(character)
     db.session.commit()
+
+    # Handle background review system for character creation
+    if background or goals or concept:
+        # Character owner added background during creation - mark for review
+        char_background = CharacterBackground.get_or_create_for_character(character.id)
+        char_background.background = background
+        char_background.goals = goals
+        char_background.concept = concept
+        char_background.mark_for_review()
+        db.session.add(char_background)
+        db.session.commit()
+
     # Audit log for creation
     audit = CharacterAuditLog(
         character_id=character.id,
@@ -756,6 +776,11 @@ def create_for_player_post(user_id):
                 all_cybernetics=all_cybernetics,
             )
 
+    # Get background fields from form
+    background = request.form.get("background", "").strip()
+    goals = request.form.get("goals", "").strip()
+    concept = request.form.get("concept", "").strip()
+
     character = Character(
         user_id=user.id,
         name=name,
@@ -764,9 +789,24 @@ def create_for_player_post(user_id):
         status=CharacterStatus.DEVELOPING.value,
         faction_id=faction.id,
         species_id=int(species_id),
+        background=background,
+        goals=goals,
+        concept=concept,
     )
     db.session.add(character)
     db.session.commit()
+
+    # Handle background review system for character creation by admin
+    if background or goals or concept:
+        # Admin created character with background - mark for review
+        char_background = CharacterBackground.get_or_create_for_character(character.id)
+        char_background.background = background
+        char_background.goals = goals
+        char_background.concept = concept
+        char_background.mark_for_review()
+        db.session.add(char_background)
+        db.session.commit()
+
     # Audit log for creation
     audit = CharacterAuditLog(
         character_id=character.id,

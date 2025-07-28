@@ -55,7 +55,6 @@ def review_background_post(background_id):
 
     # Update character information
     character = background.character
-    character.name = request.form.get("character_name", character.name)
     character.background = request.form.get("background", character.background)
     character.goals = request.form.get("goals", character.goals)
     character.concept = request.form.get("concept", character.concept)

@@ -7,7 +7,79 @@ from models.tools.user import User
 
 
 class TestCharacterBackgroundIntegration:
-    """Test character background integration with character editing"""
+    """Test character background integration with character editing and creation"""
+
+    def test_character_creation_with_background_fields(
+        self, test_client, regular_user, faction, species, db_session
+    ):
+        """Test that character creation includes background fields and flags for review"""
+        with test_client.session_transaction() as sess:
+            sess["_user_id"] = regular_user.id
+            sess["_fresh"] = True
+
+        # Submit character creation form with background data
+        data = {
+            "name": "New Character",
+            "pronouns_subject": "they",
+            "pronouns_object": "them",
+            "faction": str(faction.id),
+            "species_id": str(species.id),
+            "background": "New character background",
+            "goals": "New character goals",
+            "concept": "New character concept",
+        }
+
+        response = test_client.post("/characters/new", data=data)
+        assert response.status_code == 302  # Redirect
+
+        # Check that character was created with background fields
+        character = Character.query.filter_by(name="New Character").first()
+        assert character is not None
+        assert character.background == "New character background"
+        assert character.goals == "New character goals"
+        assert character.concept == "New character concept"
+
+        # Check that background was created and flagged for review
+        background = CharacterBackground.query.filter_by(character_id=character.id).first()
+        assert background is not None
+        assert background.background == "New character background"
+        assert background.goals == "New character goals"
+        assert background.concept == "New character concept"
+        assert background.needs_review is True
+
+    def test_character_creation_without_background_fields(
+        self, test_client, regular_user, faction, species, db_session
+    ):
+        """Test that character creation without background fields doesn't create review entry"""
+        with test_client.session_transaction() as sess:
+            sess["_user_id"] = regular_user.id
+            sess["_fresh"] = True
+
+        # Submit character creation form without background data
+        data = {
+            "name": "New Character No Background",
+            "pronouns_subject": "they",
+            "pronouns_object": "them",
+            "faction": str(faction.id),
+            "species_id": str(species.id),
+            "background": "",
+            "goals": "",
+            "concept": "",
+        }
+
+        response = test_client.post("/characters/new", data=data)
+        assert response.status_code == 302  # Redirect
+
+        # Check that character was created without background fields
+        character = Character.query.filter_by(name="New Character No Background").first()
+        assert character is not None
+        assert character.background is None or character.background == ""
+        assert character.goals is None or character.goals == ""
+        assert character.concept is None or character.concept == ""
+
+        # Check that no background review entry was created
+        background = CharacterBackground.query.filter_by(character_id=character.id).first()
+        assert background is None
 
     def test_character_edit_with_background_fields(
         self, test_client, regular_user, faction, species, db_session

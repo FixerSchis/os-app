@@ -167,7 +167,6 @@ class TestCharacterBackgroundsRoutes:
             sess["_fresh"] = True
 
         data = {
-            "character_name": "Updated Character",
             "background": "Updated background",
             "goals": "Updated goals",
             "concept": "Updated concept",
@@ -187,7 +186,7 @@ class TestCharacterBackgroundsRoutes:
 
         # Check that character was also updated
         db_session.refresh(character)
-        assert character.name == "Updated Character"
+        assert character.name == "Test Character"  # Name should not change
         assert character.background == "Updated background"
         assert character.goals == "Updated goals"
         assert character.concept == "Updated concept"
@@ -239,7 +238,7 @@ class TestCharacterBackgroundsRoutes:
 
         # Check that character was also updated
         db_session.refresh(character)
-        assert character.name == "Updated Character"
+        assert character.name == "Test Character"  # Name should not change
         assert character.background == "Updated background"
         assert character.goals == "Updated goals"
         assert character.concept == "Updated concept"
@@ -268,7 +267,6 @@ class TestCharacterBackgroundsRoutes:
             sess["_fresh"] = True
 
         data = {
-            "character_name": "Updated Character",
             "background": "Updated background",
             "goals": "Updated goals",
             "concept": "Updated concept",

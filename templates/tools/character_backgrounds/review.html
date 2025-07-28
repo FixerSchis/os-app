@@ -27,13 +27,13 @@
                     <div class="row">
                         <div class="col-md-6">
                             <div class="form-group mb-3">
-                                <label for="character_name" class="form-label">Character Name</label>
-                                <input type="text"
-                                       id="character_name"
-                                       name="character_name"
-                                       value="{{ background.character.name }}"
-                                       class="form-control"
-                                       required>
+                                <label class="form-label">Character Name</label>
+                                <div class="form-control-plaintext">
+                                    <strong>{{ background.character.name }}</strong>
+                                    {% if background.character.pronouns_subject and background.character.pronouns_object %}
+                                    <br><small class="text-muted">Pronouns: {{ background.character.pronouns_subject }}/{{ background.character.pronouns_object }}</small>
+                                    {% endif %}
+                                </div>
                             </div>
                         </div>
                         <div class="col-md-6">
@@ -42,7 +42,6 @@
                                 <div class="form-control-plaintext">
                                     <strong>Faction:</strong> {{ background.character.faction.name if background.character.faction else 'None' }}<br>
                                     <strong>Species:</strong> {{ background.character.species.name if background.character.species else 'None' }}<br>
-                                    <strong>Status:</strong> {{ background.character.status }}
                                 </div>
                             </div>
                         </div>
@@ -55,7 +54,6 @@
                                   class="form-control"
                                   rows="6"
                                   placeholder="Enter character background...">{{ background.background or '' }}</textarea>
-                        <div class="form-text">Free-text background information for the character.</div>
                     </div>
 
                     <div class="form-group mb-3">
@@ -65,7 +63,6 @@
                                   class="form-control"
                                   rows="4"
                                   placeholder="Enter character goals...">{{ background.goals or '' }}</textarea>
-                        <div class="form-text">Free-text goals for the character.</div>
                     </div>
 
                     <div class="form-group mb-3">
@@ -75,7 +72,6 @@
                                   class="form-control"
                                   rows="4"
                                   placeholder="Enter character concept...">{{ background.concept or '' }}</textarea>
-                        <div class="form-text">Free-text concept for the character.</div>
                     </div>
 
                     <div class="form-check mb-3">
@@ -84,11 +80,8 @@
                                name="mark_done"
                                class="form-check-input">
                         <label for="mark_done" class="form-check-label">
-                            <strong>Mark as reviewed</strong>
+                            <strong>Review Complete</strong>
                         </label>
-                        <div class="form-text">
-                            Check this box to mark this background as reviewed. This will remove it from the review list.
-                        </div>
                     </div>
 
                     <div class="d-flex gap-2">
