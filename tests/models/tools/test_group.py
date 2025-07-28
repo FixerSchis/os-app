@@ -46,3 +46,36 @@ def test_new_group_with_invite(db, character):
     retrieved_invite = retrieved_group.invites[0]
     assert retrieved_invite.character_id == character.id
     assert retrieved_invite.group_id == group.id
+
+
+def test_group_activation_deactivation(db, character):
+    """Test group activation and deactivation functionality."""
+    # Create a group type first
+    group_type = GroupType(
+        name="Military",
+        description="A military group type",
+        income_items_list=[],
+        income_items_discount=0.5,
+        income_substances=False,
+        income_substance_cost=0,
+        income_medicaments=False,
+        income_medicament_cost=0,
+        income_distribution_dict={"items": 50, "chits": 50},
+    )
+    db.session.add(group_type)
+    db.session.commit()
+
+    group = Group(name="Test Group", group_type_id=group_type.id, bank_account=1000)
+    db.session.add(group)
+    db.session.commit()
+
+    # Test initial state
+    assert group.is_active is True
+
+    # Test deactivation
+    group.deactivate(1, "Test deactivation")
+    assert group.is_active is False
+
+    # Test activation
+    group.activate(1, "Test activation")
+    assert group.is_active is True

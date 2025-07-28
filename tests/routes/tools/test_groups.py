@@ -249,8 +249,10 @@ def test_disband_group(test_client, new_user, db_session, military_group_type):
     data = {"character_id": character.id}
     resp = test_client.post(f"/groups/{group.id}/disband", data=data, follow_redirects=True)
     assert resp.status_code == 200
+    assert b"Group disbanded and deactivated" in resp.data
     disbanded_group = db_session.get(Group, group.id)
-    assert disbanded_group is None
+    assert disbanded_group is not None
+    assert disbanded_group.is_active is False
 
 
 def test_remove_character_admin(test_client, admin_user, db_session, military_group_type):
@@ -646,3 +648,301 @@ def test_group_audit_log_invite_declined(test_client, new_user, db_session, mili
     assert audit_log.action == GroupAuditAction.INVITE_DECLINED
     assert audit_log.editor_user_id == new_user.id
     assert "Invite declined by Char" in audit_log.changes
+
+
+def test_activate_group_admin(test_client, admin_user, db_session, military_group_type):
+    """Test that admins can activate inactive groups"""
+    group = Group(
+        name="Inactive Group", group_type_id=military_group_type.id, bank_account=0, is_active=False
+    )
+    db_session.add(group)
+    db_session.commit()
+
+    with test_client.session_transaction() as sess:
+        sess["_user_id"] = admin_user.id
+        sess["_fresh"] = True
+
+    resp = test_client.post(f"/groups/{group.id}/activate", follow_redirects=True)
+    assert resp.status_code == 200
+    assert b"Group activated successfully" in resp.data
+
+    db_session.refresh(group)
+    assert group.is_active is True
+
+
+def test_activate_group_member(test_client, new_user, db_session, military_group_type):
+    """Test that group members can activate their inactive group"""
+    group = Group(
+        name="Inactive Group", group_type_id=military_group_type.id, bank_account=0, is_active=False
+    )
+    character = Character(name="Char", user_id=new_user.id, status=CharacterStatus.ACTIVE.value)
+    db_session.add_all([group, character])
+    db_session.commit()
+    character.group_id = group.id
+    db_session.commit()
+
+    with test_client.session_transaction() as sess:
+        sess["_user_id"] = new_user.id
+        sess["_fresh"] = True
+
+    resp = test_client.post(f"/groups/{group.id}/activate", follow_redirects=True)
+    assert resp.status_code == 200
+    assert b"Group activated successfully" in resp.data
+
+    db_session.refresh(group)
+    assert group.is_active is True
+
+
+def test_activate_group_unauthorized(test_client, new_user, db_session, military_group_type):
+    """Test that non-members cannot activate groups"""
+    group = Group(
+        name="Inactive Group", group_type_id=military_group_type.id, bank_account=0, is_active=False
+    )
+    db_session.add(group)
+    db_session.commit()
+
+    with test_client.session_transaction() as sess:
+        sess["_user_id"] = new_user.id
+        sess["_fresh"] = True
+
+    resp = test_client.post(f"/groups/{group.id}/activate", follow_redirects=True)
+    assert resp.status_code == 403
+
+
+def test_deactivate_group_admin(test_client, admin_user, db_session, military_group_type):
+    """Test that admins can deactivate groups"""
+    group = Group(
+        name="Active Group", group_type_id=military_group_type.id, bank_account=0, is_active=True
+    )
+    db_session.add(group)
+    db_session.commit()
+
+    with test_client.session_transaction() as sess:
+        sess["_user_id"] = admin_user.id
+        sess["_fresh"] = True
+
+    resp = test_client.post(f"/groups/{group.id}/deactivate", follow_redirects=True)
+    assert resp.status_code == 200
+    assert b"Group deactivated successfully" in resp.data
+
+    db_session.refresh(group)
+    assert group.is_active is False
+
+
+def test_deactivate_group_with_members_admin(
+    test_client, admin_user, db_session, military_group_type
+):
+    """Test that admins can deactivate groups with members"""
+    group = Group(
+        name="Active Group", group_type_id=military_group_type.id, bank_account=0, is_active=True
+    )
+    character = Character(name="Char", user_id=admin_user.id, status=CharacterStatus.ACTIVE.value)
+    db_session.add_all([group, character])
+    db_session.commit()
+    character.group_id = group.id
+    db_session.commit()
+
+    with test_client.session_transaction() as sess:
+        sess["_user_id"] = admin_user.id
+        sess["_fresh"] = True
+
+    resp = test_client.post(f"/groups/{group.id}/deactivate", follow_redirects=True)
+    assert resp.status_code == 200
+    assert b"Group deactivated successfully" in resp.data
+
+    db_session.refresh(group)
+    assert group.is_active is False
+
+
+def test_deactivate_group_with_members_regular_user(
+    test_client, new_user, db_session, military_group_type
+):
+    """Test that regular users cannot deactivate groups with members"""
+    group = Group(
+        name="Active Group", group_type_id=military_group_type.id, bank_account=0, is_active=True
+    )
+    character = Character(name="Char", user_id=new_user.id, status=CharacterStatus.ACTIVE.value)
+    db_session.add_all([group, character])
+    db_session.commit()
+    character.group_id = group.id
+    db_session.commit()
+
+    with test_client.session_transaction() as sess:
+        sess["_user_id"] = new_user.id
+        sess["_fresh"] = True
+
+    resp = test_client.post(f"/groups/{group.id}/deactivate", follow_redirects=True)
+    assert resp.status_code == 200
+    assert b"Only administrators can deactivate groups with members" in resp.data
+
+    db_session.refresh(group)
+    assert group.is_active is True
+
+
+def test_deactivate_empty_group_regular_user(
+    test_client, new_user, db_session, military_group_type
+):
+    """Test that regular users can deactivate empty groups"""
+    group = Group(
+        name="Empty Group", group_type_id=military_group_type.id, bank_account=0, is_active=True
+    )
+    db_session.add(group)
+    db_session.commit()
+
+    with test_client.session_transaction() as sess:
+        sess["_user_id"] = new_user.id
+        sess["_fresh"] = True
+
+    resp = test_client.post(f"/groups/{group.id}/deactivate", follow_redirects=True)
+    assert resp.status_code == 200
+    assert b"Group deactivated successfully" in resp.data
+
+    db_session.refresh(group)
+    assert group.is_active is False
+
+
+def test_disband_group_deactivates(test_client, new_user, db_session, military_group_type):
+    """Test that disbanding a group deactivates it instead of deleting"""
+    group = Group(
+        name="Disband Group", group_type_id=military_group_type.id, bank_account=0, is_active=True
+    )
+    character = Character(name="Char", user_id=new_user.id, status=CharacterStatus.ACTIVE.value)
+    db_session.add_all([group, character])
+    db_session.commit()
+    character.group_id = group.id
+    db_session.commit()
+
+    with test_client.session_transaction() as sess:
+        sess["_user_id"] = new_user.id
+        sess["_fresh"] = True
+
+    data = {"character_id": character.id}
+    resp = test_client.post(f"/groups/{group.id}/disband", data=data, follow_redirects=True)
+    assert resp.status_code == 200
+    assert b"Group disbanded and deactivated" in resp.data
+
+    # Group should still exist but be inactive
+    db_session.refresh(group)
+    assert group.is_active is False
+    assert character.group_id is None
+
+
+def test_admin_list_shows_active_only_by_default(
+    test_client, admin_user, db_session, military_group_type
+):
+    """Test that admin list shows only active groups by default"""
+    active_group = Group(
+        name="Active Group", group_type_id=military_group_type.id, bank_account=0, is_active=True
+    )
+    inactive_group = Group(
+        name="Inactive Group", group_type_id=military_group_type.id, bank_account=0, is_active=False
+    )
+    db_session.add_all([active_group, inactive_group])
+    db_session.commit()
+
+    with test_client.session_transaction() as sess:
+        sess["_user_id"] = admin_user.id
+        sess["_fresh"] = True
+
+    resp = test_client.get("/groups/")
+    assert resp.status_code == 200
+
+    # Check that only the active group appears in the table
+    assert b"Active Group" in resp.data
+    # The inactive group should not appear in the table body
+    table_content = resp.data.decode("utf-8")
+    table_start = table_content.find("<tbody>")
+    table_end = table_content.find("</tbody>")
+    if table_start != -1 and table_end != -1:
+        table_body = table_content[table_start:table_end]
+        assert (
+            "Inactive Group" not in table_body
+        ), f"Inactive group found in table body: {table_body}"
+    else:
+        assert "Inactive Group" not in table_content
+
+
+def test_admin_list_shows_inactive_when_requested(
+    test_client, admin_user, db_session, military_group_type
+):
+    """Test that admin list shows inactive groups when requested"""
+    active_group = Group(
+        name="Active Group", group_type_id=military_group_type.id, bank_account=0, is_active=True
+    )
+    inactive_group = Group(
+        name="Inactive Group", group_type_id=military_group_type.id, bank_account=0, is_active=False
+    )
+    db_session.add_all([active_group, inactive_group])
+    db_session.commit()
+
+    with test_client.session_transaction() as sess:
+        sess["_user_id"] = admin_user.id
+        sess["_fresh"] = True
+
+    resp = test_client.get("/groups/?show_inactive=true")
+    assert resp.status_code == 200
+    assert b"Active Group" in resp.data
+    assert b"Inactive Group" in resp.data
+
+
+def test_edit_inactive_group_denied(test_client, new_user, db_session, military_group_type):
+    """Test that editing inactive groups is denied for regular users"""
+    group = Group(
+        name="Inactive Group", group_type_id=military_group_type.id, bank_account=0, is_active=False
+    )
+    character = Character(name="Char", user_id=new_user.id, status=CharacterStatus.ACTIVE.value)
+    db_session.add_all([group, character])
+    db_session.commit()
+    character.group_id = group.id
+    db_session.commit()
+
+    with test_client.session_transaction() as sess:
+        sess["_user_id"] = new_user.id
+        sess["_fresh"] = True
+
+    data = {"name": "Updated Name", "character_id": character.id}
+    resp = test_client.post(f"/groups/{group.id}/edit", data=data, follow_redirects=True)
+    assert resp.status_code == 200
+    assert b"Cannot edit inactive groups" in resp.data
+
+
+def test_edit_inactive_group_admin_allowed(
+    test_client, admin_user, db_session, military_group_type
+):
+    """Test that admins can edit inactive groups"""
+    group = Group(
+        name="Inactive Group", group_type_id=military_group_type.id, bank_account=0, is_active=False
+    )
+    db_session.add(group)
+    db_session.commit()
+
+    with test_client.session_transaction() as sess:
+        sess["_user_id"] = admin_user.id
+        sess["_fresh"] = True
+
+    data = {"name": "Updated Name"}
+    resp = test_client.post(f"/groups/{group.id}/edit", data=data, follow_redirects=True)
+    assert resp.status_code == 200
+    assert b"Group updated successfully" in resp.data
+
+
+def test_invite_to_inactive_group_denied(test_client, new_user, db_session, military_group_type):
+    """Test that inviting to inactive groups is denied"""
+    group = Group(
+        name="Inactive Group", group_type_id=military_group_type.id, bank_account=0, is_active=False
+    )
+    character = Character(name="Char", user_id=new_user.id, status=CharacterStatus.ACTIVE.value)
+    invitee = Character(name="Invitee", user_id=new_user.id, status=CharacterStatus.ACTIVE.value)
+    db_session.add_all([group, character, invitee])
+    db_session.commit()
+    character.group_id = group.id
+    db_session.commit()
+
+    with test_client.session_transaction() as sess:
+        sess["_user_id"] = new_user.id
+        sess["_fresh"] = True
+
+    data = {"character_id": invitee.id, "redirect_character_id": character.id}
+    resp = test_client.post(f"/groups/{group.id}/invite", data=data, follow_redirects=True)
+    assert resp.status_code == 200
+    assert b"Cannot invite to inactive groups" in resp.data
