@@ -73,6 +73,9 @@
                 <li class="dropdown">
                     <a href="#" class="dropbtn">Tools <i class="fas fa-caret-down"></i></a>
                     <div class="dropdown-content">
+                        {% if current_user.is_authenticated and current_user.has_role('admin') %}
+                            <a href="{{ url_for('database_management.database_management') }}">Database</a>
+                        {% endif %}
                         {% if current_user.is_authenticated and current_user.has_role('user_admin') %}
                             <a href="{{ url_for('user_management.user_management') }}">Users</a>
                         {% endif %}

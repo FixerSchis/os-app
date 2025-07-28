@@ -1,0 +1,78 @@
+{% extends "_template.html" %}
+
+{% block title %}Database Management{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/pages/database-management.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>Database Management</h1>
+
+    <!-- Database Status -->
+    <div class="database-status">
+        <h2>Database Status</h2>
+        <div class="status-grid">
+            <div class="status-item">
+                <div class="count">{{ current_version }}</div>
+                <div class="label">Current Version</div>
+            </div>
+        </div>
+
+        <h3>Database Contents</h3>
+        <div class="status-grid">
+            {% for name, count in stats.items() %}
+            <div class="status-item">
+                <div class="count">{{ count }}</div>
+                <div class="label">{{ name }}</div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Backup Management -->
+    <div class="backup-section">
+        <h2>Database Backups</h2>
+
+        <div class="backup-actions">
+            <button id="create-backup-btn" class="btn-create-backup">
+                <i class="fas fa-download"></i> Create Backup
+            </button>
+
+            <select id="backup-select" class="backup-select">
+                <option value="">Select a backup to restore...</option>
+                {% for backup in backups %}
+                <option value="{{ backup.filename }}" data-date="{{ backup.formatted_date }}" data-size="{{ backup.size }}">
+                    {{ backup.formatted_date }} ({{ (backup.size / 1024 / 1024) | round(2) }} MB)
+                </option>
+                {% endfor %}
+            </select>
+
+            <button id="restore-backup-btn" class="btn-restore-backup" disabled>
+                <i class="fas fa-upload"></i> Restore Backup
+            </button>
+        </div>
+
+        {% if backups %}
+        <div class="backup-list">
+            <h3>Available Backups</h3>
+            {% for backup in backups %}
+            <div class="backup-item">
+                <div class="backup-info">
+                    <div class="backup-date">{{ backup.formatted_date }}</div>
+                    <div class="backup-size">{{ (backup.size / 1024 / 1024) | round(2) }} MB</div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p>No backups available. Create your first backup using the button above.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/pages/database-management.js') }}"></script>
+{% endblock %}
