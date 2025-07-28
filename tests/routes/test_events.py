@@ -583,12 +583,27 @@ def test_adult_crew_ticket_exclusivity(test_client, authenticated_user, db):
     db.session.add(event)
     db.session.commit()
 
-    # Create a character for the user
+    # Create a group type and group
+    from models.database.group_type import GroupType
+    from models.tools.group import Group
+
+    group_type = GroupType(
+        name="Test Type", description="Test Description", income_distribution="{}"
+    )
+    db.session.add(group_type)
+    db.session.flush()
+
+    group = Group(name="Test Group", group_type_id=group_type.id)
+    db.session.add(group)
+    db.session.flush()
+
+    # Create a character for the user with a group
     character = Character(
         user_id=authenticated_user.id,
         character_id=1,
         name="Test Character",
         status="active",
+        group_id=group.id,
     )
     db.session.add(character)
     db.session.commit()
@@ -739,12 +754,27 @@ def test_child_tickets_with_adult_ticket(test_client, authenticated_user, db):
     db.session.add(event)
     db.session.commit()
 
-    # Create a character for the user
+    # Create a group type and group
+    from models.database.group_type import GroupType
+    from models.tools.group import Group
+
+    group_type = GroupType(
+        name="Test Type", description="Test Description", income_distribution="{}"
+    )
+    db.session.add(group_type)
+    db.session.flush()
+
+    group = Group(name="Test Group", group_type_id=group_type.id)
+    db.session.add(group)
+    db.session.flush()
+
+    # Create a character for the user with a group
     character = Character(
         user_id=authenticated_user.id,
         character_id=1,
         name="Test Character",
         status="active",
+        group_id=group.id,
     )
     db.session.add(character)
     db.session.commit()
@@ -891,7 +921,9 @@ def test_user_ticket_status_api(test_client, authenticated_user, db):
     assert data["has_crew_ticket"] is True
 
 
-def test_purchase_multiple_adult_tickets_for_same_user(test_client, db, npc_user_with_chars, event):
+def test_purchase_multiple_adult_tickets_for_same_user(
+    test_client, db, npc_user_with_chars, event, group
+):
     """
     GIVEN a user with multiple characters
     WHEN they purchase an adult ticket for one character
@@ -920,7 +952,9 @@ def test_purchase_multiple_adult_tickets_for_same_user(test_client, db, npc_user
     assert user_tickets[0].character_id == char1.id
 
 
-def test_purchase_conflicting_adult_and_crew_tickets(test_client, db, npc_user_with_chars, event):
+def test_purchase_conflicting_adult_and_crew_tickets(
+    test_client, db, npc_user_with_chars, event, group
+):
     """
     GIVEN a user with multiple characters
     WHEN they purchase a crew ticket

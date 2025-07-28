@@ -1230,11 +1230,20 @@ def character_group_status():
     if not character:
         return jsonify({"success": False, "error": "Character not found"})
 
+    # Safely get group name, handling cases where group might not exist
+    group_name = None
+    if character.group_id is not None:
+        try:
+            group_name = character.group.name if character.group else None
+        except Exception:
+            # If there's an issue accessing the group, just return None
+            group_name = None
+
     return jsonify(
         {
             "success": True,
             "has_group": character.group_id is not None,
-            "group_name": character.group.name if character.group else None,
+            "group_name": group_name,
             "character_name": character.name,
         }
     )

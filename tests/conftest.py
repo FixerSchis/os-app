@@ -266,19 +266,21 @@ def npc_user(db_session):
 
 
 @pytest.fixture(scope="function")
-def npc_user_with_chars(db_session, npc_user, species):
-    """Fixture for creating an NPC user with multiple active characters."""
+def npc_user_with_chars(db_session, npc_user, species, group):
+    """Fixture for creating an NPC user with multiple active characters with groups."""
     char1 = Character(
         name="NPC Char 1",
         user_id=npc_user.id,
         status=CharacterStatus.ACTIVE.value,
         species_id=species.id,
+        group_id=group.id,
     )
     char2 = Character(
         name="NPC Char 2",
         user_id=npc_user.id,
         status=CharacterStatus.ACTIVE.value,
         species_id=species.id,
+        group_id=group.id,
     )
     db_session.add_all([char1, char2])
     db_session.commit()
