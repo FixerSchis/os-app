@@ -6,8 +6,10 @@ from flask_login import current_user, login_required
 from models.database.conditions import Condition
 from models.database.cybernetic import CharacterCybernetic, Cybernetic
 from models.database.faction import Faction
+from models.database.item import Item
+from models.database.item_blueprint import ItemBlueprint
 from models.database.species import Species
-from models.enums import CharacterAuditAction, PrintTemplateType, Role
+from models.enums import AbilityType, CharacterAuditAction, PrintTemplateType, Role
 from models.extensions import db
 from models.tools.character import (
     Character,
@@ -674,6 +676,48 @@ def activate_character(character_id):
         user.spend_character_points(total_skill_cost - character.base_character_points)
 
     character.status = CharacterStatus.ACTIVE.value
+
+    # Handle starting items from species abilities
+    if character.species:
+        for ability in character.species.abilities:
+            if ability.type == AbilityType.STARTING_ITEM and ability.starting_item_blueprint_id:
+                # Create item from blueprint
+                blueprint = ItemBlueprint.query.get(ability.starting_item_blueprint_id)
+                if blueprint:
+                    # Get the next item ID for this blueprint
+                    max_item = (
+                        Item.query.filter_by(blueprint_id=blueprint.id)
+                        .order_by(Item.item_id.desc())
+                        .first()
+                    )
+                    next_item_id = (max_item.item_id + 1) if max_item else 1
+
+                    # Create the item
+                    item = Item(
+                        blueprint_id=blueprint.id,
+                        item_id=next_item_id,
+                        expiry=None,  # Starting items don't expire
+                    )
+                    db.session.add(item)
+                    db.session.flush()
+
+                    # Add item to character's pack
+                    # Get the current pack and modify it
+                    current_pack = character.pack
+                    current_pack.add_item(item.id)
+
+                    # Save the modified pack back to the character
+                    character.pack = current_pack
+
+                    # Add audit log for starting item
+                    item_audit = CharacterAuditLog(
+                        character_id=character.id,
+                        editor_user_id=current_user.id,
+                        action=CharacterAuditAction.STATUS_CHANGE.value,
+                        changes=f"Starting item added: {blueprint.name} ({item.full_code})",
+                    )
+                    db.session.add(item_audit)
+
     db.session.commit()
     # Audit log for activation
     audit = CharacterAuditLog(

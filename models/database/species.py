@@ -20,6 +20,9 @@ class Ability(db.Model):
     starting_skills = db.Column(db.String, nullable=True)
     skill_discounts = db.Column(db.String, nullable=True)
     additional_group_income = db.Column(db.Integer, nullable=True)
+    starting_item_blueprint_id = db.Column(
+        db.Integer, db.ForeignKey("item_blueprints.id"), nullable=True
+    )
 
     @property
     def starting_skills_list(self):
