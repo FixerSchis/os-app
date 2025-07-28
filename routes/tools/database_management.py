@@ -1,18 +1,16 @@
 import os
 import shutil
-import sqlite3
 from datetime import datetime
 from pathlib import Path
 
-from flask import Blueprint, current_app, flash, jsonify, render_template, request, url_for
-from flask_login import current_user, login_required
+from flask import Blueprint, current_app, flash, jsonify, render_template, request
+from flask_login import login_required
 from sqlalchemy import text
 
 from models.database.conditions import Condition
 from models.database.cybernetic import Cybernetic
 from models.database.exotic_substances import ExoticSubstance
 from models.database.faction import Faction
-from models.database.global_settings import GlobalSettings
 from models.database.group_type import GroupType
 from models.database.item import Item
 from models.database.item_blueprint import ItemBlueprint
@@ -140,7 +138,6 @@ def get_database_stats():
         "Species": Species,
         "Skills": Skill,
         "Group Types": GroupType,
-        "Global Settings": GlobalSettings,
         "Item Types": ItemType,
         "Item Blueprints": ItemBlueprint,
         "Items": Item,

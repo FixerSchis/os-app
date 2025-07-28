@@ -1,13 +1,9 @@
 from unittest.mock import MagicMock, patch
 
-import pytest
-from flask import url_for
-
 from routes.tools.database_management import (
     get_available_backups,
     get_backups_directory,
     get_current_database_version,
-    get_database_path,
     get_database_stats,
 )
 
