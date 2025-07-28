@@ -79,7 +79,8 @@ def create_event_post():
         location=request.form["location"],
         google_maps_link=(
             request.form["google_maps_link"]
-            if request.form["event_type"] in ["mainline", "sanctioned"]
+            if request.form["event_type"]
+            in ["mainline", "sanctioned-continuity", "sanctioned-chronicle"]
             else None
         ),
         meal_ticket_available=bool(request.form.get("meal_ticket_available")),
@@ -128,7 +129,8 @@ def edit_event_post(event_id):
     event.location = request.form["location"]
     event.google_maps_link = (
         request.form["google_maps_link"]
-        if request.form["event_type"] in ["mainline", "sanctioned"]
+        if request.form["event_type"]
+        in ["mainline", "sanctioned-continuity", "sanctioned-chronicle"]
         else None
     )
     event.meal_ticket_available = bool(request.form.get("meal_ticket_available"))
