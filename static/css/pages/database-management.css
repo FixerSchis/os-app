@@ -1,0 +1,214 @@
+/* Database Management Page Styles */
+
+.database-status {
+    background: var(--card-bg);
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.status-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-top: 15px;
+}
+
+.status-item {
+    background: var(--bg-secondary);
+    padding: 15px;
+    border-radius: 6px;
+    text-align: center;
+    transition: transform 0.2s ease;
+}
+
+.status-item:hover {
+    transform: translateY(-2px);
+}
+
+.status-item .count {
+    font-size: 2em;
+    font-weight: bold;
+    color: var(--primary-color);
+}
+
+.status-item .label {
+    font-size: 0.9em;
+    color: var(--text-secondary);
+    margin-top: 5px;
+}
+
+.backup-section {
+    background: var(--card-bg);
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.backup-actions {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    margin-top: 15px;
+    flex-wrap: wrap;
+}
+
+.backup-select {
+    min-width: 300px;
+    flex: 1;
+}
+
+.btn-create-backup {
+    background: var(--success-color);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background-color 0.2s ease;
+}
+
+.btn-create-backup:hover {
+    background: var(--success-hover);
+}
+
+.btn-restore-backup {
+    background: var(--warning-color);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background-color 0.2s ease;
+}
+
+.btn-restore-backup:hover {
+    background: var(--warning-hover);
+}
+
+.btn-restore-backup:disabled {
+    background: var(--disabled-color);
+    cursor: not-allowed;
+}
+
+.backup-list {
+    margin-top: 20px;
+}
+
+.backup-item {
+    background: var(--bg-secondary);
+    padding: 15px;
+    border-radius: 6px;
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: background-color 0.2s ease;
+}
+
+.backup-item:hover {
+    background: var(--bg-hover);
+}
+
+.backup-info {
+    flex: 1;
+}
+
+.backup-date {
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.backup-size {
+    font-size: 0.9em;
+    color: var(--text-secondary);
+    margin-top: 5px;
+}
+
+.loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.alert {
+    padding: 12px 16px;
+    border-radius: 6px;
+    margin-bottom: 15px;
+    animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.alert-success {
+    background: var(--success-bg);
+    color: var(--success-color);
+    border: 1px solid var(--success-border);
+}
+
+.alert-error {
+    background: var(--error-bg);
+    color: var(--error-color);
+    border: 1px solid var(--error-border);
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .backup-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .backup-select {
+        min-width: auto;
+    }
+
+    .status-grid {
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    }
+}
+
+/* Select2 customization */
+.select2-container--default .select2-selection--single {
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    height: 38px;
+}
+
+.select2-container--default .select2-selection--single .select2-selection__rendered {
+    color: var(--text-primary);
+    line-height: 36px;
+    padding-left: 12px;
+}
+
+.select2-container--default .select2-selection--single .select2-selection__arrow {
+    height: 36px;
+}
+
+.select2-dropdown {
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+}
+
+.select2-container--default .select2-results__option--highlighted[aria-selected] {
+    background-color: var(--primary-color);
+}
+
+.select2-results__option {
+    color: var(--text-primary);
+    padding: 8px 12px;
+}
