@@ -583,12 +583,27 @@ def test_adult_crew_ticket_exclusivity(test_client, authenticated_user, db):
     db.session.add(event)
     db.session.commit()
 
-    # Create a character for the user
+    # Create a group type and group
+    from models.database.group_type import GroupType
+    from models.tools.group import Group
+
+    group_type = GroupType(
+        name="Test Type", description="Test Description", income_distribution="{}"
+    )
+    db.session.add(group_type)
+    db.session.flush()
+
+    group = Group(name="Test Group", group_type_id=group_type.id)
+    db.session.add(group)
+    db.session.flush()
+
+    # Create a character for the user with a group
     character = Character(
         user_id=authenticated_user.id,
         character_id=1,
         name="Test Character",
         status="active",
+        group_id=group.id,
     )
     db.session.add(character)
     db.session.commit()
@@ -739,12 +754,27 @@ def test_child_tickets_with_adult_ticket(test_client, authenticated_user, db):
     db.session.add(event)
     db.session.commit()
 
-    # Create a character for the user
+    # Create a group type and group
+    from models.database.group_type import GroupType
+    from models.tools.group import Group
+
+    group_type = GroupType(
+        name="Test Type", description="Test Description", income_distribution="{}"
+    )
+    db.session.add(group_type)
+    db.session.flush()
+
+    group = Group(name="Test Group", group_type_id=group_type.id)
+    db.session.add(group)
+    db.session.flush()
+
+    # Create a character for the user with a group
     character = Character(
         user_id=authenticated_user.id,
         character_id=1,
         name="Test Character",
         status="active",
+        group_id=group.id,
     )
     db.session.add(character)
     db.session.commit()
@@ -891,7 +921,9 @@ def test_user_ticket_status_api(test_client, authenticated_user, db):
     assert data["has_crew_ticket"] is True
 
 
-def test_purchase_multiple_adult_tickets_for_same_user(test_client, db, npc_user_with_chars, event):
+def test_purchase_multiple_adult_tickets_for_same_user(
+    test_client, db, npc_user_with_chars, event, group
+):
     """
     GIVEN a user with multiple characters
     WHEN they purchase an adult ticket for one character
@@ -920,7 +952,9 @@ def test_purchase_multiple_adult_tickets_for_same_user(test_client, db, npc_user
     assert user_tickets[0].character_id == char1.id
 
 
-def test_purchase_conflicting_adult_and_crew_tickets(test_client, db, npc_user_with_chars, event):
+def test_purchase_conflicting_adult_and_crew_tickets(
+    test_client, db, npc_user_with_chars, event, group
+):
     """
     GIVEN a user with multiple characters
     WHEN they purchase a crew ticket
@@ -945,3 +979,176 @@ def test_purchase_conflicting_adult_and_crew_tickets(test_client, db, npc_user_w
     user_tickets = EventTicket.query.filter_by(user_id=user.id, event_id=event.id).all()
     assert len(user_tickets) == 1
     assert user_tickets[0].ticket_type == TicketType.CREW
+
+
+def test_purchase_ticket_character_without_group(test_client, authenticated_user, db):
+    """Test that purchasing tickets for characters without groups fails."""
+    # Create a test event
+    event = Event(
+        event_number="TEST007",
+        name="Test Event",
+        event_type="mainline",
+        description="A test event",
+        early_booking_deadline=datetime.now() + timedelta(days=30),
+        booking_deadline=datetime.now() + timedelta(days=40),
+        start_date=datetime.now() + timedelta(days=45),
+        end_date=datetime.now() + timedelta(days=47),
+        location="Test Location",
+        standard_ticket_price=50.00,
+        early_booking_ticket_price=45.00,
+        child_ticket_price_12_15=25.00,
+        child_ticket_price_7_11=15.00,
+        child_ticket_price_under_7=0.00,
+    )
+    db.session.add(event)
+    db.session.commit()
+
+    # Create a character without a group
+    character = Character(
+        user_id=authenticated_user.id,
+        character_id=1,
+        name="Test Character",
+        status="active",
+    )
+    db.session.add(character)
+    db.session.commit()
+
+    with test_client.session_transaction() as session:
+        session["_user_id"] = authenticated_user.id
+        session["_fresh"] = True
+
+    # Try to purchase a ticket for the character without a group
+    cart_data = json.dumps(
+        [
+            {
+                "ticketType": "adult",
+                "mealTicket": False,
+                "requiresBunk": False,
+                "ticketFor": "self",
+                "selfCharacterId": character.id,
+                "price": 50.0,
+            }
+        ]
+    )
+
+    response = test_client.post(
+        f"/events/{event.id}/purchase",
+        data={"cart": cart_data},
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    # Should redirect back to purchase page with error message
+    assert b"must be in a group" in response.data
+
+
+def test_assign_ticket_character_without_group(test_client, admin_user, db):
+    """Test that assigning tickets to characters without groups fails."""
+    # Create a test event
+    event = Event(
+        event_number="TEST008",
+        name="Test Event",
+        event_type="mainline",
+        description="A test event",
+        early_booking_deadline=datetime.now() + timedelta(days=30),
+        booking_deadline=datetime.now() + timedelta(days=40),
+        start_date=datetime.now() + timedelta(days=45),
+        end_date=datetime.now() + timedelta(days=47),
+        location="Test Location",
+        standard_ticket_price=50.00,
+        early_booking_ticket_price=45.00,
+        child_ticket_price_12_15=25.00,
+        child_ticket_price_7_11=15.00,
+        child_ticket_price_under_7=0.00,
+    )
+    db.session.add(event)
+    db.session.commit()
+
+    # Create a character without a group
+    character = Character(
+        user_id=admin_user.id,
+        character_id=1,
+        name="Test Character",
+        status="active",
+    )
+    db.session.add(character)
+    db.session.commit()
+
+    with test_client.session_transaction() as session:
+        session["_user_id"] = admin_user.id
+        session["_fresh"] = True
+
+    # Try to assign a ticket to the character without a group
+    response = test_client.post(
+        f"/events/{event.id}/assign",
+        data={
+            "ticket_type": "adult",
+            "character": f"{admin_user.id}.1",
+            "meal_ticket": False,
+            "requires_bunk": False,
+            "price_paid": 50.0,
+        },
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    # Should redirect back to assign page with error message
+    assert b"must be in a group" in response.data
+
+
+def test_character_group_status_api(test_client, authenticated_user, db):
+    """Test the character group status API endpoint."""
+    # Create a character without a group
+    character = Character(
+        user_id=authenticated_user.id,
+        character_id=1,
+        name="Test Character",
+        status="active",
+    )
+    db.session.add(character)
+    db.session.commit()
+
+    with test_client.session_transaction() as session:
+        session["_user_id"] = authenticated_user.id
+        session["_fresh"] = True
+
+    # Test API for character without group
+    response = test_client.get(
+        f"/events/api/character_group_status?character_id={authenticated_user.id}.1"
+    )
+    assert response.status_code == 200
+
+    data = json.loads(response.data)
+    assert data["success"] is True
+    assert data["has_group"] is False
+    assert data["character_name"] == "Test Character"
+    assert data["group_name"] is None
+
+    # Create a group and add the character to it
+    from models.database.group_type import GroupType
+    from models.tools.group import Group
+
+    group_type = GroupType(
+        name="Test Type", description="Test Description", income_distribution="{}"  # Required field
+    )
+    db.session.add(group_type)
+    db.session.flush()
+
+    group = Group(name="Test Group", group_type_id=group_type.id)
+    db.session.add(group)
+    db.session.flush()
+
+    character.group_id = group.id
+    db.session.commit()
+
+    # Test API for character with group
+    response = test_client.get(
+        f"/events/api/character_group_status?character_id={authenticated_user.id}.1"
+    )
+    assert response.status_code == 200
+
+    data = json.loads(response.data)
+    assert data["success"] is True
+    assert data["has_group"] is True
+    assert data["character_name"] == "Test Character"
+    assert data["group_name"] == "Test Group"

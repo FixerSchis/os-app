@@ -321,13 +321,13 @@ def test_add_character_admin(test_client, admin_user, db_session, military_group
     assert character.group_id == group.id
 
 
-def test_group_list_for_multi_char_user(test_client, npc_user_with_chars):
+def test_group_list_for_multi_char_user(test_client, npc_user_with_chars_no_groups):
     """
     GIVEN a logged-in NPC user with multiple active characters
     WHEN they visit the group page
     THEN they should see a character selection dropdown
     """
-    user, char1, char2 = npc_user_with_chars
+    user, char1, char2 = npc_user_with_chars_no_groups
     with test_client.session_transaction() as sess:
         sess["_user_id"] = user.id
         sess["_fresh"] = True
@@ -342,14 +342,14 @@ def test_group_list_for_multi_char_user(test_client, npc_user_with_chars):
 
 
 def test_group_creation_for_multi_char_user(
-    test_client, db_session, npc_user_with_chars, military_group_type
+    test_client, db_session, npc_user_with_chars_no_groups, military_group_type
 ):
     """
     GIVEN a logged-in NPC user with multiple active characters
     WHEN they create a new group
     THEN the group should be associated with the selected character
     """
-    user, char1, char2 = npc_user_with_chars
+    user, char1, char2 = npc_user_with_chars_no_groups
     with test_client.session_transaction() as sess:
         sess["_user_id"] = user.id
         sess["_fresh"] = True
@@ -372,7 +372,9 @@ def test_group_creation_for_multi_char_user(
     assert char2.group_id is None
 
 
-def test_admin_group_view_switching(test_client, db_session, admin_user, npc_user_with_chars):
+def test_admin_group_view_switching(
+    test_client, db_session, admin_user, npc_user_with_chars_no_groups
+):
     """Admin can switch between admin and user views"""
     with test_client.session_transaction() as sess:
         sess["_user_id"] = admin_user.id
