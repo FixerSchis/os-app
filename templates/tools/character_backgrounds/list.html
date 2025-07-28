@@ -1,0 +1,90 @@
+{% extends "_template.html" %}
+
+{% block title %}Character Backgrounds - Orion Sphere LRP{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+    <div class="character-backgrounds">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="h2 mb-0">Character Backgrounds</h1>
+        </div>
+
+        {% if backgrounds %}
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title mb-0">Backgrounds Needing Review</h3>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Character</th>
+                                <th>Owner</th>
+                                <th>Background</th>
+                                <th>Goals</th>
+                                <th>Concept</th>
+                                <th>Updated</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for background in backgrounds %}
+                            <tr>
+                                <td>
+                                    <strong>{{ background.character.name }}</strong>
+                                    {% if background.character.character_id %}
+                                    <br><small class="text-muted">ID: {{ background.character.character_id }}</small>
+                                    {% endif %}
+                                </td>
+                                <td>{{ background.character.user.first_name }} {{ background.character.user.surname }}</td>
+                                <td>
+                                    {% if background.background %}
+                                    <div class="text-truncate" style="max-width: 200px;" title="{{ background.background }}">
+                                        {{ background.background[:100] }}{% if background.background|length > 100 %}...{% endif %}
+                                    </div>
+                                    {% else %}
+                                    <span class="text-muted">No background</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if background.goals %}
+                                    <div class="text-truncate" style="max-width: 200px;" title="{{ background.goals }}">
+                                        {{ background.goals[:100] }}{% if background.goals|length > 100 %}...{% endif %}
+                                    </div>
+                                    {% else %}
+                                    <span class="text-muted">No goals</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if background.concept %}
+                                    <div class="text-truncate" style="max-width: 200px;" title="{{ background.concept }}">
+                                        {{ background.concept[:100] }}{% if background.concept|length > 100 %}...{% endif %}
+                                    </div>
+                                    {% else %}
+                                    <span class="text-muted">No concept</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ background.updated_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                <td>
+                                    <a href="{{ url_for('character_backgrounds.review_background', background_id=background.id) }}"
+                                       class="btn btn-primary btn-sm">
+                                        <i class="fas fa-eye me-1"></i>Review
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle me-2"></i>
+            No character backgrounds currently need review.
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

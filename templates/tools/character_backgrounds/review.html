@@ -1,0 +1,107 @@
+{% extends "_template.html" %}
+
+{% block title %}Review Background - {{ background.character.name }} - Orion Sphere LRP{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+    <div class="character-background-review">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="h2 mb-0">Review Background</h1>
+            <a href="{{ url_for('character_backgrounds.list_backgrounds') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left me-1"></i>Back to List
+            </a>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title mb-0">{{ background.character.name }}</h3>
+                <small class="text-muted">
+                    Owner: {{ background.character.user.first_name }} {{ background.character.user.surname }}
+                    {% if background.character.character_id %}
+                    | ID: {{ background.character.character_id }}
+                    {% endif %}
+                </small>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group mb-3">
+                                <label for="character_name" class="form-label">Character Name</label>
+                                <input type="text"
+                                       id="character_name"
+                                       name="character_name"
+                                       value="{{ background.character.name }}"
+                                       class="form-control"
+                                       required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group mb-3">
+                                <label class="form-label">Character Details</label>
+                                <div class="form-control-plaintext">
+                                    <strong>Faction:</strong> {{ background.character.faction.name if background.character.faction else 'None' }}<br>
+                                    <strong>Species:</strong> {{ background.character.species.name if background.character.species else 'None' }}<br>
+                                    <strong>Status:</strong> {{ background.character.status }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label for="background" class="form-label">Background</label>
+                        <textarea id="background"
+                                  name="background"
+                                  class="form-control"
+                                  rows="6"
+                                  placeholder="Enter character background...">{{ background.background or '' }}</textarea>
+                        <div class="form-text">Free-text background information for the character.</div>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label for="goals" class="form-label">Goals</label>
+                        <textarea id="goals"
+                                  name="goals"
+                                  class="form-control"
+                                  rows="4"
+                                  placeholder="Enter character goals...">{{ background.goals or '' }}</textarea>
+                        <div class="form-text">Free-text goals for the character.</div>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label for="concept" class="form-label">Concept</label>
+                        <textarea id="concept"
+                                  name="concept"
+                                  class="form-control"
+                                  rows="4"
+                                  placeholder="Enter character concept...">{{ background.concept or '' }}</textarea>
+                        <div class="form-text">Free-text concept for the character.</div>
+                    </div>
+
+                    <div class="form-check mb-3">
+                        <input type="checkbox"
+                               id="mark_done"
+                               name="mark_done"
+                               class="form-check-input">
+                        <label for="mark_done" class="form-check-label">
+                            <strong>Mark as reviewed</strong>
+                        </label>
+                        <div class="form-text">
+                            Check this box to mark this background as reviewed. This will remove it from the review list.
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-1"></i>Save Changes
+                        </button>
+                        <a href="{{ url_for('character_backgrounds.list_backgrounds') }}" class="btn btn-secondary">
+                            <i class="fas fa-times me-1"></i>Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

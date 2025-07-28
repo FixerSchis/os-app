@@ -44,6 +44,7 @@ from routes.database.species import species_bp  # noqa: E402
 from routes.events import events_bp  # noqa: E402
 from routes.settings import settings_bp  # noqa: E402
 from routes.tools.banking import banking_bp  # noqa: E402
+from routes.tools.character_backgrounds import character_backgrounds_bp  # noqa: E402
 from routes.tools.character_skills import character_skills_bp  # noqa: E402
 from routes.tools.characters import characters_bp  # noqa: E402
 from routes.tools.database_management import database_management_bp  # noqa: E402
@@ -144,6 +145,7 @@ def create_app(config_class=None):
     # Register blueprints
     app.register_blueprint(auth_bp, url_prefix="/auth")
     app.register_blueprint(banking_bp, url_prefix="/banking")
+    app.register_blueprint(character_backgrounds_bp, url_prefix="/tools/character-backgrounds")
     app.register_blueprint(downtime_bp, url_prefix="/downtime")
     app.register_blueprint(events_bp, url_prefix="/events")
     app.register_blueprint(groups_bp, url_prefix="/groups")
