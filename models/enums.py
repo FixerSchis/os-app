@@ -171,6 +171,8 @@ class GroupAuditAction(Enum):
     FUNDS_WITHDRAWN = "funds_withdrawn"
     FUNDS_SET = "funds_set"
     DISBANDED = "disbanded"
+    DEACTIVATED = "deactivated"
+    ACTIVATED = "activated"
 
     @classmethod
     def descriptions(cls):
@@ -186,6 +188,8 @@ class GroupAuditAction(Enum):
             cls.FUNDS_WITHDRAWN.value: "Funds Withdrawn",
             cls.FUNDS_SET.value: "Funds Set",
             cls.DISBANDED.value: "Disbanded",
+            cls.DEACTIVATED.value: "Deactivated",
+            cls.ACTIVATED.value: "Activated",
         }
 
 

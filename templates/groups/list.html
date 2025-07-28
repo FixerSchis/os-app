@@ -34,31 +34,42 @@
         <div class="card mb-4">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h2>Your Group</h2>
-                <a href="{{ url_for('groups.group_audit_log', group_id=character.group.id) }}" class="btn btn-outline-info">
-                    <i class="fas fa-history me-1"></i> View Audit Log
-                </a>
+                <div>
+                    {% if not character.group.is_active %}
+                        <span class="badge bg-warning me-2">Inactive</span>
+                    {% endif %}
+                    <a href="{{ url_for('groups.group_audit_log', group_id=character.group.id) }}" class="btn btn-outline-info">
+                        <i class="fas fa-history me-1"></i> View Audit Log
+                    </a>
+                </div>
             </div>
             <div class="card-body">
-                <form method="POST" action="{{ url_for('groups.edit_group_post', group_id=character.group.id) }}" class="mb-4">
-                    <input type="hidden" name="admin_view" value="false">
-                    <input type="hidden" name="character_id" value="{{ character.id }}">
-                    <div class="form-group mb-3">
-                        <label for="name">Group Name</label>
-                        <input type="text" class="form-control" id="name" name="name" value="{{ character.group.name }}" required>
-                    </div>
+                {% if character.group.is_active %}
+                    <form method="POST" action="{{ url_for('groups.edit_group_post', group_id=character.group.id) }}" class="mb-4">
+                        <input type="hidden" name="admin_view" value="false">
+                        <input type="hidden" name="character_id" value="{{ character.id }}">
+                        <div class="form-group mb-3">
+                            <label for="name">Group Name</label>
+                            <input type="text" class="form-control" id="name" name="name" value="{{ character.group.name }}" required>
+                        </div>
 
-                    <div class="form-group mb-3">
-                        <label>Group Type</label>
-                        <input type="text" class="form-control" value="{{ character.group.group_type.name }}" readonly>
-                    </div>
+                        <div class="form-group mb-3">
+                            <label>Group Type</label>
+                            <input type="text" class="form-control" value="{{ character.group.group_type.name }}" readonly>
+                        </div>
 
-                    <div class="form-group mb-3">
-                        <label>Bank Balance</label>
-                        <input type="text" class="form-control" value="{{ character.group.bank_account }}" readonly>
-                    </div>
+                        <div class="form-group mb-3">
+                            <label>Bank Balance</label>
+                            <input type="text" class="form-control" value="{{ character.group.bank_account }}" readonly>
+                        </div>
 
-                    <button type="submit" class="btn btn-primary">Update Group Name</button>
-                </form>
+                        <button type="submit" class="btn btn-primary">Update Group Name</button>
+                    </form>
+                {% else %}
+                    <div class="alert alert-warning">
+                        <strong>Group is inactive.</strong> You cannot edit an inactive group. Please reactivate it first.
+                    </div>
+                {% endif %}
 
                 <h3>Members</h3>
                 <table class="table">
@@ -91,36 +102,50 @@
                     {% endif %}
                 </div>
 
-                <div class="mt-4">
-                    <h3>Invite Character</h3>
-                    <form method="POST" action="{{ url_for('groups.invite_to_group', group_id=character.group.id) }}">
-                        <input type="hidden" name="admin_view" value="false">
-                        <input type="hidden" name="redirect_character_id" value="{{ character.id }}">
-                        <div class="input-group">
-                            <select class="form-control" name="character_id" required>
-                                <option value="">Select Character to Invite</option>
-                                {% for char in active_characters %}
-                                <option value="{{ char.id }}">{{ char.name }} ({{ char.faction.name }})</option>
-                                {% endfor %}
-                            </select>
-                            <button type="submit" class="btn btn-primary">Send Invite</button>
+                {% if character.group.is_active %}
+                    <div class="mt-4">
+                        <h3>Invite Character</h3>
+                        <form method="POST" action="{{ url_for('groups.invite_to_group', group_id=character.group.id) }}">
+                            <input type="hidden" name="admin_view" value="false">
+                            <input type="hidden" name="redirect_character_id" value="{{ character.id }}">
+                            <div class="input-group">
+                                <select class="form-control" name="character_id" required>
+                                    <option value="">Select Character to Invite</option>
+                                    {% for char in active_characters %}
+                                    <option value="{{ char.id }}">{{ char.name }} ({{ char.faction.name }})</option>
+                                    {% endfor %}
+                                </select>
+                                <button type="submit" class="btn btn-primary">Send Invite</button>
+                            </div>
+                        </form>
+                    </div>
+                {% else %}
+                    <div class="mt-4">
+                        <div class="alert alert-info">
+                            <strong>Group is inactive.</strong> You cannot invite characters to an inactive group.
                         </div>
-                    </form>
-                </div>
+                    </div>
+                {% endif %}
             </div>
             <div class="card-footer d-flex">
-                {% if character.group.characters|length > 1 %}
-                    <form method="POST" action="{{ url_for('groups.leave_group_post', group_id=character.group.id) }}" id="leaveGroupForm" class="mr-2">
-                        <input type="hidden" name="admin_view" value="false">
-                        <input type="hidden" name="character_id" value="{{ character.id }}">
-                        <button type="button" class="btn btn-warning confirmation-trigger" data-form="leaveGroupForm" data-message="Are you sure you want to leave the group?">Leave Group</button>
-                    </form>
+                {% if character.group.is_active %}
+                    {% if character.group.characters|length > 1 %}
+                        <form method="POST" action="{{ url_for('groups.leave_group_post', group_id=character.group.id) }}" id="leaveGroupForm" class="mr-2">
+                            <input type="hidden" name="admin_view" value="false">
+                            <input type="hidden" name="character_id" value="{{ character.id }}">
+                            <button type="button" class="btn btn-warning confirmation-trigger" data-form="leaveGroupForm" data-message="Are you sure you want to leave the group?">Leave Group</button>
+                        </form>
+                    {% else %}
+                        <form method="POST" action="{{ url_for('groups.disband_group_post', group_id=character.group.id) }}" id="disbandGroupForm-last-member" class="mr-2">
+                            <input type="hidden" name="admin_view" value="false">
+                            <input type="hidden" name="character_id" value="{{ character.id }}">
+                            <button type="button" class="btn btn-danger confirmation-trigger" data-form="disbandGroupForm-last-member" data-message="Are you sure you want to disband the group?">Disband Group</button>
+                        </form>
+                    {% endif %}
                 {% else %}
-                    <form method="POST" action="{{ url_for('groups.disband_group_post', group_id=character.group.id) }}" id="disbandGroupForm-last-member" class="mr-2">
-                        <input type="hidden" name="admin_view" value="false">
-                        <input type="hidden" name="character_id" value="{{ character.id }}">
-                        <button type="button" class="btn btn-danger confirmation-trigger" data-form="disbandGroupForm-last-member" data-message="Are you sure you want to disband the group?">Disband Group</button>
-                    </form>
+                    <div class="text-muted">
+                        <em>Group actions are disabled while the group is inactive.</em>
+                    </div>
                 {% endif %}
             </div>
         </div>
@@ -193,6 +218,23 @@
             </div>
         </div>
         {% endif %}
+    {% endif %}
+
+    <!-- Inactive Groups Section -->
+    {% if character.group and not character.group.is_active %}
+        <div class="card mb-4">
+            <div class="card-header bg-warning">
+                <h2>Inactive Group</h2>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">Your group is currently inactive. You can reactivate it if you wish to continue using it.</p>
+                <form method="POST" action="{{ url_for('groups.activate_group', group_id=character.group.id) }}">
+                    <input type="hidden" name="admin_view" value="false">
+                    <input type="hidden" name="character_id" value="{{ character.id }}">
+                    <button type="submit" class="btn btn-success">Reactivate Group</button>
+                </form>
+            </div>
+        </div>
     {% endif %}
 </div>
 

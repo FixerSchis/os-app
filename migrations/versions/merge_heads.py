@@ -11,7 +11,11 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "merge_heads"
-down_revision = ("add_notify_message_responded_column", "add_dark_mode_column")
+down_revision = (
+    "add_notify_message_responded_column",
+    "add_dark_mode_column",
+    "add_is_active_to_group",
+)
 branch_labels = None
 depends_on = None
 

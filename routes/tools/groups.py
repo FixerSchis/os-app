@@ -28,9 +28,16 @@ def group_list():
     )
 
     if is_admin_and_wants_admin_view:
-        groups = Group.query.all()
+        show_inactive = request.args.get("show_inactive", "false") == "true"
+        if show_inactive:
+            groups = Group.query.all()
+        else:
+            groups = Group.query.filter_by(is_active=True).all()
         return render_template(
-            "groups/admin_list.html", groups=groups, group_types=GroupType.query.all()
+            "groups/admin_list.html",
+            groups=groups,
+            group_types=GroupType.query.all(),
+            show_inactive=show_inactive,
         )
 
     # From here, it's the user view (for non-admins, or admins who've switched)
@@ -62,6 +69,9 @@ def group_list():
         .filter(Character.group_id.is_(None), Character.faction_id == active_character.faction_id)
         .all()
     )
+
+    # Get active groups for the character's faction (for future use)
+    # active_groups = Group.query.filter_by(is_active=True).all()
 
     return render_template(
         "groups/list.html",
@@ -143,6 +153,15 @@ def edit_group_post(group_id):
     admin_view = request.form.get("admin_view")
     character_id = request.form.get("character_id")
 
+    # Prevent editing inactive groups (unless user is admin)
+    if not group.is_active and not current_user.has_role(Role.USER_ADMIN.value):
+        flash("Cannot edit inactive groups", "error")
+        if admin_view == "false":
+            return redirect(
+                url_for("groups.group_list", admin_view="false", character_id=character_id)
+            )
+        return redirect(url_for("groups.group_list"))
+
     if not name:
         flash("Name is required", "error")
         return redirect(url_for("groups.group_list"))
@@ -159,9 +178,18 @@ def edit_group_post(group_id):
         group.group_type_id = int(type)
 
     # Handle bank account changes using centralized methods
-    if current_user.has_role(Role.USER_ADMIN.value):
-        if group.bank_account != bank_account:
-            group.set_funds(bank_account, current_user.id, "Admin group edit")
+    if current_user.has_role(Role.USER_ADMIN.value) and bank_account:
+        try:
+            bank_account_int = int(bank_account)
+            if group.bank_account != bank_account_int:
+                group.set_funds(bank_account_int, current_user.id, "Admin group edit")
+        except ValueError:
+            flash("Bank account must be a number", "error")
+            if admin_view == "false":
+                return redirect(
+                    url_for("groups.group_list", admin_view="false", character_id=character_id)
+                )
+            return redirect(url_for("groups.group_list"))
 
     group.name = name
 
@@ -190,6 +218,15 @@ def invite_to_group(group_id):
     group = Group.query.get_or_404(group_id)
     admin_view = request.form.get("admin_view")
     redirect_character_id = request.form.get("redirect_character_id")
+
+    # Prevent inviting to inactive groups
+    if not group.is_active:
+        flash("Cannot invite to inactive groups", "error")
+        if admin_view == "false":
+            return redirect(
+                url_for("groups.group_list", admin_view="false", character_id=redirect_character_id)
+            )
+        return redirect(url_for("groups.group_list"))
 
     if redirect_character_id:
         character = Character.query.get_or_404(redirect_character_id)
@@ -371,29 +408,18 @@ def disband_group_post(group_id):
         flash("Cannot disband group with multiple members", "error")
         return redirect(url_for("groups.group_list", character_id=character_id))
 
-    # Create audit log for group disbanding
-    audit_log = GroupAuditLog(
-        group_id=group.id,
-        editor_user_id=current_user.id,
-        action=GroupAuditAction.DISBANDED.value,
-        changes=f"Group disbanded by {character.name}",
-    )
-    db.session.add(audit_log)
-
     # Remove character from group
     character.group_id = None
 
     # Delete all invites for this group
     GroupInvite.query.filter_by(group_id=group_id).delete()
 
-    # Delete all audit logs for this group
-    GroupAuditLog.query.filter_by(group_id=group_id).delete()
+    # Deactivate the group instead of deleting it
+    group.deactivate(current_user.id, f"Group disbanded by {character.name}")
 
-    # Delete the group
-    db.session.delete(group)
     db.session.commit()
 
-    flash("Group disbanded.", "success")
+    flash("Group disbanded and deactivated.", "success")
     return redirect(url_for("groups.group_list", admin_view=admin_view, character_id=character_id))
 
 
@@ -665,3 +691,67 @@ def group_audit_log(group_id):
         audit_logs=audit_logs,
         GroupAuditAction=GroupAuditAction,
     )
+
+
+@groups_bp.route("/<int:group_id>/activate", methods=["POST"])
+@login_required
+@email_verified_required
+def activate_group(group_id):
+    group = Group.query.get_or_404(group_id)
+    admin_view = request.form.get("admin_view")
+    character_id = request.form.get("character_id")
+
+    # Check if user is admin or if user has a character in this group
+    user_has_access = False
+    if current_user.has_role(Role.USER_ADMIN.value):
+        user_has_access = True
+    else:
+        # Check if any of user's characters are in this group
+        user_characters = Character.query.filter_by(user_id=current_user.id).all()
+        for character in user_characters:
+            if character.group_id == group.id:
+                user_has_access = True
+                break
+
+    if not user_has_access:
+        abort(403)
+
+    if group.is_active:
+        flash("Group is already active", "info")
+    else:
+        group.activate(current_user.id, "Group reactivated")
+        db.session.commit()
+        flash("Group activated successfully", "success")
+
+    if admin_view == "false":
+        return redirect(url_for("groups.group_list", admin_view="false", character_id=character_id))
+    return redirect(url_for("groups.group_list"))
+
+
+@groups_bp.route("/<int:group_id>/deactivate", methods=["POST"])
+@login_required
+@email_verified_required
+def deactivate_group(group_id):
+    group = Group.query.get_or_404(group_id)
+    admin_view = request.form.get("admin_view")
+    character_id = request.form.get("character_id")
+
+    # Only user-admins can deactivate groups with characters in them
+    if len(group.characters) > 0 and not current_user.has_role(Role.USER_ADMIN.value):
+        flash("Only administrators can deactivate groups with members", "error")
+        if admin_view == "false":
+            return redirect(
+                url_for("groups.group_list", admin_view="false", character_id=character_id)
+            )
+        return redirect(url_for("groups.group_list"))
+
+    if not group.is_active:
+        flash("Group is already inactive", "info")
+    else:
+        group.deactivate(current_user.id, "Group deactivated")
+        db.session.commit()
+        flash("Group deactivated successfully", "success")
+
+    if admin_view == "false":
+        return redirect(url_for("groups.group_list", admin_view="false", character_id=character_id))
+    return redirect(url_for("groups.group_list"))

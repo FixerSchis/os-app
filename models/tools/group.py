@@ -11,6 +11,7 @@ class Group(db.Model):
     bank_account = db.Column(db.Integer, nullable=False, default=0)
     group_pack = db.Column(db.String, nullable=True)  # JSON string
     pack_complete = db.Column(db.Boolean, nullable=False, default=False)
+    is_active = db.Column(db.Boolean, nullable=False, default=True)
     created_at = db.Column(db.DateTime, nullable=False, default=db.func.now())
     updated_at = db.Column(
         db.DateTime, nullable=False, default=db.func.now(), onupdate=db.func.now()
@@ -64,6 +65,28 @@ class Group(db.Model):
             editor_user_id=editor_user_id,
             action=GroupAuditAction.FUNDS_SET,
             changes=f"Funds set from {old_balance} to {new_balance} for {reason}",
+        )
+        db.session.add(audit_log)
+
+    def deactivate(self, editor_user_id, reason):
+        """Deactivate the group with audit logging."""
+        self.is_active = False
+        audit_log = GroupAuditLog(
+            group_id=self.id,
+            editor_user_id=editor_user_id,
+            action=GroupAuditAction.DEACTIVATED,
+            changes=f"Group deactivated: {reason}",
+        )
+        db.session.add(audit_log)
+
+    def activate(self, editor_user_id, reason):
+        """Activate the group with audit logging."""
+        self.is_active = True
+        audit_log = GroupAuditLog(
+            group_id=self.id,
+            editor_user_id=editor_user_id,
+            action=GroupAuditAction.ACTIVATED,
+            changes=f"Group activated: {reason}",
         )
         db.session.add(audit_log)
 

@@ -17,6 +17,21 @@
             </div>
         </div>
 
+        <div class="card mb-4">
+            <div class="card-body">
+                <form method="GET" class="d-flex align-items-center">
+                    <div class="form-check me-3">
+                        <input class="form-check-input" type="checkbox" id="show_inactive" name="show_inactive" value="true"
+                               {% if show_inactive %}checked{% endif %}>
+                        <label class="form-check-label" for="show_inactive">
+                            Show Inactive Groups
+                        </label>
+                    </div>
+                    <button type="submit" class="btn btn-outline-primary btn-sm">Apply Filter</button>
+                </form>
+            </div>
+        </div>
+
         <div class="card">
             <div class="card-body">
                 <table class="table">
@@ -27,6 +42,7 @@
                             <th>Bank Account</th>
                             <th>Members</th>
                             <th>Samples</th>
+                            <th>Status</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -53,8 +69,24 @@
                                 {% endif %}
                             </td>
                             <td>
+                                {% if group.is_active %}
+                                    <span class="badge bg-success">Active</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Inactive</span>
+                                {% endif %}
+                            </td>
+                            <td>
                                 <a href="{{ url_for('groups.edit_group_admin', group_id=group.id) }}" class="btn btn-primary btn-sm">Edit</a>
                                 <a href="{{ url_for('groups.group_audit_log', group_id=group.id) }}" class="btn btn-info btn-sm">Audit Log</a>
+                                {% if group.is_active %}
+                                    <form method="POST" action="{{ url_for('groups.deactivate_group', group_id=group.id) }}" style="display: inline;">
+                                        <button type="submit" class="btn btn-warning btn-sm" onclick="return confirm('Are you sure you want to deactivate this group?')">Deactivate</button>
+                                    </form>
+                                {% else %}
+                                    <form method="POST" action="{{ url_for('groups.activate_group', group_id=group.id) }}" style="display: inline;">
+                                        <button type="submit" class="btn btn-success btn-sm">Activate</button>
+                                    </form>
+                                {% endif %}
                                 <button type="button" class="btn btn-danger btn-sm disband-btn" data-disband-url="{{ url_for('groups.disband_group_post', group_id=group.id) }}" data-warning="This action is not reversible and cannot be recovered.">Disband</button>
                             </td>
                         </tr>
