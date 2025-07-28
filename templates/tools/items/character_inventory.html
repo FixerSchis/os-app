@@ -1,0 +1,140 @@
+{% extends "_template.html" %}
+
+{% block title %}{{ character.name }}'s Inventory{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>{{ character.name }}'s Inventory</h1>
+        <a href="{{ url_for('tools_items.items_list') }}" class="btn btn-secondary">Back to Items</a>
+    </div>
+
+    <div class="row">
+        <!-- Current Inventory -->
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h2>Current Inventory</h2>
+                </div>
+                <div class="card-body">
+                    {% if inventory_items %}
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Item</th>
+                                        <th>Full Code</th>
+                                        <th>Type</th>
+                                        <th>Expiry</th>
+                                        <th>Assigned</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for character_item in inventory_items %}
+                                    <tr>
+                                        <td>{{ character_item.item.blueprint.name }}</td>
+                                        <td><code>{{ character_item.item.full_code }}</code></td>
+                                        <td>{{ character_item.item.blueprint.item_type.name }}</td>
+                                        <td>
+                                            {% if character_item.item.expiry is not none %}
+                                                {% if character_item.item.is_expired() %}
+                                                    <span class="badge bg-danger">Expired ({{ character_item.item.expiry }})</span>
+                                                {% else %}
+                                                    <span class="badge bg-success">{{ character_item.item.expiry }} events</span>
+                                                {% endif %}
+                                            {% else %}
+                                                <span class="text-muted">No expiry</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ character_item.assigned_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                        <td>
+                                            <form method="POST" action="{{ url_for('tools_items.remove_item_from_character', character_id=character.id) }}"
+                                                  style="display: inline;"
+                                                  onsubmit="return confirm('Are you sure you want to remove this item?')">
+                                                <input type="hidden" name="character_item_id" value="{{ character_item.id }}">
+                                                <button type="submit" class="btn btn-sm btn-danger">Remove</button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-muted">No items in inventory.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Assign New Item -->
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h2>Assign New Item</h2>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('tools_items.assign_item_to_character', character_id=character.id) }}">
+                        <div class="mb-3">
+                            <label for="item_id" class="form-label">Select Existing Item</label>
+                            <select class="form-select select2-single" id="item_id" name="item_id">
+                                <option value="">Choose an existing item...</option>
+                                {% for item in available_items %}
+                                <option value="{{ item.id }}">
+                                    {{ item.blueprint.name }} ({{ item.full_code }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="blueprint_id" class="form-label">Or Create New Item from Blueprint</label>
+                            <select class="form-select select2-single" id="blueprint_id" name="blueprint_id">
+                                <option value="">Choose a blueprint...</option>
+                                {% for blueprint in item_blueprints %}
+                                <option value="{{ blueprint.id }}">
+                                    {{ blueprint.name }} ({{ blueprint.full_code }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary">Assign Item</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Character Info -->
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h3>Character Info</h3>
+                </div>
+                <div class="card-body">
+                    <p><strong>Name:</strong> {{ character.name }}</p>
+                    <p><strong>Player:</strong> {{ character.user.first_name }} {{ character.user.surname }}</p>
+                    <p><strong>Player ID:</strong> {{ character.user_id }}.{{ character.character_id }}</p>
+                    <p><strong>Faction:</strong> {{ character.faction.name if character.faction else 'None' }}</p>
+                    <p><strong>Species:</strong> {{ character.species.name if character.species else 'None' }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+
+
+<script>
+// Initialize Select2 for item selection
+$(document).ready(function() {
+    $('.select2-single').select2({
+        placeholder: 'Select an option...',
+        allowClear: true,
+        width: '100%'
+    });
+});
+</script>
+{% endblock %}

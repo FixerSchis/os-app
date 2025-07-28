@@ -35,6 +35,12 @@ from models.tools.character import (
     CharacterSkill,
     CharacterTag,
 )
+from models.tools.character_inventory import (
+    CharacterItem,
+    ItemTransferRequest,
+    ItemTransferRequestItem,
+    ItemTransferStatus,
+)
 from models.tools.group import Group, GroupInvite
 from models.tools.pack import Pack
 from models.tools.print_template import PrintTemplate
@@ -88,5 +94,9 @@ __all__ = [
     "PackExotic",
     "PackMessage",
     "PackDowntimeResult",
+    "CharacterItem",
+    "ItemTransferRequest",
+    "ItemTransferRequestItem",
+    "ItemTransferStatus",
     "setup_relationships",
 ]

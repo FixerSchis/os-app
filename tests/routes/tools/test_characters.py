@@ -287,10 +287,14 @@ def test_character_activation_with_starting_items(test_client, db, new_user):
     db.session.refresh(character)
     assert character.status == CharacterStatus.ACTIVE.value
 
-    # Verify the starting item was created and added to the character's pack
-    assert len(character.pack.items) == 1
-    item_id = character.pack.items[0]
-    item = Item.query.get(item_id)
+    # Verify the starting item was created and added to the character's inventory
+    from models.tools.character_inventory import CharacterItem
+
+    character_items = CharacterItem.query.filter_by(character_id=character.id).all()
+    assert len(character_items) == 1
+
+    character_item = character_items[0]
+    item = Item.query.get(character_item.item_id)
     assert item is not None
     assert item.blueprint_id == blueprint.id
     assert item.item_id == 1  # First item for this blueprint

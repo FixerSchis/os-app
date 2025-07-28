@@ -50,6 +50,7 @@ from routes.tools.characters import characters_bp  # noqa: E402
 from routes.tools.database_management import database_management_bp  # noqa: E402
 from routes.tools.downtime import bp as downtime_bp  # noqa: E402
 from routes.tools.groups import groups_bp  # noqa: E402
+from routes.tools.items import items_bp as tools_items_bp  # noqa: E402
 from routes.tools.messages import bp as messages_bp  # noqa: E402
 from routes.tools.research import research_bp  # noqa: E402
 from routes.tools.templates import templates_bp  # noqa: E402
@@ -156,6 +157,7 @@ def create_app(config_class=None):
     app.register_blueprint(tickets_bp, url_prefix="/tickets")
     app.register_blueprint(user_management_bp, url_prefix="/users")
     app.register_blueprint(database_management_bp, url_prefix="/tools")
+    app.register_blueprint(tools_items_bp, url_prefix="/tools/items")
     app.register_blueprint(wiki_bp, url_prefix="/wiki")
 
     app.register_blueprint(characters_bp, url_prefix="/characters")

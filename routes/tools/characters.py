@@ -20,6 +20,7 @@ from models.tools.character import (
     CharacterTag,
     assign_character_id,
 )
+from models.tools.character_inventory import CharacterItem
 from models.tools.print_template import PrintTemplate
 from models.tools.research import CharacterResearch
 from models.tools.user import User
@@ -217,6 +218,28 @@ def edit(character_id):
             r.current_stage_progress = next(
                 (p for p in r.progress if p.stage_id == r.current_stage_id), None
             )
+
+    # Get character inventory items
+    inventory_items = (
+        CharacterItem.query.filter_by(character_id=character.id)
+        .join(Item)
+        .join(ItemBlueprint)
+        .order_by(ItemBlueprint.name)
+        .all()
+    )
+
+    # Get all available items for assignment (admin only)
+    available_items = []
+    if current_user.has_role(Role.USER_ADMIN.value):
+        all_items = Item.query.join(ItemBlueprint).order_by(ItemBlueprint.name).all()
+        assigned_item_ids = {ci.item_id for ci in inventory_items}
+        available_items = [item for item in all_items if item.id not in assigned_item_ids]
+
+    # Get all item blueprints for creating new items (admin only)
+    item_blueprints = []
+    if current_user.has_role(Role.USER_ADMIN.value):
+        item_blueprints = ItemBlueprint.query.order_by(ItemBlueprint.name).all()
+
     return render_template(
         "characters/edit.html",
         character=character,
@@ -227,6 +250,9 @@ def edit(character_id):
         all_conditions=all_conditions,
         all_cybernetics=all_cybernetics,
         research_projects=research_projects,
+        inventory_items=inventory_items,
+        available_items=available_items,
+        item_blueprints=item_blueprints,
     )
 
 
@@ -701,13 +727,13 @@ def activate_character(character_id):
                     db.session.add(item)
                     db.session.flush()
 
-                    # Add item to character's pack
-                    # Get the current pack and modify it
-                    current_pack = character.pack
-                    current_pack.add_item(item.id)
-
-                    # Save the modified pack back to the character
-                    character.pack = current_pack
+                    # Add item to character's inventory
+                    character_item = CharacterItem(
+                        character_id=character.id,
+                        item_id=item.id,
+                        assigned_by_user_id=current_user.id,
+                    )
+                    db.session.add(character_item)
 
                     # Add audit log for starting item
                     item_audit = CharacterAuditLog(

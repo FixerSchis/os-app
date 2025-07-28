@@ -1,0 +1,259 @@
+{% extends "_template.html" %}
+
+{% block title %}Items - My Inventory{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>My Items</h1>
+
+    <!-- Character Inventories -->
+    {% for character_id, data in character_inventories.items() %}
+    <div class="card mb-4">
+        <div class="card-header">
+            <h2>{{ data.character.name }}'s Inventory</h2>
+        </div>
+        <div class="card-body">
+            {% if data.inventory_items %}
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Item</th>
+                                <th>Full Code</th>
+                                <th>Type</th>
+                                <th>Expiry</th>
+                                <th>Assigned</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for character_item in data.inventory_items %}
+                            <tr>
+                                <td>{{ character_item.item.blueprint.name }}</td>
+                                <td><code>{{ character_item.item.full_code }}</code></td>
+                                <td>{{ character_item.item.blueprint.item_type.name }}</td>
+                                <td>
+                                                                                {% if character_item.item.expiry is not none %}
+                                                {% if character_item.item.is_expired() %}
+                                                    <span class="badge bg-danger">Expired ({{ character_item.item.expiry }})</span>
+                                                {% else %}
+                                                    <span class="badge bg-success">{{ character_item.item.expiry }} events</span>
+                                                {% endif %}
+                                            {% else %}
+                                                <span class="text-muted">No expiry</span>
+                                            {% endif %}
+                                </td>
+                                <td>{{ character_item.assigned_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                <td>
+                                    <input type="checkbox" class="form-check-input item-checkbox"
+                                           data-character-id="{{ data.character.id }}"
+                                           data-character-item-id="{{ character_item.id }}"
+                                           data-item-name="{{ character_item.item.blueprint.name }}"
+                                           data-item-code="{{ character_item.item.full_code }}">
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p class="text-muted">No items in inventory.</p>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+
+    <!-- Transfer Request Form -->
+    <div class="card">
+        <div class="card-header">
+            <h2>Transfer Items</h2>
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('tools_items.create_transfer_request') }}">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="requesting_character_id" class="form-label">From Character</label>
+                            <select class="form-select select2-single" id="requesting_character_id" name="requesting_character_id" required>
+                                <option value="">Select character...</option>
+                                {% for character_id, data in character_inventories.items() %}
+                                <option value="{{ data.character.id }}">{{ data.character.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="target_character_id" class="form-label">To Character</label>
+                            <select class="form-select select2-single" id="target_character_id" name="target_character_id" required>
+                                <option value="">Select character...</option>
+                                {% for character in all_characters %}
+                                <option value="{{ character.id }}">{{ character.name }} ({{ character.user.first_name }} {{ character.user.surname }})</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Selected Items</label>
+                    <div id="selected-items-display" class="border rounded p-3 bg-light">
+                        <p class="text-muted mb-0">No items selected</p>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="transfer_notes" class="form-label">Notes (optional)</label>
+                    <textarea class="form-control" id="transfer_notes" name="notes" rows="3"
+                              placeholder="Add any notes about this transfer request..."></textarea>
+                </div>
+
+                <button type="submit" class="btn btn-primary" id="submit-transfer" disabled>
+                    Create Transfer Request
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- My Transfer Requests -->
+    {% if user_requests %}
+    <div class="card mt-4">
+        <div class="card-header">
+            <h2>My Transfer Requests</h2>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                                                    <tr>
+                                <th>From</th>
+                                <th>To</th>
+                                <th>Items</th>
+                                <th>Status</th>
+                                <th>Requested</th>
+                                <th>Notes</th>
+                            </tr>
+                    </thead>
+                    <tbody>
+                        {% for request in user_requests %}
+                        <tr>
+                            <td>{{ request.requesting_character.name }}</td>
+                            <td>{{ request.target_character.name }}</td>
+                            <td>
+                                {% for request_item in request.items %}
+                                    <span class="badge bg-primary">{{ request_item.character_item.item.full_code }}</span>
+                                {% endfor %}
+                            </td>
+                            <td>
+                                {% if request.status == 'pending' %}
+                                    <span class="badge bg-warning">Pending</span>
+                                {% elif request.status == 'approved' %}
+                                    <span class="badge bg-success">Approved</span>
+                                {% elif request.status == 'denied' %}
+                                    <span class="badge bg-danger">Denied</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ request.requested_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                            <td>
+                                {% if request.notes %}
+                                    <small class="text-muted">{{ request.notes }}</small>
+                                {% else %}
+                                    <span class="text-muted">No notes</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+
+
+<script>
+// Initialize Select2 for character selection
+$(document).ready(function() {
+    $('.select2-single').select2({
+        placeholder: 'Select an option...',
+        allowClear: true,
+        width: '100%'
+    });
+});
+
+let selectedItems = [];
+
+function updateSelectedItems() {
+    const checkboxes = document.querySelectorAll('.item-checkbox:checked');
+    selectedItems = Array.from(checkboxes).map(cb => ({
+        id: cb.dataset.characterItemId,
+        name: cb.dataset.itemName,
+        code: cb.dataset.itemCode
+    }));
+
+    const display = document.getElementById('selected-items-display');
+    const submitBtn = document.getElementById('submit-transfer');
+
+    if (selectedItems.length > 0) {
+        display.innerHTML = selectedItems.map(item =>
+            `<span class="badge bg-primary me-2">${item.name} (${item.code})</span>`
+        ).join('');
+        submitBtn.disabled = false;
+    } else {
+        display.innerHTML = '<p class="text-muted mb-0">No items selected</p>';
+        submitBtn.disabled = true;
+    }
+}
+
+function updateCharacterItems() {
+    const requestingCharacterId = document.getElementById('requesting_character_id').value;
+    const checkboxes = document.querySelectorAll('.item-checkbox');
+
+    checkboxes.forEach(cb => {
+        if (cb.dataset.characterId === requestingCharacterId) {
+            cb.disabled = false;
+            cb.parentElement.parentElement.style.opacity = '1';
+        } else {
+            cb.checked = false;
+            cb.disabled = true;
+            cb.parentElement.parentElement.style.opacity = '0.5';
+        }
+    });
+
+    updateSelectedItems();
+}
+
+// Event listeners
+document.addEventListener('DOMContentLoaded', function() {
+    // Character selection change
+    document.getElementById('requesting_character_id').addEventListener('change', updateCharacterItems);
+
+    // Checkbox changes
+    document.querySelectorAll('.item-checkbox').forEach(cb => {
+        cb.addEventListener('change', updateSelectedItems);
+    });
+
+    // Form submission
+    document.querySelector('form').addEventListener('submit', function(e) {
+        if (selectedItems.length === 0) {
+            e.preventDefault();
+            alert('Please select at least one item to transfer.');
+            return;
+        }
+
+        // Add selected items to form
+        selectedItems.forEach(item => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'item_ids[]';
+            input.value = item.id;
+            this.appendChild(input);
+        });
+    });
+});
+</script>
+{% endblock %}

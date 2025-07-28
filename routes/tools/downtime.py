@@ -23,6 +23,7 @@ from models.enums import (
 from models.event import Event
 from models.extensions import db
 from models.tools.character import Character, CharacterCondition
+from models.tools.character_inventory import CharacterItem
 from models.tools.downtime import DowntimePack, DowntimePeriod
 from models.tools.event_ticket import EventTicket
 from models.tools.group import Group
@@ -1367,7 +1368,19 @@ def process_downtime(period_id):
 
         if pack.items:
             for item in pack.items:
-                character_pack.add_item(item["id"])
+                # Check if item is already assigned to this character
+                existing_assignment = CharacterItem.query.filter_by(
+                    character_id=pack.character_id, item_id=item["id"]
+                ).first()
+
+                if not existing_assignment:
+                    # Add item to character's inventory
+                    character_item = CharacterItem(
+                        character_id=pack.character_id,
+                        item_id=item["id"],
+                        assigned_by_user_id=current_user.id,
+                    )
+                    db.session.add(character_item)
 
         if pack.exotic_substances:
             for exotic in pack.exotic_substances:

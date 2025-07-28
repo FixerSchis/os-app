@@ -1,9 +1,9 @@
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
-from models.enums import Role
+from models.enums import CharacterAuditAction, Role
 from models.extensions import db
-from models.tools.character import Character, CharacterBackground
+from models.tools.character import Character, CharacterAuditLog, CharacterBackground
 from utils.decorators import email_verified_required, user_admin_required
 
 character_backgrounds_bp = Blueprint("character_backgrounds", __name__)
@@ -55,14 +55,37 @@ def review_background_post(background_id):
 
     # Update character information
     character = background.character
-    character.background = request.form.get("background", character.background)
-    character.goals = request.form.get("goals", character.goals)
-    character.concept = request.form.get("concept", character.concept)
+    new_background = request.form.get("background", character.background)
+    new_goals = request.form.get("goals", character.goals)
+    new_concept = request.form.get("concept", character.concept)
+
+    # Track changes for audit logging
+    changes = []
+    if character.background != new_background:
+        changes.append("Background updated during review")
+    if character.goals != new_goals:
+        changes.append("Goals updated during review")
+    if character.concept != new_concept:
+        changes.append("Concept updated during review")
+
+    character.background = new_background
+    character.goals = new_goals
+    character.concept = new_concept
 
     # Update background information
     background.background = character.background
     background.goals = character.goals
     background.concept = character.concept
+
+    # Create audit log for background changes
+    if changes:
+        audit = CharacterAuditLog(
+            character_id=character.id,
+            editor_user_id=current_user.id,
+            action=CharacterAuditAction.EDIT.value,
+            changes="; ".join(changes),
+        )
+        db.session.add(audit)
 
     # Check if marked as done
     mark_done = request.form.get("mark_done") == "on"
