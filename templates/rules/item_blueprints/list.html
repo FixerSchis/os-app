@@ -35,7 +35,10 @@
                         {% set mod_counts = mod_instances_by_blueprint[blueprint.id] %}
                         {% if mod_counts %}
                             {% for mod, count in mod_counts %}
-                                <a href="{{ url_for('wiki.wiki_view', slug=mod.wiki_slug) }}" class="badge bg-secondary" style="text-decoration: none;">
+                                <a href="{{ url_for('wiki.wiki_view', slug=mod.wiki_slug) }}"
+                                   class="badge bg-secondary"
+                                   style="text-decoration: none;"
+                                   {% if mod.description %}title="{{ mod.format_applied(count) }}"{% endif %}>
                                     {{ mod.name }}{% if count > 1 %} <span class="badge bg-light text-dark">x{{ count }}</span>{% endif %}
                                 </a>
                             {% endfor %}
