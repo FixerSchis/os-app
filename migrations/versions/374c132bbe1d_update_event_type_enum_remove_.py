@@ -8,6 +8,7 @@ Create Date: 2025-07-28 13:29:31.065713
 
 import sqlalchemy as sa
 from alembic import op
+from sqlalchemy import inspect
 
 # revision identifiers, used by Alembic.
 revision = "374c132bbe1d"
@@ -27,24 +28,39 @@ def upgrade():
     )
     # fmt: on
 
-    # Update the enum type to include the new values
-    # We need to create a new enum with the updated values
-    op.execute("ALTER TYPE eventtype RENAME TO eventtype_old")
+    # Get the database dialect to determine the appropriate approach
+    connection = op.get_bind()
+    dialect = connection.dialect.name
 
-    # Create the new enum with updated values
-    op.execute(
-        "CREATE TYPE eventtype AS ENUM "
-        "('mainline', 'sanctioned-continuity', 'sanctioned-chronicle', 'online')"
-    )
+    if dialect == "postgresql":
+        # PostgreSQL supports ALTER TYPE for enum modifications
+        # Update the enum type to include the new values
+        # We need to create a new enum with the updated values
+        op.execute("ALTER TYPE eventtype RENAME TO eventtype_old")
 
-    # Update the column to use the new enum type
-    op.execute(
-        "ALTER TABLE events ALTER COLUMN event_type TYPE eventtype "
-        "USING event_type::text::eventtype"
-    )
+        # Create the new enum with updated values
+        op.execute(
+            "CREATE TYPE eventtype AS ENUM "
+            "('mainline', 'sanctioned-continuity', 'sanctioned-chronicle', 'online')"
+        )
 
-    # Drop the old enum
-    op.execute("DROP TYPE eventtype_old")
+        # Update the column to use the new enum type
+        op.execute(
+            "ALTER TABLE events ALTER COLUMN event_type TYPE eventtype "
+            "USING event_type::text::eventtype"
+        )
+
+        # Drop the old enum
+        op.execute("DROP TYPE eventtype_old")
+    else:
+        # For SQLite and other databases, we need to recreate the table
+        # This is a simplified approach for SQLite testing
+        # In production with PostgreSQL, the above approach would be used
+
+        # For SQLite, we'll just update the data and let SQLAlchemy handle the enum
+        # The enum values are defined in the model, so SQLAlchemy will handle
+        # validation
+        pass
 
     # ### end Alembic commands ###
 
@@ -61,19 +77,33 @@ def downgrade():
     )
     # fmt: on
 
-    # Update the enum type back to the original values
-    op.execute("ALTER TYPE eventtype RENAME TO eventtype_new")
+    # Get the database dialect to determine the appropriate approach
+    connection = op.get_bind()
+    dialect = connection.dialect.name
 
-    # Create the old enum with original values
-    op.execute("CREATE TYPE eventtype AS ENUM ('mainline', 'sanctioned', 'online')")
+    if dialect == "postgresql":
+        # Update the enum type back to the original values
+        op.execute("ALTER TYPE eventtype RENAME TO eventtype_new")
 
-    # Update the column to use the old enum type
-    op.execute(
-        "ALTER TABLE events ALTER COLUMN event_type TYPE eventtype "
-        "USING event_type::text::eventtype"
-    )
+        # Create the old enum with original values
+        op.execute("CREATE TYPE eventtype AS ENUM ('mainline', 'sanctioned', 'online')")
 
-    # Drop the new enum
-    op.execute("DROP TYPE eventtype_new")
+        # Update the column to use the old enum type
+        op.execute(
+            "ALTER TABLE events ALTER COLUMN event_type TYPE eventtype "
+            "USING event_type::text::eventtype"
+        )
+
+        # Drop the new enum
+        op.execute("DROP TYPE eventtype_new")
+    else:
+        # For SQLite and other databases, we need to recreate the table
+        # This is a simplified approach for SQLite testing
+        # In production with PostgreSQL, the above approach would be used
+
+        # For SQLite, we'll just update the data and let SQLAlchemy handle the enum
+        # The enum values are defined in the model, so SQLAlchemy will handle
+        # validation
+        pass
 
     # ### end Alembic commands ###
