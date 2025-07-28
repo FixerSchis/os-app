@@ -218,3 +218,79 @@ def test_admin_bypasses_species_faction_validation(test_client, db):
 
     assert response.status_code == 200
     assert b"Character created successfully!" in response.data
+
+
+def test_character_activation_with_starting_items(test_client, db, new_user):
+    """Test that character activation creates starting items through the route."""
+    from models.database.item import Item
+    from models.database.item_blueprint import ItemBlueprint
+    from models.database.item_type import ItemType
+    from models.database.species import Ability, Species
+    from models.enums import AbilityType, BodyHitsType, CharacterStatus
+
+    # Create item type and blueprint
+    item_type = ItemType(id=1, name="Test Weapon", id_prefix="TW")
+    db.session.add(item_type)
+    db.session.flush()
+
+    blueprint = ItemBlueprint(
+        id=1, name="Test Weapon Blueprint", item_type_id=item_type.id, blueprint_id=1, base_cost=100
+    )
+    db.session.add(blueprint)
+    db.session.flush()
+
+    # Create species with starting item ability
+    species = Species(
+        name="Test Species",
+        wiki_page="test-species",
+        permitted_factions_list=[1],
+        body_hits_type=BodyHitsType.GLOBAL,
+        body_hits=3,
+        death_count=3,
+    )
+    db.session.add(species)
+    db.session.flush()
+
+    ability = Ability(
+        name="Starting Weapon",
+        description="This species starts with a weapon",
+        type=AbilityType.STARTING_ITEM,
+        species=species,
+        starting_item_blueprint_id=blueprint.id,
+    )
+    db.session.add(ability)
+    db.session.commit()
+
+    # Create character
+    character = Character(
+        name="Test Character",
+        user_id=new_user.id,
+        species_id=species.id,
+        status=CharacterStatus.DEVELOPING.value,
+    )
+    db.session.add(character)
+    db.session.commit()
+
+    # Give the user some character points
+    new_user.character_points = 10
+    db.session.commit()
+
+    # Login as the character owner
+    with test_client.session_transaction() as sess:
+        sess["_user_id"] = new_user.id
+        sess["_fresh"] = True
+
+    # Activate character through the route
+    test_client.post(f"/characters/{character.id}/activate", follow_redirects=True)
+
+    # Verify the character was activated
+    db.session.refresh(character)
+    assert character.status == CharacterStatus.ACTIVE.value
+
+    # Verify the starting item was created and added to the character's pack
+    assert len(character.pack.items) == 1
+    item_id = character.pack.items[0]
+    item = Item.query.get(item_id)
+    assert item is not None
+    assert item.blueprint_id == blueprint.id
+    assert item.item_id == 1  # First item for this blueprint

@@ -82,12 +82,17 @@ $(document).ready(function() {
         block.find('.ability-extra').hide();
         // Remove required from all discount value inputs in this block
         block.find('.ability-skill-discounts input[type=number]').prop('required', false);
+        block.find('.ability-starting-item select').prop('required', false);
         if ($(this).val() === 'starting_skills') {
             block.find('.ability-starting-skills').show();
         } else if ($(this).val() === 'skill_discounts') {
             block.find('.ability-skill-discounts').show();
             // Only add required if visible
             block.find('.ability-skill-discounts input[type=number]').prop('required', true);
+        } else if ($(this).val() === 'starting_item') {
+            block.find('.ability-starting-item').show();
+            // Only add required if visible
+            block.find('.ability-starting-item select').prop('required', true);
         }
     });
 
@@ -111,13 +116,6 @@ $(document).ready(function() {
                         ABILITY_TYPE_OPTIONS_PLACEHOLDER
                     </select>
                 </div>
-                <div class="col-md-4 mb-2">
-                    <button type="button" class="btn btn-danger remove-ability">Remove</button>
-                </div>
-            </div>
-            <div class="form-group mb-2">
-                <label>Description *</label>
-                <textarea class="form-control" name="ability_description_${idx}" required></textarea>
             </div>
             <div class="form-group mb-2 ability-extra ability-starting-skills" style="display:none;">
                 <label>Starting Skills</label>
@@ -138,15 +136,45 @@ $(document).ready(function() {
                     <input type="number" class="form-control" name="ability_discount_value_${idx}" placeholder="Discount">
                 </div>
             </div>
+            <div class="form-group mb-2 ability-extra ability-starting-item" style="display:none;">
+                <label>Starting Item Blueprint</label>
+                <select class="form-control" name="ability_starting_item_blueprint_${idx}">
+                    <option value="">Select Item Blueprint</option>
+                </select>
+            </div>
+            <div class="form-group mb-2">
+                <label>Description *</label>
+                <textarea class="form-control" name="ability_description_${idx}" required></textarea>
+                <div class="col-md-4 mb-2">
+                    <button type="button" class="btn btn-danger remove-ability">Remove</button>
+                </div>
+            </div>
         </div>
         `);
         // Replace placeholder with actual options from a global variable
         block.find('select.ability-type-select').html(window.ABILITY_TYPE_OPTIONS_HTML || '');
+
+        // Populate item blueprint options
+        var itemBlueprintSelect = block.find('select[name^="ability_starting_item_blueprint"]');
+        if (window.ITEM_BLUEPRINTS) {
+            itemBlueprintSelect.append('<option value="">Select Item Blueprint</option>');
+            window.ITEM_BLUEPRINTS.forEach(function(blueprint) {
+                itemBlueprintSelect.append('<option value="' + blueprint.id + '">' + blueprint.name + ' (' + blueprint.item_type_name + ')</option>');
+            });
+        }
+
         $('#abilities-list').append(block);
         block.find('.select2-multiple').select2({
             theme: 'bootstrap-5',
             width: '100%',
             placeholder: 'Select skills...',
+            allowClear: true
+        });
+        // Initialize Select2 for the new item blueprint select
+        block.find('select[name^="ability_starting_item_blueprint"]').addClass('select2-single').select2({
+            theme: 'bootstrap-5',
+            width: '100%',
+            placeholder: 'Select Item Blueprint...',
             allowClear: true
         });
         // Remove 'required' from all Select2 fields in the new block

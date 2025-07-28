@@ -72,6 +72,7 @@
                 {% set ability_type_value = ability.type.value if ability.type is not string else ability.type %}
                 {% set is_starting_skills = ability.type == AbilityType.STARTING_SKILLS %}
                 {% set is_skill_discounts = ability.type == AbilityType.SKILL_DISCOUNTS %}
+                {% set is_starting_item = ability.type == AbilityType.STARTING_ITEM %}
                 <div class="ability-block card mb-3 p-3">
                     <div class="form-row mb-2">
                         <div class="col-md-4 mb-2">
@@ -84,19 +85,11 @@
                                 <!-- Options will be filled by JS -->
                             </select>
                         </div>
-                        <div class="col-md-4 mb-2">
-                            <button type="button" class="btn btn-danger remove-ability">Remove</button>
-                        </div>
-                    </div>
-                    <div class="form-group mb-2">
-                        <label>Description *</label>
-                        <textarea class="form-control" name="ability_description_{{ loop.index0 }}" required>{{ ability.description }}</textarea>
                     </div>
                     <div class="form-group mb-2">
                         <label>Additional Group Income (EC)</label>
                         <input type="number" class="form-control" name="ability_additional_group_income_{{ loop.index0 }}"
                                value="{{ ability.additional_group_income if ability.additional_group_income else 0 }}" min="0" placeholder="0">
-                        <div class="form-text">Additional EC income for groups when this ability is active.</div>
                     </div>
                     <div class="form-group mb-2 ability-extra ability-starting-skills" {% if not is_starting_skills %}style="display:none;"{% endif %}>
                         <label>Starting Skills</label>
@@ -119,6 +112,24 @@
                         <div class="mb-2">
                             <label>Discount Value</label>
                             <input type="number" class="form-control" name="ability_discount_value_{{ loop.index0 }}" value="{% if is_skill_discounts and ability.skill_discounts_dict %}{{ ability.skill_discounts_dict.values()|list|first }}{% endif %}" placeholder="Discount">
+                        </div>
+                    </div>
+                    <div class="form-group mb-2 ability-extra ability-starting-item" {% if not is_starting_item %}style="display:none;"{% endif %}>
+                        <label>Starting Item Blueprint</label>
+                        <select class="form-control select2-single" name="ability_starting_item_blueprint_{{ loop.index0 }}" {% if is_starting_item %}required{% endif %}>
+                            <option value="">Select Item Blueprint</option>
+                            {% for blueprint in item_blueprints %}
+                            <option value="{{ blueprint.id }}" {% if is_starting_item and ability.starting_item_blueprint_id == blueprint.id %}selected{% endif %}>
+                                {{ blueprint.name }} ({{ blueprint.item_type_name }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group mb-2">
+                        <label>Description *</label>
+                        <textarea class="form-control" name="ability_description_{{ loop.index0 }}" required>{{ ability.description }}</textarea>
+                        <div class="col-md-4 mb-2">
+                            <button type="button" class="btn btn-danger remove-ability">Remove</button>
                         </div>
                     </div>
                 </div>
@@ -145,5 +156,6 @@
 <script src="{{ url_for('static', filename='js/pages/species-edit.js') }}"></script>
 <script>
 window.ABILITY_TYPE_OPTIONS_HTML = document.getElementById('ability-type-options-template').innerHTML;
+window.ITEM_BLUEPRINTS = JSON.parse('{{ item_blueprints | tojson | safe }}');
 </script>
 {% endblock %}
