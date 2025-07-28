@@ -16,6 +16,16 @@
             </div>
 
             <div class="form-group">
+                <label for="description">Description</label>
+                <textarea class="form-control" id="description" name="description" rows="3" placeholder="e.g., [{num * 30}s] or [{num} charges]">{{ mod.description if mod else '' }}</textarea>
+                <small class="form-text text-muted">
+                    Use {num} to represent the number of times the mod is applied.
+                    You can use mathematical operations like {num * 30} or {num + 5}.
+                    Examples: "[{num * 30}s]" shows "30s", "60s", etc. or "[{num} charges]" shows "1 charges", "2 charges", etc.
+                </small>
+            </div>
+
+            <div class="form-group">
                 <label for="item_types">Type Restrictions</label>
                 <select class="form-select" id="item_types" name="item_types" multiple>
                     {% for item_type in item_types %}

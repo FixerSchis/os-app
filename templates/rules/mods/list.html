@@ -16,6 +16,7 @@
             <thead>
                 <tr>
                     <th>Name</th>
+                    <th>Description</th>
                     <th>Type Restrictions</th>
                     {% if can_edit %}
                     <th>Actions</th>
@@ -29,6 +30,13 @@
                         <a href="{{ url_for('wiki.wiki_view', slug=mod.wiki_slug) }}">
                             {{ mod.name }}
                         </a>
+                    </td>
+                    <td>
+                        {% if mod.description %}
+                            {{ mod.format_unapplied() }}
+                        {% else %}
+                            <span class="text-muted">No description</span>
+                        {% endif %}
                     </td>
                     <td>
                         {% if mod.item_types and mod.item_types|length > 0 %}
@@ -47,7 +55,7 @@
                 </tr>
                 {% else %}
                 <tr>
-                    <td colspan="{% if can_edit %}3{% else %}2{% endif %}" class="text-center text-muted">No mods found.</td>
+                    <td colspan="{% if can_edit %}4{% else %}3{% endif %}" class="text-center text-muted">No mods found.</td>
                 </tr>
                 {% endfor %}
             </tbody>

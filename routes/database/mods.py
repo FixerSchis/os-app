@@ -52,6 +52,7 @@ def create_post():
 
     name = request.form.get("name")
     wiki_slug = request.form.get("wiki_slug")
+    description = request.form.get("description", "").strip()
     item_type_ids = request.form.getlist("item_types")
 
     if not all([name, wiki_slug]):
@@ -63,7 +64,7 @@ def create_post():
         item_types = ItemType.query.order_by(ItemType.name).all()
         return render_template("rules/mods/edit.html", wiki_pages=wiki_pages, item_types=item_types)
 
-    mod = Mod(name=name, wiki_slug=wiki_slug)
+    mod = Mod(name=name, wiki_slug=wiki_slug, description=description if description else None)
 
     if item_type_ids:
         mod.item_types = ItemType.query.filter(ItemType.id.in_(item_type_ids)).all()
@@ -106,6 +107,7 @@ def edit_post(id):
 
     name = request.form.get("name")
     wiki_slug = request.form.get("wiki_slug")
+    description = request.form.get("description", "").strip()
     item_type_ids = request.form.getlist("item_types")
 
     if not all([name, wiki_slug]):
@@ -124,6 +126,7 @@ def edit_post(id):
 
     mod.name = name
     mod.wiki_slug = wiki_slug
+    mod.description = description if description else None
 
     if item_type_ids is not None:
         mod.item_types = ItemType.query.filter(ItemType.id.in_(item_type_ids)).all()

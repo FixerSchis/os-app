@@ -135,7 +135,10 @@
                         {% endfor %}
                         {% if combined_mods %}
                             {% for mod, count in combined_mods.values() %}
-                                <span class="badge bg-primary me-1">{{ mod.name }} ({{ count }})</span>
+                                <span class="badge bg-primary me-1"
+                                      {% if mod.description %}title="{{ mod.format_applied(count) }}"{% endif %}>
+                                    {{ mod.name }} ({{ count }})
+                                </span>
                             {% endfor %}
                         {% else %}
                             None
