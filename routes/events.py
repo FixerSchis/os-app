@@ -251,6 +251,15 @@ def purchase_ticket_post(event_id):
             if not character_to_check:
                 continue
 
+            # Rule: Character must be in a group to purchase tickets
+            if not character_to_check.group_id:
+                flash(
+                    f"Character '{character_to_check.name}' must be in a group "
+                    "before purchasing tickets.",
+                    "error",
+                )
+                return redirect(url_for("events.purchase_ticket", event_id=event_id))
+
             target_user = User.query.get(character_to_check.user_id)
             if not target_user:
                 continue
@@ -396,6 +405,16 @@ def assign_ticket_post(event_id):
         character = Character.query.filter_by(
             user_id=user_id_str, character_id=character_id_str
         ).first_or_404()
+
+        # Rule: Character must be in a group to be assigned tickets
+        if not character.group_id:
+            flash(
+                f"Character '{character.name}' must be in a group "
+                "before being assigned tickets.",
+                "error",
+            )
+            return redirect(url_for("events.assign_ticket", event_id=event_id))
+
         user_id = character.user_id
         character_id = character.id
         # Only one adult ticket per character/event
@@ -1187,6 +1206,37 @@ def user_ticket_status():
     )
     return jsonify(
         {"success": True, "has_adult_ticket": has_adult_ticket, "has_crew_ticket": has_crew_ticket}
+    )
+
+
+@events_bp.route("/api/character_group_status")
+@login_required
+def character_group_status():
+    character_id = request.args.get("character_id")
+    if not character_id:
+        return jsonify({"success": False, "error": "Character ID required"})
+
+    if "." not in character_id:
+        return jsonify({"success": False, "error": "Invalid character ID format"})
+
+    user_id, char_id = character_id.split(".")
+    try:
+        character = Character.query.filter_by(
+            user_id=int(user_id), character_id=int(char_id)
+        ).first()
+    except ValueError:
+        return jsonify({"success": False, "error": "Invalid character ID"})
+
+    if not character:
+        return jsonify({"success": False, "error": "Character not found"})
+
+    return jsonify(
+        {
+            "success": True,
+            "has_group": character.group_id is not None,
+            "group_name": character.group.name if character.group else None,
+            "character_name": character.name,
+        }
     )
 
 

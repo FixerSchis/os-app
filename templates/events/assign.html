@@ -173,6 +173,9 @@ document.getElementById('character').addEventListener('input', function(e) {
                     nameElement.textContent = data.character_name;
                     nameElement.style.display = 'block';
                     fetchAndApplyCharacterTicket(characterId);
+
+                    // Check if character has a group
+                    fetchCharacterGroupStatus(characterId);
                 } else {
                     statusElement.innerHTML = '<i class="fas fa-times text-danger"></i>';
                     nameElement.style.display = 'none';
@@ -215,6 +218,39 @@ function fetchAndApplyCharacterTicket(characterId) {
             }
             document.getElementById('price_paid').value = ticket.price_paid;
         });
+}
+
+function fetchCharacterGroupStatus(characterId) {
+    if (!characterId) return;
+    fetch(`{{ url_for('events.character_group_status') }}?character_id=${encodeURIComponent(characterId)}`)
+        .then(response => response.json())
+        .then(data => {
+            if (!data.success) return;
+
+            if (!data.has_group) {
+                showGroupWarning(data.character_name);
+            } else {
+                hideGroupWarning();
+            }
+        })
+        .catch(error => {
+            console.error('Error checking character group status:', error);
+        });
+}
+
+function showGroupWarning(characterName) {
+    let warningBox = document.getElementById('group_warning');
+    if (!warningBox) {
+        warningBox = document.createElement('div');
+        warningBox.id = 'group_warning';
+        warningBox.className = 'alert alert-warning mt-2';
+        document.querySelector('.card-body').prepend(warningBox);
+    }
+    warningBox.innerHTML = `<strong>Warning:</strong> Character '${characterName}' is not in a group. Characters must be in a group before being assigned tickets.`;
+}
+
+function hideGroupWarning() {
+    document.getElementById('group_warning')?.remove();
 }
 
 document.addEventListener('DOMContentLoaded', function() {

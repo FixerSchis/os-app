@@ -311,8 +311,16 @@ document.getElementById('character_id').addEventListener('input', function() {
                         showFlashMessage('Switched to "Myself" since you entered your own character.', 'info');
                     }
 
+                    // Check group status for own characters too
+                    if (characterId === expectedOwnChar) {
+                        fetchCharacterGroupStatus(characterId);
+                    }
+
                     // Fetch ticket info for the new character
                     fetchAndApplyCharacterTicket(characterId);
+
+                    // Check if character has a group
+                    fetchCharacterGroupStatus(characterId);
                 } else {
                     statusElement.innerHTML = '<i class="fas fa-times text-danger"></i>';
                     nameElement.style.display = 'none';
@@ -342,6 +350,39 @@ function showExistingTicketInfo(ticket) {
 
 function hideExistingTicketInfo() {
     document.getElementById('existing_ticket_info')?.remove();
+}
+
+function fetchCharacterGroupStatus(characterId) {
+    if (!characterId) return;
+    fetch(`{{ url_for('events.character_group_status') }}?character_id=${encodeURIComponent(characterId)}`)
+        .then(response => response.json())
+        .then(data => {
+            if (!data.success) return;
+
+            if (!data.has_group) {
+                showGroupWarning(data.character_name);
+            } else {
+                hideGroupWarning();
+            }
+        })
+        .catch(error => {
+            console.error('Error checking character group status:', error);
+        });
+}
+
+function showGroupWarning(characterName) {
+    let warningBox = document.getElementById('group_warning');
+    if (!warningBox) {
+        warningBox = document.createElement('div');
+        warningBox.id = 'group_warning';
+        warningBox.className = 'alert alert-warning mt-2';
+        document.getElementById('ticketForm').prepend(warningBox);
+    }
+    warningBox.innerHTML = `<strong>Warning:</strong> Character '${characterName}' is not in a group. Characters must be in a group before purchasing tickets.`;
+}
+
+function hideGroupWarning() {
+    document.getElementById('group_warning')?.remove();
 }
 
 function fetchAndApplyCharacterTicket(characterId) {
@@ -437,6 +478,13 @@ function onCharacterChange() {
         characterId = document.getElementById('character_id').value.trim();
     }
     fetchAndApplyCharacterTicket(characterId);
+
+    // Check group status when character changes
+    if (characterId) {
+        fetchCharacterGroupStatus(characterId);
+    } else {
+        hideGroupWarning();
+    }
 }
 
 document.getElementById('character_id').addEventListener('change', onCharacterChange);
