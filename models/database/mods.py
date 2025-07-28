@@ -115,7 +115,7 @@ class Mod(db.Model):
                         return match.group(0)
                 else:
                     return match.group(0)
-                return str(result)
+                return f"({str(result)}/rank)"
             except (ValueError, SyntaxError):
                 return match.group(0)
 
