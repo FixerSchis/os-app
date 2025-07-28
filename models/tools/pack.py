@@ -12,6 +12,7 @@ class Pack:
     energy_chits: int = 0
     completion: Dict[str, bool] = field(default_factory=dict)
     is_generated: bool = False
+    downtime_results: Dict[str, List[str]] = field(default_factory=dict)
 
     def is_complete(self) -> bool:
         required_items = ["character_sheet", "character_id_badge"]
@@ -86,6 +87,12 @@ class Pack:
     def set_completion(self, key: str, value: bool) -> None:
         self.completion[key] = value
 
+    def add_downtime_result(self, pack_id: str, message: str) -> None:
+        """Add a downtime result message for a specific pack."""
+        if pack_id not in self.downtime_results:
+            self.downtime_results[pack_id] = []
+        self.downtime_results[pack_id].append(message)
+
     @property
     def is_completed(self) -> bool:
         # All required items must be checked in completion
@@ -126,6 +133,7 @@ class Pack:
                 "energy_chits": self.energy_chits,
                 "completion": clean_completion,
                 "is_generated": self.is_generated,
+                "downtime_results": self.downtime_results,
             }
 
             return result
@@ -138,6 +146,7 @@ class Pack:
                 "medicaments": [],
                 "energy_chits": 0,
                 "completion": {},
+                "downtime_results": {},
             }
 
     def to_json(self) -> str:

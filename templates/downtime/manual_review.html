@@ -133,6 +133,29 @@
         </div>
         {% endif %}
 
+        <!-- Other Information -->
+        {% if pack.other %}
+        <div class="card mb-4">
+            <div class="card-header">
+                <h2 class="h5 mb-0">Other Information</h2>
+            </div>
+            <div class="card-body">
+                <div class="mb-4 p-3 border rounded">
+                    <h3 class="h6">Additional Items/Information</h3>
+                    <p class="mb-2">{{ pack.other }}</p>
+
+                    <div class="form-check mt-3">
+                        <input type="checkbox" class="form-check-input" id="other_confirmed" name="other_confirmed"
+                               {% if review_data.get('other_confirmed') %}checked{% endif %}>
+                        <label class="form-check-label" for="other_confirmed">
+                            I confirm that I have processed the above "Other" information and taken any necessary actions
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
         <!-- Submit Section -->
         <div class="card mb-4">
             <div class="card-body">

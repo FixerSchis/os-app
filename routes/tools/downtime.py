@@ -318,6 +318,9 @@ def enter_pack_contents_post(period_id, character_id):
     # Get energy chits
     pack.energy_credits = int(request.form.get("energy_chits", 0))
 
+    # Get other information
+    pack.other = request.form.get("other", "")
+
     # On confirm, add samples to group inventory and conditions to player
     if request.form.get("confirm_complete"):
         # Add samples to group inventory
@@ -704,10 +707,25 @@ def manual_review_post(period_id, character_id):
         if response_key in request.form:
             review_data[response_key] = request.form[response_key]
 
+    # Handle other confirmation
+    if pack.other:
+        review_data["other_confirmed"] = "other_confirmed" in request.form
+
     # Save review data to pack
     pack.review_data = review_data
 
     if request.form.get("confirm_complete"):
+        # Check if there's other information that needs to be confirmed
+        if pack.other and not review_data.get("other_confirmed"):
+            flash(
+                "You must confirm that you have processed the 'Other' information "
+                "before completing the review.",
+                "error",
+            )
+            return redirect(
+                url_for("downtime.manual_review", period_id=period_id, character_id=character_id)
+            )
+
         pack.status = DowntimeTaskStatus.COMPLETED
 
     db.session.commit()
@@ -1259,17 +1277,31 @@ def process_downtime(period_id):
                                         )
                 elif manual.get("review_status") == "declined":
                     # Add decline reason to character's pack
-                    pack.character.pack.add_message(
-                        "invention_declined",
-                        f"Invention '{manual.get('invention_name')}' was declined: "
-                        f"{manual.get('invention_response')}",
+                    if "messages" not in pack.character.character_pack:
+                        pack.character.character_pack["messages"] = []
+
+                    pack.character.character_pack["messages"].append(
+                        {
+                            "type": "invention_declined",
+                            "content": (
+                                f"Invention '{manual.get('invention_name')}' was declined: "
+                                f"{manual.get('invention_response')}"
+                            ),
+                        }
                     )
             elif manual.get("type") == "reputation_response":
                 # Add reputation response to character's pack
-                pack.character.pack.add_message(
-                    "reputation_response",
-                    f"Reputation response for {manual.get('faction_name')}: "
-                    f"{manual.get('response')}",
+                if "messages" not in pack.character.character_pack:
+                    pack.character.character_pack["messages"] = []
+
+                pack.character.character_pack["messages"].append(
+                    {
+                        "type": "reputation_response",
+                        "content": (
+                            f"Reputation response for {manual.get('faction_name')}: "
+                            f"{manual.get('response')}"
+                        ),
+                    }
                 )
 
     # Process all research stages
@@ -1344,6 +1376,17 @@ def process_downtime(period_id):
         if pack.samples:
             for sample in pack.samples:
                 character_pack.add_sample(sample["id"])
+
+        # Add other information to character's pack
+        if pack.other:
+            # Initialize messages list if it doesn't exist
+            if "messages" not in pack.character.character_pack:
+                pack.character.character_pack["messages"] = []
+
+            # Add the other information as a message
+            pack.character.character_pack["messages"].append(
+                {"type": "other_info", "content": pack.other}
+            )
 
         # Update the character's pack
         pack.character.pack = character_pack
