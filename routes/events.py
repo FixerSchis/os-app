@@ -16,6 +16,7 @@ from models.enums import CharacterStatus, EventType, Role, TicketType
 from models.event import Event
 from models.extensions import db
 from models.tools.character import Character
+from models.tools.character_inventory import CharacterItem
 from models.tools.event_ticket import EventTicket
 from models.tools.group import Group
 from models.tools.pack import Pack
@@ -491,7 +492,11 @@ def view_packs(event_id):
     for ticket in character_tickets:
         character = Character.query.get(ticket.character_id)
         if character:
-            pack = character.pack or Pack()
+            # Get inventory items for this character
+            inventory_items = CharacterItem.query.filter_by(character_id=character.id).all()
+            pack = Pack()
+            pack.items = [ci.item_id for ci in inventory_items]
+
             character_packs.append(
                 {
                     "character": character,
@@ -913,14 +918,13 @@ def print_items(event_id):
     for ticket in character_tickets:
         character = Character.query.get(ticket.character_id)
         if character:
-            pack = character.pack or Pack()
-            # Only include characters whose items are not marked as complete
-            if not pack.completion.get("items", False) and pack.items:
-                for item_id in pack.items:
-                    # Get the item blueprint
-                    item = Item.query.get(item_id)
-                    if item:
-                        items_to_print.append(item)
+            # Get inventory items for this character
+            inventory_items = CharacterItem.query.filter_by(character_id=character.id).all()
+            for character_item in inventory_items:
+                # Get the item
+                item = Item.query.get(character_item.item_id)
+                if item:
+                    items_to_print.append(item)
 
     # Group items
     groups_with_tickets = set()

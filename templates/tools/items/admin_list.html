@@ -1,0 +1,199 @@
+{% extends "_template.html" %}
+
+{% block title %}Items - Admin View{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>Items - Admin View</h1>
+
+    <!-- Pending Transfer Requests -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h2>Pending Transfer Requests</h2>
+        </div>
+        <div class="card-body">
+            {% if pending_requests %}
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Requesting Character</th>
+                                <th>Target Character</th>
+                                <th>Items</th>
+                                <th>Requested</th>
+                                <th>Notes</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for request in pending_requests %}
+                            <tr>
+                                <td>
+                                    {{ request.requesting_character.name }}
+                                    <br><small class="text-muted">{{ request.requesting_character.user.first_name }} {{ request.requesting_character.user.surname }}</small>
+                                </td>
+                                <td>
+                                    {{ request.target_character.name }}
+                                    <br><small class="text-muted">{{ request.target_character.user.first_name }} {{ request.target_character.user.surname }}</small>
+                                </td>
+                                <td>
+                                    {% for request_item in request.items %}
+                                        <span class="badge bg-primary">{{ request_item.character_item.item.full_code }}</span>
+                                    {% endfor %}
+                                </td>
+                                <td>{{ request.requested_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                <td>
+                                    {% if request.notes %}
+                                        <small class="text-muted">{{ request.notes }}</small>
+                                    {% else %}
+                                        <span class="text-muted">No notes</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <button class="btn btn-sm btn-success" data-request-id="{{ request.id }}" data-action="approve" type="button">
+                                        Approve
+                                    </button>
+                                    <button class="btn btn-sm btn-danger" data-request-id="{{ request.id }}" data-action="deny" type="button">
+                                        Deny
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p class="text-muted">No pending transfer requests.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Character Inventories -->
+    <div class="card">
+        <div class="card-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <h2 class="mb-0">Character Inventories</h2>
+                <form class="d-flex" method="GET" action="{{ url_for('tools_items.items_list') }}">
+                    <input type="text" class="form-control me-2" name="search"
+                           placeholder="Search by name, user_id.character_id, or player name..."
+                           value="{{ search_query or '' }}" style="min-width: 300px;">
+                    <button type="submit" class="btn btn-primary">Search</button>
+                    {% if search_query %}
+                        <a href="{{ url_for('tools_items.items_list') }}" class="btn btn-secondary ms-2">Clear</a>
+                    {% endif %}
+                </form>
+            </div>
+        </div>
+        <div class="card-body">
+            {% if search_query %}
+                <div class="alert alert-info mb-3">
+                    Found {{ character_inventories|length }} character{{ 's' if character_inventories|length != 1 else '' }} matching "{{ search_query }}"
+                </div>
+            {% endif %}
+            <div class="row">
+                {% for character_id, data in character_inventories.items() %}
+                <div class="col-md-6 col-lg-4 mb-3">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">{{ data.character.name }}</h5>
+                            <p class="card-text">
+                                <small class="text-muted">
+                                    {{ data.character.user.first_name }} {{ data.character.user.surname }}
+                                    ({{ data.character.user_id }}.{{ data.character.character_id }})
+                                </small>
+                            </p>
+                            <p class="card-text">
+                                <strong>{{ data.inventory_count }}</strong> items in inventory
+                            </p>
+                            {% if data.inventory_items %}
+                                <div class="mb-2">
+                                    <small class="text-muted">Recent items:</small><br>
+                                    {% for item in data.inventory_items[:3] %}
+                                        <span class="badge bg-secondary me-1">{{ item.item.blueprint.name }}</span>
+                                    {% endfor %}
+                                    {% if data.inventory_count > 3 %}
+                                        <small class="text-muted">+{{ data.inventory_count - 3 }} more</small>
+                                    {% endif %}
+                                </div>
+                            {% endif %}
+                            <a href="{{ url_for('tools_items.character_inventory', character_id=data.character.id) }}"
+                               class="btn btn-primary btn-sm">
+                                View/Edit Inventory
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Process Request Modal -->
+<div class="modal fade" id="processRequestModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Process Transfer Request</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="processRequestForm" method="POST">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">Notes (optional)</label>
+                        <textarea class="form-control" id="notes" name="notes" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success" id="approveBtn" style="display: none;">Approve</button>
+                    <button type="submit" class="btn btn-danger" id="denyBtn" style="display: none;">Deny</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentRequestId = null;
+let currentAction = null;
+
+function processRequest(requestId, action) {
+    currentRequestId = requestId;
+    currentAction = action;
+
+    // Update form action
+    document.getElementById('processRequestForm').action = `/tools/items/transfer-request/${requestId}/process`;
+
+    // Add hidden input for action
+    let actionInput = document.getElementById('processRequestForm').querySelector('input[name="action"]');
+    if (!actionInput) {
+        actionInput = document.createElement('input');
+        actionInput.type = 'hidden';
+        actionInput.name = 'action';
+        document.getElementById('processRequestForm').appendChild(actionInput);
+    }
+    actionInput.value = action;
+
+    // Show/hide buttons
+    document.getElementById('approveBtn').style.display = action === 'approve' ? 'inline-block' : 'none';
+    document.getElementById('denyBtn').style.display = action === 'deny' ? 'inline-block' : 'none';
+
+    // Show modal
+    new bootstrap.Modal(document.getElementById('processRequestModal')).show();
+}
+
+// Event listeners for process request buttons
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('[data-request-id]').forEach(button => {
+        button.addEventListener('click', function() {
+            const requestId = this.getAttribute('data-request-id');
+            const action = this.getAttribute('data-action');
+            processRequest(requestId, action);
+        });
+    });
+});
+</script>
+{% endblock %}

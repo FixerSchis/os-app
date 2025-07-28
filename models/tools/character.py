@@ -87,6 +87,7 @@ class Character(db.Model):
     cybernetics_link = db.relationship("CharacterCybernetic", back_populates="character")
     downtime_packs = db.relationship("DowntimePack", back_populates="character")
     event_tickets = db.relationship("EventTicket", back_populates="character")
+    inventory_items = db.relationship("CharacterItem", back_populates="character")
 
     @property
     def pack(self):

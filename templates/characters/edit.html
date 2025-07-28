@@ -364,6 +364,112 @@
                     </div>
                 </div>
                 {% endif %}
+
+                <!-- Character Inventory (Only show when editing existing character) -->
+                {% if character and character.id %}
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Character Inventory</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <!-- Current Inventory -->
+                                <div class="col-md-8">
+                                    <h6>Current Items</h6>
+                                    {% if inventory_items %}
+                                        <div class="table-responsive">
+                                            <table class="table table-sm">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Item</th>
+                                                        <th>Full Code</th>
+                                                        <th>Type</th>
+                                                        <th>Expiry</th>
+                                                        <th>Assigned</th>
+                                                        {% if current_user.has_role('user_admin') %}
+                                                        <th>Actions</th>
+                                                        {% endif %}
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {% for character_item in inventory_items %}
+                                                    <tr>
+                                                        <td>{{ character_item.item.blueprint.name }}</td>
+                                                        <td><code>{{ character_item.item.full_code }}</code></td>
+                                                        <td>{{ character_item.item.blueprint.item_type.name }}</td>
+                                                        <td>
+                                                                                                        {% if character_item.item.expiry is not none %}
+                                                {% if character_item.item.is_expired() %}
+                                                    <span class="badge bg-danger">Expired ({{ character_item.item.expiry }})</span>
+                                                {% else %}
+                                                    <span class="badge bg-success">{{ character_item.item.expiry }} events</span>
+                                                {% endif %}
+                                            {% else %}
+                                                <span class="text-muted">No expiry</span>
+                                            {% endif %}
+                                                        </td>
+                                                        <td>{{ character_item.assigned_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                                        {% if current_user.has_role('user_admin') %}
+                                                        <td>
+                                                                                                                                                    <form method="POST" action="{{ url_for('tools_items.remove_item_from_character', character_id=character.id) }}"
+                                                  style="display: inline;"
+                                                  onsubmit="return confirm('Are you sure you want to remove this item?')">
+                                                <input type="hidden" name="character_item_id" value="{{ character_item.id }}">
+                                                <input type="hidden" name="from_character_edit" value="1">
+                                                <button type="submit" class="btn btn-sm btn-danger">Remove</button>
+                                            </form>
+                                                        </td>
+                                                        {% endif %}
+                                                    </tr>
+                                                    {% endfor %}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    {% else %}
+                                        <p class="text-muted">No items in inventory.</p>
+                                    {% endif %}
+                                </div>
+
+                                <!-- Assign New Item (Admin Only) -->
+                                {% if current_user.has_role('user_admin') %}
+                                <div class="col-md-4">
+                                    <h6>Assign New Item</h6>
+                                                        <form method="POST" action="{{ url_for('tools_items.assign_item_to_character', character_id=character.id) }}">
+                        <input type="hidden" name="from_character_edit" value="1">
+                        <div class="mb-3">
+                            <label for="item_id" class="form-label">Select Existing Item</label>
+                            <select class="form-select select2-single" id="item_id" name="item_id">
+                                <option value="">Choose an existing item...</option>
+                                {% for item in available_items %}
+                                <option value="{{ item.id }}">
+                                    {{ item.blueprint.name }} ({{ item.full_code }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="blueprint_id" class="form-label">Or Create New Item from Blueprint</label>
+                            <select class="form-select select2-single" id="blueprint_id" name="blueprint_id">
+                                <option value="">Choose a blueprint...</option>
+                                {% for blueprint in item_blueprints %}
+                                <option value="{{ blueprint.id }}">
+                                    {{ blueprint.name }} ({{ blueprint.full_code }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary">Assign Item</button>
+                    </form>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
             </div>
 
             <div class="mt-4">
@@ -391,9 +497,22 @@
 <script src="{{ url_for('static', filename='js/components/tag-select.js') }}"></script>
 {% endif %}
 
+
+
 <script src="{{ url_for('static', filename='js/components/character-species-filter.js') }}"></script>
 {% if character and current_user.has_role('user_admin') %}
 <script src="{{ url_for('static', filename='js/components/character-conditions.js') }}"></script>
 {% endif %}
 <script src="{{ url_for('static', filename='js/pages/character-edit.js') }}"></script>
+
+<script>
+// Initialize Select2 for item selection
+$(document).ready(function() {
+    $('.select2-single').select2({
+        placeholder: 'Select an option...',
+        allowClear: true,
+        width: '100%'
+    });
+});
+</script>
 {% endblock %}

@@ -48,3 +48,28 @@ class Item(db.Model):
 
     def get_modification_cost(self, additional_mods=0):
         return math.ceil(self.base_cost_calc(additional_mods) * 0.5)
+
+    def is_expired(self):
+        """Check if the item is expired based on current event number."""
+        if self.expiry is None:
+            return False
+
+        from datetime import datetime
+
+        from models.event import Event
+
+        # Get the most recent event that has ended
+        previous_event = (
+            Event.query.filter(Event.end_date <= datetime.now())
+            .order_by(Event.end_date.desc())
+            .first()
+        )
+
+        if not previous_event:
+            return False
+
+        try:
+            current_event_number = int(previous_event.event_number)
+            return current_event_number > self.expiry
+        except (ValueError, TypeError):
+            return False
