@@ -366,7 +366,7 @@
                 {% endif %}
 
                 <!-- Character Inventory (Only show when editing existing character) -->
-                {% if character.id %}
+                {% if character and character.id %}
                 <div class="col-12">
                     <div class="card">
                         <div class="card-header">
