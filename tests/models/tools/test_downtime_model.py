@@ -50,6 +50,7 @@ def test_new_downtime_period_with_pack(db, character):
         samples=[1, 2],
         cybernetics=[{"id": 1}],
         research_teams=[1, 2],
+        other="Test other information",
         purchases=[{"item_id": 1, "quantity": 1}],
         modifications=[{"item_id": 1, "mod_id": 1}],
         engineering=[{"task": "repair", "item_id": 1}],
@@ -83,6 +84,7 @@ def test_new_downtime_period_with_pack(db, character):
     assert retrieved_pack.samples == [1, 2]
     assert retrieved_pack.cybernetics == [{"id": 1}]
     assert retrieved_pack.research_teams == [1, 2]
+    assert retrieved_pack.other == "Test other information"
     assert retrieved_pack.purchases == [{"item_id": 1, "quantity": 1}]
     assert retrieved_pack.modifications == [{"item_id": 1, "mod_id": 1}]
     assert retrieved_pack.engineering == [{"task": "repair", "item_id": 1}]
@@ -99,3 +101,36 @@ def test_new_downtime_period_with_pack(db, character):
     pack_dict = retrieved_pack.to_dict()
     assert pack_dict["character_id"] == character.id
     assert pack_dict["energy_credits"] == 100
+
+
+def test_pack_with_downtime_results(db, character):
+    """Test Pack class with downtime results functionality."""
+    from models.tools.pack import Pack
+
+    # Create a pack with downtime results
+    pack = Pack()
+    pack.add_downtime_result("pack_1", "Test downtime result")
+    pack.add_downtime_result("pack_1", "Another test result")
+    pack.add_downtime_result("pack_2", "Different pack result")
+
+    # Test that downtime results are stored correctly
+    assert "pack_1" in pack.downtime_results
+    assert "pack_2" in pack.downtime_results
+    assert len(pack.downtime_results["pack_1"]) == 2
+    assert len(pack.downtime_results["pack_2"]) == 1
+    assert pack.downtime_results["pack_1"] == ["Test downtime result", "Another test result"]
+    assert pack.downtime_results["pack_2"] == ["Different pack result"]
+
+    # Test serialization
+    pack_dict = pack.to_dict()
+    assert "downtime_results" in pack_dict
+    assert pack_dict["downtime_results"]["pack_1"] == [
+        "Test downtime result",
+        "Another test result",
+    ]
+    assert pack_dict["downtime_results"]["pack_2"] == ["Different pack result"]
+
+    # Test deserialization
+    pack_json = pack.to_json()
+    new_pack = Pack.from_json(pack_json)
+    assert new_pack.downtime_results == pack.downtime_results

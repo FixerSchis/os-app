@@ -46,28 +46,33 @@ def test_enter_pack_contents_get(
 
 
 @pytest.mark.parametrize(
-    "items,exotics,samples,cybernetics,conditions,research_teams,energy_chits," "confirm_complete",
+    "items,exotics,samples,cybernetics,conditions,research_teams,energy_chits,"
+    "other,confirm_complete",
     [
         # All empty
-        ([], [], [], [], [], [], 0, False),
+        ([], [], [], [], [], [], 0, "", False),
         # Each field individually
-        ([1], [], [], [], [], [], 0, False),
-        ([], [1], [], [], [], [], 0, False),
-        ([], [], [1], [], [], [], 0, False),
-        ([], [], [], [1], [], [], 0, False),
-        ([], [], [], [], [1], [], 0, False),
-        ([], [], [], [], [], [1], 0, False),
-        ([], [1], [], [], [], [], 5, False),
+        ([1], [], [], [], [], [], 0, "", False),
+        ([], [1], [], [], [], [], 0, "", False),
+        ([], [], [1], [], [], [], 0, "", False),
+        ([], [], [], [1], [], [], 0, "", False),
+        ([], [], [], [], [1], [], 0, "", False),
+        ([], [], [], [], [], [1], 0, "", False),
+        ([], [1], [], [], [], [], 5, "", False),
+        # Test other field
+        ([], [], [], [], [], [], 0, "Test other information", False),
+        ([], [], [], [], [], [], 0, "Complex other info with special chars: !@#$%^&*()", False),
+        ([], [], [], [], [], [], 0, "", True),
         # Multiple values for each field
-        ([1, 2], [1, 2], [1, 2], [1, 2], [1, 2], [1, 2], 10, False),
+        ([1, 2], [1, 2], [1, 2], [1, 2], [1, 2], [1, 2], 10, "Multiple items with other", False),
         # All fields together
-        ([1], [1], [1], [1], [1], [1], 3, True),
+        ([1], [1], [1], [1], [1], [1], 3, "Complete pack with other", True),
         # Edge cases
-        ([], [1], [], [], [], [], -5, False),  # negative chits
-        ([], [1], [], [], [], [], 999999, True),  # large chits
-        ([1], [1], [1], [1], [1], [1], 0, True),
-        ([1], [], [], [], [], [], 0, True),
-        ([], [], [], [], [], [], 0, True),
+        ([], [1], [], [], [], [], -5, "", False),  # negative chits
+        ([], [1], [], [], [], [], 999999, "", True),  # large chits
+        ([1], [1], [1], [1], [1], [1], 0, "Edge case with other", True),
+        ([1], [], [], [], [], [], 0, "", True),
+        ([], [], [], [], [], [], 0, "", True),
     ],
 )
 def test_enter_pack_contents_post(
@@ -86,6 +91,7 @@ def test_enter_pack_contents_post(
     conditions,
     research_teams,
     energy_chits,
+    other,
     confirm_complete,
 ):
     login_user(test_client, downtime_team_user)
@@ -98,6 +104,7 @@ def test_enter_pack_contents_post(
         "conditions[]": [str(condition.id)] * len(conditions) if conditions else [],
         "research_teams[]": ["1"] * len(research_teams) if research_teams else [],
         "energy_chits": str(energy_chits),
+        "other": other,
         "confirm_complete": "on" if confirm_complete else "",
     }
 
@@ -560,6 +567,9 @@ def test_manual_review_missing_pack(test_client, downtime_team_user, downtime_pe
         ),
         ({"reputation_response_1": "Answer to question"}, False, 200),
         ({}, True, 200),
+        # Test other confirmation
+        ({"other_confirmed": "on"}, True, 200),
+        ({}, False, 200),  # No confirmation, should still work
     ],
 )
 def test_manual_review_post(
@@ -619,6 +629,43 @@ def test_manual_review_post_missing_pack(test_client, downtime_team_user, downti
     login_user(test_client, downtime_team_user)
     response = test_client.post(f"/downtime/manual-review/{downtime_period.id}/99999")
     assert response.status_code == 404
+
+
+def test_manual_review_with_other_field(
+    test_client, downtime_pack_enter_downtime, downtime_team_user, db
+):
+    """Test manual review with 'other' field that requires confirmation."""
+    make_pack_manual_review(db, downtime_pack_enter_downtime)
+
+    # Set other field on the pack
+    downtime_pack_enter_downtime.other = "Test other information"
+    db.session.commit()
+
+    login_user(test_client, downtime_team_user)
+
+    # Test without confirmation - should fail
+    response = test_client.post(
+        "/downtime/manual-review/"
+        f"{downtime_pack_enter_downtime.period_id}/"
+        f"{downtime_pack_enter_downtime.character_id}",
+        data={"confirm_complete": "on"},
+        follow_redirects=True,
+    )
+    assert response.status_code == 200  # Should stay on page due to validation error
+
+    # Test with confirmation - should succeed
+    response = test_client.post(
+        "/downtime/manual-review/"
+        f"{downtime_pack_enter_downtime.period_id}/"
+        f"{downtime_pack_enter_downtime.character_id}",
+        data={"confirm_complete": "on", "other_confirmed": "on"},
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+
+    # Verify pack was completed
+    db.session.refresh(downtime_pack_enter_downtime)
+    assert downtime_pack_enter_downtime.status == DowntimeTaskStatus.COMPLETED
 
 
 def make_period_completed(db, downtime_period, downtime_pack):
