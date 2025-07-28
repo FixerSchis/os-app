@@ -18,7 +18,6 @@ The Database Management feature provides administrators with the ability to moni
   - Species
   - Skills
   - Group Types
-  - Global Settings
   - Item Types
   - Item Blueprints
   - Items

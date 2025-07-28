@@ -30,7 +30,6 @@ class TestDatabaseManagement:
                 "Species",
                 "Skills",
                 "Group Types",
-                "Global Settings",
                 "Item Types",
                 "Item Blueprints",
                 "Items",
