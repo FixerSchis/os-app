@@ -1,4 +1,6 @@
+import logging
 import os
+from logging.handlers import RotatingFileHandler
 
 from dotenv import load_dotenv
 
@@ -71,6 +73,31 @@ def create_app(config_class=None):
     app.config.from_object(config_class())
     init_app(app)
 
+    # Configure logging
+    if not app.debug and not app.testing:
+        # Create logs directory if it doesn't exist
+        if not os.path.exists("logs"):
+            os.mkdir("logs")
+
+        # Set up file logging
+        file_handler = RotatingFileHandler(
+            "logs/orion_sphere.log", maxBytes=10240000, backupCount=10
+        )
+        file_handler.setFormatter(
+            logging.Formatter("%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]")
+        )
+        file_handler.setLevel(logging.INFO)
+        app.logger.addHandler(file_handler)
+
+        # Set up console logging
+        console_handler = logging.StreamHandler()
+        console_handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s: %(message)s"))
+        console_handler.setLevel(logging.INFO)
+        app.logger.addHandler(console_handler)
+
+        app.logger.setLevel(logging.INFO)
+        app.logger.info("Orion Sphere startup")
+
     # Add custom Jinja filters
     @app.template_filter("nl2br")
     def nl2br_filter(text):
@@ -96,6 +123,12 @@ def create_app(config_class=None):
 
     @app.after_request
     def after_request(response):
+        # Log request details
+        if not app.debug:
+            app.logger.info(
+                f"{request.remote_addr} - {request.method} {request.url} - {response.status_code}"
+            )
+
         db_session = getattr(g, "db_session", None)
         if db_session:
             db_session.close()
@@ -107,17 +140,23 @@ def create_app(config_class=None):
         if db_session:
             db_session.close()
 
+        if exception is not None:
+            app.logger.error(f"Database error: {exception}")
+
     # Error handlers
     @app.errorhandler(404)
     def page_not_found(e):
+        app.logger.error(f"Page not found: {request.url}")
         return render_template("errors/404.html"), 404
 
     @app.errorhandler(403)
     def forbidden_page(error):
+        app.logger.warning(f"Forbidden access: {request.url}")
         return render_template("errors/403.html"), 403
 
     @app.errorhandler(500)
     def internal_server_error(e):
+        app.logger.error(f"Server Error: {e}")
         return render_template("errors/500.html"), 500
 
     @app.route("/.well-known/appspecific/com.chrome.devtools.json")

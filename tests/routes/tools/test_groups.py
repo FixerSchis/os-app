@@ -296,7 +296,11 @@ def test_edit_group_admin(
     with test_client.session_transaction() as sess:
         sess["_user_id"] = admin_user.id
         sess["_fresh"] = True
-    data = {"name": "Edited Admin Group", "type": scientific_group_type.id, "bank_account": "1000"}
+    data = {
+        "name": "Edited Admin Group",
+        "group_type_id": scientific_group_type.id,
+        "bank_account": "1000",
+    }
     resp = test_client.post(f"/groups/{group.id}/edit/admin", data=data, follow_redirects=True)
     assert resp.status_code == 200
     assert b"Group updated successfully" in resp.data

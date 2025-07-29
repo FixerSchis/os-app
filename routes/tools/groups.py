@@ -553,7 +553,7 @@ def edit_group_admin_post(group_id):
     group = Group.query.get_or_404(group_id)
 
     name = request.form.get("name")
-    type = request.form.get("type")
+    type = request.form.get("group_type_id")
     bank_account = request.form.get("bank_account")
     sample_ids = request.form.getlist("sample_ids")
 
