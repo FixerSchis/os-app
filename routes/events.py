@@ -1,9 +1,11 @@
+import csv
+import io
 import json
 import logging
 import random
 from datetime import datetime, timezone
 
-from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
+from flask import Blueprint, Response, flash, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from models.database.exotic_substances import ExoticSubstance
@@ -1334,3 +1336,116 @@ def debug_packs(event_id):
                 )
 
     return jsonify(debug_data)
+
+
+@events_bp.route("/<int:event_id>/attendees/export", methods=["GET"])
+@login_required
+@admin_required
+def export_attendees(event_id):
+    """Export attendees for an event to CSV."""
+    event = Event.query.get_or_404(event_id)
+    tickets = (
+        EventTicket.query.filter_by(event_id=event_id)
+        .outerjoin(EventTicket.character)  # Use left join for tickets without characters
+        .join(EventTicket.user)  # Always join with user
+        .add_entity(Character)
+        .add_entity(User)
+        .all()
+    )
+
+    # Define CSV headers
+    headers = [
+        "Event ID",
+        "Event Name",
+        "Event Type",
+        "Event Number",
+        "Start Date",
+        "End Date",
+        "Early Booking Deadline",
+        "Booking Deadline",
+        "Location",
+        "Google Maps Link",
+        "Meal Ticket Available",
+        "Meal Ticket Price",
+        "Bunks Available",
+        "Standard Ticket Price",
+        "Early Booking Ticket Price",
+        "Child Ticket Price (12-15)",
+        "Child Ticket Price (7-11)",
+        "Child Ticket Price (Under 7)",
+        "Ticket Type",
+        "Meal Ticket",
+        "Requires Bunk",
+        "Price Paid",
+        "Child Name",
+        "User ID",
+        "User First Name",
+        "User Surname",
+        "User Email",
+        "Character ID",
+        "Character Name",
+        "Character Species",
+        "Character Faction",
+        "Character Status",
+        "Group ID",
+        "Group Name",
+    ]
+
+    # Create a file-like object to hold the CSV data
+    output = io.StringIO()
+    csv_writer = csv.writer(output)
+
+    # Write headers
+    csv_writer.writerow(headers)
+
+    # Write data rows
+    for ticket, character, user in tickets:
+        row = [
+            event.id,
+            event.name,
+            event.event_type.value,
+            event.event_number,
+            event.start_date.strftime("%Y-%m-%d"),
+            event.end_date.strftime("%Y-%m-%d"),
+            event.early_booking_deadline.strftime("%Y-%m-%d"),
+            event.booking_deadline.strftime("%Y-%m-%d") if event.booking_deadline else "",
+            event.location,
+            event.google_maps_link,
+            event.meal_ticket_available,
+            event.meal_ticket_price,
+            event.bunks_available,
+            event.standard_ticket_price,
+            event.early_booking_ticket_price,
+            event.child_ticket_price_12_15,
+            event.child_ticket_price_7_11,
+            event.child_ticket_price_under_7,
+            ticket.ticket_type.value,
+            ticket.meal_ticket,
+            ticket.requires_bunk,
+            ticket.price_paid,
+            ticket.child_name,
+            user.id,
+            user.first_name,
+            user.surname,
+            user.email,
+            character.id if character else "",
+            character.name if character else "",
+            character.species.name if character and character.species else "",
+            character.faction.name if character and character.faction else "",
+            character.status if character else "",
+            character.group.id if character and character.group else "",
+            character.group.name if character and character.group else "",
+        ]
+        csv_writer.writerow(row)
+
+    # Reset the file pointer to the beginning of the file
+    output.seek(0)
+
+    # Return the CSV file as a response
+    return Response(
+        output,
+        mimetype="text/csv",
+        headers={
+            "Content-Disposition": f"attachment; filename=attendees_event_{event.event_number}.csv"
+        },
+    )

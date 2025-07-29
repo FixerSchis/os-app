@@ -10,6 +10,9 @@
             <a href="{{ url_for('events.event_list') }}" class="btn btn-secondary">Back to Events</a>
             <a href="{{ url_for('events.assign_ticket', event_id=event.id) }}" class="btn btn-warning">Assign Tickets</a>
             {% if current_user.has_role('admin') %}
+            <a href="{{ url_for('events.export_attendees', event_id=event.id) }}" class="btn btn-success">
+                <i class="fas fa-download"></i> Export CSV
+            </a>
             <a href="{{ url_for('events.view_packs', event_id=event.id) }}" class="btn btn-warning">Packs</a>
             {% endif %}
         </div>

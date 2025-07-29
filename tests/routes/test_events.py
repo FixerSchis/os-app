@@ -1152,3 +1152,252 @@ def test_character_group_status_api(test_client, authenticated_user, db):
     assert data["has_group"] is True
     assert data["character_name"] == "Test Character"
     assert data["group_name"] == "Test Group"
+
+
+def test_export_attendees_get(test_client, admin_user, db):
+    """Test GET request to export attendees CSV."""
+    # Create a test event
+    event = Event(
+        event_number="TEST016",
+        name="Test Event",
+        event_type="mainline",
+        description="A test event",
+        early_booking_deadline=datetime.now() + timedelta(days=30),
+        booking_deadline=datetime.now() + timedelta(days=40),
+        start_date=datetime.now() + timedelta(days=45),
+        end_date=datetime.now() + timedelta(days=47),
+        location="Test Location",
+        standard_ticket_price=50.00,
+        early_booking_ticket_price=45.00,
+        child_ticket_price_12_15=25.00,
+        child_ticket_price_7_11=15.00,
+        child_ticket_price_under_7=0.00,
+    )
+    db.session.add(event)
+    db.session.commit()
+
+    # Create a test user
+    user = User(
+        email="test@example.com",
+        first_name="Test",
+        surname="User",
+        roles="user",
+    )
+    db.session.add(user)
+    db.session.commit()
+
+    # Create a test character
+    character = Character(
+        user_id=user.id,
+        character_id=1,
+        name="Test Character",
+        status="active",
+    )
+    db.session.add(character)
+    db.session.commit()
+
+    # Create a test ticket
+    ticket = EventTicket(
+        event_id=event.id,
+        character_id=character.id,
+        user_id=user.id,
+        ticket_type="adult",
+        meal_ticket=True,
+        requires_bunk=False,
+        price_paid=50.00,
+        assigned_by_id=admin_user.id,
+        assigned_at=datetime.now(),
+    )
+    db.session.add(ticket)
+    db.session.commit()
+
+    with test_client.session_transaction() as session:
+        session["_user_id"] = admin_user.id
+        session["_fresh"] = True
+
+    response = test_client.get(f"/events/{event.id}/attendees/export")
+    assert response.status_code == 200
+    assert response.mimetype == "text/csv"
+    assert (
+        "attachment; filename=attendees_event_TEST016.csv"
+        in response.headers["Content-Disposition"]
+    )
+
+    # Check CSV content
+    csv_content = response.get_data(as_text=True)
+    lines = csv_content.strip().split("\n")
+    assert len(lines) >= 2  # Headers + at least one data row
+
+    # Check headers
+    headers = lines[0].split(",")
+    expected_headers = [
+        "Event ID",
+        "Event Name",
+        "Event Type",
+        "Event Number",
+        "Start Date",
+        "End Date",
+        "Early Booking Deadline",
+        "Booking Deadline",
+        "Location",
+        "Google Maps Link",
+        "Meal Ticket Available",
+        "Meal Ticket Price",
+        "Bunks Available",
+        "Standard Ticket Price",
+        "Early Booking Ticket Price",
+        "Child Ticket Price (12-15)",
+        "Child Ticket Price (7-11)",
+        "Child Ticket Price (Under 7)",
+        "Ticket Type",
+        "Meal Ticket",
+        "Requires Bunk",
+        "Price Paid",
+        "Child Name",
+        "User ID",
+        "User First Name",
+        "User Surname",
+        "User Email",
+        "Character ID",
+        "Character Name",
+        "Character Species",
+        "Character Faction",
+        "Character Status",
+        "Group ID",
+        "Group Name",
+    ]
+    # Clean up any carriage returns from headers
+    headers = [h.strip() for h in headers]
+    assert headers == expected_headers
+
+    # Check data row
+    data_row = lines[1].split(",")
+    # Clean up any carriage returns from data
+    data_row = [d.strip() for d in data_row]
+    assert data_row[0] == str(event.id)  # Event ID
+    assert data_row[1] == event.name  # Event Name
+    assert data_row[2] == event.event_type.value  # Event Type
+    assert data_row[3] == event.event_number  # Event Number
+    assert data_row[18] == "adult"  # Ticket Type
+    assert data_row[19] == "True"  # Meal Ticket
+    assert data_row[20] == "False"  # Requires Bunk
+    assert data_row[21] == "50.0"  # Price Paid
+    assert data_row[23] == str(user.id)  # User ID
+    assert data_row[24] == user.first_name  # User First Name
+    assert data_row[25] == user.surname  # User Surname
+    assert data_row[26] == user.email  # User Email
+    assert data_row[27] == str(character.id)  # Character ID
+    assert data_row[28] == character.name  # Character Name
+
+
+def test_export_attendees_unauthorized(test_client, authenticated_user, db):
+    """Test that non-admin users cannot access the export endpoint."""
+    # Create a test event
+    event = Event(
+        event_number="TEST017",
+        name="Test Event",
+        event_type="mainline",
+        description="A test event",
+        early_booking_deadline=datetime.now() + timedelta(days=30),
+        booking_deadline=datetime.now() + timedelta(days=40),
+        start_date=datetime.now() + timedelta(days=45),
+        end_date=datetime.now() + timedelta(days=47),
+        location="Test Location",
+        standard_ticket_price=50.00,
+        early_booking_ticket_price=45.00,
+        child_ticket_price_12_15=25.00,
+        child_ticket_price_7_11=15.00,
+        child_ticket_price_under_7=0.00,
+    )
+    db.session.add(event)
+    db.session.commit()
+
+    with test_client.session_transaction() as session:
+        session["_user_id"] = authenticated_user.id
+        session["_fresh"] = True
+
+    response = test_client.get(f"/events/{event.id}/attendees/export")
+    assert response.status_code == 403
+
+
+def test_export_attendees_event_not_found(test_client, admin_user, db):
+    """Test export endpoint with non-existent event."""
+    with test_client.session_transaction() as session:
+        session["_user_id"] = admin_user.id
+        session["_fresh"] = True
+
+    response = test_client.get("/events/99999/attendees/export")
+    assert response.status_code == 404
+
+
+def test_export_attendees_with_crew_ticket(test_client, admin_user, db):
+    """Test CSV export with crew tickets (no character)."""
+    # Create a test event
+    event = Event(
+        event_number="TEST018",
+        name="Test Event",
+        event_type="mainline",
+        description="A test event",
+        early_booking_deadline=datetime.now() + timedelta(days=30),
+        booking_deadline=datetime.now() + timedelta(days=40),
+        start_date=datetime.now() + timedelta(days=45),
+        end_date=datetime.now() + timedelta(days=47),
+        location="Test Location",
+        standard_ticket_price=50.00,
+        early_booking_ticket_price=45.00,
+        child_ticket_price_12_15=25.00,
+        child_ticket_price_7_11=15.00,
+        child_ticket_price_under_7=0.00,
+    )
+    db.session.add(event)
+    db.session.commit()
+
+    # Create a test user
+    user = User(
+        email="crew@example.com",
+        first_name="Crew",
+        surname="Member",
+        roles="user",
+    )
+    db.session.add(user)
+    db.session.commit()
+
+    # Create a crew ticket (no character)
+    ticket = EventTicket(
+        event_id=event.id,
+        character_id=None,
+        user_id=user.id,
+        ticket_type="crew",
+        meal_ticket=False,
+        requires_bunk=True,
+        price_paid=0.00,
+        assigned_by_id=admin_user.id,
+        assigned_at=datetime.now(),
+    )
+    db.session.add(ticket)
+    db.session.commit()
+
+    with test_client.session_transaction() as session:
+        session["_user_id"] = admin_user.id
+        session["_fresh"] = True
+
+    response = test_client.get(f"/events/{event.id}/attendees/export")
+    assert response.status_code == 200
+
+    # Check CSV content
+    csv_content = response.get_data(as_text=True)
+    lines = csv_content.strip().split("\n")
+    assert len(lines) >= 2  # Headers + at least one data row
+
+    # Check data row for crew ticket
+    data_row = lines[1].split(",")
+    assert data_row[18] == "crew"  # Ticket Type
+    assert data_row[19] == "False"  # Meal Ticket
+    assert data_row[20] == "True"  # Requires Bunk
+    assert data_row[21] == "0.0"  # Price Paid
+    assert data_row[23] == str(user.id)  # User ID
+    assert data_row[24] == user.first_name  # User First Name
+    assert data_row[25] == user.surname  # User Surname
+    assert data_row[26] == user.email  # User Email
+    assert data_row[27] == ""  # Character ID (empty for crew)
+    assert data_row[28] == ""  # Character Name (empty for crew)
