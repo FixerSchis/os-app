@@ -2,10 +2,12 @@ import json
 from datetime import datetime, timedelta
 from unittest.mock import patch
 
+from models.database.group_type import GroupType
 from models.enums import Role, TicketType
 from models.event import Event
 from models.tools.character import Character
 from models.tools.event_ticket import EventTicket
+from models.tools.group import Group
 from models.tools.user import User
 
 
@@ -1231,39 +1233,16 @@ def test_export_attendees_get(test_client, admin_user, db):
     # Check headers
     headers = lines[0].split(",")
     expected_headers = [
-        "Event ID",
         "Event Name",
-        "Event Type",
         "Event Number",
-        "Start Date",
-        "End Date",
-        "Early Booking Deadline",
-        "Booking Deadline",
-        "Location",
-        "Google Maps Link",
-        "Meal Ticket Available",
-        "Meal Ticket Price",
-        "Bunks Available",
-        "Standard Ticket Price",
-        "Early Booking Ticket Price",
-        "Child Ticket Price (12-15)",
-        "Child Ticket Price (7-11)",
-        "Child Ticket Price (Under 7)",
         "Ticket Type",
         "Meal Ticket",
         "Requires Bunk",
-        "Price Paid",
         "Child Name",
-        "User ID",
         "User First Name",
-        "User Surname",
-        "User Email",
-        "Character ID",
+        "Character Reference",
         "Character Name",
-        "Character Species",
         "Character Faction",
-        "Character Status",
-        "Group ID",
         "Group Name",
     ]
     # Clean up any carriage returns from headers
@@ -1274,20 +1253,17 @@ def test_export_attendees_get(test_client, admin_user, db):
     data_row = lines[1].split(",")
     # Clean up any carriage returns from data
     data_row = [d.strip() for d in data_row]
-    assert data_row[0] == str(event.id)  # Event ID
-    assert data_row[1] == event.name  # Event Name
-    assert data_row[2] == event.event_type.value  # Event Type
-    assert data_row[3] == event.event_number  # Event Number
-    assert data_row[18] == "adult"  # Ticket Type
-    assert data_row[19] == "True"  # Meal Ticket
-    assert data_row[20] == "False"  # Requires Bunk
-    assert data_row[21] == "50.0"  # Price Paid
-    assert data_row[23] == str(user.id)  # User ID
-    assert data_row[24] == user.first_name  # User First Name
-    assert data_row[25] == user.surname  # User Surname
-    assert data_row[26] == user.email  # User Email
-    assert data_row[27] == str(character.id)  # Character ID
-    assert data_row[28] == character.name  # Character Name
+    assert data_row[0] == event.name  # Event Name
+    assert data_row[1] == event.event_number  # Event Number
+    assert data_row[2] == "adult"  # Ticket Type
+    assert data_row[3] == "True"  # Meal Ticket
+    assert data_row[4] == "False"  # Requires Bunk
+    assert data_row[5] == ""  # Child Name (empty for adult ticket)
+    assert data_row[6] == user.first_name  # User First Name
+    assert data_row[7] == f"{character.user_id}.{character.character_id}"  # Character Reference
+    assert data_row[8] == character.name  # Character Name
+    assert data_row[9] == ""  # Character Faction (empty in test)
+    assert data_row[10] == ""  # Group Name (empty in test)
 
 
 def test_export_attendees_unauthorized(test_client, authenticated_user, db):
@@ -1391,13 +1367,255 @@ def test_export_attendees_with_crew_ticket(test_client, admin_user, db):
 
     # Check data row for crew ticket
     data_row = lines[1].split(",")
-    assert data_row[18] == "crew"  # Ticket Type
-    assert data_row[19] == "False"  # Meal Ticket
-    assert data_row[20] == "True"  # Requires Bunk
-    assert data_row[21] == "0.0"  # Price Paid
-    assert data_row[23] == str(user.id)  # User ID
-    assert data_row[24] == user.first_name  # User First Name
-    assert data_row[25] == user.surname  # User Surname
-    assert data_row[26] == user.email  # User Email
-    assert data_row[27] == ""  # Character ID (empty for crew)
-    assert data_row[28] == ""  # Character Name (empty for crew)
+    # Clean up any carriage returns from data
+    data_row = [d.strip() for d in data_row]
+    assert data_row[0] == event.name  # Event Name
+    assert data_row[1] == event.event_number  # Event Number
+    assert data_row[2] == "crew"  # Ticket Type
+    assert data_row[3] == "False"  # Meal Ticket
+    assert data_row[4] == "True"  # Requires Bunk
+    assert data_row[5] == ""  # Child Name (empty for crew)
+    assert data_row[6] == user.first_name  # User First Name
+    assert data_row[7] == ""  # Character Reference (empty for crew)
+    assert data_row[8] == ""  # Character Name (empty for crew)
+    assert data_row[9] == ""  # Character Faction (empty for crew)
+    assert data_row[10] == ""  # Group Name (empty for crew)
+
+
+def test_assign_ticket_update_existing(test_client, admin_user, db):
+    """Test updating an existing ticket instead of creating a new one."""
+    # Create a test event
+    event = Event(
+        event_number="TEST019",
+        name="Test Event",
+        event_type="mainline",
+        description="A test event",
+        early_booking_deadline=datetime.now() + timedelta(days=30),
+        booking_deadline=datetime.now() + timedelta(days=40),
+        start_date=datetime.now() + timedelta(days=45),
+        end_date=datetime.now() + timedelta(days=47),
+        location="Test Location",
+        standard_ticket_price=50.00,
+        early_booking_ticket_price=45.00,
+        child_ticket_price_12_15=25.00,
+        child_ticket_price_7_11=15.00,
+        child_ticket_price_under_7=0.00,
+    )
+    db.session.add(event)
+    db.session.commit()
+
+    # Create a test user and character
+    user = User(
+        email="test@example.com",
+        first_name="Test",
+        surname="User",
+        roles="user",
+    )
+    db.session.add(user)
+    db.session.commit()
+
+    character = Character(
+        user_id=user.id,
+        character_id=1,
+        name="Test Character",
+        status="active",
+    )
+    db.session.add(character)
+    db.session.commit()
+
+    # Create a group for the character
+    group_type = GroupType(
+        name="Test Group Type",
+        description="A test group type",
+        income_items_list=[],
+        income_items_discount=0.5,
+        income_substances=False,
+        income_substance_cost=0,
+        income_medicaments=False,
+        income_medicament_cost=0,
+        income_distribution_dict={},
+    )
+    db.session.add(group_type)
+    db.session.commit()
+
+    group = Group(
+        name="Test Group",
+        group_type_id=group_type.id,
+        bank_account=0,
+    )
+    db.session.add(group)
+    db.session.commit()
+
+    # Add character to group
+    character.group_id = group.id
+    db.session.commit()
+
+    # Create an existing ticket
+    existing_ticket = EventTicket(
+        event_id=event.id,
+        character_id=character.id,
+        user_id=user.id,
+        ticket_type="adult",
+        meal_ticket=False,
+        requires_bunk=False,
+        price_paid=50.00,
+        assigned_by_id=admin_user.id,
+        assigned_at=datetime.now(),
+    )
+    db.session.add(existing_ticket)
+    db.session.commit()
+
+    with test_client.session_transaction() as session:
+        session["_user_id"] = admin_user.id
+        session["_fresh"] = True
+
+    # Try to assign the same ticket again (should update instead of create)
+    response = test_client.post(
+        f"/events/{event.id}/assign",
+        data={
+            "ticket_type": "adult",
+            "character": f"{character.user_id}.{character.character_id}",
+            "meal_ticket": "on",
+            "requires_bunk": "on",
+            "price_paid": "75.00",
+        },
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    # Check that we got a success message about updating
+    assert b"Ticket updated successfully!" in response.data
+
+    # Verify only one ticket exists (not two)
+    tickets = EventTicket.query.filter_by(event_id=event.id, character_id=character.id).all()
+    assert len(tickets) == 1
+
+    # Verify the ticket was updated
+    updated_ticket = tickets[0]
+    assert updated_ticket.meal_ticket is True
+    assert updated_ticket.requires_bunk is True
+    assert updated_ticket.price_paid == 75.00
+
+
+def test_remove_ticket(test_client, admin_user, db):
+    """Test removing an assigned ticket."""
+    # Create a test event
+    event = Event(
+        event_number="TEST020",
+        name="Test Event",
+        event_type="mainline",
+        description="A test event",
+        early_booking_deadline=datetime.now() + timedelta(days=30),
+        booking_deadline=datetime.now() + timedelta(days=40),
+        start_date=datetime.now() + timedelta(days=45),
+        end_date=datetime.now() + timedelta(days=47),
+        location="Test Location",
+        standard_ticket_price=50.00,
+        early_booking_ticket_price=45.00,
+        child_ticket_price_12_15=25.00,
+        child_ticket_price_7_11=15.00,
+        child_ticket_price_under_7=0.00,
+    )
+    db.session.add(event)
+    db.session.commit()
+
+    # Create a test user and character
+    user = User(
+        email="test@example.com",
+        first_name="Test",
+        surname="User",
+        roles="user",
+    )
+    db.session.add(user)
+    db.session.commit()
+
+    character = Character(
+        user_id=user.id,
+        character_id=1,
+        name="Test Character",
+        status="active",
+    )
+    db.session.add(character)
+    db.session.commit()
+
+    # Create a ticket to remove
+    ticket = EventTicket(
+        event_id=event.id,
+        character_id=character.id,
+        user_id=user.id,
+        ticket_type="adult",
+        meal_ticket=True,
+        requires_bunk=False,
+        price_paid=50.00,
+        assigned_by_id=admin_user.id,
+        assigned_at=datetime.now(),
+    )
+    db.session.add(ticket)
+    db.session.commit()
+
+    with test_client.session_transaction() as session:
+        session["_user_id"] = admin_user.id
+        session["_fresh"] = True
+
+    # Remove the ticket
+    response = test_client.post(
+        f"/events/{event.id}/tickets/{ticket.id}/remove",
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    assert b"Ticket removed successfully!" in response.data
+
+    # Verify the ticket was deleted
+    deleted_ticket = EventTicket.query.get(ticket.id)
+    assert deleted_ticket is None
+
+
+def test_remove_ticket_unauthorized(test_client, authenticated_user, db):
+    """Test that non-admin users cannot remove tickets."""
+    # Create a test event
+    event = Event(
+        event_number="TEST021",
+        name="Test Event",
+        event_type="mainline",
+        description="A test event",
+        early_booking_deadline=datetime.now() + timedelta(days=30),
+        booking_deadline=datetime.now() + timedelta(days=40),
+        start_date=datetime.now() + timedelta(days=45),
+        end_date=datetime.now() + timedelta(days=47),
+        location="Test Location",
+        standard_ticket_price=50.00,
+        early_booking_ticket_price=45.00,
+        child_ticket_price_12_15=25.00,
+        child_ticket_price_7_11=15.00,
+        child_ticket_price_under_7=0.00,
+    )
+    db.session.add(event)
+    db.session.commit()
+
+    # Create a test ticket
+    ticket = EventTicket(
+        event_id=event.id,
+        character_id=None,
+        user_id=authenticated_user.id,
+        ticket_type="crew",
+        meal_ticket=False,
+        requires_bunk=False,
+        price_paid=0.00,
+        assigned_by_id=authenticated_user.id,
+        assigned_at=datetime.now(),
+    )
+    db.session.add(ticket)
+    db.session.commit()
+
+    with test_client.session_transaction() as session:
+        session["_user_id"] = authenticated_user.id
+        session["_fresh"] = True
+
+    # Try to remove the ticket (should fail)
+    response = test_client.post(f"/events/{event.id}/tickets/{ticket.id}/remove")
+    assert response.status_code == 403
+
+    # Verify the ticket still exists
+    existing_ticket = EventTicket.query.get(ticket.id)
+    assert existing_ticket is not None
