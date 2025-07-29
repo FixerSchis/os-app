@@ -30,6 +30,21 @@ $(document).ready(function() {
         form.submit();
     });
 
+    // Handle reputation changes
+    $('.reputation-input').on('input', function() {
+        const factionId = $(this).data('faction-id');
+        const originalValue = parseInt($(this).data('original-value'));
+        const currentValue = parseInt($(this).val()) || 0;
+
+        if (currentValue !== originalValue) {
+            $(this).addClass('table-warning');
+            $(this).closest('tr').addClass('table-warning');
+        } else {
+            $(this).removeClass('table-warning');
+            $(this).closest('tr').removeClass('table-warning');
+        }
+    });
+
     // Initialize approve/decline options for the single invention
     function updateApproveDeclineUI() {
         const approveChecked = $("#approve").is(":checked");

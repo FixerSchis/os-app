@@ -7,6 +7,48 @@
     <h1>Manual Review - {{ character.name }}</h1>
 
     <form method="POST" id="manual-review-form">
+        <!-- Update Reputations -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h2 class="h5 mb-0">Update Reputations</h2>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Faction</th>
+                                <th style="width: 120px;">Current Reputation</th>
+                                <th style="width: 120px;">New Reputation</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for faction in factions %}
+                            <tr>
+                                <td>{{ faction.name }}</td>
+                                <td>
+                                    <span class="badge bg-secondary">{{ character.get_reputation(faction.id) }}</span>
+                                </td>
+                                <td>
+                                    <input type="number"
+                                           class="form-control form-control-sm reputation-input"
+                                           name="reputation_{{ faction.id }}"
+                                           value="{{ character.get_reputation(faction.id) }}"
+                                           data-faction-id="{{ faction.id }}"
+                                           data-original-value="{{ character.get_reputation(faction.id) }}">
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="form-text mt-2">
+                    <i class="fas fa-info-circle"></i>
+                    Update character reputations as needed. Changes will be applied when downtime is processed.
+                </div>
+            </div>
+        </div>
+
         <!-- Invention Reviews -->
         {% if invention %}
         <div class="card mb-4">
