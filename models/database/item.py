@@ -15,9 +15,12 @@ class Item(db.Model):
     blueprint_id = db.Column(db.Integer, db.ForeignKey("item_blueprints.id"), nullable=False)
     item_id = db.Column(db.Integer, nullable=False)
     expiry = db.Column(db.Integer, nullable=True)
+    version = db.Column(db.Integer, nullable=False, default=1)
+    printed = db.Column(db.Boolean, nullable=False, default=False)
 
     blueprint = db.relationship("ItemBlueprint", back_populates="items")
     mods_applied = db.relationship("Mod", secondary=item_mods_applied, backref="items_applied")
+    audit_logs = db.relationship("ItemAuditLog", back_populates="item")
 
     __table_args__ = (db.UniqueConstraint("blueprint_id", "item_id", name="uix_blueprint_itemid"),)
 
@@ -73,3 +76,62 @@ class Item(db.Model):
             return current_event_number > self.expiry
         except (ValueError, TypeError):
             return False
+
+    def increment_version(self, editor_user_id, reason):
+        """Increment the item version and mark as not printed."""
+        self.version += 1
+        self.printed = False
+
+        # Create audit log
+        from models.enums import ItemAuditAction
+
+        audit_log = ItemAuditLog(
+            item_id=self.id,
+            editor_user_id=editor_user_id,
+            action=ItemAuditAction.VERSION_INCREMENT.value,
+            changes=f"Version incremented to {self.version}: {reason}",
+        )
+        db.session.add(audit_log)
+
+    def mark_as_printed(self, editor_user_id):
+        """Mark the item as printed."""
+        self.printed = True
+
+        # Create audit log
+        from models.enums import ItemAuditAction
+
+        audit_log = ItemAuditLog(
+            item_id=self.id,
+            editor_user_id=editor_user_id,
+            action=ItemAuditAction.PRINTED.value,
+            changes="Item marked as printed",
+        )
+        db.session.add(audit_log)
+
+
+class ItemAuditLog(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    item_id = db.Column(db.Integer, db.ForeignKey("item.id"), nullable=False)
+    editor_user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    timestamp = db.Column(db.DateTime, default=db.func.now(), nullable=False)
+    action = db.Column(
+        db.Enum(
+            "create",
+            "edit",
+            "version_increment",
+            "printed",
+            "mods_changed",
+            "expiry_changed",
+            "blueprint_changed",
+            name="itemauditaction",
+            native_enum=False,
+        ),
+        nullable=False,
+    )
+    changes = db.Column(db.Text, nullable=True)
+
+    item = db.relationship("Item", back_populates="audit_logs")
+    editor = db.relationship("User")
+
+    def __repr__(self):
+        return f"<ItemAuditLog {self.action} by {self.editor.email}>"

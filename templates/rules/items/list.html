@@ -9,6 +9,9 @@
             <h1>Item Database</h1>
         </div>
         <div class="col text-end">
+            <a href="{{ url_for('items.print_unprinted_items') }}" class="btn btn-warning me-2">
+                <i class="bi bi-printer"></i> Print Unprinted Items
+            </a>
             <a href="{{ url_for('items.create') }}" class="btn btn-primary">Create New Item</a>
         </div>
     </div>
@@ -107,6 +110,7 @@
                 <tr>
                     <th>Item ID</th>
                     <th>Blueprint</th>
+                    <th>Printed</th>
                     <th>Mods Applied</th>
                     <th>Base Cost</th>
                     <th>Expiry</th>
@@ -116,8 +120,15 @@
             <tbody>
                 {% for item in items %}
                 <tr>
-                    <td>{{ item.full_code }}</td>
+                    <td>{{ item.full_code }} <span class="badge bg-info">{{ item.version }}</span></td>
                     <td>{{ blueprints[item.blueprint_id].name }}</td>
+                    <td>
+                        {% if item.printed %}
+                            <span class="badge bg-success">Printed</span>
+                        {% else %}
+                            <span class="badge bg-warning">Unprinted</span>
+                        {% endif %}
+                    </td>
                     <td>
                         {% set bp_mod_counts = mod_instances_by_blueprint[item.blueprint_id] %}
                         {% set mod_counts = mod_instances_by_item[item.id] %}
@@ -153,8 +164,22 @@
                         {% endif %}
                     </td>
                     <td>
-                        <a href="{{ url_for('items.view', id=item.id) }}" class="btn btn-sm btn-info">View</a>
+                        <a href="{{ url_for('items.view', id=item.id, version=item.version) }}" class="btn btn-sm btn-info">View</a>
                         <a href="{{ url_for('items.edit', id=item.id) }}" class="btn btn-sm btn-primary">Edit</a>
+                        {% if item.printed %}
+                            <form method="POST" action="{{ url_for('items.mark_item_unprinted', id=item.id) }}" style="display: inline;">
+                                <button type="submit" class="btn btn-sm btn-warning">
+                                    <i class="bi bi-arrow-clockwise"></i> Mark Unprinted
+                                </button>
+                            </form>
+                        {% else %}
+                            <form method="POST" action="{{ url_for('items.mark_item_printed', id=item.id) }}" style="display: inline;">
+                                <button type="submit" class="btn btn-sm btn-success"
+                                        onclick="return confirm('Mark {{ item.full_code }} as printed?')">
+                                    <i class="bi bi-check-circle"></i> Mark Printed
+                                </button>
+                            </form>
+                        {% endif %}
                         <button type="button" class="btn btn-sm btn-danger delete-btn"
                                 data-delete-url="{{ url_for('items.delete', id=item.id) }}"
                                 data-item-code="{{ item.full_code }}">

@@ -562,11 +562,29 @@ def view_packs(event_id):
 
             character_packs.append(
                 {
-                    "character": character,
-                    "ticket": ticket,
+                    "character": {
+                        "id": character.id,
+                        "name": character.name,
+                        "character_id": character.character_id,
+                    },
+                    "ticket": {
+                        "id": ticket.id,
+                        "ticket_type": ticket.ticket_type,
+                    },
                     "pack": pack,
-                    "user": character.user,
-                    "faction": character.faction,
+                    "user": {
+                        "id": character.user.id,
+                        "first_name": character.user.first_name,
+                        "surname": character.user.surname,
+                    },
+                    "faction": (
+                        {
+                            "id": character.faction.id,
+                            "name": character.faction.name,
+                        }
+                        if character.faction
+                        else None
+                    ),
                 }
             )
 
@@ -574,7 +592,7 @@ def view_packs(event_id):
     character_packs.sort(
         key=lambda x: (
             x["pack"].is_completed,  # False (incomplete) comes before True (complete)
-            x["user"].first_name + " " + x["user"].surname,
+            x["user"]["first_name"] + " " + x["user"]["surname"],
         )
     )
 
@@ -599,9 +617,24 @@ def view_packs(event_id):
                 if character and character.group_id == group_id:
                     group_characters.append(
                         {
-                            "user": character.user,
-                            "character": character,
-                            "species": character.species,
+                            "user": {
+                                "id": character.user.id,
+                                "first_name": character.user.first_name,
+                                "surname": character.user.surname,
+                            },
+                            "character": {
+                                "id": character.id,
+                                "name": character.name,
+                                "character_id": character.character_id,
+                            },
+                            "species": (
+                                {
+                                    "id": character.species.id,
+                                    "name": character.species.name,
+                                }
+                                if character.species
+                                else None
+                            ),
                         }
                     )
 
@@ -961,7 +994,7 @@ def print_character_id_badges(event_id):
 @login_required
 @admin_required
 def print_items(event_id):
-    """Print items for incomplete character and group packs."""
+    """Print all unprinted items and mark them as printed."""
     from models.database.item_blueprint import ItemBlueprint
     from models.enums import PrintTemplateType
     from models.tools.print_template import PrintTemplate
@@ -969,47 +1002,11 @@ def print_items(event_id):
 
     event = Event.query.get_or_404(event_id)
 
-    # Get all characters with tickets for this event
-    character_tickets = (
-        EventTicket.query.filter_by(event_id=event_id)
-        .filter(EventTicket.character_id.isnot(None))
-        .all()
-    )
-    items_to_print = []
+    # Get all unprinted items (not just event-specific items)
+    unprinted_items = Item.query.filter_by(printed=False).all()
 
-    # Character items
-    for ticket in character_tickets:
-        character = Character.query.get(ticket.character_id)
-        if character:
-            # Get inventory items for this character
-            inventory_items = CharacterItem.query.filter_by(character_id=character.id).all()
-            for character_item in inventory_items:
-                # Get the item
-                item = Item.query.get(character_item.item_id)
-                if item:
-                    items_to_print.append(item)
-
-    # Group items
-    groups_with_tickets = set()
-    for ticket in character_tickets:
-        character = Character.query.get(ticket.character_id)
-        if character and character.group:
-            groups_with_tickets.add(character.group.id)
-
-    for group_id in groups_with_tickets:
-        group = Group.query.get(group_id)
-        if group:
-            pack = group.pack or Pack()
-            # Only include groups whose items are not marked as complete
-            if not pack.completion.get("items", False) and pack.items:
-                for item_id in pack.items:
-                    # Get the item blueprint
-                    item = Item.query.get(item_id)
-                    if item:
-                        items_to_print.append(item)
-
-    if not items_to_print:
-        flash("No items to print - all are marked as complete.", "info")
+    if not unprinted_items:
+        flash("No unprinted items found.", "info")
         return redirect(url_for("events.view_packs", event_id=event_id))
 
     # Get the template for item cards
@@ -1021,17 +1018,26 @@ def print_items(event_id):
     # Generate PDF
     layout_manager = PrintLayout()
     try:
-        pdf = layout_manager.generate_item_cards_pdf(items_to_print, template)
+        pdf = layout_manager.generate_item_cards_pdf(unprinted_items, template)
         pdf.seek(0)
 
-        # Return PDF for inline preview
+        # Mark all items as printed
+        for item in unprinted_items:
+            item.mark_as_printed(current_user.id)
+
+        db.session.commit()
+
+        # Return PDF for download
         from flask import send_file
 
         return send_file(
             pdf,
             mimetype="application/pdf",
-            as_attachment=False,
-            download_name=f"items_event_{event.event_number}.pdf",
+            as_attachment=True,
+            download_name=(
+                f"unprinted_items_event_{event.event_number}_"
+                f"{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+            ),
         )
     except Exception as e:
         flash(f"Error generating PDF: {str(e)}", "error")
