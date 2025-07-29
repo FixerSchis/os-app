@@ -9,7 +9,7 @@ from models.database.exotic_substances import ExoticSubstance
 from models.database.faction import Faction
 from models.database.global_settings import GlobalSettings
 from models.database.group_type import GroupType
-from models.database.item import Item
+from models.database.item import Item, ItemAuditLog
 from models.database.item_blueprint import ItemBlueprint
 from models.database.item_type import ItemType
 from models.database.medicaments import Medicament
@@ -22,6 +22,7 @@ from models.enums import (
     AbilityType,
     BodyHitsType,
     EventType,
+    ItemAuditAction,
     PrintTemplateType,
     ReputationBriefingStatus,
     ScienceType,
@@ -100,6 +101,8 @@ __all__ = [
     "ItemTransferRequest",
     "ItemTransferRequestItem",
     "ItemTransferStatus",
+    "ItemAuditLog",
+    "ItemAuditAction",
     "ReputationBriefing",
     "ReputationBriefingLevel",
     "ReputationBriefingStatus",

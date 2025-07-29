@@ -19,6 +19,21 @@
         </div>
     </div>
 
+    <!-- Version and Printed Warnings -->
+    {% if version_warning %}
+    <div class="alert alert-danger" role="alert">
+        <i class="bi bi-exclamation-triangle-fill"></i>
+        <strong>Version Mismatch:</strong> {{ version_warning }}
+    </div>
+    {% endif %}
+
+    {% if printed_warning %}
+    <div class="alert alert-warning" role="alert">
+        <i class="bi bi-exclamation-triangle-fill"></i>
+        <strong>Unprinted Item:</strong> {{ printed_warning }}
+    </div>
+    {% endif %}
+
     <!-- Hidden fields for template dimensions -->
     <input type="hidden" id="template-width" value="{{ template.width_mm }}">
     <input type="hidden" id="template-height" value="{{ template.height_mm }}">

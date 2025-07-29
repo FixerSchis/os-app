@@ -854,3 +854,22 @@ def wiki_index_page(db_session):
     db_session.commit()
 
     return page
+
+
+@pytest.fixture(scope="function")
+def print_template_obj(db_session, new_user):
+    """Fixture for creating a print template object."""
+    from models.enums import PrintTemplateType
+
+    unique_id = uuid.uuid4().hex
+    pt = PrintTemplate(
+        type_name=f"Test Print Template {unique_id}",
+        type=PrintTemplateType.ITEM_CARD.value,
+        front_html="<div>Front Template</div>",
+        back_html="<div>Back Template</div>",
+        css_styles="body { font-family: Arial; }",
+        created_by_user_id=new_user.id,
+    )
+    db_session.add(pt)
+    db_session.commit()
+    return pt

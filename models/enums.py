@@ -193,6 +193,28 @@ class GroupAuditAction(Enum):
         }
 
 
+class ItemAuditAction(Enum):
+    CREATE = "create"
+    EDIT = "edit"
+    VERSION_INCREMENT = "version_increment"
+    PRINTED = "printed"
+    MODS_CHANGED = "mods_changed"
+    EXPIRY_CHANGED = "expiry_changed"
+    BLUEPRINT_CHANGED = "blueprint_changed"
+
+    @classmethod
+    def descriptions(cls):
+        return {
+            cls.CREATE.value: "Created",
+            cls.EDIT.value: "Edited",
+            cls.VERSION_INCREMENT.value: "Version Incremented",
+            cls.PRINTED.value: "Marked as Printed",
+            cls.MODS_CHANGED.value: "Modifications Changed",
+            cls.EXPIRY_CHANGED.value: "Expiry Changed",
+            cls.BLUEPRINT_CHANGED.value: "Blueprint Changed",
+        }
+
+
 class GroupType(Enum):
     MILITARY = "military"
     SCIENTIFIC = "scientific"

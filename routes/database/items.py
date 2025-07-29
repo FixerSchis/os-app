@@ -177,6 +177,19 @@ def create_post():
                 ),
                 {"iid": item.id, "mid": mod_id, "count": count},
             )
+
+        # Create audit log for item creation
+        from models.database.item import ItemAuditLog
+        from models.enums import ItemAuditAction
+
+        audit_log = ItemAuditLog(
+            item_id=item.id,
+            editor_user_id=current_user.id,
+            action=ItemAuditAction.CREATE.value,
+            changes=f"Item created with {len(mod_counts)} mod types",
+        )
+        db.session.add(audit_log)
+
         db.session.commit()
         flash("Item created successfully", "success")
         return redirect(url_for("items.list"))
@@ -257,13 +270,38 @@ def edit_post(id):
             initial_mods=initial_mods,
             mod_instances_by_blueprint=mod_instances_by_blueprint,
         )
+
     try:
+        # Track changes to determine if version should be incremented
+        changes = []
+        version_incremented = False
+
+        # Check blueprint changes
+        if item.blueprint_id != int(blueprint_id):
+            changes.append(f"Blueprint changed from {item.blueprint_id} to {blueprint_id}")
+            version_incremented = True
+
+        # Check expiry changes
+        new_expiry = expiry if expiry else None
+        if item.expiry != new_expiry:
+            changes.append(f"Expiry changed from {item.expiry} to {new_expiry}")
+            version_incremented = True
+
+        # Check mods changes
+        new_mods = Counter([int(mid) for mid in mods_applied_ids])
+        current_mods = Counter(initial_mods)
+        if new_mods != current_mods:
+            changes.append("Modifications changed")
+            version_incremented = True
+
+        # Apply changes
         item.blueprint_id = blueprint_id
-        item.expiry = expiry if expiry else None
+        item.expiry = new_expiry
         db.session.flush()
+
+        # Update mods
         db.session.execute(item_mods_applied.delete().where(item_mods_applied.c.item_id == item.id))
-        mod_counts = Counter([int(mid) for mid in mods_applied_ids])
-        for mod_id, count in mod_counts.items():
+        for mod_id, count in new_mods.items():
             db.session.execute(
                 text(
                     "INSERT INTO item_mods_applied "
@@ -272,6 +310,23 @@ def edit_post(id):
                 ),
                 {"iid": item.id, "mid": mod_id, "count": count},
             )
+
+        # Increment version if any non-ownership fields changed
+        if version_incremented:
+            item.increment_version(current_user.id, f"Item edited: {', '.join(changes)}")
+        else:
+            # Create audit log for edit without version increment
+            from models.database.item import ItemAuditLog
+            from models.enums import ItemAuditAction
+
+            audit_log = ItemAuditLog(
+                item_id=item.id,
+                editor_user_id=current_user.id,
+                action=ItemAuditAction.EDIT.value,
+                changes="Item edited (no version increment)",
+            )
+            db.session.add(audit_log)
+
         db.session.commit()
         flash("Item updated successfully", "success")
         return redirect(url_for("items.list"))
@@ -382,9 +437,25 @@ def engineering_cost():
         return jsonify({"error": "No item_id or blueprint_id provided"}), 400
 
 
-@items_bp.route("/<int:id>/view")
-def view(id):
+@items_bp.route("/<int:id>/<int:version>/view")
+def view(id, version):
     item = Item.query.get_or_404(id)
+
+    # Check for version mismatch warning
+    version_warning = None
+    if version != item.version:
+        version_warning = (
+            "The item version you provided is no longer current - if you obtained this link "
+            "from a QR code on game lammy, please discard it."
+        )
+
+    # Check for unprinted warning
+    printed_warning = None
+    if not item.printed:
+        printed_warning = (
+            "This item has updated and has not yet been printed. If you require an up to "
+            "date copy of this lammy, please contact the Game Team"
+        )
 
     # Get the item card template
     template = PrintTemplate.query.filter_by(type=PrintTemplateType.ITEM_CARD.value).first()
@@ -421,4 +492,113 @@ def view(id):
         back_url=url_for("items.list"),
         css_b64=css_b64,
         item=item,
+        version_warning=version_warning,
+        printed_warning=printed_warning,
     )
+
+
+@items_bp.route("/print_unprinted")
+@login_required
+def print_unprinted_items():
+    """Print all unprinted items and mark them as printed."""
+    if not current_user.has_role(Role.RULES_TEAM.value):
+        flash("You do not have permission to access this page", "error")
+        return redirect(url_for("index"))
+
+    # Get all unprinted items
+    unprinted_items = Item.query.filter_by(printed=False).all()
+
+    if not unprinted_items:
+        flash("No unprinted items found.", "info")
+        return redirect(url_for("items.list"))
+
+    # Get the template for item cards
+    template = PrintTemplate.query.filter_by(type=PrintTemplateType.ITEM_CARD.value).first()
+    if not template:
+        flash("No item card template found. Please create one first.", "error")
+        return redirect(url_for("items.list"))
+
+    # Generate PDF
+    from utils.print_layout import PrintLayout
+
+    layout_manager = PrintLayout()
+    try:
+        pdf = layout_manager.generate_item_cards_pdf(unprinted_items, template)
+        pdf.seek(0)
+
+        # Mark all items as printed
+        for item in unprinted_items:
+            item.mark_as_printed(current_user.id)
+
+        db.session.commit()
+
+        # Return PDF for download
+        from flask import send_file
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"unprinted_items_{timestamp}.pdf"
+
+        return send_file(
+            pdf,
+            mimetype="application/pdf",
+            as_attachment=True,
+            download_name=filename,
+        )
+    except Exception as e:
+        flash(f"Error generating PDF: {str(e)}", "error")
+        return redirect(url_for("items.list"))
+
+
+@items_bp.route("/<int:id>/mark_unprinted", methods=["POST"])
+@login_required
+def mark_item_unprinted(id):
+    """Mark a specific item as unprinted so it will be included in the next batch."""
+    if not current_user.has_role(Role.RULES_TEAM.value):
+        flash("You do not have permission to access this page", "error")
+        return redirect(url_for("index"))
+
+    item = Item.query.get_or_404(id)
+
+    if not item.printed:
+        flash(f"Item {item.full_code} is already marked as unprinted.", "info")
+    else:
+        item.printed = False
+        # Create audit log
+        from models.database.item import ItemAuditLog
+        from models.enums import ItemAuditAction
+
+        audit_log = ItemAuditLog(
+            item_id=item.id,
+            editor_user_id=current_user.id,
+            action=ItemAuditAction.PRINTED.value,
+            changes="Item marked as unprinted for re-printing",
+        )
+        db.session.add(audit_log)
+        db.session.commit()
+        flash(
+            f"Item {item.full_code} has been marked as unprinted and will be "
+            "included in the next batch.",
+            "success",
+        )
+
+    return redirect(url_for("items.list"))
+
+
+@items_bp.route("/<int:id>/mark_printed", methods=["POST"])
+@login_required
+def mark_item_printed(id):
+    """Mark a specific item as printed."""
+    if not current_user.has_role(Role.RULES_TEAM.value):
+        flash("You do not have permission to access this page", "error")
+        return redirect(url_for("index"))
+
+    item = Item.query.get_or_404(id)
+
+    if item.printed:
+        flash(f"Item {item.full_code} is already marked as printed.", "info")
+    else:
+        item.mark_as_printed(current_user.id)
+        db.session.commit()
+        flash(f"Item {item.full_code} has been marked as printed.", "success")
+
+    return redirect(url_for("items.list"))

@@ -277,7 +277,7 @@ def test_items_engineering_cost_no_id(test_client, db):
 
 
 def test_items_view_unauthorized(test_client, item, print_template_obj, db):
-    response = test_client.get(f"/db/items/{item.id}/view")
+    response = test_client.get(f"/db/items/{item.id}/{item.version}/view")
     assert response.status_code == 200
 
 
@@ -285,11 +285,11 @@ def test_items_view_authorized(test_client, rules_team_user, item, print_templat
     with test_client.session_transaction() as session:
         session["_user_id"] = rules_team_user.id
         session["_fresh"] = True
-    response = test_client.get(f"/db/items/{item.id}/view")
+    response = test_client.get(f"/db/items/{item.id}/{item.version}/view")
     assert response.status_code == 200
     assert bytes(str(item.item_id), "utf-8") in response.data
 
 
 def test_items_view_not_found(test_client, db):
-    response = test_client.get("/db/items/99999/view")
+    response = test_client.get("/db/items/99999/99999/view")
     assert response.status_code == 404
