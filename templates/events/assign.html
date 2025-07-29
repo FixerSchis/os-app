@@ -26,7 +26,10 @@
             <form method="POST">
                 <div class="card">
                     <div class="card-body">
-                        <h5 class="card-title">Assign Ticket</h5>
+                        <h5 class="card-title" id="form_title">Assign Ticket</h5>
+                        <div id="existing_ticket_info" class="alert alert-info" style="display: none;">
+                            <i class="fas fa-info-circle"></i> You are editing an existing ticket. Changes will update the current ticket.
+                        </div>
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
@@ -198,8 +201,16 @@ function fetchAndApplyCharacterTicket(characterId) {
             if (!ticket) {
                 document.getElementById('existing_ticket_info')?.remove();
                 document.getElementById('price_paid').value = 0;
+                document.getElementById('form_title').textContent = 'Assign Ticket';
                 return;
             }
+            // Show existing ticket info
+            const existingInfo = document.getElementById('existing_ticket_info');
+            if (existingInfo) {
+                existingInfo.style.display = 'block';
+            }
+            document.getElementById('form_title').textContent = 'Edit Ticket';
+
             // Pre-select fields
             document.getElementById('ticket_type').value = ticket.ticket_type;
             if (document.getElementById('meal_ticket')) {

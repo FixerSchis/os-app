@@ -1,9 +1,11 @@
+import csv
+import io
 import json
 import logging
 import random
 from datetime import datetime, timezone
 
-from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
+from flask import Blueprint, Response, flash, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from models.database.exotic_substances import ExoticSubstance
@@ -398,6 +400,7 @@ def assign_ticket_post(event_id):
     user_id = None
     character_id = None
     child_name = None
+    existing_ticket = None
 
     # --- Adult ---
     if ticket_type == "adult":
@@ -417,50 +420,61 @@ def assign_ticket_post(event_id):
 
         user_id = character.user_id
         character_id = character.id
-        # Only one adult ticket per character/event
-        existing = EventTicket.query.filter_by(
+        # Check for existing adult ticket for this character/event
+        existing_ticket = EventTicket.query.filter_by(
             event_id=event_id, character_id=character_id, ticket_type="adult"
         ).first()
-        if existing:
-            flash("This character already has an adult ticket for this event.", "error")
-            return redirect(url_for("events.assign_ticket", event_id=event_id))
     # --- Crew ---
     elif ticket_type == "crew":
-        user_id = int(request.form["user_id"])  # New field for crew assignment
+        user_id = int(request.form["user_id"])
         character_id = None
-        # Only one crew ticket per user/event
-        existing = EventTicket.query.filter_by(
+        # Check for existing crew ticket for this user/event
+        existing_ticket = EventTicket.query.filter_by(
             event_id=event_id, user_id=user_id, ticket_type="crew"
         ).first()
-        if existing:
-            flash("This user already has a crew ticket for this event.", "error")
-            return redirect(url_for("events.assign_ticket", event_id=event_id))
     # --- Child ---
     elif ticket_type in ["child_12_15", "child_7_11", "child_under_7"]:
-        user_id = int(request.form["user_id"])  # New field for child assignment
+        user_id = int(request.form["user_id"])
         character_id = None
         child_name = request.form.get("child_name", "").strip()
         if not child_name:
             flash("Please enter the child's name.", "error")
             return redirect(url_for("events.assign_ticket", event_id=event_id))
-        # Allow multiple child tickets per user/event/child_name
+        # For child tickets, we allow multiple tickets per user/event/child_name
+        # So we don't check for existing tickets
     else:
         flash("Unknown ticket type.", "error")
         return redirect(url_for("events.assign_ticket", event_id=event_id))
 
-    ticket = EventTicket(
-        event_id=event_id,
-        character_id=character_id,
-        user_id=user_id,
-        ticket_type=ticket_type,
-        meal_ticket=bool(request.form.get("meal_ticket")),
-        requires_bunk=bool(request.form.get("requires_bunk")),
-        price_paid=price_paid,
-        assigned_by_id=current_user.id,
-        assigned_at=datetime.now(timezone.utc),
-        child_name=child_name,
-    )
-    db.session.add(ticket)
+    # If we have an existing ticket, update it
+    if existing_ticket:
+        existing_ticket.meal_ticket = bool(request.form.get("meal_ticket"))
+        existing_ticket.requires_bunk = bool(request.form.get("requires_bunk"))
+        existing_ticket.price_paid = price_paid
+        existing_ticket.assigned_by_id = current_user.id
+        existing_ticket.assigned_at = datetime.now(timezone.utc)
+        if child_name:
+            existing_ticket.child_name = child_name
+
+        db.session.commit()
+        flash("Ticket updated successfully!", "success")
+    else:
+        # Create new ticket
+        ticket = EventTicket(
+            event_id=event_id,
+            character_id=character_id,
+            user_id=user_id,
+            ticket_type=ticket_type,
+            meal_ticket=bool(request.form.get("meal_ticket")),
+            requires_bunk=bool(request.form.get("requires_bunk")),
+            price_paid=price_paid,
+            assigned_by_id=current_user.id,
+            assigned_at=datetime.now(timezone.utc),
+            child_name=child_name,
+        )
+        db.session.add(ticket)
+        db.session.commit()
+        flash("Ticket assigned successfully!", "success")
 
     # Reset group pack if character has a group
     if character_id:
@@ -471,8 +485,38 @@ def assign_ticket_post(event_id):
                 character.group.pack = Pack()
             character.group.pack.is_generated = False
 
+    return redirect(url_for("events.view_attendees", event_id=event_id))
+
+
+@events_bp.route("/<int:event_id>/tickets/<int:ticket_id>/remove", methods=["POST"])
+@login_required
+@user_admin_required
+def remove_ticket(event_id, ticket_id):
+    """Remove an assigned ticket."""
+    ticket = EventTicket.query.get_or_404(ticket_id)
+
+    # Verify the ticket belongs to the specified event
+    if ticket.event_id != event_id:
+        flash("Invalid ticket for this event.", "error")
+        return redirect(url_for("events.view_attendees", event_id=event_id))
+
+    # Store character info for group pack reset
+    character_id = ticket.character_id
+
+    # Delete the ticket
+    db.session.delete(ticket)
     db.session.commit()
-    flash("Ticket assigned successfully!", "success")
+
+    # Reset group pack if character had a group
+    if character_id:
+        character = db.session.get(Character, character_id)
+        if character and character.group:
+            # Reset the group pack - unmark as generated and clear contents except items
+            if not character.group.pack:
+                character.group.pack = Pack()
+            character.group.pack.is_generated = False
+
+    flash("Ticket removed successfully!", "success")
     return redirect(url_for("events.view_attendees", event_id=event_id))
 
 
@@ -1334,3 +1378,75 @@ def debug_packs(event_id):
                 )
 
     return jsonify(debug_data)
+
+
+@events_bp.route("/<int:event_id>/attendees/export", methods=["GET"])
+@login_required
+@admin_required
+def export_attendees(event_id):
+    """Export attendees for an event to CSV."""
+    event = Event.query.get_or_404(event_id)
+    tickets = (
+        EventTicket.query.filter_by(event_id=event_id)
+        .outerjoin(EventTicket.character)  # Use left join for tickets without characters
+        .join(EventTicket.user)  # Always join with user
+        .add_entity(Character)
+        .add_entity(User)
+        .all()
+    )
+
+    # Define CSV headers
+    headers = [
+        "Event Name",
+        "Event Number",
+        "Ticket Type",
+        "Meal Ticket",
+        "Requires Bunk",
+        "Child Name",
+        "User First Name",
+        "Character Reference",
+        "Character Name",
+        "Character Faction",
+        "Group Name",
+    ]
+
+    # Create a file-like object to hold the CSV data
+    output = io.StringIO()
+    csv_writer = csv.writer(output)
+
+    # Write headers
+    csv_writer.writerow(headers)
+
+    # Write data rows
+    for ticket, character, user in tickets:
+        # Create character reference (user_id.character_id format)
+        character_reference = ""
+        if character:
+            character_reference = f"{character.user_id}.{character.character_id}"
+
+        row = [
+            event.name,
+            event.event_number,
+            ticket.ticket_type.value,
+            ticket.meal_ticket,
+            ticket.requires_bunk,
+            ticket.child_name,
+            user.first_name,
+            character_reference,
+            character.name if character else "",
+            character.faction.name if character and character.faction else "",
+            character.group.name if character and character.group else "",
+        ]
+        csv_writer.writerow(row)
+
+    # Reset the file pointer to the beginning of the file
+    output.seek(0)
+
+    # Return the CSV file as a response
+    return Response(
+        output,
+        mimetype="text/csv",
+        headers={
+            "Content-Disposition": f"attachment; filename=attendees_event_{event.event_number}.csv"
+        },
+    )
