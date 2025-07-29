@@ -98,6 +98,18 @@ def render_template_preview(template_id):
         sample_data = {"character": get_sample_character()}
     elif template.type == PrintTemplateType.ITEM_CARD:
         sample_data = {"item": get_sample_item()}
+        # Add QR code context for item cards
+        sample_item = sample_data["item"]
+        try:
+            item_view_url = url_for(
+                "items.view", id=sample_item.id, version=sample_item.version, _external=True
+            )
+            sample_data["item_view_url"] = item_view_url
+            sample_data["item_qr_code"] = generate_qr_code(item_view_url, size=3)
+        except Exception:
+            # Fallback if URL generation fails
+            sample_data["item_view_url"] = f"/db/items/{sample_item.id}/{sample_item.version}/view"
+            sample_data["item_qr_code"] = generate_qr_code(sample_data["item_view_url"], size=3)
     elif template.type == PrintTemplateType.MEDICAMENT_CARD:
         sample_data = {"medicament": get_sample_medicament()}
     elif template.type == PrintTemplateType.CONDITION_CARD:

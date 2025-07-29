@@ -13,5 +13,5 @@ def get_sample_item():
         base_cost=500,
         purchaseable=True,
     )
-    item = Item(id=1, blueprint=blueprint, item_id=1, expiry=None)
+    item = Item(id=1, blueprint=blueprint, item_id=1, expiry=None, version=1, printed=False)
     return item

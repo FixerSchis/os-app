@@ -471,6 +471,24 @@ def view(id, version):
         "generate_web_qr_code": generate_web_qr_code,
     }
 
+    # Add custom filter for QR code generation with parameters
+    def qr_code_filter(data, size=10, border=2):
+        return generate_qr_code(data, size=size, border=border)
+
+    template_context["qr_code"] = qr_code_filter
+
+    # Pre-generate the item view URL and QR code
+    try:
+        item_view_url = url_for("items.view", id=item.id, version=item.version, _external=True)
+        template_context["item_view_url"] = item_view_url
+        template_context["item_qr_code"] = generate_qr_code(item_view_url, size=3)
+    except Exception:
+        # Fallback if URL generation fails
+        template_context["item_view_url"] = f"/db/items/{item.id}/{item.version}/view"
+        template_context["item_qr_code"] = generate_qr_code(
+            template_context["item_view_url"], size=3
+        )
+
     # Render the template
     front_rendered = template.get_front_page_render(template_context)
     back_rendered = template.get_back_page_render(template_context)
