@@ -176,14 +176,15 @@
         {% endif %}
 
         <!-- Other Information -->
-        {% if pack.other %}
+        {% if pack.other or pack.player_other %}
         <div class="card mb-4">
             <div class="card-header">
                 <h2 class="h5 mb-0">Other Information</h2>
             </div>
             <div class="card-body">
+                {% if pack.other %}
                 <div class="mb-4 p-3 border rounded">
-                    <h3 class="h6">Additional Items/Information</h3>
+                    <h3 class="h6">Game Team Additional Items/Information</h3>
                     <p class="mb-2">{{ pack.other }}</p>
 
                     <div class="form-check mt-3">
@@ -194,6 +195,22 @@
                         </label>
                     </div>
                 </div>
+                {% endif %}
+
+                {% if pack.player_other %}
+                <div class="mb-4 p-3 border rounded">
+                    <h3 class="h6">Player Additional Information</h3>
+                    <p class="mb-2">{{ pack.player_other }}</p>
+
+                    <div class="form-check mt-3">
+                        <input type="checkbox" class="form-check-input" id="player_other_confirmed" name="player_other_confirmed"
+                               {% if review_data.get('player_other_confirmed') %}checked{% endif %}>
+                        <label class="form-check-label" for="player_other_confirmed">
+                            I confirm that I have processed the above player "Other" information and taken any necessary actions
+                        </label>
+                    </div>
+                </div>
+                {% endif %}
             </div>
         </div>
         {% endif %}

@@ -1179,3 +1179,162 @@ def test_process_downtime_with_multiple_reputation_changes(
     # Verify period was completed
     db.session.refresh(downtime_period)
     assert downtime_period.status == DowntimeStatus.COMPLETED
+
+
+def test_enter_downtime_post_with_player_other(
+    test_client, downtime_pack_enter_downtime, regular_user, db
+):
+    """Test downtime entry with player_other field."""
+    login_user(test_client, regular_user)
+
+    data = {
+        "purchases[]": [],
+        "modifications[]": [],
+        "engineering[]": [],
+        "science[]": [],
+        "research[]": [],
+        "reputation[]": [],
+        "player_other": "Test player other information",
+        "confirm_complete": "on",
+    }
+
+    response = test_client.post(
+        f"/downtime/enter-downtime/{downtime_pack_enter_downtime.period_id}/"
+        f"{downtime_pack_enter_downtime.character_id}",
+        data=data,
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 302  # Should redirect on success
+
+    # Check that pack status was updated
+    db.session.refresh(downtime_pack_enter_downtime)
+    assert downtime_pack_enter_downtime.status == DowntimeTaskStatus.MANUAL_REVIEW
+    assert downtime_pack_enter_downtime.player_other == "Test player other information"
+
+
+def test_enter_downtime_post_with_empty_player_other(
+    test_client, downtime_pack_enter_downtime, regular_user, db
+):
+    """Test downtime entry with empty player_other field."""
+    login_user(test_client, regular_user)
+
+    data = {
+        "purchases[]": [],
+        "modifications[]": [],
+        "engineering[]": [],
+        "science[]": [],
+        "research[]": [],
+        "reputation[]": [],
+        "player_other": "",
+        "confirm_complete": "on",
+    }
+
+    response = test_client.post(
+        f"/downtime/enter-downtime/{downtime_pack_enter_downtime.period_id}/"
+        f"{downtime_pack_enter_downtime.character_id}",
+        data=data,
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 302  # Should redirect on success
+
+    # Check that pack status was updated
+    db.session.refresh(downtime_pack_enter_downtime)
+    assert downtime_pack_enter_downtime.status == DowntimeTaskStatus.MANUAL_REVIEW
+    assert downtime_pack_enter_downtime.player_other == ""
+
+
+def test_manual_review_with_player_other_field(
+    test_client, downtime_pack_enter_downtime, downtime_team_user, db
+):
+    """Test manual review with 'player_other' field that requires confirmation."""
+    make_pack_manual_review(db, downtime_pack_enter_downtime)
+
+    # Set player_other field on the pack
+    downtime_pack_enter_downtime.player_other = "Test player other information"
+    db.session.commit()
+
+    login_user(test_client, downtime_team_user)
+
+    # Test without confirmation - should fail
+    response = test_client.post(
+        "/downtime/manual-review/"
+        f"{downtime_pack_enter_downtime.period_id}/"
+        f"{downtime_pack_enter_downtime.character_id}",
+        data={"confirm_complete": "on"},
+        follow_redirects=True,
+    )
+    assert response.status_code == 200  # Should stay on page due to validation error
+
+    # Test with confirmation - should succeed
+    response = test_client.post(
+        "/downtime/manual-review/"
+        f"{downtime_pack_enter_downtime.period_id}/"
+        f"{downtime_pack_enter_downtime.character_id}",
+        data={"confirm_complete": "on", "player_other_confirmed": "on"},
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+
+    # Verify pack was completed
+    db.session.refresh(downtime_pack_enter_downtime)
+    assert downtime_pack_enter_downtime.status == DowntimeTaskStatus.COMPLETED
+
+
+def test_manual_review_with_both_other_fields(
+    test_client, downtime_pack_enter_downtime, downtime_team_user, db
+):
+    """Test manual review with both 'other' and 'player_other' fields."""
+    make_pack_manual_review(db, downtime_pack_enter_downtime)
+
+    # Set both other fields on the pack
+    downtime_pack_enter_downtime.other = "Test game team other information"
+    downtime_pack_enter_downtime.player_other = "Test player other information"
+    db.session.commit()
+
+    login_user(test_client, downtime_team_user)
+
+    # Test without any confirmation - should fail
+    response = test_client.post(
+        "/downtime/manual-review/"
+        f"{downtime_pack_enter_downtime.period_id}/"
+        f"{downtime_pack_enter_downtime.character_id}",
+        data={"confirm_complete": "on"},
+        follow_redirects=True,
+    )
+    assert response.status_code == 200  # Should stay on page due to validation error
+
+    # Test with only game team confirmation - should fail
+    response = test_client.post(
+        "/downtime/manual-review/"
+        f"{downtime_pack_enter_downtime.period_id}/"
+        f"{downtime_pack_enter_downtime.character_id}",
+        data={"confirm_complete": "on", "other_confirmed": "on"},
+        follow_redirects=True,
+    )
+    assert response.status_code == 200  # Should stay on page due to validation error
+
+    # Test with only player confirmation - should fail
+    response = test_client.post(
+        "/downtime/manual-review/"
+        f"{downtime_pack_enter_downtime.period_id}/"
+        f"{downtime_pack_enter_downtime.character_id}",
+        data={"confirm_complete": "on", "player_other_confirmed": "on"},
+        follow_redirects=True,
+    )
+    assert response.status_code == 200  # Should stay on page due to validation error
+
+    # Test with both confirmations - should succeed
+    response = test_client.post(
+        "/downtime/manual-review/"
+        f"{downtime_pack_enter_downtime.period_id}/"
+        f"{downtime_pack_enter_downtime.character_id}",
+        data={"confirm_complete": "on", "other_confirmed": "on", "player_other_confirmed": "on"},
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+
+    # Verify pack was completed
+    db.session.refresh(downtime_pack_enter_downtime)
+    assert downtime_pack_enter_downtime.status == DowntimeTaskStatus.COMPLETED

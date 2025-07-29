@@ -590,6 +590,9 @@ def enter_downtime_post(period_id, character_id):
             )
         )
 
+    # Handle player other information
+    pack.player_other = request.form.get("player_other", "")
+
     # If confirm complete is checked, move to manual review
     if request.form.get("confirm_complete"):
         pack.status = DowntimeTaskStatus.MANUAL_REVIEW
@@ -735,6 +738,10 @@ def manual_review_post(period_id, character_id):
     if pack.other:
         review_data["other_confirmed"] = "other_confirmed" in request.form
 
+    # Handle player other confirmation
+    if pack.player_other:
+        review_data["player_other_confirmed"] = "player_other_confirmed" in request.form
+
     # Save review data to pack
     pack.review_data = review_data
 
@@ -743,6 +750,17 @@ def manual_review_post(period_id, character_id):
         if pack.other and not review_data.get("other_confirmed"):
             flash(
                 "You must confirm that you have processed the 'Other' information "
+                "before completing the review.",
+                "error",
+            )
+            return redirect(
+                url_for("downtime.manual_review", period_id=period_id, character_id=character_id)
+            )
+
+        # Check if there's player other information that needs to be confirmed
+        if pack.player_other and not review_data.get("player_other_confirmed"):
+            flash(
+                "You must confirm that you have processed the player 'Other' information "
                 "before completing the review.",
                 "error",
             )

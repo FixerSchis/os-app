@@ -53,7 +53,8 @@ class DowntimePack(db.Model):
     samples = Column(JSON, default=list)
     cybernetics = Column(JSON, default=list)
     research_teams = Column(JSON, default=list)  # List of faction IDs
-    other = Column(JSON, default=str)  # Free-text field for other items
+    other = Column(JSON, default=str)  # Free-text field for other items (game team)
+    player_other = Column(JSON, default=str)  # Free-text field for other items (players)
 
     purchases = Column(JSON, default=list)
     modifications = Column(JSON, default=list)
@@ -81,6 +82,7 @@ class DowntimePack(db.Model):
             "cybernetics": self.cybernetics,
             "research_teams": self.research_teams,
             "other": self.other,
+            "player_other": self.player_other,
             "purchases": self.purchases,
             "modifications": self.modifications,
             "engineering": self.engineering,

@@ -61,6 +61,7 @@
                 <li class="nav-item"><a class="nav-link" data-step="science" href="#" data-has-slots="{{ character.get_available_science_slots() > 0 }}">Science <span class="step-status-icon"></span></a></li>
                 <li class="nav-item"><a class="nav-link" data-step="research" href="#">Research <span class="step-status-icon"></span></a></li>
                 <li class="nav-item"><a class="nav-link" data-step="reputation" href="#" data-has-slots="{{ character.get_factions_with_reputation()|length > 0 }}">Reputation <span class="step-status-icon"></span></a></li>
+                <li class="nav-item"><a class="nav-link" data-step="other" href="#">Other <span class="step-status-icon"></span></a></li>
                 <!-- Add more steps as needed, e.g. Science, Reputation, etc. -->
             </ul>
         </div>
@@ -417,6 +418,24 @@
                             <textarea class="form-control" id="reputation-question" name="reputation_question" rows="3" maxlength="500" placeholder="Enter your question to the selected faction..."></textarea>
                         </div>
                         <div class="form-text">You may submit one question to a faction you have reputation with per downtime.</div>
+                    </div>
+                </div>
+            </div>
+            <!-- Other Information Step -->
+            <div class="downtime-step" data-step="other" style="display:none;">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Other Information</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="player_other" class="form-label">Additional Information</label>
+                            <textarea class="form-control" id="player_other" name="player_other" rows="6"
+                                      placeholder="Enter any additional information that doesn't fit into the previous steps...">{{ pack.player_other or '' }}</textarea>
+                            <div class="form-text">
+                                Anything not covered by the previous steps, including but not limited to: First event skill respend, special requests, or other activities.
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
