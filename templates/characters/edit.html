@@ -196,7 +196,7 @@
                 {% endif %}
 
                 <!-- Active Conditions -->
-                {% if current_user.has_role('user_admin') or character.active_conditions %}
+                {% if character and (current_user.has_role('user_admin') or character.active_conditions) %}
                 <div class="col-lg-6">
                     <div class="card">
                         <div class="card-header">
@@ -282,7 +282,7 @@
                 {% endif %}
 
                 <!-- Tags -->
-                {% if current_user.has_role('user_admin') or character.tags.all() %}
+                {% if character and (current_user.has_role('user_admin') or character.tags.all()) %}
                 <div class="col-lg-6">
                     <div class="card">
                         <div class="card-header">
@@ -329,6 +329,7 @@
                 </div>
 
                 <!-- Faction Reputation -->
+                {% if character %}
                 <div class="col-lg-6">
                     <div class="card">
                         <div class="card-header">
@@ -365,6 +366,7 @@
                         </div>
                     </div>
                 </div>
+                {% endif %}
                 {% endif %}
 
                 <!-- Character Inventory (Only show when editing existing character) -->
@@ -451,7 +453,7 @@
         </form>
 
         <!-- Assign New Item (Admin Only) - Moved outside main form to fix nested form issue -->
-        {% if current_user.has_role('user_admin') %}
+        {% if current_user.has_role('user_admin') and character %}
         <div class="mt-4">
             <div class="card">
                 <div class="card-header">
