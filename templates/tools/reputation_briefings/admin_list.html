@@ -1,0 +1,83 @@
+{% extends "_template.html" %}
+
+{% block title %}Reputation Briefings - Admin{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/pages/reputation-briefings.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Reputation Briefings</h1>
+        <a href="{{ url_for('reputation_briefings.create') }}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> New Briefing
+        </a>
+    </div>
+
+    {% if briefings %}
+    <div class="briefings-list">
+        {% for briefing in briefings %}
+        <div class="briefing-card card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="mb-0">{{ briefing.subject }}</h5>
+                    <small class="text-muted">
+                        {{ briefing.event.name }} ({{ briefing.event.event_number }}) - {{ briefing.faction.name }}
+                    </small>
+                </div>
+                <div class="d-flex align-items-center">
+                    <span class="badge badge-{{ 'warning' if briefing.status.value == 'incomplete' else 'success' if briefing.status.value == 'submitted' else 'secondary' }}">
+                        {{ ReputationBriefingStatus.descriptions()[briefing.status.value] }}
+                    </span>
+                    <div class="ml-3">
+                        {% if briefing.status.value == 'incomplete' %}
+                        <a href="{{ url_for('reputation_briefings.edit', briefing_id=briefing.id) }}" class="btn btn-sm btn-outline-primary">
+                            <i class="fas fa-edit"></i> Edit
+                        </a>
+                        {% elif briefing.status.value == 'discarded' %}
+                        <a href="{{ url_for('reputation_briefings.reopen', briefing_id=briefing.id) }}" class="btn btn-sm btn-outline-warning">
+                            <i class="fas fa-undo"></i> Reopen
+                        </a>
+                        {% endif %}
+                        <a href="{{ url_for('reputation_briefings.view', briefing_id=briefing.id) }}" class="btn btn-sm btn-outline-info">
+                            <i class="fas fa-eye"></i> View
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Created:</strong> {{ briefing.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
+                        <p><strong>Created by:</strong> {{ briefing.created_by.first_name }} {{ briefing.created_by.surname }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Levels:</strong> {{ briefing.levels|length }}</p>
+                        <p><strong>Last updated:</strong> {{ briefing.updated_at.strftime('%Y-%m-%d %H:%M') }}</p>
+                    </div>
+                </div>
+                {% if briefing.status.value == 'submitted' %}
+                <div class="mt-3">
+                    <small class="text-muted">
+                        <i class="fas fa-users"></i>
+                        Sent to {{ briefing.get_eligible_characters()|length }} eligible characters
+                    </small>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-center py-5">
+        <i class="fas fa-file-alt fa-3x text-muted mb-3"></i>
+        <h3>No Briefings Found</h3>
+        <p class="text-muted">No reputation briefings have been created yet.</p>
+        <a href="{{ url_for('reputation_briefings.create') }}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> Create Your First Briefing
+        </a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

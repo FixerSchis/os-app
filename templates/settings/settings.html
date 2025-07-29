@@ -140,6 +140,16 @@
                     </div>
                 </div>
 
+                <div class="notification-group">
+                    <div class="form-check">
+                        <input type="checkbox" id="notify_reputation_briefing" name="notify_reputation_briefing"
+                               value="1" {% if current_user.notify_reputation_briefing %}checked{% endif %} class="form-check-input">
+                        <label for="notify_reputation_briefing" class="form-check-label">
+                            When a reputation briefing is available for my characters
+                        </label>
+                    </div>
+                </div>
+
                 <button type="submit" class="btn btn-primary">Update Notification Preferences</button>
             </form>
         </div>

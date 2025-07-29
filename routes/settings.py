@@ -23,6 +23,7 @@ def settings():
                 "event_ticket_assigned": request.form.get("notify_event_ticket_assigned") == "1",
                 "event_details_updated": request.form.get("notify_event_details_updated") == "1",
                 "wiki_published": request.form.get("notify_wiki_published") == "1",
+                "reputation_briefing": request.form.get("notify_reputation_briefing") == "1",
             }
             current_user.update_notification_preferences(notification_preferences)
             db.session.commit()

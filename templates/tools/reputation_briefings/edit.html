@@ -1,0 +1,127 @@
+{% extends "_template.html" %}
+
+{% block title %}Edit Reputation Briefing{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/pages/reputation-briefings.css') }}">
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Edit Reputation Briefing</h1>
+        <a href="{{ url_for('reputation_briefings.index') }}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left"></i> Back to List
+        </a>
+    </div>
+
+    <form method="POST" id="briefing-form">
+        <div class="row">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Briefing Details</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label for="event_id">Event *</label>
+                            <select name="event_id" id="event_id" class="form-control select2" required>
+                                <option value="">Select an event...</option>
+                                {% for event in events %}
+                                <option value="{{ event.id }}" {% if event.id == briefing.event_id %}selected{% endif %}>
+                                    {{ event.name }} ({{ event.event_number }}) - {{ event.start_date.strftime('%Y-%m-%d') }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="faction_id">Faction *</label>
+                            <select name="faction_id" id="faction_id" class="form-control select2" required>
+                                <option value="">Select a faction...</option>
+                                {% for faction in factions %}
+                                <option value="{{ faction.id }}" {% if faction.id == briefing.faction_id %}selected{% endif %}>
+                                    {{ faction.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="subject">Subject *</label>
+                            <input type="text" name="subject" id="subject" class="form-control" required
+                                   value="{{ briefing.subject }}" placeholder="Brief subject line for the briefing">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card mt-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5>Briefing Levels</h5>
+                        <button type="button" class="btn btn-sm btn-outline-primary" id="add-level">
+                            <i class="fas fa-plus"></i> Add Level
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div id="levels-container">
+                            <!-- Levels will be added here dynamically -->
+                        </div>
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i>
+                            Add at least one level. Each level requires a minimum reputation value and contains the briefing content for characters with that reputation or higher.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Actions</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-grid gap-2">
+                            <button type="submit" name="action" value="discard" class="btn btn-outline-danger">
+                                <i class="fas fa-trash"></i> Discard
+                            </button>
+                            <button type="submit" name="action" value="save_as_draft" class="btn btn-outline-secondary">
+                                <i class="fas fa-save"></i> Save as Draft
+                            </button>
+                            <button type="submit" name="action" value="save_and_send" class="btn btn-primary">
+                                <i class="fas fa-paper-plane"></i> Save and Send
+                            </button>
+                        </div>
+                        <div class="mt-3">
+                            <small class="text-muted">
+                                <strong>Discard:</strong> Marks the briefing as discarded (cannot be edited).<br>
+                                <strong>Save as Draft:</strong> Keeps the briefing as incomplete for further editing.<br>
+                                <strong>Save and Send:</strong> Submits the briefing and sends notifications to eligible characters.
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script src="{{ url_for('static', filename='js/pages/reputation-briefings.js') }}"></script>
+{# Build levels_dict as a list of dicts using a Jinja2 loop #}
+{% set levels_dict = [] %}
+{% for level in briefing.levels %}
+    {% set _ = levels_dict.append(level.to_dict()) %}
+{% endfor %}
+<script>
+    // Initialize with existing levels
+    document.addEventListener('DOMContentLoaded', function() {
+        const existingLevels = JSON.parse('{{ levels_dict|tojson|safe }}');
+        existingLevels.forEach(function(level, index) {
+            addLevel(level.reputation_required, level.content);
+        });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,118 @@
+{% extends "_template.html" %}
+
+{% block title %}View Reputation Briefing{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/pages/reputation-briefings.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Reputation Briefing</h1>
+        <a href="{{ url_for('reputation_briefings.index') }}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left"></i> Back to List
+        </a>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h3>{{ briefing.subject }}</h3>
+                </div>
+                <div class="card-body">
+                    <div class="briefing-meta mb-4">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p><strong>Event:</strong> {{ briefing.event.name }} ({{ briefing.event.event_number }})</p>
+                                <p><strong>Faction:</strong> {{ briefing.faction.name }}</p>
+                            </div>
+                            <div class="col-md-6">
+                                <p><strong>Created:</strong> {{ briefing.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
+                                <p><strong>Created by:</strong> {{ briefing.created_by.first_name }} {{ briefing.created_by.surname }}</p>
+                            </div>
+                        </div>
+                        {% if character %}
+                        <div class="alert alert-info">
+                            <i class="fas fa-user"></i>
+                            <strong>Viewing as:</strong> {{ character.name }}
+                            (Reputation: {{ character.get_reputation(briefing.faction_id) }})
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="briefing-content">
+                        <h4>Briefing Information</h4>
+                        {% if available_levels %}
+                            {% for level in available_levels %}
+                            <div class="level-section mb-4">
+                                <div class="level-header">
+                                    <h5>
+                                        <span class="badge badge-success">{{ level.reputation_required }} Reputation Required</span>
+                                    </h5>
+                                </div>
+                                <div class="level-content">
+                                    <div class="content-text">
+                                        {{ level.content|nl2br }}
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="alert alert-warning">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                No briefing levels are available for your current reputation level.
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Briefing Details</h5>
+                </div>
+                <div class="card-body">
+                    <p><strong>Status:</strong>
+                        <span class="badge badge-{{ 'warning' if briefing.status.value == 'incomplete' else 'success' if briefing.status.value == 'submitted' else 'secondary' }}">
+                            {{ ReputationBriefingStatus.descriptions()[briefing.status.value] }}
+                        </span>
+                    </p>
+                    <p><strong>Total Levels:</strong> {{ briefing.levels|length }}</p>
+                    {% if character %}
+                    <p><strong>Your Access:</strong> {{ available_levels|length }} of {{ briefing.levels|length }} levels</p>
+                    {% endif %}
+                    <p><strong>Event Date:</strong> {{ briefing.event.start_date.strftime('%Y-%m-%d') }}</p>
+                    <p><strong>Event Location:</strong> {{ briefing.event.location or 'TBD' }}</p>
+
+                    {% if briefing.status.value == 'submitted' %}
+                    <div class="mt-3">
+                        <small class="text-muted">
+                            <i class="fas fa-users"></i>
+                            Sent to {{ briefing.get_eligible_characters()|length }} eligible characters
+                        </small>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if character %}
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h5>Your Character</h5>
+                </div>
+                <div class="card-body">
+                    <p><strong>Name:</strong> {{ character.name }}</p>
+                    <p><strong>Reputation in {{ briefing.faction.name }}:</strong> {{ character.get_reputation(briefing.faction_id) }}</p>
+                    <p><strong>Species:</strong> {{ character.species.name if character.species else 'Unknown' }}</p>
+                    <p><strong>Status:</strong> {{ character.status|title }}</p>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

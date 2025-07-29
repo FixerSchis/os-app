@@ -96,6 +96,9 @@
                         {% if current_user.has_role('rules_team') or has_research_projects %}
                         <a href="{{ url_for('research.research_list') if current_user.has_role('rules_team') else url_for('research.view_research_list') }}">Research</a>
                         {% endif %}
+                        {% if current_user.has_role('plot_team') or current_user.has_active_character() %}
+                        <a href="{{ url_for('reputation_briefings.index') }}">Reputation Briefings</a>
+                        {% endif %}
                     </div>
                 </li>
                 {% if current_user.has_role('admin') %}

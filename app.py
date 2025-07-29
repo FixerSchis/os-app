@@ -52,6 +52,7 @@ from routes.tools.downtime import bp as downtime_bp  # noqa: E402
 from routes.tools.groups import groups_bp  # noqa: E402
 from routes.tools.items import items_bp as tools_items_bp  # noqa: E402
 from routes.tools.messages import bp as messages_bp  # noqa: E402
+from routes.tools.reputation_briefings import reputation_briefings_bp  # noqa: E402
 from routes.tools.research import research_bp  # noqa: E402
 from routes.tools.templates import templates_bp  # noqa: E402
 from routes.tools.tickets import tickets_bp  # noqa: E402
@@ -69,6 +70,14 @@ def create_app(config_class=None):
 
     app.config.from_object(config_class())
     init_app(app)
+
+    # Add custom Jinja filters
+    @app.template_filter("nl2br")
+    def nl2br_filter(text):
+        """Convert newlines to <br> tags for HTML display."""
+        if text is None:
+            return ""
+        return text.replace("\n", "<br>")
 
     # Create engine and Session after app and db are initialized
     with app.app_context():
@@ -158,6 +167,7 @@ def create_app(config_class=None):
     app.register_blueprint(user_management_bp, url_prefix="/users")
     app.register_blueprint(database_management_bp, url_prefix="/tools")
     app.register_blueprint(tools_items_bp, url_prefix="/tools/items")
+    app.register_blueprint(reputation_briefings_bp, url_prefix="/tools/reputation-briefings")
     app.register_blueprint(wiki_bp, url_prefix="/wiki")
 
     app.register_blueprint(characters_bp, url_prefix="/characters")

@@ -57,6 +57,7 @@ class TestConfig(Config):
     WTF_CSRF_ENABLED = False
     LOGIN_DISABLED = False
     SSL_ENABLED = False
+    SERVER_NAME = "localhost"
 
 
 # Try to import LocalConfig, but don't fail if local.py doesn't exist

@@ -19,7 +19,7 @@
             {% endif %}
         </div>
 
-        <form method="POST" class="settings-form w-100">
+        <form method="POST" action="{{ url_for('characters.create_character_post' if not character else 'characters.edit', character_id=character.id if character else None) }}" class="settings-form w-100">
             {% if admin_context %}
             <input type="hidden" name="admin_context" value="1">
             {% endif %}
@@ -100,11 +100,14 @@
                                 {% set can_edit_species = (not character) or (user_is_admin or user_is_npc) and not is_readonly %}
                                 {% if can_edit_species %}
                                 <select id="species_id" name="species_id" class="form-select select2-species" style="width: 100%;" data-placeholder="Select species..." required {% if is_readonly %}disabled{% endif %}>
-                                    <option value="">Select a species</option>
+                                    <option value="">Select species...</option>
                                     {% for species in species_list %}
-                                    <option value="{{ species.id }}" data-factions="{{ species.permitted_factions_list|tojson }}" {% if character and character.species_id == species.id %}selected{% endif %}>{{ species.name }}</option>
+                                        <option value="{{ species.id }}" data-factions="{{ species.permitted_factions_list|tojson }}" {% if character and character.species_id == species.id %}selected{% endif %}>{{ species.name }}</option>
                                     {% endfor %}
                                 </select>
+                                {% if is_readonly %}
+                                <input type="hidden" name="species_id" value="{{ character.species_id if character and character.species else '' }}">
+                                {% endif %}
                                 {% else %}
                                 <input type="text" class="form-control" value="{{ character.species.name if character and character.species else '' }}" readonly>
                                 <input type="hidden" name="species_id" value="{{ character.species_id if character and character.species else '' }}">
@@ -324,7 +327,6 @@
                         </div>
                     </div>
                 </div>
-                {% endif %}
 
                 <!-- Faction Reputation -->
                 <div class="col-lg-6">
@@ -399,26 +401,26 @@
                                                         <td><code>{{ character_item.item.full_code }}</code></td>
                                                         <td>{{ character_item.item.blueprint.item_type.name }}</td>
                                                         <td>
-                                                                                                        {% if character_item.item.expiry is not none %}
-                                                {% if character_item.item.is_expired() %}
-                                                    <span class="badge bg-danger">Expired ({{ character_item.item.expiry }})</span>
-                                                {% else %}
-                                                    <span class="badge bg-success">{{ character_item.item.expiry }} events</span>
-                                                {% endif %}
-                                            {% else %}
-                                                <span class="text-muted">No expiry</span>
-                                            {% endif %}
+                                                            {% if character_item.item.expiry is not none %}
+                                                            {% if character_item.item.is_expired() %}
+                                                                <span class="badge bg-danger">Expired ({{ character_item.item.expiry }})</span>
+                                                            {% else %}
+                                                                <span class="badge bg-success">{{ character_item.item.expiry }} events</span>
+                                                            {% endif %}
+                                                            {% else %}
+                                                                <span class="text-muted">No expiry</span>
+                                                            {% endif %}
                                                         </td>
                                                         <td>{{ character_item.assigned_at.strftime('%Y-%m-%d %H:%M') }}</td>
                                                         {% if current_user.has_role('user_admin') %}
                                                         <td>
-                                                                                                                                                    <form method="POST" action="{{ url_for('tools_items.remove_item_from_character', character_id=character.id) }}"
-                                                  style="display: inline;"
-                                                  onsubmit="return confirm('Are you sure you want to remove this item?')">
-                                                <input type="hidden" name="character_item_id" value="{{ character_item.id }}">
-                                                <input type="hidden" name="from_character_edit" value="1">
-                                                <button type="submit" class="btn btn-sm btn-danger">Remove</button>
-                                            </form>
+                                                            <form method="POST" action="{{ url_for('tools_items.remove_item_from_character', character_id=character.id) }}"
+                                                                  style="display: inline;"
+                                                                  onsubmit="return confirm('Are you sure you want to remove this item?')">
+                                                                <input type="hidden" name="character_item_id" value="{{ character_item.id }}">
+                                                                <input type="hidden" name="from_character_edit" value="1">
+                                                                <button type="submit" class="btn btn-sm btn-danger">Remove</button>
+                                                            </form>
                                                         </td>
                                                         {% endif %}
                                                     </tr>
@@ -430,45 +432,11 @@
                                         <p class="text-muted">No items in inventory.</p>
                                     {% endif %}
                                 </div>
-
-                                <!-- Assign New Item (Admin Only) -->
-                                {% if current_user.has_role('user_admin') %}
-                                <div class="col-md-4">
-                                    <h6>Assign New Item</h6>
-                                                        <form method="POST" action="{{ url_for('tools_items.assign_item_to_character', character_id=character.id) }}">
-                        <input type="hidden" name="from_character_edit" value="1">
-                        <div class="mb-3">
-                            <label for="item_id" class="form-label">Select Existing Item</label>
-                            <select class="form-select select2-single" id="item_id" name="item_id">
-                                <option value="">Choose an existing item...</option>
-                                {% for item in available_items %}
-                                <option value="{{ item.id }}">
-                                    {{ item.blueprint.name }} ({{ item.full_code }})
-                                </option>
-                                {% endfor %}
-                            </select>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="blueprint_id" class="form-label">Or Create New Item from Blueprint</label>
-                            <select class="form-select select2-single" id="blueprint_id" name="blueprint_id">
-                                <option value="">Choose a blueprint...</option>
-                                {% for blueprint in item_blueprints %}
-                                <option value="{{ blueprint.id }}">
-                                    {{ blueprint.name }} ({{ blueprint.full_code }})
-                                </option>
-                                {% endfor %}
-                            </select>
-                        </div>
-
-                        <button type="submit" class="btn btn-primary">Assign Item</button>
-                    </form>
-                                </div>
-                                {% endif %}
                             </div>
                         </div>
                     </div>
                 </div>
+                {% endif %}
                 {% endif %}
             </div>
 
@@ -481,6 +449,53 @@
                 </a>
             </div>
         </form>
+
+        <!-- Assign New Item (Admin Only) - Moved outside main form to fix nested form issue -->
+        {% if current_user.has_role('user_admin') %}
+        <div class="mt-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Assign New Item</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('tools_items.assign_item_to_character', character_id=character.id) }}">
+                        <input type="hidden" name="from_character_edit" value="1">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="item_id" class="form-label">Select Existing Item</label>
+                                    <select class="form-select select2-single" id="item_id" name="item_id">
+                                        <option value="">Choose an existing item...</option>
+                                        {% for item in available_items %}
+                                        <option value="{{ item.id }}">
+                                            {{ item.blueprint.name }} ({{ item.full_code }})
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="blueprint_id" class="form-label">Or Create New Item from Blueprint</label>
+                                    <select class="form-select select2-single" id="blueprint_id" name="blueprint_id">
+                                        <option value="">Choose a blueprint...</option>
+                                        {% for blueprint in item_blueprints %}
+                                        <option value="{{ blueprint.id }}">
+                                            {{ blueprint.name }} ({{ blueprint.full_code }})
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-plus me-1"></i>Assign Item
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% endif %}
     </div>
 </div>
 {% endblock %}
@@ -498,21 +513,9 @@
 {% endif %}
 
 
-
 <script src="{{ url_for('static', filename='js/components/character-species-filter.js') }}"></script>
 {% if character and current_user.has_role('user_admin') %}
 <script src="{{ url_for('static', filename='js/components/character-conditions.js') }}"></script>
 {% endif %}
 <script src="{{ url_for('static', filename='js/pages/character-edit.js') }}"></script>
-
-<script>
-// Initialize Select2 for item selection
-$(document).ready(function() {
-    $('.select2-single').select2({
-        placeholder: 'Select an option...',
-        allowClear: true,
-        width: '100%'
-    });
-});
-</script>
 {% endblock %}
