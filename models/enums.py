@@ -355,7 +355,7 @@ class PrintTemplateType(Enum):
 
     @classmethod
     def values(cls):
-        return [type.value for type in cls]
+        return [template_type.value for template_type in cls]
 
     @classmethod
     def descriptions(cls):
@@ -366,4 +366,22 @@ class PrintTemplateType(Enum):
             cls.MEDICAMENT_CARD.value: "Medicament Card",
             cls.CONDITION_CARD.value: "Condition Card",
             cls.EXOTIC_SUBSTANCE_LABEL.value: "Exotic Substance Label",
+        }
+
+
+class ReputationBriefingStatus(Enum):
+    INCOMPLETE = "incomplete"
+    SUBMITTED = "submitted"
+    DISCARDED = "discarded"
+
+    @classmethod
+    def values(cls):
+        return [status.value for status in cls]
+
+    @classmethod
+    def descriptions(cls):
+        return {
+            cls.INCOMPLETE.value: "Incomplete",
+            cls.SUBMITTED.value: "Submitted",
+            cls.DISCARDED.value: "Discarded",
         }

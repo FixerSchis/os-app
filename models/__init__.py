@@ -14,6 +14,7 @@ from models.database.item_blueprint import ItemBlueprint
 from models.database.item_type import ItemType
 from models.database.medicaments import Medicament
 from models.database.mods import Mod
+from models.database.reputation_briefing import ReputationBriefing, ReputationBriefingLevel
 from models.database.sample import Sample
 from models.database.skills import Skill
 from models.database.species import Ability, Species
@@ -22,6 +23,7 @@ from models.enums import (
     BodyHitsType,
     EventType,
     PrintTemplateType,
+    ReputationBriefingStatus,
     ScienceType,
     WikiPageVersionStatus,
 )
@@ -98,5 +100,8 @@ __all__ = [
     "ItemTransferRequest",
     "ItemTransferRequestItem",
     "ItemTransferStatus",
+    "ReputationBriefing",
+    "ReputationBriefingLevel",
+    "ReputationBriefingStatus",
     "setup_relationships",
 ]

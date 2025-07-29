@@ -1,0 +1,31 @@
+Orion Sphere LRP - Reputation Briefing Available
+
+Hello {{ user.first_name }},
+
+A new reputation briefing has been made available for your character {{ character.name }}.
+
+Briefing Details:
+- Subject: {{ briefing.subject }}
+- Event: {{ briefing.event.name }} ({{ briefing.event.event_number }})
+- Faction: {{ briefing.faction.name }}
+- Your Reputation: {{ character.get_reputation(briefing.faction_id) }}
+
+Available Information:
+Based on your character's reputation, you have access to the following briefing levels:
+
+{% for level in available_levels %}
+--- Reputation {{ level.reputation_required }} Required ---
+{{ level.content }}
+
+{% endfor %}
+
+View the full briefing at: {{ url_for('reputation_briefings.view', briefing_id=briefing.id, _external=True) }}
+
+This briefing contains important information for the upcoming event. Make sure to review it thoroughly.
+
+Best regards,
+The Orion Sphere LRP Team
+
+---
+This is an automated notification from Orion Sphere LRP.
+You can manage your notification preferences in your account settings.

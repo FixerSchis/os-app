@@ -49,6 +49,7 @@ class User(UserMixin, db.Model):
     notify_event_details_updated = db.Column(db.Boolean, default=True)
     notify_wiki_published = db.Column(db.Boolean, default=True)
     notify_message_responded = db.Column(db.Boolean, default=True)
+    notify_reputation_briefing = db.Column(db.Boolean, default=True)
 
     # Theme preference
     dark_mode_preference = db.Column(db.Boolean, default=True, nullable=False)
@@ -222,6 +223,7 @@ class User(UserMixin, db.Model):
             "event_details_updated": self.notify_event_details_updated,
             "wiki_published": self.notify_wiki_published,
             "message_responded": self.notify_message_responded,
+            "reputation_briefing": self.notify_reputation_briefing,
         }
         return notification_map.get(notification_type, False)
 

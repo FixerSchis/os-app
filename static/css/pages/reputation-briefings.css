@@ -1,0 +1,212 @@
+/* Reputation Briefings Styles */
+
+.briefing-card {
+    border: 1px solid #dee2e6;
+    transition: box-shadow 0.2s ease-in-out;
+}
+
+.briefing-card:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.briefing-card .card-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.level-section {
+    border: 1px solid #e9ecef;
+    border-radius: 5px;
+    padding: 15px;
+    margin-bottom: 15px;
+    background-color: #f8f9fa;
+}
+
+.level-header {
+    margin-bottom: 10px;
+}
+
+.level-content {
+    background-color: white;
+    padding: 15px;
+    border-radius: 3px;
+    border-left: 3px solid #28a745;
+}
+
+.content-text {
+    white-space: pre-wrap;
+    line-height: 1.6;
+}
+
+.briefing-meta {
+    background-color: #f8f9fa;
+    padding: 15px;
+    border-radius: 5px;
+    border-left: 4px solid #007bff;
+}
+
+.level-form {
+    border: 1px solid #dee2e6;
+    border-radius: 5px;
+    padding: 15px;
+    margin-bottom: 15px;
+    background-color: #f8f9fa;
+}
+
+.level-form .form-group {
+    margin-bottom: 15px;
+}
+
+.level-form .btn-remove {
+    color: #dc3545;
+    border-color: #dc3545;
+}
+
+.level-form .btn-remove:hover {
+    background-color: #dc3545;
+    color: white;
+}
+
+.select2-container {
+    width: 100% !important;
+}
+
+.badge {
+    font-size: 0.875em;
+}
+
+.badge-warning {
+    background-color: #ffc107;
+    color: #212529;
+}
+
+.badge-success {
+    background-color: #28a745;
+    color: white;
+}
+
+.badge-secondary {
+    background-color: #6c757d;
+    color: white;
+}
+
+.badge-info {
+    background-color: #17a2b8;
+    color: white;
+}
+
+/* Dark Mode Support */
+[data-theme="dark"] .briefing-card {
+    border-color: #495057;
+    background-color: #343a40;
+    color: #e9ecef;
+}
+
+[data-theme="dark"] .briefing-card:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="dark"] .briefing-card .card-header {
+    background-color: #495057;
+    border-bottom-color: #6c757d;
+    color: #e9ecef;
+}
+
+[data-theme="dark"] .level-section {
+    border-color: #6c757d;
+    background-color: #495057;
+    color: #e9ecef;
+}
+
+[data-theme="dark"] .level-content {
+    background-color: #495057;
+    border-left-color: #28a745;
+    color: #e9ecef;
+}
+
+[data-theme="dark"] .briefing-meta {
+    background-color: #495057;
+    border-left-color: #007bff;
+    color: #e9ecef;
+}
+
+[data-theme="dark"] .level-form {
+    border-color: #6c757d;
+    background-color: #495057;
+    color: #e9ecef;
+}
+
+[data-theme="dark"] .level-form .form-control {
+    background-color: #343a40;
+    border-color: #6c757d;
+    color: #e9ecef;
+}
+
+[data-theme="dark"] .level-form .form-control:focus {
+    background-color: #343a40;
+    border-color: #007bff;
+    color: #e9ecef;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+[data-theme="dark"] .level-form .form-label {
+    color: #e9ecef;
+}
+
+[data-theme="dark"] .level-form .form-text {
+    color: #adb5bd;
+}
+
+[data-theme="dark"] .level-form .btn-remove {
+    color: #ff6b6b;
+    border-color: #ff6b6b;
+}
+
+[data-theme="dark"] .level-form .btn-remove:hover {
+    background-color: #ff6b6b;
+    color: #343a40;
+}
+
+[data-theme="dark"] .select2-container--default .select2-selection--single {
+    background-color: #343a40;
+    border-color: #6c757d;
+    color: #e9ecef;
+}
+
+[data-theme="dark"] .select2-container--default .select2-selection--single .select2-selection__rendered {
+    color: #e9ecef;
+}
+
+[data-theme="dark"] .select2-dropdown {
+    background-color: #343a40;
+    border-color: #6c757d;
+}
+
+[data-theme="dark"] .select2-container--default .select2-results__option {
+    color: #e9ecef;
+}
+
+[data-theme="dark"] .select2-container--default .select2-results__option[aria-selected=true] {
+    background-color: #495057;
+}
+
+[data-theme="dark"] .select2-container--default .select2-results__option--highlighted[aria-selected] {
+    background-color: #007bff;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .briefing-card .card-header {
+        flex-direction: column;
+        align-items: flex-start !important;
+    }
+
+    .briefing-card .card-header > div:last-child {
+        margin-top: 10px;
+        width: 100%;
+    }
+
+    .level-form {
+        padding: 10px;
+    }
+}

@@ -121,6 +121,10 @@ def send_notification_email(user, notification_type, **kwargs):
             "subject": "Orion Sphere LRP - Message Response Received",
             "template": "notification_message_responded",
         },
+        "reputation_briefing": {
+            "subject": "Orion Sphere LRP - Reputation Briefing Available",
+            "template": "notification_reputation_briefing",
+        },
     }
 
     config = notification_config.get(notification_type)
