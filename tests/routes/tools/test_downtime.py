@@ -668,6 +668,150 @@ def test_manual_review_with_other_field(
     assert downtime_pack_enter_downtime.status == DowntimeTaskStatus.COMPLETED
 
 
+def test_manual_review_reputation_changes(
+    test_client, downtime_pack_enter_downtime, downtime_team_user, db, faction
+):
+    """Test manual review with reputation changes."""
+    make_pack_manual_review(db, downtime_pack_enter_downtime)
+
+    # Set initial reputation
+    character = downtime_pack_enter_downtime.character
+    character.set_reputation(faction.id, 5, downtime_team_user.id)
+    db.session.commit()
+
+    login_user(test_client, downtime_team_user)
+
+    # Test with reputation change
+    response = test_client.post(
+        "/downtime/manual-review/"
+        f"{downtime_pack_enter_downtime.period_id}/"
+        f"{downtime_pack_enter_downtime.character_id}",
+        data={f"reputation_{faction.id}": "10", "confirm_complete": "on"},
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+
+    # Verify pack was completed and review data contains reputation changes
+    db.session.refresh(downtime_pack_enter_downtime)
+    assert downtime_pack_enter_downtime.status == DowntimeTaskStatus.COMPLETED
+    assert "reputation_changes" in downtime_pack_enter_downtime.review_data
+    assert str(faction.id) in downtime_pack_enter_downtime.review_data["reputation_changes"]
+    assert (
+        downtime_pack_enter_downtime.review_data["reputation_changes"][str(faction.id)]["old_value"]
+        == 5
+    )
+    assert (
+        downtime_pack_enter_downtime.review_data["reputation_changes"][str(faction.id)]["new_value"]
+        == 10
+    )
+
+
+def test_manual_review_reputation_no_changes(
+    test_client, downtime_pack_enter_downtime, downtime_team_user, db, faction
+):
+    """Test manual review with no reputation changes."""
+    make_pack_manual_review(db, downtime_pack_enter_downtime)
+
+    # Set initial reputation
+    character = downtime_pack_enter_downtime.character
+    character.set_reputation(faction.id, 5, downtime_team_user.id)
+    db.session.commit()
+
+    login_user(test_client, downtime_team_user)
+
+    # Test with same reputation value (no change)
+    response = test_client.post(
+        "/downtime/manual-review/"
+        f"{downtime_pack_enter_downtime.period_id}/"
+        f"{downtime_pack_enter_downtime.character_id}",
+        data={f"reputation_{faction.id}": "5", "confirm_complete": "on"},
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+
+    # Verify pack was completed but no reputation changes recorded
+    db.session.refresh(downtime_pack_enter_downtime)
+    assert downtime_pack_enter_downtime.status == DowntimeTaskStatus.COMPLETED
+    assert "reputation_changes" not in downtime_pack_enter_downtime.review_data
+
+
+def test_manual_review_reputation_multiple_factions(
+    test_client, downtime_pack_enter_downtime, downtime_team_user, db, faction
+):
+    """Test manual review with reputation changes for multiple factions."""
+    make_pack_manual_review(db, downtime_pack_enter_downtime)
+
+    # Create a second faction
+    from models.database.faction import Faction
+
+    faction2 = Faction(name="Test Faction 2", wiki_slug="test-faction-2")
+    db.session.add(faction2)
+    db.session.commit()
+
+    # Set initial reputations
+    character = downtime_pack_enter_downtime.character
+    character.set_reputation(faction.id, 5, downtime_team_user.id)
+    character.set_reputation(faction2.id, 0, downtime_team_user.id)  # No reputation initially
+    db.session.commit()
+
+    login_user(test_client, downtime_team_user)
+
+    # Test with reputation changes for both factions
+    response = test_client.post(
+        "/downtime/manual-review/"
+        f"{downtime_pack_enter_downtime.period_id}/"
+        f"{downtime_pack_enter_downtime.character_id}",
+        data={
+            f"reputation_{faction.id}": "10",
+            f"reputation_{faction2.id}": "3",
+            "confirm_complete": "on",
+        },
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+
+    # Verify pack was completed and both reputation changes recorded
+    db.session.refresh(downtime_pack_enter_downtime)
+    assert "reputation_changes" in downtime_pack_enter_downtime.review_data
+
+    changes = downtime_pack_enter_downtime.review_data["reputation_changes"]
+    assert str(faction.id) in changes
+    assert str(faction2.id) in changes
+    assert changes[str(faction.id)]["old_value"] == 5
+    assert changes[str(faction.id)]["new_value"] == 10
+    assert changes[str(faction2.id)]["old_value"] == 0
+    assert changes[str(faction2.id)]["new_value"] == 3
+
+
+def test_manual_review_reputation_invalid_data(
+    test_client, downtime_pack_enter_downtime, downtime_team_user, db, faction
+):
+    """Test manual review with invalid reputation data."""
+    make_pack_manual_review(db, downtime_pack_enter_downtime)
+
+    login_user(test_client, downtime_team_user)
+
+    # Test with invalid faction ID
+    response = test_client.post(
+        "/downtime/manual-review/"
+        f"{downtime_pack_enter_downtime.period_id}/"
+        f"{downtime_pack_enter_downtime.character_id}",
+        data={"reputation_invalid": "10", "confirm_complete": "on"},
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+
+    # Test with non-numeric value
+    response = test_client.post(
+        "/downtime/manual-review/"
+        f"{downtime_pack_enter_downtime.period_id}/"
+        f"{downtime_pack_enter_downtime.character_id}",
+        data={f"reputation_{faction.id}": "not_a_number", "confirm_complete": "on"},
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+
+
 def make_period_completed(db, downtime_period, downtime_pack):
     downtime_period.status = DowntimeStatus.COMPLETED
     downtime_pack.status = DowntimeTaskStatus.COMPLETED
@@ -911,3 +1055,127 @@ def create_test_event(db, event_number="TEST001"):
     db.session.add(event)
     db.session.commit()
     return event
+
+
+def test_process_downtime_with_reputation_changes(
+    test_client, downtime_team_user, downtime_period, downtime_pack, db, faction
+):
+    """Test processing downtime with reputation changes."""
+    # Create an event for the downtime period
+    from datetime import datetime, timedelta
+
+    from models.enums import EventType
+    from models.event import Event
+
+    event = Event(
+        event_number="TEST004",
+        name="Test Event",
+        event_type=EventType.MAINLINE,
+        early_booking_deadline=datetime.now() + timedelta(days=30),
+        booking_deadline=datetime.now() + timedelta(days=40),
+        start_date=datetime.now() + timedelta(days=60),
+        end_date=datetime.now() + timedelta(days=63),
+        standard_ticket_price=50.0,
+        early_booking_ticket_price=40.0,
+        child_ticket_price_12_15=25.0,
+        child_ticket_price_7_11=15.0,
+        child_ticket_price_under_7=0.0,
+    )
+    db.session.add(event)
+    db.session.commit()
+
+    # Associate the downtime period with the event
+    downtime_period.event_id = event.id
+
+    # Set up pack with reputation changes in review data
+    downtime_pack.status = DowntimeTaskStatus.COMPLETED
+    downtime_pack.review_data = {
+        "reputation_changes": {str(faction.id): {"old_value": 5, "new_value": 10}}
+    }
+
+    # Set initial reputation
+    character = downtime_pack.character
+    character.set_reputation(faction.id, 5, downtime_team_user.id)
+    db.session.commit()
+
+    login_user(test_client, downtime_team_user)
+
+    # Process downtime
+    response = test_client.post(f"/downtime/process/{downtime_period.id}")
+    assert response.status_code == 302  # Route redirects on success
+
+    # Verify reputation was updated
+    db.session.refresh(character)
+    assert character.get_reputation(faction.id) == 10
+
+    # Verify period was completed
+    db.session.refresh(downtime_period)
+    assert downtime_period.status == DowntimeStatus.COMPLETED
+
+
+def test_process_downtime_with_multiple_reputation_changes(
+    test_client, downtime_team_user, downtime_period, downtime_pack, db, faction
+):
+    """Test processing downtime with multiple reputation changes."""
+    # Create an event for the downtime period
+    from datetime import datetime, timedelta
+
+    from models.enums import EventType
+    from models.event import Event
+
+    event = Event(
+        event_number="TEST005",
+        name="Test Event",
+        event_type=EventType.MAINLINE,
+        early_booking_deadline=datetime.now() + timedelta(days=30),
+        booking_deadline=datetime.now() + timedelta(days=40),
+        start_date=datetime.now() + timedelta(days=60),
+        end_date=datetime.now() + timedelta(days=63),
+        standard_ticket_price=50.0,
+        early_booking_ticket_price=40.0,
+        child_ticket_price_12_15=25.0,
+        child_ticket_price_7_11=15.0,
+        child_ticket_price_under_7=0.0,
+    )
+    db.session.add(event)
+    db.session.commit()
+
+    # Associate the downtime period with the event
+    downtime_period.event_id = event.id
+
+    # Create a second faction
+    from models.database.faction import Faction
+
+    faction2 = Faction(name="Test Faction 2", wiki_slug="test-faction-2")
+    db.session.add(faction2)
+    db.session.commit()
+
+    # Set up pack with multiple reputation changes
+    downtime_pack.status = DowntimeTaskStatus.COMPLETED
+    downtime_pack.review_data = {
+        "reputation_changes": {
+            str(faction.id): {"old_value": 5, "new_value": 10},
+            str(faction2.id): {"old_value": 0, "new_value": 3},
+        }
+    }
+
+    # Set initial reputations
+    character = downtime_pack.character
+    character.set_reputation(faction.id, 5, downtime_team_user.id)
+    character.set_reputation(faction2.id, 0, downtime_team_user.id)
+    db.session.commit()
+
+    login_user(test_client, downtime_team_user)
+
+    # Process downtime
+    response = test_client.post(f"/downtime/process/{downtime_period.id}")
+    assert response.status_code == 302  # Route redirects on success
+
+    # Verify both reputations were updated
+    db.session.refresh(character)
+    assert character.get_reputation(faction.id) == 10
+    assert character.get_reputation(faction2.id) == 3
+
+    # Verify period was completed
+    db.session.refresh(downtime_period)
+    assert downtime_period.status == DowntimeStatus.COMPLETED

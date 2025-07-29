@@ -630,6 +630,9 @@ def manual_review(period_id, character_id):
             question["faction"] = faction
             reputation_questions.append(question)
 
+    # Get all factions for reputation updates
+    factions = Faction.query.order_by(Faction.name).all()
+
     # Get data needed for research requirements
     item_types = [
         {"id": item.id, "name": item.name, "id_prefix": item.id_prefix}
@@ -660,6 +663,7 @@ def manual_review(period_id, character_id):
         invention=invention,
         invention_index=invention_index,
         reputation_questions=reputation_questions,
+        factions=factions,
         review_data=pack.review_data or {},
         item_types=item_types,
         exotics=exotics,
@@ -687,6 +691,25 @@ def manual_review_post(period_id, character_id):
     review_data = dict(pack.review_data or {})
 
     print("STAGES_JSON from form:", request.form.get("stages_json"))
+
+    # Handle reputation changes
+    reputation_changes = {}
+    for key, value in request.form.items():
+        if key.startswith("reputation_") and key != "reputation_question":
+            try:
+                faction_id = int(key.split("_")[1])
+                new_value = int(value)
+                current_value = pack.character.get_reputation(faction_id)
+                if new_value != current_value:
+                    reputation_changes[faction_id] = {
+                        "old_value": current_value,
+                        "new_value": new_value,
+                    }
+            except (ValueError, IndexError):
+                continue
+
+    if reputation_changes:
+        review_data["reputation_changes"] = reputation_changes
 
     # Handle invention review
     if "invention_review" in request.form:
@@ -1146,164 +1169,191 @@ def process_downtime(period_id):
 
     # Process manual entries
     for pack in packs:
-        for manual in pack.manual_entries:
-            if manual.get("type") == "invention_theory":
-                if manual.get("review_status") == "approved":
-                    if manual.get("invention_type") == "new":
-                        # Create new research project
-                        new_research = Research(
-                            project_name=manual.get("invention_name"),
-                            description=manual.get("invention_description"),
-                            created_by=pack.character.id,
+        if pack.review_data:
+            # Process invention reviews
+            if pack.review_data.get("invention_review") == "approve":
+                if pack.review_data.get("invention_type") == "new":
+                    # Create new research project
+                    new_research = Research(
+                        project_name=pack.review_data.get("invention_name"),
+                        description=pack.review_data.get("invention_description"),
+                        created_by=pack.character.id,
+                    )
+                    db.session.add(new_research)
+                    db.session.flush()  # Get the ID
+
+                    # Create stages and requirements
+                    stages_data = json.loads(pack.review_data.get("stages_json", "[]"))
+                    for stage_data in stages_data:
+                        stage = ResearchStage(
+                            research_id=new_research.id,
+                            stage_number=stage_data["stage_number"],
+                            name=stage_data["name"],
+                            description=stage_data["description"],
                         )
-                        db.session.add(new_research)
+                        db.session.add(stage)
                         db.session.flush()  # Get the ID
 
-                        # Create stages and requirements
-                        stages_data = json.loads(manual.get("stages_json", "[]"))
-                        for stage_data in stages_data:
-                            stage = ResearchStage(
-                                research_id=new_research.id,
-                                stage_number=stage_data["stage_number"],
-                                name=stage_data["name"],
-                                description=stage_data["description"],
+                        # Create requirements
+                        for req_data in stage_data["unlock_requirements"]:
+                            requirement = ResearchStageRequirement(
+                                stage_id=stage.id,
+                                requirement_type=req_data["requirement_type"],
+                                amount=req_data["amount"],
                             )
-                            db.session.add(stage)
-                            db.session.flush()  # Get the ID
 
-                            # Create requirements
-                            for req_data in stage_data["unlock_requirements"]:
-                                requirement = ResearchStageRequirement(
-                                    stage_id=stage.id,
-                                    requirement_type=req_data["requirement_type"],
-                                    amount=req_data["amount"],
+                            # Set type-specific fields
+                            if req_data["requirement_type"] == "science":
+                                requirement.science_type = req_data["science_type"]
+                            elif req_data["requirement_type"] == "item":
+                                requirement.item_type = req_data["item_type"]
+                            elif req_data["requirement_type"] == "exotic":
+                                requirement.exotic_substance_id = req_data["exotic_type"]
+                            elif req_data["requirement_type"] == "sample":
+                                requirement.sample_tag = req_data["sample_tag"]
+                                requirement.requires_researched = req_data.get(
+                                    "requires_researched", False
                                 )
 
-                                # Set type-specific fields
-                                if req_data["requirement_type"] == "science":
-                                    requirement.science_type = req_data["science_type"]
-                                elif req_data["requirement_type"] == "item":
-                                    requirement.item_type = req_data["item_type"]
-                                elif req_data["requirement_type"] == "exotic":
-                                    requirement.exotic_substance_id = req_data["exotic_type"]
-                                elif req_data["requirement_type"] == "sample":
-                                    requirement.sample_tag = req_data["sample_tag"]
-                                    requirement.requires_researched = req_data.get(
-                                        "requires_researched", False
-                                    )
+                            db.session.add(requirement)
 
-                                db.session.add(requirement)
+                    # Assign character to the research
+                    new_research.assign_character(pack.character.id)
+                    pack.character.pack.add_downtime_result(
+                        str(pack.id), f"New project confirmed: {new_research.project_name}"
+                    )
 
-                        # Assign character to the research
-                        new_research.assign_character(pack.character.id)
-                        pack.character.pack.add_downtime_result(
-                            str(pack.id), f"New project confirmed: {new_research.project_name}"
-                        )
+                elif pack.review_data.get("invention_type") == "improve":
+                    # Get the existing research project
+                    existing_research = Research.query.filter_by(
+                        id=pack.review_data.get("existing_invention")
+                    ).first()
 
-                    elif manual.get("invention_type") == "improve":
-                        # Get the existing research project
-                        existing_research = Research.query.filter_by(
-                            id=manual.get("existing_invention")
+                    if existing_research:
+                        # Get character's research
+                        char_research = CharacterResearch.query.filter_by(
+                            research_id=existing_research.id,
+                            character_id=pack.character.id,
                         ).first()
 
-                        if existing_research:
-                            # Get character's research
-                            char_research = CharacterResearch.query.filter_by(
-                                research_id=existing_research.id,
-                                character_id=pack.character.id,
-                            ).first()
+                        if char_research:
+                            # Verify all previous stages are complete
+                            all_complete = True
+                            for stage in char_research.stages:
+                                if not stage.stage_completed:
+                                    all_complete = False
+                                    break
 
-                            if char_research:
-                                # Verify all previous stages are complete
-                                all_complete = True
-                                for stage in char_research.stages:
-                                    if not stage.stage_completed:
-                                        all_complete = False
-                                        break
+                            if all_complete:
+                                # Create new stage
+                                stages_data = json.loads(pack.review_data.get("stages_json", "[]"))
+                                if stages_data:
+                                    new_stage_data = stages_data[
+                                        0
+                                    ]  # Only use first stage for improvement
+                                    new_stage = ResearchStage(
+                                        research_id=existing_research.id,
+                                        stage_number=len(existing_research.stages) + 1,
+                                        name=new_stage_data["name"],
+                                        description=new_stage_data["description"],
+                                    )
+                                    db.session.add(new_stage)
+                                    db.session.flush()
 
-                                if all_complete:
-                                    # Create new stage
-                                    stages_data = json.loads(manual.get("stages_json", "[]"))
-                                    if stages_data:
-                                        new_stage_data = stages_data[
-                                            0
-                                        ]  # Only use first stage for improvement
-                                        new_stage = ResearchStage(
-                                            research_id=existing_research.id,
-                                            stage_number=len(existing_research.stages) + 1,
-                                            name=new_stage_data["name"],
-                                            description=new_stage_data["description"],
+                                    # Create requirements
+                                    for req_data in new_stage_data["unlock_requirements"]:
+                                        requirement = ResearchStageRequirement(
+                                            stage_id=new_stage.id,
+                                            requirement_type=req_data["requirement_type"],
+                                            amount=req_data["amount"],
                                         )
-                                        db.session.add(new_stage)
-                                        db.session.flush()
 
-                                        # Create requirements
-                                        for req_data in new_stage_data["unlock_requirements"]:
-                                            requirement = ResearchStageRequirement(
-                                                stage_id=new_stage.id,
-                                                requirement_type=req_data["requirement_type"],
-                                                amount=req_data["amount"],
+                                        # Set type-specific fields
+                                        if req_data["requirement_type"] == "science":
+                                            requirement.science_type = req_data["science_type"]
+                                        elif req_data["requirement_type"] == "item":
+                                            requirement.item_type = req_data["item_type"]
+                                        elif req_data["requirement_type"] == "exotic":
+                                            requirement.exotic_substance_id = req_data[
+                                                "exotic_type"
+                                            ]
+                                        elif req_data["requirement_type"] == "sample":
+                                            requirement.sample_tag = req_data["sample_tag"]
+                                            requirement.requires_researched = req_data.get(
+                                                "requires_researched", False
                                             )
 
-                                            # Set type-specific fields
-                                            if req_data["requirement_type"] == "science":
-                                                requirement.science_type = req_data["science_type"]
-                                            elif req_data["requirement_type"] == "item":
-                                                requirement.item_type = req_data["item_type"]
-                                            elif req_data["requirement_type"] == "exotic":
-                                                requirement.exotic_substance_id = req_data[
-                                                    "exotic_type"
-                                                ]
-                                            elif req_data["requirement_type"] == "sample":
-                                                requirement.sample_tag = req_data["sample_tag"]
-                                                requirement.requires_researched = req_data.get(
-                                                    "requires_researched", False
-                                                )
+                                        db.session.add(requirement)
 
-                                            db.session.add(requirement)
+                                    # Create character's stage
+                                    char_stage = CharacterResearchStage(
+                                        character_research_id=char_research.id,
+                                        stage_id=new_stage.id,
+                                    )
+                                    db.session.add(char_stage)
 
-                                        # Create character's stage
-                                        char_stage = CharacterResearchStage(
-                                            character_research_id=char_research.id,
-                                            stage_id=new_stage.id,
-                                        )
-                                        db.session.add(char_stage)
+                                    # Set as current stage
+                                    char_research.current_stage_id = new_stage.id
 
-                                        # Set as current stage
-                                        char_research.current_stage_id = new_stage.id
-
-                                        pack.character.pack.add_downtime_result(
-                                            str(pack.id),
-                                            f"Improved {existing_research.project_name}",
-                                        )
-                elif manual.get("review_status") == "declined":
-                    # Add decline reason to character's pack
-                    if "messages" not in pack.character.character_pack:
-                        pack.character.character_pack["messages"] = []
-
-                    pack.character.character_pack["messages"].append(
-                        {
-                            "type": "invention_declined",
-                            "content": (
-                                f"Invention '{manual.get('invention_name')}' was declined: "
-                                f"{manual.get('invention_response')}"
-                            ),
-                        }
-                    )
-            elif manual.get("type") == "reputation_response":
-                # Add reputation response to character's pack
+                                    pack.character.pack.add_downtime_result(
+                                        str(pack.id),
+                                        f"Improved {existing_research.project_name}",
+                                    )
+            elif pack.review_data.get("invention_review") == "decline":
+                # Add decline reason to character's pack
                 if "messages" not in pack.character.character_pack:
                     pack.character.character_pack["messages"] = []
 
                 pack.character.character_pack["messages"].append(
                     {
-                        "type": "reputation_response",
+                        "type": "invention_declined",
                         "content": (
-                            f"Reputation response for {manual.get('faction_name')}: "
-                            f"{manual.get('response')}"
+                            f"Invention '{pack.review_data.get('invention_name')}' was declined: "
+                            f"{pack.review_data.get('invention_response')}"
                         ),
                     }
                 )
+
+            # Process reputation question responses
+            for key, value in pack.review_data.items():
+                if key.startswith("reputation_response_"):
+                    faction_id = key.split("_")[2]
+                    faction = db.session.get(Faction, int(faction_id))
+                    if faction:
+                        # Add reputation response to character's pack
+                        if "messages" not in pack.character.character_pack:
+                            pack.character.character_pack["messages"] = []
+
+                        pack.character.character_pack["messages"].append(
+                            {
+                                "type": "reputation_response",
+                                "content": (f"Reputation response for {faction.name}: " f"{value}"),
+                            }
+                        )
+
+    # Process reputation changes from manual review
+    for pack in packs:
+        if pack.review_data and pack.review_data.get("reputation_changes"):
+            for faction_id, change_data in pack.review_data["reputation_changes"].items():
+                try:
+                    faction_id_int = int(faction_id)
+                    faction = db.session.get(Faction, faction_id_int)
+                    if faction:
+                        old_value = change_data["old_value"]
+                        new_value = change_data["new_value"]
+
+                        # Update the character's reputation
+                        pack.character.set_reputation(faction_id_int, new_value, current_user.id)
+
+                        # Add to downtime results
+                        pack.character.pack.add_downtime_result(
+                            str(pack.id),
+                            f"Reputation with {faction.name} changed from {old_value} "
+                            f"to {new_value}",
+                        )
+                except (ValueError, TypeError):
+                    # Skip invalid faction IDs
+                    continue
 
     # Process all research stages
     for pack in packs:
