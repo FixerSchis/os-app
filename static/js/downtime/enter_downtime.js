@@ -1,11 +1,11 @@
 const bankBalance = getNumeric($('#downtime-form').data('bank-balance'));
 const groupBankBalance = getNumeric($('#downtime-form').data('group-bank-balance'));
 
-const steps = ['purchase', 'modifications', 'engineering', 'science', 'research', 'reputation'];
+const steps = ['purchase', 'modifications', 'engineering', 'science', 'research', 'reputation', 'other'];
 let currentStep = 0;
-let stepErrors = {'purchase': false, 'modifications': false, 'engineering': false, 'science': false, 'research': false, 'reputation': false};
-let visitedSteps = {'purchase': false, 'modifications': false, 'engineering': false, 'science': false, 'research': false, 'reputation': false};
-let dirtySteps = {'purchase': false, 'modifications': false, 'engineering': false, 'science': false, 'research': false, 'reputation': false};
+let stepErrors = {'purchase': false, 'modifications': false, 'engineering': false, 'science': false, 'research': false, 'reputation': false, 'other': false};
+let visitedSteps = {'purchase': false, 'modifications': false, 'engineering': false, 'science': false, 'research': false, 'reputation': false, 'other': false};
+let dirtySteps = {'purchase': false, 'modifications': false, 'engineering': false, 'science': false, 'research': false, 'reputation': false, 'other': false};
 
 // Helper: set .is-invalid on select and its Select2 container
 function setSelect2Invalid($select, isInvalid) {
@@ -43,6 +43,12 @@ function getJsonData(elementId) {
 function validate() {
     stepErrors['engineering'] = !validateEngineeringStep();
     stepErrors['science'] = !validateScienceStep();
+    stepErrors['other'] = !validateOtherStep();
+}
+
+function validateOtherStep() {
+    // The "other" step is always valid since it's optional additional information
+    return true;
 }
 
 // Sums up all chit costs from purchases and engineering actions and updates the display

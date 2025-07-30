@@ -133,7 +133,7 @@ class Skill(db.Model):
         if self.required_skill_id:
             # Check if character has the required skill
             has_prerequisite = any(
-                skill.skill_id == self.required_skill_id for skill in character.character_skills
+                skill.skill_id == self.required_skill_id for skill in character.skills
             )
             if not has_prerequisite:
                 return False

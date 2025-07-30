@@ -26,7 +26,7 @@ $(document).ready(function() {
     });
 
     // Load available events
-    $.get('/events/get_events', {
+    $.get('/events/api/events', {
         has_finished: true,
         has_downtime: false,
         event_type: 'mainline'

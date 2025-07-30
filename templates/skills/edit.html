@@ -49,7 +49,7 @@
                 <input type="number" class="form-control" id="adds_science_downtime" name="adds_science_downtime" value="{{ skill.adds_science_downtime if skill else 0 }}" min="0">
             </div>
 
-            <div class="form-group">
+            <div class="form-group" id="science_type_group" {% if not skill or not skill.adds_science_downtime %}style="display:none;"{% endif %}>
                 <label for="science_type" class="form-label">Science Type</label>
                 <select class="form-control w-100" id="science_type" name="science_type">
                     <option value="">None</option>

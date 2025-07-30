@@ -27,13 +27,33 @@ def bank():
 
     # --- Logic for Admins ---
     if current_user.has_role("user_admin"):
-        source_accounts = target_accounts  # Admins can source from any account
+        # Add balance information to source accounts for admins
+        source_accounts = []
+        for char in all_characters:
+            source_accounts.append(
+                {
+                    "type": "character",
+                    "id": char.id,
+                    "name": f"{char.name} (Character)",
+                    "balance": char.bank_account,
+                }
+            )
+        for group in all_groups:
+            source_accounts.append(
+                {
+                    "type": "group",
+                    "id": group.id,
+                    "name": f"{group.name} (Group)",
+                    "balance": group.bank_account,
+                }
+            )
         return render_template(
             "banking/bank.html",
             characters_for_select=all_characters,
             groups_for_select=all_groups,
             source_accounts=source_accounts,
             target_accounts=target_accounts,
+            show_source_dropdown=True,  # Admins always see the dropdown
         )
 
     # --- Logic for non-admins ---

@@ -216,13 +216,14 @@
             <div class="downtime-step" data-step="science" style="display:none;">
                 <div class="card mb-4">
                     <div class="card-body">
+                        {% set global_slot_index = namespace(value=0) %}
                         {% for science_type in ScienceType %}
                         {% set slots = science_slots|selectattr('type', 'equalto', science_type)|list %}
                         {% if slots %}
                         <div class="mb-3">
                             <h6>{{ ScienceType.descriptions()[science_type.value] }} Science</h6>
                             {% for slot in slots %}
-                            {% set sci_data = pack_science[loop.index0] if pack_science|length > loop.index0 else None %}
+                            {% set sci_data = pack_science[global_slot_index.value] if pack_science|length > global_slot_index.value else None %}
                             <div class="science-slot-card mb-3 p-3 border rounded bg-light" data-science-type="{{ science_type.value }}" data-slot="{{ science_type.value }}-{{ loop.index0 }}">
                                 <div class="mb-2">
                                     <strong>{{ ScienceType.descriptions()[science_type.value] }} Science</strong>
@@ -256,7 +257,7 @@
                                         <select class="form-control select2 science-sample-select" name="science_sample_{{ science_type.value }}_{{ loop.index0 }}" data-science-type="{{ science_type.value }}">
                                             <option value="">Select a sample</option>
                                             {% for sample in available_samples %}
-                                            <option value="{{ sample.id }}" {% if sci_data and sci_data.action == 'research_sample' and sci_data.sample_id == sample.id %}selected{% endif %}>{{ sample.name }}</option>
+                                            <option value="{{ sample.id }}" {% if sci_data and sci_data.action == 'research_sample' and sci_data.sample_id|string == sample.id|string %}selected{% endif %}>{{ sample.name }}</option>
                                             {% endfor %}
                                         </select>
                                     </div>
@@ -278,7 +279,7 @@
                                             <select class="form-control select2 science-project-select" name="science_project_my_{{ science_type.value }}_{{ loop.index0 }}" data-project-source="my">
                                                 <option value="">Select a project</option>
                                                 {% for project in my_projects %}
-                                                <option value="{{ project.research_id }}" {% if sci_data and sci_data.action == 'research_project' and sci_data.project_source == 'my' and sci_data.project_id == project.research_id %}selected{% endif %}>{{ project.project_name }}</option>
+                                                <option value="{{ project.research_id }}" {% if sci_data and sci_data.action == 'research_project' and sci_data.project_source == 'my' and sci_data.project_id|string == project.research_id|string %}selected{% endif %}>{{ project.project_name }}</option>
                                                 {% endfor %}
                                             </select>
                                         </div>
@@ -289,7 +290,7 @@
                                             <select class="form-control select2 science-project-select" name="science_project_group_{{ science_type.value }}_{{ loop.index0 }}" data-project-source="group">
                                                 <option value="">Select a project</option>
                                                 {% for project in group_projects %}
-                                                <option value="{{ project.research_id }}" {% if sci_data and sci_data.action == 'research_project' and sci_data.project_source == 'group' and sci_data.project_id == project.research_id %}selected{% endif %}>{{ project.project_name }} ({{ project.character_name }})</option>
+                                                <option value="{{ project.research_id }}" {% if sci_data and sci_data.action == 'research_project' and sci_data.project_source == 'group' and sci_data.project_id|string == project.research_id|string %}selected{% endif %}>{{ project.project_name }} ({{ project.character_name }})</option>
                                                 {% endfor %}
                                             </select>
                                         </div>
@@ -318,7 +319,7 @@
                                             <select class="form-control select2 science-research-for-group-select" name="science_research_for_group_{{ science_type.value }}_{{ loop.index0 }}">
                                                 <option value="">Select a group member</option>
                                                 {% for member in group_members %}
-                                                <option value="{{ member.id }}" {% if sci_data and sci_data.action == 'research_project' and sci_data.research_for == 'group' and sci_data.research_for_id == member.id %}selected{% endif %}>{{ member.name }}</option>
+                                                <option value="{{ member.id }}" {% if sci_data and sci_data.action == 'research_project' and sci_data.research_for == 'group' and sci_data.research_for_id|string == member.id|string %}selected{% endif %}>{{ member.name }}</option>
                                                 {% endfor %}
                                             </select>
                                         </div>
@@ -347,7 +348,7 @@
                                         <select class="form-control select2 science-teach-project-select" name="science_teach_project_{{ science_type.value }}_{{ loop.index0 }}">
                                             <option value="">Select a project</option>
                                             {% for project in my_projects %}
-                                            <option value="{{ project.research_id }}" {% if sci_data and sci_data.action == 'teach_invention' and sci_data.project_id == project.research_id %}selected{% endif %}>{{ project.project_name }}</option>
+                                            <option value="{{ project.research_id }}" {% if sci_data and sci_data.action == 'teach_invention' and sci_data.project_id|string == project.research_id|string %}selected{% endif %}>{{ project.project_name }}</option>
                                             {% endfor %}
                                         </select>
                                     </div>
@@ -364,7 +365,7 @@
                                             <select class="form-control select2 science-teach-to-group-select" name="science_teach_to_group_{{ science_type.value }}_{{ loop.index0 }}">
                                                 <option value="">Select a group member</option>
                                                 {% for member in group_members %}
-                                                <option value="{{ member.id }}" {% if sci_data and sci_data.action == 'teach_invention' and sci_data.teach_to == 'group' and sci_data.teach_to_id == member.id %}selected{% endif %}>{{ member.name }}</option>
+                                                <option value="{{ member.id }}" {% if sci_data and sci_data.action == 'teach_invention' and sci_data.teach_to == 'group' and sci_data.teach_to_id|string == member.id|string %}selected{% endif %}>{{ member.name }}</option>
                                                 {% endfor %}
                                             </select>
                                         </div>
@@ -378,6 +379,7 @@
                                     </div>
                                 </div>
                             </div>
+                            {% set global_slot_index.value = global_slot_index.value + 1 %}
                             {% endfor %}
                         </div>
                         {% endif %}
