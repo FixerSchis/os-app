@@ -24,7 +24,21 @@
                                 {% endfor %}
                             </select>
                         </div>
-                        <h4 id="character_balance_display" class="mt-2" style="display:none;">Balance: <span id="character_balance"></span></h4>
+                        <div id="character_balance_display" class="mt-2" style="display:none;">
+                            <h4>Balance: <span id="character_balance"></span></h4>
+                            {% if current_user.has_role('user_admin') %}
+                            <div class="mt-3">
+                                <form method="POST" action="{{ url_for('banking.update_balance') }}" class="d-inline">
+                                    <input type="hidden" name="account_type" value="character">
+                                    <input type="hidden" name="account_id" id="character_account_id">
+                                    <div class="input-group">
+                                        <input type="number" class="form-control" name="balance" id="character_balance_input" placeholder="New balance">
+                                        <button type="submit" class="btn btn-warning">Update Balance</button>
+                                    </div>
+                                </form>
+                            </div>
+                            {% endif %}
+                        </div>
                     {% elif active_character %}
                         <h3>{{ active_character.name }}</h3>
                         <h4>Balance: {{ active_character.bank_account }}</h4>
@@ -49,7 +63,21 @@
                                 {% endfor %}
                             </select>
                         </div>
-                        <h4 id="group_balance_display" class="mt-2" style="display:none;">Balance: <span id="group_balance"></span></h4>
+                        <div id="group_balance_display" class="mt-2" style="display:none;">
+                            <h4>Balance: <span id="group_balance"></span></h4>
+                            {% if current_user.has_role('user_admin') %}
+                            <div class="mt-3">
+                                <form method="POST" action="{{ url_for('banking.update_balance') }}" class="d-inline">
+                                    <input type="hidden" name="account_type" value="group">
+                                    <input type="hidden" name="account_id" id="group_account_id">
+                                    <div class="input-group">
+                                        <input type="number" class="form-control" name="balance" id="group_balance_input" placeholder="New balance">
+                                        <button type="submit" class="btn btn-warning">Update Balance</button>
+                                    </div>
+                                </form>
+                            </div>
+                            {% endif %}
+                        </div>
                     {% elif active_character_group %}
                         <h3>{{ active_character_group.name }}</h3>
                         <h4>Balance: {{ active_character_group.bank_account }}</h4>
@@ -115,53 +143,5 @@
 
 {% block scripts %}
 {{ super() }}
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    // Initialize select2
-    $('.select2').select2({
-        theme: 'bootstrap-5'
-    });
-
-    // Logic to update balance display for dropdowns
-    function setupBalanceDisplay(selectId, balanceDisplayId, balanceSpanId) {
-        const select = document.getElementById(selectId);
-        const display = document.getElementById(balanceDisplayId);
-        const balanceSpan = document.getElementById(balanceSpanId);
-
-        if (select) {
-            select.addEventListener('change', function() {
-                const selectedOption = this.options[this.selectedIndex];
-                if (selectedOption && selectedOption.value) {
-                    const balance = selectedOption.getAttribute('data-balance');
-                    balanceSpan.textContent = balance;
-                    display.style.display = 'block';
-                } else {
-                    display.style.display = 'none';
-                }
-            });
-        }
-    }
-
-    setupBalanceDisplay('character_select', 'character_balance_display', 'character_balance');
-    setupBalanceDisplay('group_select', 'group_balance_display', 'group_balance');
-
-    // Logic to split combined dropdown values into hidden inputs for form submission
-    const transferForm = document.querySelector('form[action="{{ url_for("banking.transfer") }}"]');
-    if (transferForm) {
-        transferForm.addEventListener('submit', function(e) {
-            const sourceSelect = document.getElementById('source_account');
-            if (sourceSelect) {
-                const [sourceType, sourceId] = sourceSelect.value.split('_');
-                document.getElementById('source_type_hidden').value = sourceType;
-                document.getElementById('source_id_hidden').value = sourceId;
-            }
-
-            const targetSelect = document.getElementById('target_account');
-            const [targetType, targetId] = targetSelect.value.split('_');
-            document.getElementById('target_type_hidden').value = targetType;
-            document.getElementById('target_id_hidden').value = targetId;
-        });
-    }
-});
-</script>
+<script src="{{ url_for('static', filename='js/pages/banking.js') }}"></script>
 {% endblock %}

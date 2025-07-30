@@ -427,7 +427,7 @@ def enter_downtime(period_id, character_id):
         group_packs = DowntimePack.query.filter(
             DowntimePack.period_id == period_id,
             DowntimePack.character_id.in_(
-                [c.id for c in character.group.members if c.id != character.id]
+                [c.id for c in character.group.characters if c.id != character.id]
             ),
         ).all()
         for pack in group_packs:
@@ -453,11 +453,11 @@ def enter_downtime(period_id, character_id):
     group_projects = []
     group_members = []
     if character.group:
-        group_member_ids = [c.id for c in character.group.members]
+        group_member_ids = [c.id for c in character.group.characters]
         group_projects = CharacterResearch.query.filter(
             CharacterResearch.character_id.in_(group_member_ids)
         ).all()
-        group_members = [c for c in character.group.members if c.id != character.id]
+        group_members = [c for c in character.group.characters if c.id != character.id]
 
     # Convert CharacterResearch objects to dictionaries
     my_projects = [
@@ -577,7 +577,9 @@ def enter_downtime_post(period_id, character_id):
         pack.purchases = [json.loads(p) for p in request.form.getlist("purchases[]")]
         pack.modifications = [json.loads(m) for m in request.form.getlist("modifications[]")]
         pack.engineering = [json.loads(e) for e in request.form.getlist("engineering[]")]
-        pack.science = [json.loads(s) for s in request.form.getlist("science[]")]
+        science_data = [json.loads(s) for s in request.form.getlist("science[]")]
+        print(f"Received science data: {science_data}")  # Debug
+        pack.science = science_data
         pack.research = [json.loads(r) for r in request.form.getlist("research[]")]
         pack.reputation = [json.loads(r) for r in request.form.getlist("reputation[]")]
     except json.JSONDecodeError as e:
@@ -834,20 +836,42 @@ def process_downtime(period_id):
                 pack.character.remove_funds(
                     blueprint.base_cost, current_user.id, f"Purchase: {blueprint.name}"
                 )
-                new_item = Item(
-                    character_id=pack.character.id,
-                    blueprint_id=blueprint.id,
-                    full_code=blueprint.full_code,
-                    expiry=period.event.event_number + 4,
+                # Create the item
+                # Find the next available item_id for this blueprint
+                existing_items = (
+                    Item.query.filter_by(blueprint_id=blueprint.id)
+                    .order_by(Item.item_id.desc())
+                    .first()
                 )
-                pack.items.append(new_item)
+                next_item_id = 1 if not existing_items else existing_items.item_id + 1
+
+                new_item = Item(
+                    blueprint_id=blueprint.id,
+                    item_id=next_item_id,
+                    expiry=int(period.event.event_number) + 4,
+                )
+                db.session.add(new_item)
+                db.session.flush()  # Get the new item ID
+
+                # Create the character-item relationship
+                character_item = CharacterItem(
+                    character_id=pack.character.id,
+                    item_id=new_item.id,
+                    assigned_by_user_id=current_user.id,
+                )
+                db.session.add(character_item)
+
+                pack.items.append(new_item.id)
                 pack.character.pack.add_downtime_result(
                     str(pack.id), f"Purchased: {blueprint.name}"
                 )
                 for engineering in pack.engineering:
-                    if engineering.source == "own" and engineering.blueprint_id == blueprint.id:
-                        engineering.item_id = new_item.id
-                        engineering.blueprint_id = None
+                    if (
+                        engineering.get("source") == "own"
+                        and engineering.get("blueprint_id") == blueprint.id
+                    ):
+                        engineering["item_id"] = new_item.id
+                        engineering["blueprint_id"] = None
                         break
             else:
                 pack.character.pack.add_downtime_result(
@@ -857,13 +881,13 @@ def process_downtime(period_id):
     # Process engineering maintenance
     for pack in packs:
         for engineering in pack.engineering:
-            if engineering.action == "maintain":
-                item = db.session.get(Item, engineering.item_id)
+            if engineering.get("action") == "maintain":
+                item = db.session.get(Item, engineering.get("item_id"))
                 if item and pack.character.can_afford(item.get_maintenance_cost()):
                     pack.character.remove_funds(
                         item.get_maintenance_cost(), current_user.id, f"Maintenance: {item.name}"
                     )
-                    item.expiry = period.event.event_number + 4
+                    item.expiry = int(period.event.event_number) + 4
                     pack.character.pack.add_downtime_result(
                         str(pack.id), f"Maintained {item.name} - new expiry: E{item.expiry}"
                     )
@@ -875,17 +899,19 @@ def process_downtime(period_id):
     # Process engineering modifications
     for pack in packs:
         for engineering in pack.engineering:
-            if engineering.action == "modify":
-                item = db.session.get(Item, engineering.item_id)
-                mod = db.session.get(Mod, engineering.mod_id)
+            if engineering.get("action") == "modify":
+                item = db.session.get(Item, engineering.get("item_id"))
+                mod = db.session.get(Mod, engineering.get("mod_id"))
                 if (
                     item
                     and mod
-                    and pack.character.can_afford(item.get_modification_cost(engineering.mods))
+                    and pack.character.can_afford(
+                        item.get_modification_cost(engineering.get("mods", 0))
+                    )
                     and pack.character.known_modifications.contains(mod)
                 ):
                     pack.character.remove_funds(
-                        item.get_modification_cost(engineering.mods),
+                        item.get_modification_cost(engineering.get("mods", 0)),
                         current_user.id,
                         f"Modification: {mod.name} on {item.name}",
                     )
@@ -893,7 +919,19 @@ def process_downtime(period_id):
                     pack.character.pack.add_downtime_result(
                         str(pack.id), f"Applied {mod.name} to {item.name}"
                     )
-                elif not pack.character.can_afford(item.get_modification_cost(engineering.mods)):
+                elif not item:
+                    pack.character.pack.add_downtime_result(
+                        str(pack.id),
+                        "Could not apply modification - item not found",
+                    )
+                elif not mod:
+                    pack.character.pack.add_downtime_result(
+                        str(pack.id),
+                        "Could not apply modification - modification not found",
+                    )
+                elif not pack.character.can_afford(
+                    item.get_modification_cost(engineering.get("mods", 0))
+                ):
                     pack.character.pack.add_downtime_result(
                         str(pack.id),
                         f"Could not apply {mod.name} to {item.name} - insufficient funds",
@@ -908,7 +946,7 @@ def process_downtime(period_id):
     # Process science
     for pack in packs:
         for science in pack.science:
-            if science.action == "synthesize":
+            if science.get("action") == "synthesize":
                 science_type = science.get("science_type", ScienceType.GENERIC)
 
                 query = ExoticSubstance.query
@@ -933,7 +971,7 @@ def process_downtime(period_id):
                         str(pack.id), f"Synthesized {exotic.name}"
                     )
 
-            elif science.action == "research_sample":
+            elif science.get("action") == "research_sample":
                 sample_id = science.get("sample_id")
                 if sample_id:
                     sample = db.session.get(Sample, sample_id)
@@ -947,7 +985,7 @@ def process_downtime(period_id):
                             str(pack.id), f"Sample {sample.name} already researched"
                         )
 
-            elif science.action == "research_project":
+            elif science.get("action") == "research_project":
                 project_id = science.get("project_id")
                 research_for_id = science.get("research_for_id")
                 science_type = science.get("science_type", ScienceType.GENERIC)
@@ -1007,7 +1045,7 @@ def process_downtime(period_id):
                             str(pack.id), f"No research found for {project_id}"
                         )
 
-            elif science.action == "teach_invention":
+            elif science.get("action") == "teach_invention":
                 project_id = science.get("project_id")
                 teach_to_id = science.get("teach_to_id")
 
@@ -1195,7 +1233,7 @@ def process_downtime(period_id):
                     new_research = Research(
                         project_name=pack.review_data.get("invention_name"),
                         description=pack.review_data.get("invention_description"),
-                        created_by=pack.character.id,
+                        type="invention",  # Set the type for inventions
                     )
                     db.session.add(new_research)
                     db.session.flush()  # Get the ID
@@ -1435,28 +1473,39 @@ def process_downtime(period_id):
         character_pack = pack.character.pack
 
         if pack.items:
-            for item in pack.items:
+            for item_id in pack.items:
                 # Check if item is already assigned to this character
                 existing_assignment = CharacterItem.query.filter_by(
-                    character_id=pack.character_id, item_id=item["id"]
+                    character_id=pack.character_id, item_id=item_id
                 ).first()
 
                 if not existing_assignment:
                     # Add item to character's inventory
                     character_item = CharacterItem(
                         character_id=pack.character_id,
-                        item_id=item["id"],
+                        item_id=item_id,
                         assigned_by_user_id=current_user.id,
                     )
                     db.session.add(character_item)
 
         if pack.exotic_substances:
+            # Consolidate duplicate exotics by counting occurrences
+            exotic_counts = {}
             for exotic in pack.exotic_substances:
-                character_pack.add_exotic(exotic["id"], exotic["quantity"])
+                exotic_id = exotic["id"]
+                if exotic_id in exotic_counts:
+                    exotic_counts[exotic_id] += 1
+                else:
+                    exotic_counts[exotic_id] = 1
+
+            # Add each unique exotic to the pack
+            for exotic_id, count in exotic_counts.items():
+                for _ in range(count):
+                    character_pack.add_exotic(exotic_id)
 
         if pack.samples:
-            for sample in pack.samples:
-                character_pack.add_sample(sample["id"])
+            for sample_id in pack.samples:
+                character_pack.add_sample(sample_id)
 
         # Add other information to character's pack
         if pack.other:

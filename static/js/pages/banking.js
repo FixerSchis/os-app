@@ -4,30 +4,57 @@ $(document).ready(function() {
         width: '100%'
     });
 
-    // Handle character selection
-    $('#character_select').change(function() {
-        var characterId = $(this).val();
-        var currentUrl = new URL(window.location.href);
-        if (characterId) {
-            currentUrl.searchParams.set('character_id', characterId);
-        } else {
-            currentUrl.searchParams.delete('character_id');
-        }
-        window.location.href = currentUrl.toString();
-    });
+    // --- Remove redirect logic for character/group selection ---
+    // (No longer needed, as regular users don't use dropdowns)
 
-    // Handle group selection
-    $('#group_select').change(function() {
-        var groupId = $(this).val();
-        var currentUrl = new URL(window.location.href);
-        if (groupId) {
-            currentUrl.searchParams.set('group_id', groupId);
-        } else {
-            currentUrl.searchParams.delete('group_id');
-        }
-        window.location.href = currentUrl.toString();
-    });
+    // --- Balance display logic for admins (and anyone with dropdowns) ---
+    function setupBalanceDisplay(selectId, balanceDisplayId, balanceSpanId, accountIdField, balanceInputField) {
+        const select = document.getElementById(selectId);
+        const display = document.getElementById(balanceDisplayId);
+        const balanceSpan = document.getElementById(balanceSpanId);
+        const accountId = document.getElementById(accountIdField);
+        const balanceInput = document.getElementById(balanceInputField);
 
+        if (select) {
+            $(select).on('change', function() {
+                const selectedOption = this.options[this.selectedIndex];
+                let balance = '';
+                let accountIdValue = '';
+
+                if (selectedOption && selectedOption.value) {
+                    balance = selectedOption.getAttribute('data-balance');
+                    accountIdValue = selectedOption.value;
+                }
+
+                if (balance) {
+                    balanceSpan.textContent = balance;
+                    display.style.display = 'block';
+
+                    // Update hidden fields for admin forms
+                    if (accountId) {
+                        accountId.value = accountIdValue;
+                    }
+                    if (balanceInput) {
+                        balanceInput.value = balance;
+                    }
+                } else {
+                    display.style.display = 'none';
+
+                    // Clear hidden fields
+                    if (accountId) {
+                        accountId.value = '';
+                    }
+                    if (balanceInput) {
+                        balanceInput.value = '';
+                    }
+                }
+            });
+        }
+    }
+    setupBalanceDisplay('character_select', 'character_balance_display', 'character_balance', 'character_account_id', 'character_balance_input');
+    setupBalanceDisplay('group_select', 'group_balance_display', 'group_balance', 'group_account_id', 'group_balance_input');
+
+    // --- The rest of the banking logic (transfers, etc) can remain as needed ---
     // Handle source account selection
     $('#source_type').change(function() {
         var option = $(this).find('option:selected');

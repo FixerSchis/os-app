@@ -2,6 +2,11 @@
 
 {% block title %}Manual Review - {{ character.name }}{% endblock %}
 
+{% block head %}
+{{ super() }}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/pages/manual-review.css') }}">
+{% endblock %}
+
 {% block content %}
 <div class="container">
     <h1>Manual Review - {{ character.name }}</h1>
@@ -30,10 +35,11 @@
                                     <span class="badge bg-secondary">{{ character.get_reputation(faction.id) }}</span>
                                 </td>
                                 <td>
+                                    {% set saved_reputation = review_data.get('reputation_changes', {}).get(faction.id|string, {}).get('new_value') %}
                                     <input type="number"
                                            class="form-control form-control-sm reputation-input"
                                            name="reputation_{{ faction.id }}"
-                                           value="{{ character.get_reputation(faction.id) }}"
+                                           value="{{ saved_reputation if saved_reputation is not none else character.get_reputation(faction.id) }}"
                                            data-faction-id="{{ faction.id }}"
                                            data-original-value="{{ character.get_reputation(faction.id) }}">
                                 </td>
@@ -57,8 +63,8 @@
             </div>
             <div class="card-body">
                 <div class="mb-4 p-3 border rounded">
-                    <h3 class="h6">{{ invention.name }}</h3>
-                    <p class="mb-2">{{ invention.description or '' }}</p>
+                    <h3 class="h6">{{ invention.theorise_name }}</h3>
+                    <p class="mb-2">{{ invention.theorise_desc or '' }}</p>
                     <div class="mb-3">
                         <div class="btn-group" role="group">
                             <input type="radio" class="btn-check" name="invention_review"

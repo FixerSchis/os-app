@@ -1,0 +1,179 @@
+/* Manual Review Page Styles */
+
+/* Dark mode support for reputation badges - using very specific selectors */
+[data-theme="dark"] span.badge.bg-secondary,
+[data-theme="dark"] .badge.bg-secondary,
+[data-theme="dark"] .table .badge.bg-secondary {
+    background-color: var(--bg-tertiary) !important;
+    color: var(--text-primary) !important;
+}
+
+/* Override Bootstrap's bg-secondary class specifically for badges with higher specificity */
+[data-theme="dark"] .table tbody tr td span.badge.bg-secondary {
+    background-color: var(--bg-tertiary) !important;
+    color: var(--text-primary) !important;
+}
+
+/* Dark mode support for table rows */
+[data-theme="dark"] .table tbody tr {
+    background-color: var(--card-bg) !important;
+    color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .table tbody tr:hover {
+    background-color: var(--bg-tertiary) !important;
+}
+
+/* Dark mode support for highlighted/active rows */
+[data-theme="dark"] .table tbody tr.active,
+[data-theme="dark"] .table tbody tr.highlighted,
+[data-theme="dark"] .table tbody tr.table-warning {
+    background-color: var(--bg-tertiary) !important;
+    color: var(--text-primary) !important;
+}
+
+/* Dark mode support for table-warning class specifically */
+[data-theme="dark"] .table-warning {
+    background-color: var(--bg-tertiary) !important;
+    color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .table tbody tr.table-warning {
+    background-color: var(--bg-tertiary) !important;
+    color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .table tbody tr.table-warning td {
+    background-color: var(--bg-tertiary) !important;
+    color: var(--text-primary) !important;
+}
+
+/* Dark mode support for form text with icons */
+[data-theme="dark"] .form-text {
+    color: var(--text-secondary) !important;
+}
+
+[data-theme="dark"] .form-text i {
+    color: var(--info-color) !important;
+}
+
+/* Dark mode support for reputation input fields */
+[data-theme="dark"] .reputation-input {
+    background-color: var(--bg-secondary) !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .reputation-input:focus {
+    background-color: var(--bg-secondary) !important;
+    border-color: var(--btn-primary-bg) !important;
+    color: var(--text-primary) !important;
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25) !important;
+}
+
+/* Dark mode support for reputation inputs with table-warning class */
+[data-theme="dark"] .reputation-input.table-warning {
+    background-color: var(--bg-tertiary) !important;
+    border-color: var(--warning-color) !important;
+    color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .reputation-input.table-warning:focus {
+    background-color: var(--bg-tertiary) !important;
+    border-color: var(--warning-color) !important;
+    color: var(--text-primary) !important;
+    box-shadow: 0 0 0 0.2rem rgba(255, 193, 7, 0.25) !important;
+}
+
+/* Dark mode support for invention review sections */
+[data-theme="dark"] .border.rounded {
+    border-color: var(--border-color) !important;
+    background-color: var(--bg-secondary) !important;
+}
+
+/* Dark mode support for button groups in invention review */
+[data-theme="dark"] .btn-group .btn {
+    background-color: var(--bg-secondary) !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .btn-group .btn:hover {
+    background-color: var(--bg-tertiary) !important;
+    color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .btn-group .btn-check:checked + .btn {
+    background-color: var(--btn-primary-bg) !important;
+    border-color: var(--btn-primary-bg) !important;
+    color: #fff !important;
+}
+
+/* Dark mode support for success and danger buttons */
+[data-theme="dark"] .btn-outline-success {
+    color: var(--success-color) !important;
+    border-color: var(--success-color) !important;
+}
+
+[data-theme="dark"] .btn-outline-success:hover {
+    background-color: var(--success-color) !important;
+    color: #fff !important;
+}
+
+[data-theme="dark"] .btn-outline-danger {
+    color: var(--danger-color) !important;
+    border-color: var(--danger-color) !important;
+}
+
+[data-theme="dark"] .btn-outline-danger:hover {
+    background-color: var(--danger-color) !important;
+    color: #fff !important;
+}
+
+/* Dark mode support for form controls in invention review */
+[data-theme="dark"] .form-control {
+    background-color: var(--bg-secondary) !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .form-control:focus {
+    background-color: var(--bg-secondary) !important;
+    border-color: var(--btn-primary-bg) !important;
+    color: var(--text-primary) !important;
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25) !important;
+}
+
+/* Dark mode support for form labels */
+[data-theme="dark"] .form-label {
+    color: var(--text-primary) !important;
+}
+
+/* Dark mode support for form check inputs */
+[data-theme="dark"] .form-check-input {
+    background-color: var(--bg-secondary) !important;
+    border-color: var(--border-color) !important;
+}
+
+[data-theme="dark"] .form-check-input:checked {
+    background-color: var(--btn-primary-bg) !important;
+    border-color: var(--btn-primary-bg) !important;
+}
+
+[data-theme="dark"] .form-check-label {
+    color: var(--text-primary) !important;
+}
+
+/* Dark mode support for text areas */
+[data-theme="dark"] textarea.form-control {
+    background-color: var(--bg-secondary) !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] textarea.form-control:focus {
+    background-color: var(--bg-secondary) !important;
+    border-color: var(--btn-primary-bg) !important;
+    color: var(--text-primary) !important;
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25) !important;
+}

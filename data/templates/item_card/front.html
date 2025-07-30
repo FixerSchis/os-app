@@ -1,1 +1,1 @@
-<img src="{{ generate_qr_code(url_for('items.view', id=item.id, version=item.version), size=3) }}" alt="Item QR Code">
+<a href="{{ item_view_url }}"><img src="{{ item_qr_code }}" alt="Item QR Code"></a>

@@ -462,10 +462,16 @@ class Character(db.Model):
         for skill in self.skills:
             if skill.skill.character_sheet_values_list:
                 for value in skill.skill.character_sheet_values_list:
-                    values[value["id"]] = {
-                        "name": value["description"],
-                        "value": value["value"],
-                    }
+                    value_id = value["id"]
+                    if value_id in values:
+                        # Add to existing value
+                        values[value_id]["value"] += value["value"]
+                    else:
+                        # Create new entry
+                        values[value_id] = {
+                            "name": value["description"],
+                            "value": value["value"],
+                        }
         return values
 
     def get_factions_with_reputation(self):

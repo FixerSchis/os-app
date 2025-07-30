@@ -1,5 +1,3 @@
-initScienceSlots();
-
 $('.science-sample-select').select2({
     width: '100%',
     placeholder: 'Select a sample',
@@ -23,9 +21,11 @@ $('.science-teach-to-group-select').select2({
 
 function initScienceSlots() {
     $('.science-action-select').each(function() {
+        const action = $(this).val();
         toggleScienceFields($(this));
     });
     initTeachToFields();
+    initScienceButtonGroups();
 
     // Validate any existing teach invention actions
     $('.science-slot-card').each(function() {
@@ -35,6 +35,68 @@ function initScienceSlots() {
             const $idInput = $card.find('.science-teach-to-id-input');
             if ($idInput.val() && $idInput.val().includes('.')) {
                 $idInput.trigger('input');
+            }
+        }
+    });
+}
+
+// Initialize button groups based on saved data
+function initScienceButtonGroups() {
+    $('.science-slot-card').each(function() {
+        const $card = $(this);
+
+        // Initialize project source buttons
+        const $projectSourceGroup = $card.find('.btn-toggle-project-source');
+        if ($projectSourceGroup.length) {
+            const $myProjectsSelect = $card.find('.science-project-select[data-project-source="my"]');
+            const $groupProjectsSelect = $card.find('.science-project-select[data-project-source="group"]');
+            const $projectIdInput = $card.find('.science-project-id-input');
+
+            // Determine which project source should be active
+            let activeSource = 'my'; // default
+            if ($groupProjectsSelect.val()) {
+                activeSource = 'group';
+            } else if ($projectIdInput.val()) {
+                activeSource = 'id';
+            }
+
+            // Only change the active button if we have saved data
+            if ($groupProjectsSelect.val() || $projectIdInput.val()) {
+                $projectSourceGroup.find('.btn').removeClass('active');
+                $projectSourceGroup.find('.btn[data-project-source="' + activeSource + '"]').addClass('active');
+
+                // Show the corresponding row
+                $card.find('.project-select-row').hide();
+                $card.find('.project-select-row[data-project-source="' + activeSource + '"]').show();
+            }
+        }
+
+        // Initialize research for buttons
+        const $researchForGroup = $card.find('.btn-toggle-research-for');
+        if ($researchForGroup.length) {
+            const $groupMemberSelect = $card.find('.science-research-for-group-select');
+            const $researchForIdInput = $card.find('.science-research-for-id-input');
+
+            // Determine which research for should be active
+            let activeResearchFor = 'self'; // default
+            if ($groupMemberSelect.val()) {
+                activeResearchFor = 'group';
+            } else if ($researchForIdInput.val()) {
+                activeResearchFor = 'other';
+            }
+
+            // Only change the active button if we have saved data
+            if ($groupMemberSelect.val() || $researchForIdInput.val()) {
+                $researchForGroup.find('.btn').removeClass('active');
+                $researchForGroup.find('.btn[data-research-for="' + activeResearchFor + '"]').addClass('active');
+
+                // Show the corresponding field
+                $card.find('.science-research-for-group-select, .science-research-for-id-input').hide();
+                if (activeResearchFor === 'group') {
+                    $card.find('.science-research-for-group-select').show();
+                } else if (activeResearchFor === 'other') {
+                    $card.find('.science-research-for-id-input').show();
+                }
             }
         }
     });
@@ -105,14 +167,67 @@ function toggleScienceFields($select) {
     var $card = $select.closest('.science-slot-card');
     var action = $select.val();
     $card.find('.science-theorise-fields, .science-research-sample-fields, .science-research-project-fields, .science-teach-invention-fields').hide();
-    if (action === 'theorise') {
+    if (action === 'synthesize') {
+        // For synthesize, no additional fields are shown
+        // This is the default action for synthesizing exotics
+    } else if (action === 'theorise') {
         $card.find('.science-theorise-fields').show();
     } else if (action === 'research_sample') {
         $card.find('.science-research-sample-fields').show();
+
+        // Check if there's a selected sample
+        const $sampleSelect = $card.find('.science-sample-select');
+        const selectedSample = $sampleSelect.val();
+
+        if (selectedSample) {
+            // Reinitialize Select2 to ensure it displays the selected value
+            $sampleSelect.select2('destroy');
+            $sampleSelect.select2({
+                width: '100%',
+                placeholder: 'Select a sample',
+                allowClear: true,
+                theme: 'bootstrap4'
+            });
+            $sampleSelect.val(selectedSample).trigger('change');
+        }
     } else if (action === 'research_project') {
         $card.find('.science-research-project-fields').show();
+
+        // Check if there are selected projects and reinitialize Select2
+        const $projectSelects = $card.find('.science-project-select');
+        $projectSelects.each(function() {
+            const $select = $(this);
+            const selectedValue = $select.val();
+            if (selectedValue) {
+                $select.select2('destroy');
+                $select.select2({
+                    width: '100%',
+                    placeholder: 'Select a project',
+                    allowClear: true,
+                    theme: 'bootstrap4'
+                });
+                $select.val(selectedValue).trigger('change');
+            }
+        });
     } else if (action === 'teach_invention') {
         $card.find('.science-teach-invention-fields').show();
+
+        // Check if there are selected teach project selects and reinitialize Select2
+        const $teachProjectSelects = $card.find('.science-teach-project-select');
+        $teachProjectSelects.each(function() {
+            const $select = $(this);
+            const selectedValue = $select.val();
+            if (selectedValue) {
+                $select.select2('destroy');
+                $select.select2({
+                    width: '100%',
+                    placeholder: 'Select a project',
+                    allowClear: true,
+                    theme: 'bootstrap4'
+                });
+                $select.val(selectedValue).trigger('change');
+            }
+        });
     }
 }
 
