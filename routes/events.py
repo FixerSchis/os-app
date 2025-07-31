@@ -363,7 +363,22 @@ def purchase_ticket_post(event_id):
                 # Reset the group pack - unmark as generated and clear contents except items
                 if not character.group.pack:
                     character.group.pack = Pack()
-                character.group.pack.is_generated = False
+
+                # Create a new pack object with is_generated=False to ensure it's saved
+                from models.tools.pack import Pack
+
+                new_pack = Pack(
+                    items=character.group.pack.items,
+                    samples=character.group.pack.samples,
+                    exotics=character.group.pack.exotics,
+                    medicaments=character.group.pack.medicaments,
+                    energy_chits=character.group.pack.energy_chits,
+                    completion={},  # Reset completion when regenerating
+                    is_generated=False,  # Reset to False
+                    pack_type=character.group.pack.pack_type,
+                    downtime_results=character.group.pack.downtime_results,
+                )
+                character.group.pack = new_pack
 
         tickets_created += 1
 
@@ -460,6 +475,30 @@ def assign_ticket_post(event_id):
         if child_name:
             existing_ticket.child_name = child_name
 
+        # Reset group pack if character has a group
+        if character_id:
+            character = db.session.get(Character, character_id)
+            if character and character.group:
+                # Reset the group pack - unmark as generated and clear contents except items
+                if not character.group.pack:
+                    character.group.pack = Pack()
+
+                # Create a new pack object with is_generated=False to ensure it's saved
+                from models.tools.pack import Pack
+
+                new_pack = Pack(
+                    items=character.group.pack.items,
+                    samples=character.group.pack.samples,
+                    exotics=character.group.pack.exotics,
+                    medicaments=character.group.pack.medicaments,
+                    energy_chits=character.group.pack.energy_chits,
+                    completion={},  # Reset completion when regenerating
+                    is_generated=False,  # Reset to False
+                    pack_type=character.group.pack.pack_type,
+                    downtime_results=character.group.pack.downtime_results,
+                )
+                character.group.pack = new_pack
+
         db.session.commit()
         flash("Ticket updated successfully!", "success")
     else:
@@ -477,17 +516,33 @@ def assign_ticket_post(event_id):
             child_name=child_name,
         )
         db.session.add(ticket)
+
+        # Reset group pack if character has a group
+        if character_id:
+            character = db.session.get(Character, character_id)
+            if character and character.group:
+                # Reset the group pack - unmark as generated and clear contents except items
+                if not character.group.pack:
+                    character.group.pack = Pack()
+
+                # Create a new pack object with is_generated=False to ensure it's saved
+                from models.tools.pack import Pack
+
+                new_pack = Pack(
+                    items=character.group.pack.items,
+                    samples=character.group.pack.samples,
+                    exotics=character.group.pack.exotics,
+                    medicaments=character.group.pack.medicaments,
+                    energy_chits=character.group.pack.energy_chits,
+                    completion={},  # Reset completion when regenerating
+                    is_generated=False,  # Reset to False
+                    pack_type=character.group.pack.pack_type,
+                    downtime_results=character.group.pack.downtime_results,
+                )
+                character.group.pack = new_pack
+
         db.session.commit()
         flash("Ticket assigned successfully!", "success")
-
-    # Reset group pack if character has a group
-    if character_id:
-        character = db.session.get(Character, character_id)
-        if character and character.group:
-            # Reset the group pack - unmark as generated and clear contents except items
-            if not character.group.pack:
-                character.group.pack = Pack()
-            character.group.pack.is_generated = False
 
     return redirect(url_for("events.view_attendees", event_id=event_id))
 
@@ -509,7 +564,6 @@ def remove_ticket(event_id, ticket_id):
 
     # Delete the ticket
     db.session.delete(ticket)
-    db.session.commit()
 
     # Reset group pack if character had a group
     if character_id:
@@ -518,7 +572,25 @@ def remove_ticket(event_id, ticket_id):
             # Reset the group pack - unmark as generated and clear contents except items
             if not character.group.pack:
                 character.group.pack = Pack()
-            character.group.pack.is_generated = False
+
+            # Create a new pack object with is_generated=False to ensure it's saved
+            from models.tools.pack import Pack
+
+            new_pack = Pack(
+                items=character.group.pack.items,
+                samples=character.group.pack.samples,
+                exotics=character.group.pack.exotics,
+                medicaments=character.group.pack.medicaments,
+                energy_chits=character.group.pack.energy_chits,
+                completion={},  # Reset completion when regenerating
+                is_generated=False,  # Reset to False
+                pack_type=character.group.pack.pack_type,
+                downtime_results=character.group.pack.downtime_results,
+            )
+            character.group.pack = new_pack
+
+    # Commit all changes (ticket deletion and pack reset)
+    db.session.commit()
 
     flash("Ticket removed successfully!", "success")
     return redirect(url_for("events.view_attendees", event_id=event_id))
@@ -546,6 +618,7 @@ def view_attendees(event_id):
 @login_required
 @admin_required
 def view_packs(event_id):
+    """View packs for an event."""
     event = Event.query.get_or_404(event_id)
 
     # Get all characters with tickets for this event
@@ -554,15 +627,33 @@ def view_packs(event_id):
         .filter(EventTicket.character_id.isnot(None))
         .all()
     )
+
     character_packs = []
 
     for ticket in character_tickets:
         character = Character.query.get(ticket.character_id)
         if character:
-            # Get inventory items for this character
+            # Load existing pack data from database, or create new pack if none exists
+            pack = character.pack or Pack()
+            pack.pack_type = "character"  # Set pack type for character packs
+
+            # Only update items if the pack is empty or if inventory has changed
             inventory_items = CharacterItem.query.filter_by(character_id=character.id).all()
-            pack = Pack()
-            pack.items = [ci.item_id for ci in inventory_items]
+            current_inventory = [ci.item_id for ci in inventory_items]
+
+            # Only update items if they've changed to preserve completion status
+            if not pack.items or set(pack.items) != set(current_inventory):
+                pack.items = current_inventory
+
+            # Ensure all IDs are integers
+            pack.items = [int(item_id) for item_id in pack.items if item_id is not None]
+            pack.samples = [int(sample_id) for sample_id in pack.samples if sample_id is not None]
+            pack.exotics = [int(exotic_id) for exotic_id in pack.exotics if exotic_id is not None]
+            pack.medicaments = [
+                int(medicament_id)
+                for medicament_id in pack.medicaments
+                if medicament_id is not None
+            ]
 
             character_packs.append(
                 {
@@ -613,6 +704,7 @@ def view_packs(event_id):
         group = Group.query.get(group_id)
         if group:
             pack = group.pack or Pack()
+            pack.pack_type = "group"  # Set pack type for group packs
 
             # Get characters from this group attending the event
             group_characters = []
@@ -641,6 +733,16 @@ def view_packs(event_id):
                             ),
                         }
                     )
+
+            # Ensure all IDs are integers
+            pack.items = [int(item_id) for item_id in pack.items if item_id is not None]
+            pack.samples = [int(sample_id) for sample_id in pack.samples if sample_id is not None]
+            pack.exotics = [int(exotic_id) for exotic_id in pack.exotics if exotic_id is not None]
+            pack.medicaments = [
+                int(medicament_id)
+                for medicament_id in pack.medicaments
+                if medicament_id is not None
+            ]
 
             group_packs.append({"group": group, "pack": pack, "characters": group_characters})
 
@@ -704,18 +806,60 @@ def update_character_pack(event_id, character_id):
     """Update character pack completion status."""
     character = Character.query.get_or_404(character_id)
 
-    logging.debug(f"[PACK UPDATE] Raw request.data: {request.data}")
-    data = request.get_json(force=True, silent=True) or {}
-    logging.debug(f"[PACK UPDATE] Raw data: {data}")
-    completion = data.get("completion", {})
+    # Get completion data from form
+    completion_data = request.form.get("completion", "{}")
+    try:
+        completion = json.loads(completion_data)
+    except (json.JSONDecodeError, TypeError):
+        completion = {}
+
+    logging.debug(f"[PACK UPDATE] Character {character_id}")
+    logging.debug(f"[PACK UPDATE] Raw completion data: {completion_data}")
+    logging.debug(f"[PACK UPDATE] Parsed completion: {completion}")
     logging.debug(f"[PACK UPDATE] Before: {character.pack.completion}")
+
     pack = character.pack
+
+    # Ensure pack has correct type
+    if not pack.pack_type:
+        pack.pack_type = "character"
+
+    # Deduplicate pack contents to clean up the data
+    pack.items = list(
+        dict.fromkeys([int(item_id) for item_id in pack.items if item_id is not None])
+    )  # Convert to int and remove duplicates
+    pack.samples = list(
+        dict.fromkeys([int(sample_id) for sample_id in pack.samples if sample_id is not None])
+    )
+    pack.exotics = list(
+        dict.fromkeys([int(exotic_id) for exotic_id in pack.exotics if exotic_id is not None])
+    )
+    pack.medicaments = list(
+        dict.fromkeys(
+            [int(medicament_id) for medicament_id in pack.medicaments if medicament_id is not None]
+        )
+    )
+
     pack.completion = completion
     character.pack = pack  # This triggers the setter and updates character_pack
+
     logging.debug(f"[PACK UPDATE] After: {character.pack.completion}")
+    logging.debug(f"[PACK UPDATE] Pack items: {pack.items}")
+    logging.debug(f"[PACK UPDATE] Pack exotics: {pack.exotics}")
+    logging.debug(f"[PACK UPDATE] Pack type: {pack.pack_type}")
+    logging.debug(f"[PACK UPDATE] Is completed: {character.pack.is_completed}")
+    logging.debug(f"[PACK UPDATE] Pack complete field: {character.pack_complete}")
+
+    # Force update the pack_complete field
+    character.pack_complete = character.pack.is_completed
+    logging.debug(
+        f"[PACK UPDATE] After forcing update - Pack complete field: {character.pack_complete}"
+    )
+
     db.session.commit()
 
-    return jsonify({"success": True, "is_completed": character.pack.is_completed})
+    flash("Pack progress saved successfully.", "success")
+    return redirect(url_for("events.view_packs", event_id=event_id))
 
 
 @events_bp.route("/<int:event_id>/packs/group/<int:group_id>/generate", methods=["POST"])
@@ -729,8 +873,9 @@ def generate_group_pack(event_id, group_id):
     if not group.pack:
         group.pack = Pack()
 
-    # Mark as generated
+    # Mark as generated and set pack type
     group.pack.is_generated = True
+    group.pack.pack_type = "group"
 
     # Get global settings
     settings = GlobalSettings.query.first()
@@ -754,12 +899,12 @@ def generate_group_pack(event_id, group_id):
     ec_pool = 0
     for character in group_characters:
         # Base character income
-        character_ec = settings.character_income_ec
+        character_ec = settings.group_income_contribution
 
         # Add species additional group income
         if character.species:
             for ability in character.species.abilities:
-                if ability.type == "group_income" and ability.additional_group_income:
+                if ability.type.value == "group_income" and ability.additional_group_income:
                     character_ec += ability.additional_group_income
 
         ec_pool += character_ec
@@ -852,6 +997,22 @@ def generate_group_pack(event_id, group_id):
         remaining_ec = items_budget + exotics_budget + medicaments_budget + chits_budget
         group.pack.energy_chits = remaining_ec
 
+    # Create a new pack object with all the modifications to ensure they're saved
+    from models.tools.pack import Pack
+
+    new_pack = Pack(
+        items=group.pack.items,
+        samples=group.pack.samples,
+        exotics=group.pack.exotics,
+        medicaments=group.pack.medicaments,
+        energy_chits=remaining_ec,  # Use remaining_ec directly instead of group.pack.energy_chits
+        completion=group.pack.completion,
+        is_generated=True,  # Explicitly set to True
+        pack_type="group",  # Explicitly set to group
+        downtime_results=group.pack.downtime_results,
+    )
+    group.pack = new_pack
+
     db.session.commit()
 
     return jsonify({"success": True, "pack": group.pack.to_dict()})
@@ -864,18 +1025,61 @@ def update_group_pack(event_id, group_id):
     """Update group pack completion status."""
     group = Group.query.get_or_404(group_id)
 
-    # Get completion data from request
-    data = request.get_json()
-    completion = data.get("completion", {})
+    # Get completion data from form
+    completion_data = request.form.get("completion", "{}")
+    try:
+        completion = json.loads(completion_data)
+    except (json.JSONDecodeError, TypeError):
+        completion = {}
 
     # Update pack completion
     if not group.pack:
         group.pack = Pack()
+        group.pack.pack_type = "group"
+
+    # Deduplicate pack contents to clean up the data
+    group.pack.items = list(
+        dict.fromkeys([int(item_id) for item_id in group.pack.items if item_id is not None])
+    )  # Convert to int and remove duplicates
+    group.pack.samples = list(
+        dict.fromkeys([int(sample_id) for sample_id in group.pack.samples if sample_id is not None])
+    )
+    group.pack.exotics = list(
+        dict.fromkeys([int(exotic_id) for exotic_id in group.pack.exotics if exotic_id is not None])
+    )
+    group.pack.medicaments = list(
+        dict.fromkeys(
+            [
+                int(medicament_id)
+                for medicament_id in group.pack.medicaments
+                if medicament_id is not None
+            ]
+        )
+    )
 
     group.pack.completion = completion
+
+    # Create a new pack object with the updated completion to ensure it's saved
+    from models.tools.pack import Pack
+
+    new_pack = Pack(
+        items=group.pack.items,
+        samples=group.pack.samples,
+        exotics=group.pack.exotics,
+        medicaments=group.pack.medicaments,
+        energy_chits=group.pack.energy_chits,
+        completion=completion,  # Use the completion data directly
+        is_generated=group.pack.is_generated,
+        pack_type=group.pack.pack_type,
+        downtime_results=group.pack.downtime_results,
+    )
+
+    group.pack = new_pack
+
     db.session.commit()
 
-    return jsonify({"success": True, "is_completed": group.pack.is_completed})
+    flash("Group pack progress saved successfully.", "success")
+    return redirect(url_for("events.view_packs", event_id=event_id))
 
 
 @events_bp.route("/<int:event_id>/packs/print/character-sheets")

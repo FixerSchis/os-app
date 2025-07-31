@@ -34,7 +34,7 @@
             <div class="form-group mb-3">
                 <label>Base Mods (from Blueprint)</label>
                 <div>
-                    {% set bp = blueprints[item.blueprint_id] %}
+                    {% set bp = blueprints | selectattr("id", "equalto", item.blueprint_id) | first %}
                     {% set bp_mod_counts = mod_instances_by_blueprint[bp.id] %}
                     {% if bp_mod_counts %}
                         {% for mod, count in bp_mod_counts %}

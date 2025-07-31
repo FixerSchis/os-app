@@ -108,7 +108,7 @@ class Group(db.Model):
     @pack.setter
     def pack(self, pack):
         self.group_pack = pack.to_json()
-        self.pack_complete = pack.is_complete()
+        self.pack_complete = pack.is_completed
 
 
 class GroupBackground(db.Model):

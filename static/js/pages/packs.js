@@ -40,20 +40,21 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 
     window.viewCharacterPack = function(button) {
-        currentCharacterId = button.getAttribute('data-character-id');
-        const packDataElement = document.getElementById(`pack-data-${currentCharacterId}`);
+        const characterId = button.getAttribute('data-character-id');
+        currentCharacterId = characterId;
+        const packDataElement = document.getElementById(`pack-data-${characterId}`);
         if (!packDataElement) return;
         const packData = packDataElement.getAttribute('data-pack');
         const userName = packDataElement.getAttribute('data-user-name');
         const characterName = packDataElement.getAttribute('data-character-name');
         const userId = packDataElement.getAttribute('data-user-id');
-        const characterId = packDataElement.getAttribute('data-character-id');
+        const characterIdFromData = packDataElement.getAttribute('data-character-id');
         if (!packData) return;
         let packDataObj;
         try { packDataObj = JSON.parse(packData); } catch (e) { return; }
         // Update modal title
         const modalTitle = document.querySelector('#characterPackModal .modal-title');
-        modalTitle.textContent = `${userName}, ${characterName}, ${userId}.${characterId}`;
+        modalTitle.textContent = `${userName}, ${characterName}, ${userId}.${characterIdFromData}`;
         // Build content
         let content = '<div class="row">' +
             '<div class="col-md-6">' +
@@ -99,16 +100,27 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         // Exotics
         if (packDataObj.exotics && packDataObj.exotics.length > 0) {
-            content += '<div class="mb-3">' +
-                '<h6>Exotics (' + packDataObj.exotics.length + ')</h6>' +
-                '<ul class="list-group mt-2">';
+            // Group exotics by ID and count quantities
+            const exoticGroups = {};
             packDataObj.exotics.forEach(function(exoticId) {
+                if (exoticGroups[exoticId]) {
+                    exoticGroups[exoticId]++;
+                } else {
+                    exoticGroups[exoticId] = 1;
+                }
+            });
+
+            content += '<div class="mb-3">' +
+                '<h6>Exotics (' + Object.keys(exoticGroups).length + ')</h6>' +
+                '<ul class="list-group mt-2">';
+
+            Object.keys(exoticGroups).forEach(function(exoticId, index) {
                 const exotic = exoticSubstances[exoticId];
                 if (exotic) {
-                    const amount = packDataObj.completion[`exotic_${exoticId}_amount`] || 1;
+                    const quantity = exoticGroups[exoticId];
                     content += '<li class="list-group-item">' +
-                        '<input type="checkbox" class="form-check-input me-2" id="exotic_' + exoticId + '">' +
-                        exotic.name + ' (' + amount + ')' +
+                        '<input type="checkbox" class="form-check-input me-2" id="exotic_' + exoticId + '_' + index + '">' +
+                        exotic.name + ' (' + quantity + ')' +
                     '</li>';
                 }
             });
@@ -160,8 +172,33 @@ document.addEventListener('DOMContentLoaded', function() {
             if (document.getElementById('character_id_badge')) {
                 document.getElementById('character_id_badge').checked = !!packDataObj.completion.character_id_badge;
             }
+
+            // Handle grouped exotics for pre-checking
+            if (packDataObj.exotics && packDataObj.exotics.length > 0) {
+                const exoticGroups = {};
+                packDataObj.exotics.forEach(function(exoticId) {
+                    if (exoticGroups[exoticId]) {
+                        exoticGroups[exoticId]++;
+                    } else {
+                        exoticGroups[exoticId] = 1;
+                    }
+                });
+
+                Object.keys(exoticGroups).forEach(function(exoticId, index) {
+                    const checkbox = document.getElementById(`exotic_${exoticId}_${index}`);
+                    if (checkbox) {
+                        // Check if any of the original exotic instances are completed
+                        const isCompleted = packDataObj.exotics.some(function(id) {
+                            return id == exoticId && packDataObj.completion[`exotic_${id}`];
+                        });
+                        checkbox.checked = !!isCompleted;
+                    }
+                });
+            }
+
+            // Handle other items
             Object.keys(packDataObj.completion).forEach(function(key) {
-                if (key.startsWith('item_') || key.startsWith('sample_') || key.startsWith('exotic_') || key.startsWith('medicament_')) {
+                if (key.startsWith('item_') || key.startsWith('sample_') || key.startsWith('medicament_')) {
                     const checkbox = document.getElementById(key);
                     if (checkbox) {
                         checkbox.checked = !!packDataObj.completion[key];
@@ -191,6 +228,8 @@ document.addEventListener('DOMContentLoaded', function() {
             '</li>';
         });
         content += '</ul></div>';
+
+        // Check if pack has been generated
         if (!packDataObj.is_generated) {
             content += '<div class="mb-3">' +
                 '<button class="btn btn-warning" onclick="generateGroupPack()">Generate Pack Contents</button>' +
@@ -202,7 +241,7 @@ document.addEventListener('DOMContentLoaded', function() {
             content += '<div class="mb-3">' +
                 '<label class="form-check-label">' +
                     '<input type="checkbox" class="form-check-input" id="energy_chits" ' + (packDataObj.energy_chits ? 'checked' : '') + '>' +
-                    'Energy Chits (' + characterIncomeEc + ')' +
+                    'Energy Chits (' + packDataObj.energy_chits + ')' +
                 '</label>' +
             '</div>';
             if (packDataObj.items && packDataObj.items.length > 0) {
@@ -236,16 +275,27 @@ document.addEventListener('DOMContentLoaded', function() {
                 content += '</ul></div>';
             }
             if (packDataObj.exotics && packDataObj.exotics.length > 0) {
-                content += '<div class="mb-3">' +
-                    '<h6>Exotics (' + packDataObj.exotics.length + ')</h6>' +
-                    '<ul class="list-group mt-2">';
+                // Group exotics by ID and count quantities
+                const exoticGroups = {};
                 packDataObj.exotics.forEach(function(exoticId) {
+                    if (exoticGroups[exoticId]) {
+                        exoticGroups[exoticId]++;
+                    } else {
+                        exoticGroups[exoticId] = 1;
+                    }
+                });
+
+                content += '<div class="mb-3">' +
+                    '<h6>Exotics (' + Object.keys(exoticGroups).length + ')</h6>' +
+                    '<ul class="list-group mt-2">';
+
+                Object.keys(exoticGroups).forEach(function(exoticId, index) {
                     const exotic = exoticSubstances[exoticId];
                     if (exotic) {
-                        const amount = packDataObj.completion[`exotic_${exoticId}_amount`] || 1;
+                        const quantity = exoticGroups[exoticId];
                         content += '<li class="list-group-item">' +
-                            '<input type="checkbox" class="form-check-input me-2" id="exotic_' + exoticId + '">' +
-                            exotic.name + ' (' + amount + ')' +
+                            '<input type="checkbox" class="form-check-input me-2" id="exotic_' + exoticId + '_' + index + '">' +
+                            exotic.name + ' (' + quantity + ')' +
                         '</li>';
                     }
                 });
@@ -275,8 +325,33 @@ document.addEventListener('DOMContentLoaded', function() {
             if (document.getElementById('energy_chits')) {
                 document.getElementById('energy_chits').checked = !!packDataObj.completion.energy_chits;
             }
+
+            // Handle grouped exotics for pre-checking
+            if (packDataObj.exotics && packDataObj.exotics.length > 0) {
+                const exoticGroups = {};
+                packDataObj.exotics.forEach(function(exoticId) {
+                    if (exoticGroups[exoticId]) {
+                        exoticGroups[exoticId]++;
+                    } else {
+                        exoticGroups[exoticId] = 1;
+                    }
+                });
+
+                Object.keys(exoticGroups).forEach(function(exoticId, index) {
+                    const checkbox = document.getElementById(`exotic_${exoticId}_${index}`);
+                    if (checkbox) {
+                        // Check if any of the original exotic instances are completed
+                        const isCompleted = packDataObj.exotics.some(function(id) {
+                            return id == exoticId && packDataObj.completion[`exotic_${id}`];
+                        });
+                        checkbox.checked = !!isCompleted;
+                    }
+                });
+            }
+
+            // Handle other items
             Object.keys(packDataObj.completion).forEach(function(key) {
-                if (key.startsWith('item_') || key.startsWith('sample_') || key.startsWith('exotic_') || key.startsWith('medicament_')) {
+                if (key.startsWith('item_') || key.startsWith('sample_') || key.startsWith('medicament_')) {
                     const checkbox = document.getElementById(key);
                     if (checkbox) {
                         checkbox.checked = !!packDataObj.completion[key];
@@ -297,11 +372,135 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                const button = document.querySelector(`[data-group-id="${currentGroupId}"]`);
-                if (button) {
-                    button.setAttribute('data-pack-data', JSON.stringify(data.pack));
-                    viewGroupPack(button);
+                // Update the pack data in the DOM
+                const packDataElement = document.getElementById(`group-pack-data-${currentGroupId}`);
+                if (packDataElement) {
+                    const currentPackData = JSON.parse(packDataElement.getAttribute('data-pack'));
+                    currentPackData.is_generated = true;
+                    currentPackData.items = data.pack.items || [];
+                    currentPackData.exotics = data.pack.exotics || [];
+                    currentPackData.medicaments = data.pack.medicaments || [];
+                    currentPackData.samples = data.pack.samples || [];
+                    currentPackData.energy_chits = data.pack.energy_chits || false;
+                    packDataElement.setAttribute('data-pack', JSON.stringify(currentPackData));
                 }
+
+                // Update the modal content directly without reopening
+                const packData = packDataElement.getAttribute('data-pack');
+                const charactersData = packDataElement.getAttribute('data-characters');
+                if (packData && charactersData) {
+                    let packDataObj, characters;
+                    try {
+                        packDataObj = JSON.parse(packData);
+                        characters = JSON.parse(charactersData);
+                    } catch (e) {
+                        return;
+                    }
+
+                    let content = '<div class="mb-3">' +
+                        '<h6>Group Members Attending</h6>' +
+                        '<ul class="list-group">';
+                    characters.forEach(function(char) {
+                        content += '<li class="list-group-item">' +
+                            char.user.first_name + ' ' + char.user.surname + ' - ' + char.character.name + ' (' + char.species.name + ')' +
+                        '</li>';
+                    });
+                    content += '</ul></div>';
+
+                    // Since is_generated is now true, show the pack contents
+                    content += '<div class="row">' +
+                        '<div class="col-md-6">' +
+                            '<h6>Pack Contents</h6>';
+                    content += '<div class="mb-3">' +
+                        '<label class="form-check-label">' +
+                            '<input type="checkbox" class="form-check-input" id="energy_chits" ' + (packDataObj.energy_chits ? 'checked' : '') + '>' +
+                            'Energy Chits (' + packDataObj.energy_chits + ')' +
+                        '</label>' +
+                    '</div>';
+
+                    if (packDataObj.items && packDataObj.items.length > 0) {
+                        content += '<div class="mb-3">' +
+                            '<h6>Items (' + packDataObj.items.length + ')</h6>' +
+                            '<ul class="list-group mt-2">';
+                        packDataObj.items.forEach(function(itemId) {
+                            const item = items[itemId];
+                            if (item) {
+                                content += '<li class="list-group-item">' +
+                                    '<input type="checkbox" class="form-check-input me-2" id="item_' + itemId + '">' +
+                                    item.blueprint_name + ' (' + item.full_code + ')' +
+                                '</li>';
+                            }
+                        });
+                        content += '</ul></div>';
+                    }
+
+                    if (packDataObj.samples && packDataObj.samples.length > 0) {
+                        content += '<div class="mb-3">' +
+                            '<h6>Samples (' + packDataObj.samples.length + ')</h6>' +
+                            '<ul class="list-group mt-2">';
+                        packDataObj.samples.forEach(function(sampleId) {
+                            const sample = samples[sampleId];
+                            if (sample) {
+                                content += '<li class="list-group-item">' +
+                                    '<input type="checkbox" class="form-check-input me-2" id="sample_' + sampleId + '">' +
+                                    sample.name +
+                                '</li>';
+                            }
+                        });
+                        content += '</ul></div>';
+                    }
+
+                    if (packDataObj.exotics && packDataObj.exotics.length > 0) {
+                        // Group exotics by ID and count quantities
+                        const exoticGroups = {};
+                        packDataObj.exotics.forEach(function(exoticId) {
+                            if (exoticGroups[exoticId]) {
+                                exoticGroups[exoticId]++;
+                            } else {
+                                exoticGroups[exoticId] = 1;
+                            }
+                        });
+
+                        content += '<div class="mb-3">' +
+                            '<h6>Exotics (' + Object.keys(exoticGroups).length + ')</h6>' +
+                            '<ul class="list-group mt-2">';
+
+                        Object.keys(exoticGroups).forEach(function(exoticId, index) {
+                            const exotic = exoticSubstances[exoticId];
+                            if (exotic) {
+                                const quantity = exoticGroups[exoticId];
+                                content += '<li class="list-group-item">' +
+                                    '<input type="checkbox" class="form-check-input me-2" id="exotic_' + exoticId + '_' + index + '">' +
+                                    exotic.name + ' (' + quantity + ')' +
+                                '</li>';
+                            }
+                        });
+                        content += '</ul></div>';
+                    }
+
+                    if (packDataObj.medicaments && packDataObj.medicaments.length > 0) {
+                        content += '<div class="mb-3">' +
+                            '<h6>Medicaments (' + packDataObj.medicaments.length + ')</h6>' +
+                            '<ul class="list-group mt-2">';
+                        packDataObj.medicaments.forEach(function(medicamentId) {
+                            const medicament = medicaments[medicamentId];
+                            if (medicament) {
+                                const amount = packDataObj.completion[`medicament_${medicamentId}_amount`] || 1;
+                                content += '<li class="list-group-item">' +
+                                    '<input type="checkbox" class="form-check-input me-2" id="medicament_' + medicamentId + '">' +
+                                    medicament.name + ' (' + amount + ')' +
+                                '</li>';
+                            }
+                        });
+                        content += '</ul></div>';
+                    }
+                    content += '</div>' +
+                    '</div>';
+
+                    document.getElementById('groupPackContent').innerHTML = content;
+                }
+            } else {
+                alert('Failed to generate group pack');
             }
         })
         .catch(error => {
@@ -320,30 +519,43 @@ document.addEventListener('DOMContentLoaded', function() {
         document.querySelectorAll('input[id^="sample_"]').forEach(function(checkbox) {
             completion[checkbox.id] = checkbox.checked;
         });
+
+        // Handle grouped exotics - map back to original exotic IDs for all instances
         document.querySelectorAll('input[id^="exotic_"]').forEach(function(checkbox) {
-            completion[checkbox.id] = checkbox.checked;
+            const exoticId = checkbox.id.replace('exotic_', '').split('_')[0]; // Extract the original exotic ID
+            const isChecked = checkbox.checked;
+
+            // Find all instances of this exotic in the pack and mark them all
+            const packDataElement = document.getElementById(`pack-data-${currentCharacterId}`);
+            if (packDataElement) {
+                const packData = JSON.parse(packDataElement.getAttribute('data-pack'));
+                packData.exotics.forEach(function(packExoticId) {
+                    if (packExoticId == exoticId) {
+                        completion[`exotic_${packExoticId}`] = isChecked;
+                    }
+                });
+            }
         });
+
         document.querySelectorAll('input[id^="medicament_"]').forEach(function(checkbox) {
             completion[checkbox.id] = checkbox.checked;
         });
-        fetch(`/events/${currentEventId}/packs/character/${currentCharacterId}/update`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ completion })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                location.reload();
-            } else {
-                alert('Failed to save pack progress');
-            }
-        })
-        .catch(error => {
-            alert('Failed to save pack progress');
-        });
+
+        // Create a form and submit it
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/events/${currentEventId}/packs/character/${currentCharacterId}/update`;
+
+        // Add the completion data as a hidden input
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'completion';
+        input.value = JSON.stringify(completion);
+        form.appendChild(input);
+
+        // Submit the form
+        document.body.appendChild(form);
+        form.submit();
     };
 
     window.saveGroupPack = function() {
@@ -355,28 +567,42 @@ document.addEventListener('DOMContentLoaded', function() {
         document.querySelectorAll('#groupPackContent input[id^="sample_"]').forEach(function(checkbox) {
             completion[checkbox.id] = checkbox.checked;
         });
+
+        // Handle grouped exotics - map back to original exotic IDs for all instances
         document.querySelectorAll('#groupPackContent input[id^="exotic_"]').forEach(function(checkbox) {
-            completion[checkbox.id] = checkbox.checked;
+            const exoticId = checkbox.id.replace('exotic_', '').split('_')[0]; // Extract the original exotic ID
+            const isChecked = checkbox.checked;
+
+            // Find all instances of this exotic in the pack and mark them all
+            const packDataElement = document.getElementById(`group-pack-data-${currentGroupId}`);
+            if (packDataElement) {
+                const packData = JSON.parse(packDataElement.getAttribute('data-pack'));
+                packData.exotics.forEach(function(packExoticId) {
+                    if (packExoticId == exoticId) {
+                        completion[`exotic_${packExoticId}`] = isChecked;
+                    }
+                });
+            }
         });
+
         document.querySelectorAll('#groupPackContent input[id^="medicament_"]').forEach(function(checkbox) {
             completion[checkbox.id] = checkbox.checked;
         });
-        fetch(`/events/${currentEventId}/packs/group/${currentGroupId}/update`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ completion: completion })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                bootstrap.Modal.getInstance(document.getElementById('groupPackModal')).hide();
-                location.reload();
-            }
-        })
-        .catch(error => {
-            alert('Failed to save group pack');
-        });
+
+        // Create a form and submit it
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/events/${currentEventId}/packs/group/${currentGroupId}/update`;
+
+        // Add the completion data as a hidden input
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'completion';
+        input.value = JSON.stringify(completion);
+        form.appendChild(input);
+
+        // Submit the form
+        document.body.appendChild(form);
+        form.submit();
     };
 });

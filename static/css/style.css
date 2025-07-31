@@ -22,6 +22,11 @@
     --warning-color: #ffc107;
     --danger-color: #dc3545;
     --info-color: #17a2b8;
+
+    /* Bootstrap variables for light mode */
+    --bs-body-color: var(--text-primary);
+    --bs-body-bg: var(--bg-secondary);
+    --bs-border-color: var(--border-color);
 }
 
 /* Light mode variables */
@@ -72,6 +77,11 @@
     --warning-color: #ffc107;
     --danger-color: #dc3545;
     --info-color: #0dcaf0;
+
+    /* Override Bootstrap variables for dark mode */
+    --bs-body-color: var(--text-primary);
+    --bs-body-bg: var(--bg-secondary);
+    --bs-border-color: var(--border-color);
 }
 
 /* Ensure CSS variables are applied to all elements */
@@ -748,6 +758,109 @@ a:hover {
     background-color: var(--bg-secondary);
     border-color: var(--border-color);
     color: var(--text-primary);
+}
+
+[data-theme="dark"] .form-select option {
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] .form-select:focus {
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+    border-color: var(--btn-primary-bg);
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+}
+
+[data-theme="dark"] .form-select option:disabled {
+    background-color: var(--bg-secondary);
+    color: var(--text-muted);
+}
+
+[data-theme="dark"] .form-select option:first-child {
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] .form-select option {
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] .form-select option:disabled {
+    background-color: var(--bg-secondary);
+    color: var(--text-muted);
+}
+
+/* More specific selectors for better override */
+[data-theme="dark"] select.form-select option {
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] select.form-select option:disabled {
+    background-color: var(--bg-secondary);
+    color: var(--text-muted);
+}
+
+/* Style the dropdown options specifically */
+[data-theme="dark"] .form-select option {
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] .form-select option:hover {
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] .form-select option:checked {
+    background-color: var(--btn-primary-bg);
+    color: white;
+}
+
+/* Comprehensive form-select styling for dark mode */
+[data-theme="dark"] .form-select {
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] .form-select:focus {
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+    border-color: var(--btn-primary-bg);
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+}
+
+/* Style the dropdown options */
+[data-theme="dark"] .form-select option {
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] .form-select option:hover {
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] .form-select option:checked,
+[data-theme="dark"] .form-select option:selected {
+    background-color: var(--btn-primary-bg);
+    color: white;
+}
+
+[data-theme="dark"] .form-select option:disabled {
+    background-color: var(--bg-secondary);
+    color: var(--text-muted);
+}
+
+
+
+[data-theme="dark"] .form-select {
+    color: var(--text-primary);
+    background-color: var(--bg-secondary);
+    border-color: var(--border-color);
 }
 
 [data-theme="dark"] .card .form-control,

@@ -225,7 +225,7 @@ def edit(id):
     return render_template(
         "rules/items/edit.html",
         item=item,
-        blueprints=blueprints,
+        blueprints=[bp for bp in blueprints.values()],
         mods=mods_dict,
         initial_mods=initial_mods,
         mod_instances_by_blueprint=mod_instances_by_blueprint,
@@ -265,7 +265,7 @@ def edit_post(id):
         return render_template(
             "rules/items/edit.html",
             item=item,
-            blueprints=blueprints,
+            blueprints=[bp for bp in blueprints.values()],
             mods=mods_dict,
             initial_mods=initial_mods,
             mod_instances_by_blueprint=mod_instances_by_blueprint,

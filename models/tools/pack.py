@@ -13,6 +13,7 @@ class Pack:
     completion: Dict[str, bool] = field(default_factory=dict)
     is_generated: bool = False
     downtime_results: Dict[str, List[str]] = field(default_factory=dict)
+    pack_type: str = "character"  # "character" or "group"
 
     def is_complete(self) -> bool:
         required_items = ["character_sheet", "character_id_badge"]
@@ -98,13 +99,19 @@ class Pack:
         # All required items must be checked in completion
         required_keys = []
 
-        # Only require energy_chits if there are energy chits in the pack
-        if self.energy_chits > 0:
+        # For character packs, only require energy_chits if there are energy chits in the pack
+        # For group packs, always require energy_chits since users can check them off
+        if self.pack_type == "character":
+            if self.energy_chits > 0:
+                required_keys.append("energy_chits")
+        else:  # group pack
             required_keys.append("energy_chits")
 
-        # Always require character sheet and ID badge
-        required_keys.append("character_sheet")
-        required_keys.append("character_id_badge")
+        # For character packs, always require character sheet and ID badge
+        # For group packs, these don't apply
+        if self.pack_type == "character":
+            required_keys.append("character_sheet")
+            required_keys.append("character_id_badge")
 
         # Add items, samples, exotics, and medicaments that are in the pack
         required_keys += [f"item_{item_id}" for item_id in self.items]
@@ -112,7 +119,14 @@ class Pack:
         required_keys += [f"exotic_{exotic_id}" for exotic_id in self.exotics]
         required_keys += [f"medicament_{medicament_id}" for medicament_id in self.medicaments]
 
-        return all(self.completion.get(key, False) for key in required_keys)
+        # Check if all required keys are completed
+        # If a key doesn't exist in completion, it's considered False (not completed)
+        # If there are no required keys, the pack is incomplete
+        if not required_keys:
+            result = False
+        else:
+            result = all(self.completion.get(key, False) for key in required_keys)
+        return result
 
     def to_dict(self) -> Dict:
         try:
@@ -134,6 +148,7 @@ class Pack:
                 "completion": clean_completion,
                 "is_generated": self.is_generated,
                 "downtime_results": self.downtime_results,
+                "pack_type": self.pack_type,
             }
 
             return result
@@ -161,8 +176,10 @@ class Pack:
             # Filter out computed properties that are not constructor parameters
             d.pop("is_completed", None)
             is_generated = d.pop("is_generated", False)
+            pack_type = d.pop("pack_type", "character")
             pack = cls(**d)
             pack.is_generated = is_generated
+            pack.pack_type = pack_type
             return pack
         except Exception:
             # Return a default pack if there's an error
