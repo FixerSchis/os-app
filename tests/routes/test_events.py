@@ -1619,3 +1619,51 @@ def test_remove_ticket_unauthorized(test_client, authenticated_user, db):
     # Verify the ticket still exists
     existing_ticket = EventTicket.query.get(ticket.id)
     assert existing_ticket is not None
+
+
+def test_regular_user_can_buy_crew_ticket(test_client, authenticated_user, db):
+    """Test that regular users can now purchase crew tickets."""
+    event = Event(
+        event_number="TEST015",
+        name="Test Event",
+        event_type="mainline",
+        description="A test event",
+        early_booking_deadline=datetime.now() + timedelta(days=30),
+        booking_deadline=datetime.now() + timedelta(days=40),
+        start_date=datetime.now() + timedelta(days=45),
+        end_date=datetime.now() + timedelta(days=47),
+        location="Test Location",
+        standard_ticket_price=50.00,
+        early_booking_ticket_price=45.00,
+        child_ticket_price_12_15=25.00,
+        child_ticket_price_7_11=15.00,
+        child_ticket_price_under_7=0.00,
+    )
+    db.session.add(event)
+    db.session.commit()
+
+    with test_client.session_transaction() as session:
+        session["_user_id"] = authenticated_user.id
+        session["_fresh"] = True
+
+    # Regular user should be able to purchase a crew ticket
+    cart_data = [
+        {
+            "ticketType": "crew",
+            "mealTicket": False,
+            "requiresBunk": False,
+            "ticketFor": "self",
+            "price": 0.00,
+        }
+    ]
+    response = test_client.post(
+        f"/events/{event.id}/purchase", data={"cart": json.dumps(cart_data)}, follow_redirects=True
+    )
+    assert response.status_code == 200
+
+    # Verify the crew ticket was created
+    crew_ticket = EventTicket.query.filter_by(
+        event_id=event.id, user_id=authenticated_user.id, ticket_type="crew"
+    ).first()
+    assert crew_ticket is not None
+    assert crew_ticket.character_id is None  # Crew tickets don't have characters

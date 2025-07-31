@@ -290,17 +290,6 @@ def purchase_ticket_post(event_id):
 
         # --- Crew Ticket ---
         elif ticket_type == "crew":
-            # Only users with allowed roles can purchase
-            if not current_user.has_any_role(
-                [
-                    Role.USER_ADMIN.value,
-                    Role.RULES_TEAM.value,
-                    Role.PLOT_TEAM.value,
-                    Role.DOWNTIME_TEAM.value,
-                    Role.NPC.value,
-                ]
-            ):
-                continue
             if ticket_for == "self":
                 if self_ticket_added:
                     continue
