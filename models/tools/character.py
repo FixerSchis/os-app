@@ -625,7 +625,15 @@ class CharacterCondition(db.Model):
     )
 
     def __repr__(self):
-        return f"<CharacterCondition {self.character.name} - {self.condition.name}>"
+        return (
+            f"<CharacterCondition {self.character.name} - "
+            f"{self.condition.name} (Stage {self.current_stage})>"
+        )
+
+    @property
+    def events_remaining(self):
+        """Return the number of events remaining for this condition."""
+        return self.current_duration
 
     def progress_condition(self) -> dict:
         """

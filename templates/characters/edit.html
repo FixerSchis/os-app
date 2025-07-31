@@ -19,7 +19,7 @@
             {% endif %}
         </div>
 
-        <form method="POST" action="{{ url_for('characters.create_character_post' if not character else 'characters.edit', character_id=character.id if character else None) }}" class="settings-form w-100">
+        <form method="POST" action="{{ url_for('characters.create_character_post' if not character else 'characters.edit_post', character_id=character.id if character else None) }}" class="settings-form w-100">
             {% if admin_context %}
             <input type="hidden" name="admin_context" value="1">
             {% endif %}
@@ -204,57 +204,14 @@
                         </div>
                         <div class="card-body">
                             {% if current_user.has_role('user_admin') %}
-                                <input type="hidden" id="all-conditions-json" value='{{ all_conditions|tojson|safe }}'>
-                                <div class="table-responsive mb-3">
-                                    <table class="table table-bordered align-middle mb-0">
-                                        <thead>
-                                            <tr>
-                                                <th>Condition</th>
-                                                <th style="width: 150px;">Current Stage</th>
-                                                <th style="width: 150px;">Advances In</th>
-                                                <th style="width: 100px;">Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {% for ac in character.active_conditions %}
-                                            <tr>
-                                                <td>{{ ac.condition.name }}</td>
-                                                <td>
-                                                    <select name="active_condition_stage_{{ ac.id }}" class="form-select form-select-sm">
-                                                        {% for stage in ac.condition.stages|sort(attribute='stage_number') %}
-                                                        <option value="{{ stage.stage_number }}" {% if ac.current_stage == stage.stage_number %}selected{% endif %}>Stage {{ stage.stage_number }}</option>
-                                                        {% endfor %}
-                                                    </select>
-                                                </td>
-                                                <td>
-                                                    <input type="number" name="active_condition_events_{{ ac.id }}" class="form-control form-control-sm" value="{{ ac.events_remaining }}">
-                                                </td>
-                                                <td class="text-center">
-                                                    <button type="button" class="btn btn-danger btn-sm remove-condition" data-condition-id="{{ ac.id }}">
-                                                        <i class="fas fa-times"></i>
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                            {% endfor %}
-                                        </tbody>
-                                    </table>
-                                </div>
-                                <div class="row g-2">
-                                    <div class="col-md-6 col-xl-4">
+                                <div class="row g-2 align-items-end mb-3">
+                                    <div class="col-md-6">
                                         <select id="add_condition_id" name="add_condition_id" class="form-select">
-                                            <option value="">Select a condition to add...</option>
+                                            <option value="">Select a condition...</option>
                                             {% for condition in all_conditions %}
                                             <option value="{{ condition.id }}">{{ condition.name }}</option>
                                             {% endfor %}
                                         </select>
-                                    </div>
-                                    <div class="col-md-3 col-xl-2">
-                                        <select id="add_condition_stage" name="add_condition_stage" class="form-select">
-                                            <option value="">Stage...</option>
-                                        </select>
-                                    </div>
-                                    <div class="col-md-3 col-xl-2">
-                                        <input type="number" id="add_condition_duration" name="add_condition_duration" class="form-control" placeholder="Duration" min="0">
                                     </div>
                                     <div class="col-auto">
                                         <button type="submit" name="add_condition" value="1" class="btn btn-primary">
@@ -262,7 +219,9 @@
                                         </button>
                                     </div>
                                 </div>
-                            {% else %}
+                            {% endif %}
+
+                            {% if character.active_conditions %}
                                 <div class="table-responsive">
                                     <table class="table mb-0">
                                         <thead>
@@ -270,14 +229,42 @@
                                                 <th>Condition</th>
                                                 <th style="width: 150px;">Current Stage</th>
                                                 <th style="width: 150px;">Events Remaining</th>
+                                                {% if current_user.has_role('user_admin') %}
+                                                <th style="width: 100px;">Actions</th>
+                                                {% endif %}
                                             </tr>
                                         </thead>
                                         <tbody>
                                             {% for ac in character.active_conditions %}
                                             <tr>
                                                 <td>{{ ac.condition.name }}</td>
+                                                {% if current_user.has_role('user_admin') %}
+                                                <td>
+                                                    <select name="condition_stage_{{ ac.id }}" class="form-select form-select-sm" style="width: 100px;">
+                                                        {% for condition in all_conditions %}
+                                                            {% if condition.id == ac.condition_id %}
+                                                                {% for stage in condition.stages %}
+                                                                    <option value="{{ stage.stage_number }}" {% if stage.stage_number == ac.current_stage %}selected{% endif %}>
+                                                                        Stage {{ stage.stage_number }}
+                                                                    </option>
+                                                                {% endfor %}
+                                                            {% endif %}
+                                                        {% endfor %}
+                                                    </select>
+                                                </td>
+                                                <td>
+                                                    <input type="number" name="condition_duration_{{ ac.id }}" value="{{ ac.current_duration }}"
+                                                           class="form-control form-control-sm" min="0" style="width: 80px;">
+                                                </td>
+                                                <td>
+                                                    <button type="submit" name="remove_condition" value="{{ ac.id }}" class="btn btn-danger btn-sm">
+                                                        <i class="fas fa-times"></i>
+                                                    </button>
+                                                </td>
+                                                {% else %}
                                                 <td>Stage {{ ac.current_stage }}</td>
                                                 <td>{{ ac.events_remaining }}</td>
+                                                {% endif %}
                                             </tr>
                                             {% endfor %}
                                         </tbody>

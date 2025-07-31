@@ -191,6 +191,7 @@ def edit(character_id):
     species_list = Species.query.all()
     factions = Faction.query.all()
     all_cybernetics = Cybernetic.query.order_by(Cybernetic.name).all()
+
     # Serialize all_conditions as a list of dicts for JSON
     all_conditions = []
     for cond in Condition.query.order_by(Condition.name).all():
@@ -263,7 +264,6 @@ def edit(character_id):
 def edit_post(character_id):
     character = Character.query.get_or_404(character_id)
     admin_context = request.form.get("admin_context") == "1"
-    user = User.query.get(character.user_id) if admin_context else None
 
     name = request.form.get("name")
     pronouns_subject = request.form.get("pronouns_subject")
@@ -395,35 +395,50 @@ def edit_post(character_id):
                 db.session.delete(cc)
                 db.session.commit()
                 flash("Condition removed.", "success")
-                return redirect(url_for("characters.edit", character_id=character.id))
+                redirect_url = url_for("characters.edit", character_id=character.id)
+                if admin_context:
+                    redirect_url += "?admin_context=1"
+                return redirect(redirect_url)
         # Add condition
         if request.form.get("add_condition"):
             cond_id = request.form.get("add_condition_id")
-            stage = request.form.get("add_condition_stage")
-            duration = request.form.get("add_condition_duration")
-            if cond_id and stage and duration is not None:
+            if cond_id:
                 exists = CharacterCondition.query.filter_by(
                     character_id=character.id, condition_id=cond_id
                 ).first()
                 if not exists:
                     condition = Condition.query.get(cond_id)
-                    condition_changes.append(
-                        f"Condition added: {condition.name} (Stage {stage}, Duration {duration})"
-                    )
-                    new_cc = CharacterCondition(
-                        character_id=character.id,
-                        condition_id=cond_id,
-                        current_stage=stage,
-                        current_duration=duration,
-                    )
-                    db.session.add(new_cc)
-                    db.session.commit()
-                    flash("Condition added.", "success")
-                    return redirect(url_for("characters.edit", character_id=character.id))
+                    if condition:
+                        # Get the duration of the first stage (stage 1)
+                        first_stage = next(
+                            (stage for stage in condition.stages if stage.stage_number == 1), None
+                        )
+                        initial_duration = first_stage.duration if first_stage else 0
+
+                        condition_changes.append(f"Condition added: {condition.name}")
+                        new_cc = CharacterCondition(
+                            character_id=character.id,
+                            condition_id=cond_id,
+                            current_stage=1,  # Default to stage 1
+                            current_duration=initial_duration,  # Use first stage duration
+                        )
+                        db.session.add(new_cc)
+                        db.session.commit()
+                        flash("Condition added.", "success")
+                        redirect_url = url_for("characters.edit", character_id=character.id)
+                        if admin_context:
+                            redirect_url += "?admin_context=1"
+                        return redirect(redirect_url)
+                    else:
+                        flash("Condition not found.", "error")
+                else:
+                    flash("Condition already exists for this character.", "error")
+            else:
+                flash("Please select a condition.", "error")
         # Update existing conditions
         for cc in character.active_conditions:
-            stage_val = request.form.get(f"active_condition_stage_{cc.id}")
-            duration_val = request.form.get(f"active_condition_duration_{cc.id}")
+            stage_val = request.form.get(f"condition_stage_{cc.id}")
+            duration_val = request.form.get(f"condition_duration_{cc.id}")
             if stage_val is not None and int(stage_val) != cc.current_stage:
                 condition_changes.append(
                     f"Condition {cc.condition.name} stage changed from {cc.current_stage} "
@@ -536,9 +551,10 @@ def edit_post(character_id):
 
     db.session.commit()
     flash("Character updated successfully")
+    redirect_url = url_for("characters.edit", character_id=character.id)
     if admin_context:
-        return redirect(url_for("user_management.user_management_edit_user", user_id=user.id))
-    return redirect(url_for("characters.character_list"))
+        redirect_url += "?admin_context=1"
+    return redirect(redirect_url)
 
 
 @characters_bp.route("/<int:character_id>/retire", methods=["POST"])
