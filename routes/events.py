@@ -176,10 +176,6 @@ def purchase_ticket(event_id):
         user_id=current_user.id, status=CharacterStatus.ACTIVE.value
     ).all()
 
-    if not user_characters:
-        flash("You need an active character to purchase tickets.", "error")
-        return redirect(url_for("events.event_list"))
-
     return render_template(
         "events/purchase.html",
         event=event,
@@ -290,17 +286,6 @@ def purchase_ticket_post(event_id):
 
         # --- Crew Ticket ---
         elif ticket_type == "crew":
-            # Only users with allowed roles can purchase
-            if not current_user.has_any_role(
-                [
-                    Role.USER_ADMIN.value,
-                    Role.RULES_TEAM.value,
-                    Role.PLOT_TEAM.value,
-                    Role.DOWNTIME_TEAM.value,
-                    Role.NPC.value,
-                ]
-            ):
-                continue
             if ticket_for == "self":
                 if self_ticket_added:
                     continue
@@ -321,12 +306,7 @@ def purchase_ticket_post(event_id):
             else:
                 # Assigning crew to another user is not allowed in purchase flow
                 continue
-            # Only one crew ticket per user/event
-            existing = EventTicket.query.filter_by(
-                event_id=event_id, user_id=user_id, ticket_type="crew"
-            ).first()
-            if existing:
-                continue
+            # Check for existing crew ticket (handled in ticket creation logic below)
         # --- Child Tickets ---
         elif ticket_type in ["child_12_15", "child_7_11", "child_under_7"]:
             user_id = current_user.id
@@ -339,19 +319,42 @@ def purchase_ticket_post(event_id):
             continue  # Unknown ticket type
 
         price_paid = float(item.get("price", 0))
-        ticket = EventTicket(
-            event_id=event_id,
-            character_id=character_id,
-            user_id=user_id,
-            ticket_type=ticket_type,
-            meal_ticket=meal_ticket,
-            requires_bunk=requires_bunk,
-            price_paid=price_paid,
-            assigned_by_id=current_user.id,
-            assigned_at=datetime.now(timezone.utc),
-            child_name=child_name,
-        )
-        db.session.add(ticket)
+
+        # Check if we're updating an existing ticket
+        existing_ticket = None
+        if ticket_type == "crew":
+            existing_ticket = EventTicket.query.filter_by(
+                event_id=event_id, user_id=user_id, ticket_type="crew"
+            ).first()
+        elif ticket_type == "adult":
+            existing_ticket = EventTicket.query.filter_by(
+                event_id=event_id, character_id=character_id, ticket_type="adult"
+            ).first()
+
+        if existing_ticket:
+            # Update existing ticket
+            existing_ticket.meal_ticket = meal_ticket
+            existing_ticket.requires_bunk = requires_bunk
+            existing_ticket.price_paid = price_paid
+            existing_ticket.assigned_by_id = current_user.id
+            existing_ticket.assigned_at = datetime.now(timezone.utc)
+            if child_name:
+                existing_ticket.child_name = child_name
+        else:
+            # Create new ticket
+            ticket = EventTicket(
+                event_id=event_id,
+                character_id=character_id,
+                user_id=user_id,
+                ticket_type=ticket_type,
+                meal_ticket=meal_ticket,
+                requires_bunk=requires_bunk,
+                price_paid=price_paid,
+                assigned_by_id=current_user.id,
+                assigned_at=datetime.now(timezone.utc),
+                child_name=child_name,
+            )
+            db.session.add(ticket)
 
         # Reset group pack if character has a group
         if character_id:
@@ -366,10 +369,11 @@ def purchase_ticket_post(event_id):
 
     db.session.commit()
     if tickets_created:
-        flash(f"{tickets_created} ticket(s) purchased successfully!", "success")
+        flash(f"{tickets_created} ticket(s) updated successfully!", "success")
+        return redirect(url_for("events.event_list"))
     else:
         flash("No tickets were purchased.", "error")
-    return redirect(url_for("events.event_list"))
+        return redirect(url_for("events.purchase_ticket", event_id=event_id))
 
 
 @events_bp.route("/<int:event_id>/assign", methods=["GET"])
@@ -1139,6 +1143,39 @@ def get_character_ticket():
     if not character:
         return jsonify({"success": False, "error": "Character not found"}), 404
     ticket = EventTicket.query.filter_by(event_id=event_id, character_id=character.id).first()
+    if not ticket:
+        return jsonify({"success": True, "ticket": None})
+    return jsonify(
+        {
+            "success": True,
+            "ticket": {
+                "ticket_type": (
+                    ticket.ticket_type.value
+                    if hasattr(ticket.ticket_type, "value")
+                    else ticket.ticket_type
+                ),
+                "meal_ticket": ticket.meal_ticket,
+                "requires_bunk": getattr(ticket, "requires_bunk", False),
+                "price_paid": ticket.price_paid,
+            },
+        }
+    )
+
+
+@events_bp.route("/api/get_user_ticket")
+@login_required
+def get_user_ticket():
+    """Get existing ticket for a user (for crew tickets)."""
+    event_id = request.args.get("event_id")
+    user_id = request.args.get("user_id")
+    if not event_id or not user_id:
+        return (
+            jsonify({"success": False, "error": "Missing parameters"}),
+            400,
+        )
+    ticket = EventTicket.query.filter_by(
+        event_id=event_id, user_id=user_id, ticket_type="crew"
+    ).first()
     if not ticket:
         return jsonify({"success": True, "ticket": None})
     return jsonify(
