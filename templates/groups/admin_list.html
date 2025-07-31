@@ -87,7 +87,7 @@
                                         <button type="submit" class="btn btn-success btn-sm">Activate</button>
                                     </form>
                                 {% endif %}
-                                <button type="button" class="btn btn-danger btn-sm disband-btn" data-disband-url="{{ url_for('groups.disband_group_post', group_id=group.id) }}" data-warning="This action is not reversible and cannot be recovered.">Disband</button>
+                                <button type="button" class="btn btn-danger btn-sm disband-btn" data-disband-url="{{ url_for('groups.disband_group_admin', group_id=group.id) }}" data-warning="This action is not reversible and cannot be recovered.">Disband</button>
                             </td>
                         </tr>
                         {% endfor %}

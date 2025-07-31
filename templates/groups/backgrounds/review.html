@@ -1,0 +1,98 @@
+{% extends "_template.html" %}
+
+{% block title %}Review Group Background - {{ background.group.name }} - Orion Sphere LRP{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+    <div class="group-background-review">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="h2 mb-0">Review Group Background</h1>
+            <a href="{{ url_for('groups.list_group_backgrounds') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left me-1"></i>Back to List
+            </a>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title mb-0">{{ background.group.name }}</h3>
+                <small class="text-muted">
+                    Group Type: {{ background.group.group_type.name }}
+                    {% if background.group.characters %}
+                    | Members: {{ background.group.characters|length }}
+                    {% endif %}
+                </small>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group mb-3">
+                                <label class="form-label">Group Name</label>
+                                <div class="form-control-plaintext">
+                                    <strong>{{ background.group.name }}</strong>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group mb-3">
+                                <label class="form-label">Group Details</label>
+                                <div class="form-control-plaintext">
+                                    <strong>Type:</strong> {{ background.group.group_type.name }}<br>
+                                    <strong>Bank Account:</strong> {{ background.group.bank_account }}<br>
+                                    <strong>Status:</strong> {% if background.group.is_active %}Active{% else %}Inactive{% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label for="background" class="form-label">Background</label>
+                        <textarea id="background"
+                                  name="background"
+                                  class="form-control"
+                                  rows="6"
+                                  placeholder="Enter group background...">{{ background.background or '' }}</textarea>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label for="objective" class="form-label">Objective</label>
+                        <textarea id="objective"
+                                  name="objective"
+                                  class="form-control"
+                                  rows="4"
+                                  placeholder="Enter group objective...">{{ background.objective or '' }}</textarea>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label for="goals" class="form-label">Goals</label>
+                        <textarea id="goals"
+                                  name="goals"
+                                  class="form-control"
+                                  rows="4"
+                                  placeholder="Enter group goals...">{{ background.goals or '' }}</textarea>
+                    </div>
+
+                    <div class="form-check mb-3">
+                        <input type="checkbox"
+                               id="mark_done"
+                               name="mark_done"
+                               class="form-check-input">
+                        <label for="mark_done" class="form-check-label">
+                            <strong>Review Complete</strong>
+                        </label>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-1"></i>Save Changes
+                        </button>
+                        <a href="{{ url_for('groups.list_group_backgrounds') }}" class="btn btn-secondary">
+                            <i class="fas fa-times me-1"></i>Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

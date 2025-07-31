@@ -38,8 +38,11 @@
                     {% if not character.group.is_active %}
                         <span class="badge bg-warning me-2">Inactive</span>
                     {% endif %}
-                    <a href="{{ url_for('groups.group_audit_log', group_id=character.group.id) }}" class="btn btn-outline-info">
+                    <a href="{{ url_for('groups.group_audit_log', group_id=character.group.id) }}" class="btn btn-outline-info me-2">
                         <i class="fas fa-history me-1"></i> View Audit Log
+                    </a>
+                    <a href="{{ url_for('groups.view_join_requests', group_id=character.group.id) }}" class="btn btn-outline-warning">
+                        <i class="fas fa-user-plus me-1"></i> Join Requests
                     </a>
                 </div>
             </div>
@@ -63,7 +66,27 @@
                             <input type="text" class="form-control" value="{{ character.group.bank_account }}" readonly>
                         </div>
 
-                        <button type="submit" class="btn btn-primary">Update Group Name</button>
+                        <div class="form-group mb-3">
+                            <label for="background">Background</label>
+                            <textarea class="form-control" id="background" name="background" rows="3">{{ character.group.background or '' }}</textarea>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="objective">Objective</label>
+                                    <textarea class="form-control" id="objective" name="objective" rows="3">{{ character.group.objective or '' }}</textarea>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="goals">Goals</label>
+                                    <textarea class="form-control" id="goals" name="goals" rows="3">{{ character.group.goals or '' }}</textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary">Update Group Information</button>
                     </form>
                 {% else %}
                     <div class="alert alert-warning">
@@ -109,11 +132,8 @@
                             <input type="hidden" name="admin_view" value="false">
                             <input type="hidden" name="redirect_character_id" value="{{ character.id }}">
                             <div class="input-group">
-                                <select class="form-control" name="character_id" required>
-                                    <option value="">Select Character to Invite</option>
-                                    {% for char in active_characters %}
-                                    <option value="{{ char.id }}">{{ char.name }} ({{ char.faction.name }})</option>
-                                    {% endfor %}
+                                <select class="form-control character-select2" name="character_id" required>
+                                    <option value="">Search for a character to invite...</option>
                                 </select>
                                 <button type="submit" class="btn btn-primary">Send Invite</button>
                             </div>
@@ -150,34 +170,6 @@
             </div>
         </div>
     {% else %}
-        <div class="card mb-4">
-            <div class="card-header">
-                <h2>Create Group</h2>
-            </div>
-            <div class="card-body">
-                <form method="POST" action="{{ url_for('groups.create_group_post') }}">
-                    <input type="hidden" name="admin_view" value="false">
-                    <input type="hidden" name="character_id" value="{{ character.id }}">
-                    <div class="form-group mb-3">
-                        <label for="name">Group Name</label>
-                        <input type="text" class="form-control" id="name" name="name" required>
-                    </div>
-
-                    <div class="form-group mb-3">
-                        <label for="type">Group Type</label>
-                        <select class="form-control form-select" id="type" name="type" required>
-                            <option value="">Select a group type...</option>
-                            {% for group_type in group_types %}
-                            <option value="{{ group_type.id }}">{{ group_type.name }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-
-                    <button type="submit" class="btn btn-primary">Create Group</button>
-                </form>
-            </div>
-        </div>
-
         {% if invites %}
         <div class="card">
             <div class="card-header">
@@ -218,6 +210,78 @@
             </div>
         </div>
         {% endif %}
+    {% endif %}
+
+        <!-- No Group Section -->
+    {% if not character.group %}
+        <!-- Join a Group Section -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h2>Join a Group</h2>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">You are not currently in a group. You can search for existing groups to join.</p>
+
+                <h3>Search Groups</h3>
+                <div class="mb-3">
+                    <select class="form-control" id="groupSearch" style="width: 100%;">
+                        <option value="">Search for groups...</option>
+                    </select>
+                </div>
+
+                <div id="groupSearchResults" class="mt-3" style="display: none;">
+                    <h4>Available Groups</h4>
+                    <div id="groupsList"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Create New Group Section -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h2>Create New Group</h2>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">Or create your own group if you can't find one to join.</p>
+
+                <form method="POST" action="{{ url_for('groups.create_group_post') }}">
+                    <input type="hidden" name="admin_view" value="false">
+                    <input type="hidden" name="character_id" value="{{ character.id }}">
+                    <div class="form-group mb-3">
+                        <label for="new_group_name">Group Name</label>
+                        <input type="text" class="form-control" id="new_group_name" name="name" required>
+                    </div>
+                    <div class="form-group mb-3">
+                        <label for="new_group_type">Group Type</label>
+                        <select class="form-control" id="new_group_type" name="type" required>
+                            <option value="">Select Group Type</option>
+                            {% for group_type in group_types %}
+                            <option value="{{ group_type.id }}">{{ group_type.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group mb-3">
+                        <label for="new_group_background">Background</label>
+                        <textarea class="form-control" id="new_group_background" name="background" rows="3" required></textarea>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="new_group_objective">Objective</label>
+                                <textarea class="form-control" id="new_group_objective" name="objective" rows="3" required></textarea>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="new_group_goals">Goals</label>
+                                <textarea class="form-control" id="new_group_goals" name="goals" rows="3" required></textarea>
+                            </div>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Create Group</button>
+                </form>
+            </div>
+        </div>
     {% endif %}
 
     <!-- Inactive Groups Section -->
@@ -270,6 +334,45 @@ document.addEventListener('DOMContentLoaded', function() {
             const currentUrl = new URL(window.location.href);
             currentUrl.searchParams.set('character_id', selectedCharacterId);
             window.location.href = currentUrl.toString();
+        });
+    }
+
+    // Initialize Select2 for character invitation
+    const characterSelect = document.querySelector('.character-select2');
+    if (characterSelect) {
+        $(characterSelect).select2({
+            width: '100%',
+            placeholder: 'Search for a character to invite...',
+            minimumInputLength: 2,
+            ajax: {
+                url: '{{ url_for("groups.api_characters_search") }}',
+                dataType: 'json',
+                delay: 250,
+                data: function(params) {
+                    return {
+                        q: params.term,
+                        character_id: '{{ character.id }}'
+                    };
+                },
+                processResults: function(data) {
+                    return {
+                        results: data.items.map(function(item) {
+                            return {
+                                id: item.id,
+                                text: item.text
+                            };
+                        })
+                    };
+                },
+                cache: true
+            }
+        }).on('select2:open', function() {
+            // Apply dark mode styling if dark mode is active
+            const isDarkMode = document.documentElement.getAttribute('data-theme') === 'dark';
+            if (isDarkMode) {
+                $('.select2-container--bootstrap-5').addClass('select2-dark');
+                $('.select2-dropdown').addClass('select2-dark');
+            }
         });
     }
 

@@ -1,4 +1,4 @@
-from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
+from flask import Blueprint, abort, flash, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from models.database.group_type import GroupType
@@ -6,7 +6,7 @@ from models.database.sample import Sample
 from models.enums import CharacterAuditAction, CharacterStatus, GroupAuditAction, Role
 from models.extensions import db
 from models.tools.character import Character, CharacterAuditLog
-from models.tools.group import Group, GroupAuditLog, GroupInvite
+from models.tools.group import Group, GroupAuditLog, GroupBackground, GroupInvite, GroupJoinRequest
 from utils.decorators import (
     email_verified_required,
     has_active_character_required,
@@ -99,6 +99,9 @@ def create_group():
 def create_group_post():
     name = request.form.get("name")
     type = request.form.get("type")
+    background = request.form.get("background", "")
+    objective = request.form.get("objective", "")
+    goals = request.form.get("goals", "")
     character_id = request.form.get("character_id")
     admin_view = request.form.get("admin_view")
 
@@ -119,9 +122,22 @@ def create_group_post():
         name=name,
         group_type_id=type,
         bank_account=0,
+        background=background,
+        objective=objective,
+        goals=goals,
     )
     db.session.add(group)
     db.session.flush()  # Flush to get the group ID
+
+    # Create background record that needs review
+    background_record = GroupBackground(
+        group_id=group.id,
+        background=background,
+        objective=objective,
+        goals=goals,
+        needs_review=True,
+    )
+    db.session.add(background_record)
 
     # Add character to group
     active_character.group_id = group.id
@@ -149,6 +165,9 @@ def edit_group_post(group_id):
     group = Group.query.get_or_404(group_id)
     name = request.form.get("name")
     type = request.form.get("type")
+    background = request.form.get("background", "")
+    objective = request.form.get("objective", "")
+    goals = request.form.get("goals", "")
     bank_account = request.form.get("bank_account")
     admin_view = request.form.get("admin_view")
     character_id = request.form.get("character_id")
@@ -170,6 +189,15 @@ def edit_group_post(group_id):
     changes = []
     if group.name != name:
         changes.append(f"Name changed from '{group.name}' to '{name}'")
+
+    # Track background changes
+    background_changes = []
+    if group.background != background:
+        background_changes.append("Background updated")
+    if group.objective != objective:
+        background_changes.append("Objective updated")
+    if group.goals != goals:
+        background_changes.append("Goals updated")
 
     # Only allow type changes for admins
     if current_user.has_role(Role.USER_ADMIN.value) and type and group.group_type_id != int(type):
@@ -193,13 +221,29 @@ def edit_group_post(group_id):
 
     group.name = name
 
+    # Handle background review system
+    if background_changes:
+        # Group member edited background - mark for review
+        group_background = GroupBackground.get_or_create_for_group(group.id)
+        group_background.background = background
+        group_background.objective = objective
+        group_background.goals = goals
+        group_background.mark_for_review()
+        db.session.add(group_background)
+
+    # Update group background fields
+    group.background = background
+    group.objective = objective
+    group.goals = goals
+
     # Create audit log if there were changes
-    if changes:
+    if changes or background_changes:
+        all_changes = changes + background_changes
         audit_log = GroupAuditLog(
             group_id=group.id,
             editor_user_id=current_user.id,
             action=GroupAuditAction.EDIT.value,
-            changes="; ".join(changes),
+            changes="; ".join(all_changes),
         )
         db.session.add(audit_log)
 
@@ -423,6 +467,32 @@ def disband_group_post(group_id):
     return redirect(url_for("groups.group_list", admin_view=admin_view, character_id=character_id))
 
 
+@groups_bp.route("/<int:group_id>/disband/admin", methods=["POST"])
+@login_required
+@email_verified_required
+@user_admin_required
+def disband_group_admin(group_id):
+    group = Group.query.get_or_404(group_id)
+
+    # Delete all invites for this group
+    GroupInvite.query.filter_by(group_id=group_id).delete()
+
+    # Remove all characters from the group
+    for character in group.characters:
+        character.group_id = None
+
+    # Deactivate the group instead of deleting it
+    group.deactivate(
+        current_user.id,
+        f"Group disbanded by admin {current_user.first_name} {current_user.surname or ''}",
+    )
+
+    db.session.commit()
+
+    flash("Group disbanded and deactivated.", "success")
+    return redirect(url_for("groups.group_list"))
+
+
 @groups_bp.route("/<int:group_id>/remove/<int:character_id>", methods=["POST"])
 @login_required
 @email_verified_required
@@ -480,6 +550,9 @@ def create_group_admin():
     name = request.form.get("name")
     group_type_id = request.form.get("group_type_id")
     bank_account = request.form.get("bank_account")
+    background = request.form.get("background", "")
+    objective = request.form.get("objective", "")
+    goals = request.form.get("goals", "")
     character_id = request.form.get("character_id")
 
     if not name or not group_type_id:
@@ -497,9 +570,26 @@ def create_group_admin():
         flash("Bank account must be a number", "error")
         return redirect(url_for("groups.create_group_admin"))
 
-    group = Group(name=name, group_type_id=group_type.id, bank_account=bank_account_int)
+    group = Group(
+        name=name,
+        group_type_id=group_type.id,
+        bank_account=bank_account_int,
+        background=background,
+        objective=objective,
+        goals=goals,
+    )
     db.session.add(group)
     db.session.flush()  # Flush to get the group ID
+
+    # Create background record that needs review
+    background_record = GroupBackground(
+        group_id=group.id,
+        background=background,
+        objective=objective,
+        goals=goals,
+        needs_review=True,
+    )
+    db.session.add(background_record)
 
     # Assign initial character if provided
     if character_id:
@@ -555,6 +645,9 @@ def edit_group_admin_post(group_id):
     name = request.form.get("name")
     type = request.form.get("group_type_id")
     bank_account = request.form.get("bank_account")
+    background = request.form.get("background", "")
+    objective = request.form.get("objective", "")
+    goals = request.form.get("goals", "")
     sample_ids = request.form.getlist("sample_ids")
 
     group_types = GroupType.query.all()
@@ -597,6 +690,9 @@ def edit_group_admin_post(group_id):
             group.set_funds(bank_account_int, current_user.id, "Admin group edit")
 
     group.name = name
+    group.background = background
+    group.objective = objective
+    group.goals = goals
 
     # Update samples
     if sample_ids:
@@ -755,3 +851,320 @@ def deactivate_group(group_id):
     if admin_view == "false":
         return redirect(url_for("groups.group_list", admin_view="false", character_id=character_id))
     return redirect(url_for("groups.group_list"))
+
+
+@groups_bp.route("/api/groups/search")
+@login_required
+@email_verified_required
+def api_groups_search():
+    """API endpoint for searching groups."""
+    query = request.args.get("q", "")
+    page = request.args.get("page", 1, type=int)
+    per_page = 10
+
+    if not query or len(query) < 2:
+        return jsonify({"items": [], "has_more": False})
+
+    # Search for active groups
+    groups = Group.query.filter(Group.is_active.is_(True), Group.name.ilike(f"%{query}%")).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+
+    items = []
+    for group in groups.items:
+        items.append(
+            {
+                "id": group.id,
+                "name": group.name,
+                "group_type": group.group_type.name,
+                "member_count": len(group.characters),
+            }
+        )
+
+    return jsonify({"items": items, "has_more": groups.has_next})
+
+
+@groups_bp.route("/api/characters/search")
+@login_required
+@email_verified_required
+def api_characters_search():
+    """API endpoint for searching characters for group invites."""
+    query = request.args.get("q", "")
+    if not query or len(query) < 2:
+        return jsonify({"items": [], "has_more": False})
+
+    # Get the current character's faction for filtering
+    character_id = request.args.get("character_id", type=int)
+    if character_id:
+        current_character = Character.query.get(character_id)
+        if current_character and current_character.user_id == current_user.id:
+            faction_id = current_character.faction_id
+        else:
+            faction_id = None
+    else:
+        faction_id = None
+
+    # Build the query
+    characters_query = Character.query.filter_by(status=CharacterStatus.ACTIVE.value)
+
+    # Filter out characters already in groups
+    characters_query = characters_query.filter(Character.group_id.is_(None))
+
+    # Check if query looks like user_id.character_id format
+    if "." in query:
+        try:
+            user_id_str, char_id_str = query.split(".", 1)
+            user_id = int(user_id_str)
+            char_id = int(char_id_str)
+
+            # Search by user_id and character_id
+            characters_query = characters_query.filter(
+                Character.user_id == user_id, Character.character_id == char_id
+            )
+        except (ValueError, TypeError):
+            # If parsing fails, fall back to name search
+            characters_query = characters_query.filter(Character.name.ilike(f"%{query}%"))
+    else:
+        # Search by name
+        characters_query = characters_query.filter(Character.name.ilike(f"%{query}%"))
+
+    # Only apply faction filter for non-admin users
+    if faction_id and not current_user.has_role(Role.USER_ADMIN.value):
+        characters_query = characters_query.filter(Character.faction_id == faction_id)
+
+    # Limit results
+    characters = characters_query.limit(10).all()
+
+    items = []
+    for character in characters:
+        # Include user info in the text for better identification
+        user_info = f"{character.user.first_name} {character.user.surname or ''}"
+        items.append(
+            {
+                "id": character.id,
+                "text": f"{character.name} ({character.faction.name}) - {user_info}",
+                "name": character.name,
+                "faction": character.faction.name,
+                "user_info": user_info,
+            }
+        )
+
+    return jsonify({"items": items, "has_more": False})
+
+
+@groups_bp.route("/<int:group_id>/join-request", methods=["POST"])
+@login_required
+@email_verified_required
+@has_active_character_required
+def request_join_group(group_id):
+    group = Group.query.get_or_404(group_id)
+    character_id = request.form.get("character_id")
+    admin_view = request.form.get("admin_view")
+
+    # Check if character belongs to current user
+    character = db.session.get(Character, character_id)
+    if not character or character.user_id != current_user.id:
+        flash("Invalid character selected.", "error")
+        return redirect(url_for("groups.group_list"))
+
+    # Check if character is already in a group
+    if character.group_id:
+        flash("Character is already in a group", "error")
+        return redirect(
+            url_for("groups.group_list", admin_view=admin_view, character_id=character_id)
+        )
+
+    # Check if group is active
+    if not group.is_active:
+        flash("Cannot request to join an inactive group", "error")
+        return redirect(
+            url_for("groups.group_list", admin_view=admin_view, character_id=character_id)
+        )
+
+    # Check if request already exists
+    existing_request = GroupJoinRequest.query.filter_by(
+        group_id=group_id, character_id=character_id
+    ).first()
+
+    if existing_request:
+        if existing_request.status == "pending":
+            flash("You already have a pending request to join this group", "info")
+        else:
+            flash("You have already requested to join this group", "info")
+        return redirect(
+            url_for("groups.group_list", admin_view=admin_view, character_id=character_id)
+        )
+
+    # Create join request
+    join_request = GroupJoinRequest(group_id=group_id, character_id=character_id, status="pending")
+    db.session.add(join_request)
+    db.session.commit()
+
+    flash("Join request sent successfully", "success")
+    return redirect(url_for("groups.group_list", admin_view=admin_view, character_id=character_id))
+
+
+@groups_bp.route("/<int:group_id>/join-requests")
+@login_required
+@email_verified_required
+def view_join_requests(group_id):
+    group = Group.query.get_or_404(group_id)
+
+    # Check if user has access to view join requests
+    # User can view if they are a member of the group or an admin
+    user_has_access = False
+    if current_user.has_role(Role.USER_ADMIN.value):
+        user_has_access = True
+    else:
+        # Check if any of user's characters are in this group
+        user_characters = Character.query.filter_by(user_id=current_user.id).all()
+        for character in user_characters:
+            if character.group_id == group.id:
+                user_has_access = True
+                break
+
+    if not user_has_access:
+        abort(403)
+
+    join_requests = GroupJoinRequest.query.filter_by(group_id=group_id, status="pending").all()
+
+    return render_template(
+        "groups/join_requests.html",
+        group=group,
+        join_requests=join_requests,
+    )
+
+
+@groups_bp.route("/<int:group_id>/join-requests/<int:request_id>/respond", methods=["POST"])
+@login_required
+@email_verified_required
+def respond_to_join_request(group_id, request_id):
+    group = Group.query.get_or_404(group_id)
+    join_request = GroupJoinRequest.query.get_or_404(request_id)
+
+    # Verify the request belongs to this group
+    if join_request.group_id != group_id:
+        abort(404)
+
+    # Check if user has access to respond to join requests
+    # User can respond if they are a member of the group or an admin
+    user_has_access = False
+    if current_user.has_role(Role.USER_ADMIN.value):
+        user_has_access = True
+    else:
+        # Check if any of user's characters are in this group
+        user_characters = Character.query.filter_by(user_id=current_user.id).all()
+        for character in user_characters:
+            if character.group_id == group.id:
+                user_has_access = True
+                break
+
+    if not user_has_access:
+        abort(403)
+
+    action = request.form.get("action")
+    if action not in ["approve", "deny"]:
+        flash("Invalid action", "error")
+        return redirect(url_for("groups.view_join_requests", group_id=group_id))
+
+    if action == "approve":
+        join_request.approve(current_user.id)
+        flash("Join request approved", "success")
+    else:
+        join_request.deny(current_user.id)
+        flash("Join request denied", "success")
+
+    db.session.commit()
+    return redirect(url_for("groups.view_join_requests", group_id=group_id))
+
+
+@groups_bp.route("/backgrounds/")
+@login_required
+@email_verified_required
+@user_admin_required
+def list_group_backgrounds():
+    """List all group backgrounds that need review."""
+    backgrounds = GroupBackground.query.filter_by(needs_review=True).all()
+
+    return render_template(
+        "groups/backgrounds/list.html",
+        backgrounds=backgrounds,
+    )
+
+
+@groups_bp.route("/backgrounds/<int:background_id>/review", methods=["GET"])
+@login_required
+@email_verified_required
+@user_admin_required
+def review_group_background(background_id):
+    """Review a specific group background."""
+    background = GroupBackground.query.get_or_404(background_id)
+
+    if not background.needs_review:
+        flash("This background has already been reviewed.", "info")
+        return redirect(url_for("groups.list_group_backgrounds"))
+
+    return render_template(
+        "groups/backgrounds/review.html",
+        background=background,
+    )
+
+
+@groups_bp.route("/backgrounds/<int:background_id>/review", methods=["POST"])
+@login_required
+@email_verified_required
+@user_admin_required
+def review_group_background_post(background_id):
+    """Handle the review submission."""
+    background = GroupBackground.query.get_or_404(background_id)
+
+    if not background.needs_review:
+        flash("This background has already been reviewed.", "info")
+        return redirect(url_for("groups.list_group_backgrounds"))
+
+    # Update group information
+    group = background.group
+    new_background = request.form.get("background", group.background)
+    new_objective = request.form.get("objective", group.objective)
+    new_goals = request.form.get("goals", group.goals)
+
+    # Track changes for audit logging
+    changes = []
+    if group.background != new_background:
+        changes.append("Background updated during review")
+    if group.objective != new_objective:
+        changes.append("Objective updated during review")
+    if group.goals != new_goals:
+        changes.append("Goals updated during review")
+
+    group.background = new_background
+    group.objective = new_objective
+    group.goals = new_goals
+
+    # Update background information
+    background.background = group.background
+    background.objective = group.objective
+    background.goals = group.goals
+
+    # Create audit log for background changes
+    if changes:
+        audit = GroupAuditLog(
+            group_id=group.id,
+            editor_user_id=current_user.id,
+            action=GroupAuditAction.EDIT.value,
+            changes="; ".join(changes),
+        )
+        db.session.add(audit)
+
+    # Check if marked as done
+    mark_done = request.form.get("mark_done") == "on"
+
+    if mark_done:
+        background.mark_as_reviewed(current_user.id)
+        flash("Background marked as reviewed.", "success")
+    else:
+        flash("Background updated but still needs review.", "info")
+
+    db.session.commit()
+
+    return redirect(url_for("groups.list_group_backgrounds"))

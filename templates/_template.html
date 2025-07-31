@@ -79,6 +79,7 @@
                         {% if current_user.is_authenticated and current_user.has_role('user_admin') %}
                             <a href="{{ url_for('user_management.user_management') }}">Users</a>
                             <a href="{{ url_for('character_backgrounds.list_backgrounds') }}">Character Backgrounds</a>
+                            <a href="{{ url_for('groups.list_group_backgrounds') }}">Group Backgrounds</a>
                         {% endif %}
                         <a href="{{ url_for('characters.character_list') }}">Characters</a>
                         {% if current_user.has_role('user_admin') or current_user.has_active_character() %}
