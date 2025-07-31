@@ -209,6 +209,7 @@ const singleActiveCharacterName = document.getElementById('single_active_charact
 const activeCharacterId = document.getElementById('active_character_id').value;
 let lastFetchedTicket = null;
 let userEventStatus = {}; // To store { userId: { has_adult_ticket, has_crew_ticket } }
+let isEditingExistingTicket = false; // Track if we're editing an existing ticket
 
 // New function to fetch user's ticket status for the event
 function fetchUserEventStatus(userId) {
@@ -348,6 +349,8 @@ function showExistingTicketInfo(ticket) {
 
 function hideExistingTicketInfo() {
     document.getElementById('existing_ticket_info')?.remove();
+    // Reset editing flag when hiding existing ticket info
+    isEditingExistingTicket = false;
 }
 
 function fetchCharacterGroupStatus(characterId) {
@@ -404,55 +407,70 @@ function fetchAndApplyCharacterTicket(characterId) {
                 hideExistingTicketInfo();
                 return;
             }
-            // Pre-select fields
-            document.getElementById('ticket_type').value = ticket.ticket_type;
-            if (document.getElementById('has_meal_ticket')) {
-                if (ticket.meal_ticket) {
-                    document.getElementById('has_meal_ticket').setAttribute('checked', 'checked');
-                } else {
-                    document.getElementById('has_meal_ticket').removeAttribute('checked');
-                }
-            }
-            if (document.getElementById('requires_bunk')) {
-                if (ticket.requires_bunk) {
-                    document.getElementById('requires_bunk').setAttribute('checked', 'checked');
-                } else {
-                    document.getElementById('requires_bunk').removeAttribute('checked');
-                }
-            }
-            // Disable meal ticket if already purchased
-            if (ticket.meal_ticket) {
-                document.getElementById('has_meal_ticket')?.setAttribute('disabled', 'disabled');
-                document.getElementById('has_meal_ticket')?.setAttribute('title', 'Meal ticket already purchased. For refunds, contact event organisers.');
-            } else {
+            applyTicketData(ticket);
+        });
+}
+
+function fetchAndApplyUserTicket(userId) {
+    if (!userId) return;
+    fetch(`{{ url_for('events.get_user_ticket') }}?event_id=${eventId}&user_id=${encodeURIComponent(userId)}`)
+        .then(response => response.json())
+        .then(data => {
+            if (!data.success) return;
+            const ticket = data.ticket;
+            lastFetchedTicket = ticket;
+            if (!ticket) {
+                // Reset disables and warnings
                 document.getElementById('has_meal_ticket')?.removeAttribute('disabled');
                 document.getElementById('has_meal_ticket')?.removeAttribute('title');
+                document.getElementById('ticket_type').querySelectorAll('option').forEach(opt => {
+                    opt.removeAttribute('disabled');
+                    opt.removeAttribute('title');
+                });
+                document.getElementById('requires_bunk')?.removeAttribute('disabled');
+                document.getElementById('requires_bunk')?.removeAttribute('title');
+                hideExistingTicketInfo();
+                return;
             }
-            // Prevent downgrading ticket type
-            const ticketTypeSelect = document.getElementById('ticket_type');
-            let foundCurrent = false;
-            ticketTypeSelect.querySelectorAll('option').forEach(opt => {
-                // Never disable child ticket options
-                if (["child_12_15", "child_7_11", "child_under_7"].includes(opt.value)) {
-                    opt.removeAttribute('disabled');
-                    opt.removeAttribute('title');
-                    return;
-                }
-                if (opt.value === ticket.ticket_type) {
-                    foundCurrent = true;
-                    opt.removeAttribute('disabled');
-                    opt.removeAttribute('title');
-                } else if (foundCurrent) {
-                    // Cheaper ticket (only for adult/crew)
-                    opt.setAttribute('disabled', 'disabled');
-                    opt.setAttribute('title', 'Cannot downgrade ticket. For refunds, contact event organisers.');
-                } else {
-                    opt.removeAttribute('disabled');
-                    opt.removeAttribute('title');
-                }
-            });
-            showExistingTicketInfo(ticket);
+            applyTicketData(ticket);
         });
+}
+
+function applyTicketData(ticket) {
+    // Mark that we're editing an existing ticket
+    isEditingExistingTicket = true;
+
+    // Pre-select fields
+    document.getElementById('ticket_type').value = ticket.ticket_type;
+    if (document.getElementById('has_meal_ticket')) {
+        if (ticket.meal_ticket) {
+            document.getElementById('has_meal_ticket').setAttribute('checked', 'checked');
+        } else {
+            document.getElementById('has_meal_ticket').removeAttribute('checked');
+        }
+    }
+    if (document.getElementById('requires_bunk')) {
+        if (ticket.requires_bunk) {
+            document.getElementById('requires_bunk').setAttribute('checked', 'checked');
+        } else {
+            document.getElementById('requires_bunk').removeAttribute('checked');
+        }
+    }
+    // Disable meal ticket if already purchased
+    if (ticket.meal_ticket) {
+        document.getElementById('has_meal_ticket')?.setAttribute('disabled', 'disabled');
+        document.getElementById('has_meal_ticket')?.setAttribute('title', 'Meal ticket already purchased. For refunds, contact event organisers.');
+    } else {
+        document.getElementById('has_meal_ticket')?.removeAttribute('disabled');
+        document.getElementById('has_meal_ticket')?.removeAttribute('title');
+    }
+    // For existing tickets, don't prevent downgrading - allow editing
+    const ticketTypeSelect = document.getElementById('ticket_type');
+    ticketTypeSelect.querySelectorAll('option').forEach(opt => {
+        opt.removeAttribute('disabled');
+        opt.removeAttribute('title');
+    });
+    showExistingTicketInfo(ticket);
 }
 
 // Call fetchAndApplyCharacterTicket when character changes
@@ -477,8 +495,9 @@ function onCharacterChange() {
     }
     fetchAndApplyCharacterTicket(characterId);
 
-    // Check group status when character changes
-    if (characterId) {
+    // Check group status when character changes (only for adult tickets)
+    const ticketType = document.getElementById('ticket_type').value;
+    if (characterId && ticketType === 'adult') {
         fetchCharacterGroupStatus(characterId);
     } else {
         hideGroupWarning();
@@ -506,6 +525,8 @@ function updateFormFields() {
         });
         document.getElementById('requires_bunk')?.removeAttribute('disabled');
         document.getElementById('requires_bunk')?.removeAttribute('title');
+        // Reset editing flag when switching ticket types
+        isEditingExistingTicket = false;
     }
     document.getElementById('ticket_type').setAttribute('data-previous-type', ticketType);
 
@@ -562,7 +583,7 @@ function updateFormFields() {
         document.getElementById('character_id_section').style.display = 'none';
         // Fetch existing ticket info for current user when switching to crew
         if (previousTicketType && previousTicketType !== ticketType) {
-            onCharacterChange();
+            fetchAndApplyUserTicket(currentUserId);
         }
     }
     // Child: require child name, hide character selection and recipient toggle
@@ -661,21 +682,24 @@ function addToCart() {
         const friendlyName = getFriendlyUserName(targetUserId, recipientName);
         const status = userEventStatus[targetUserId] || {};
 
-        if (status.has_adult_ticket) {
-            showFlashMessage(`${friendlyName} already ha${parseInt(targetUserId) === parseInt(currentUserId) ? 've' : 's'} an adult ticket for this event.`);
-            return;
-        }
-        if (status.has_crew_ticket) {
-            showFlashMessage(`${friendlyName} already ha${parseInt(targetUserId) === parseInt(currentUserId) ? 've' : 's'} a crew ticket and cannot also have an adult ticket.`);
-            return;
-        }
-        if (cart.some(i => i.ticketType === 'adult' && i.targetUserId === targetUserId)) {
-            showFlashMessage(`${friendlyName} already ha${parseInt(targetUserId) === parseInt(currentUserId) ? 've' : 's'} an adult ticket in the basket.`);
-            return;
-        }
-        if (cart.some(i => i.ticketType === 'crew' && i.targetUserId === targetUserId)) {
-            showFlashMessage(`${friendlyName} already ha${parseInt(targetUserId) === parseInt(currentUserId) ? 've' : 's'} a crew ticket in the basket and cannot also have an adult ticket.`);
-            return;
+        // Skip validation if we're editing an existing ticket
+        if (!isEditingExistingTicket) {
+            if (status.has_adult_ticket) {
+                showFlashMessage(`${friendlyName} already ha${parseInt(targetUserId) === parseInt(currentUserId) ? 've' : 's'} an adult ticket for this event.`);
+                return;
+            }
+            if (status.has_crew_ticket) {
+                showFlashMessage(`${friendlyName} already ha${parseInt(targetUserId) === parseInt(currentUserId) ? 've' : 's'} a crew ticket and cannot also have an adult ticket.`);
+                return;
+            }
+            if (cart.some(i => i.ticketType === 'adult' && i.targetUserId === targetUserId)) {
+                showFlashMessage(`${friendlyName} already ha${parseInt(targetUserId) === parseInt(currentUserId) ? 've' : 's'} an adult ticket in the basket.`);
+                return;
+            }
+            if (cart.some(i => i.ticketType === 'crew' && i.targetUserId === targetUserId)) {
+                showFlashMessage(`${friendlyName} already ha${parseInt(targetUserId) === parseInt(currentUserId) ? 've' : 's'} a crew ticket in the basket and cannot also have an adult ticket.`);
+                return;
+            }
         }
 
     }
@@ -689,21 +713,24 @@ function addToCart() {
         const friendlyName = "You";
         const status = userEventStatus[targetUserId] || {};
 
-        if (status.has_crew_ticket) {
-            showFlashMessage("You already have a crew ticket for this event.");
-            return;
-        }
-        if (status.has_adult_ticket) {
-            showFlashMessage("You already have an adult ticket and cannot also have a crew ticket.");
-            return;
-        }
-        if (cart.some(i => i.ticketType === 'crew' && i.targetUserId === targetUserId)) {
-            showFlashMessage("You already have a crew ticket in the basket.");
-            return;
-        }
-        if (cart.some(i => i.ticketType === 'adult' && i.targetUserId === targetUserId)) {
-            showFlashMessage("You already have an adult ticket in the basket and cannot also have a crew ticket.");
-            return;
+        // Skip validation if we're editing an existing ticket
+        if (!isEditingExistingTicket) {
+            if (status.has_crew_ticket) {
+                showFlashMessage("You already have a crew ticket for this event.");
+                return;
+            }
+            if (status.has_adult_ticket) {
+                showFlashMessage("You already have an adult ticket and cannot also have a crew ticket.");
+                return;
+            }
+            if (cart.some(i => i.ticketType === 'crew' && i.targetUserId === targetUserId)) {
+                showFlashMessage("You already have a crew ticket in the basket.");
+                return;
+            }
+            if (cart.some(i => i.ticketType === 'adult' && i.targetUserId === targetUserId)) {
+                showFlashMessage("You already have an adult ticket in the basket and cannot also have a crew ticket.");
+                return;
+            }
         }
 
     }
@@ -718,8 +745,32 @@ function addToCart() {
         recipientName = childName;
     }
 
-    // Add to cart
-    const price = getTicketPrice(ticketType);
+    // Calculate price, accounting for existing tickets when editing
+    let price = getTicketPrice(ticketType);
+
+    // If editing an existing ticket, calculate the price difference
+    if (isEditingExistingTicket && lastFetchedTicket) {
+        // Calculate what was already paid
+        let existingPrice = getTicketPrice(lastFetchedTicket.ticket_type);
+        if (lastFetchedTicket.meal_ticket) {
+            existingPrice += PRICES.meal_ticket;
+        }
+
+        // Calculate what's being requested now
+        let newPrice = getTicketPrice(ticketType);
+        if (mealTicket) {
+            newPrice += PRICES.meal_ticket;
+        }
+
+        // The price to charge is the difference
+        price = newPrice - existingPrice;
+    } else {
+        // For new tickets, add meal ticket price if selected
+        if (mealTicket) {
+            price += PRICES.meal_ticket;
+        }
+    }
+
     cart.push({
         ticketType: ticketType,
         ticketType_name: ticketType_name,
@@ -784,9 +835,7 @@ function updateCartDisplay() {
 
     cart.forEach((item, index) => {
         let itemTotal = item.price;
-        if (item.mealTicket) {
-            itemTotal += PRICES.meal_ticket;
-        }
+        // Don't add meal ticket price again - it's already included in item.price
         subtotal += itemTotal;
 
         const itemElement = document.createElement('div');
@@ -818,6 +867,13 @@ function updateCartDisplay() {
     // Enable checkout and store cart data
     checkoutBtn.disabled = false;
     cartDataInput.value = JSON.stringify(cart);
+
+    // Update checkout button text based on total
+    if (subtotal === 0) {
+        checkoutBtn.textContent = 'Confirm tickets';
+    } else {
+        checkoutBtn.textContent = 'Proceed to Checkout';
+    }
 }
 
 // Initialize cart display
@@ -838,44 +894,23 @@ function updatePrice() {
 
 // --- Ticket exclusivity logic ---
 function applyTicketExclusivity() {
-    fetch(`/events/api/user_ticket_status?event_id=${eventId}`)
-        .then(response => response.json())
-        .then(data => {
-            if (!data.success) return;
-            const hasAdult = data.has_adult_ticket;
-            const hasCrew = data.has_crew_ticket;
-            const ticketTypeSelect = document.getElementById('ticket_type');
-            const adultOption = ticketTypeSelect.querySelector('option[value="adult"]');
-            const crewOption = ticketTypeSelect.querySelector('option[value="crew"]');
-            if (adultOption) {
-                if (hasCrew) {
-                    adultOption.disabled = true;
-                    adultOption.title = 'You already have a crew ticket for this event.';
-                } else {
-                    adultOption.disabled = false;
-                    adultOption.title = '';
-                }
-            }
-            if (crewOption) {
-                if (hasAdult) {
-                    crewOption.disabled = true;
-                    crewOption.title = 'You already have an adult ticket for this event.';
-                } else {
-                    crewOption.disabled = false;
-                    crewOption.title = '';
-                }
-            }
-            // If the currently selected option is now disabled, select the first enabled option
-            if (ticketTypeSelect.options[ticketTypeSelect.selectedIndex].disabled) {
-                for (let i = 0; i < ticketTypeSelect.options.length; i++) {
-                    if (!ticketTypeSelect.options[i].disabled) {
-                        ticketTypeSelect.selectedIndex = i;
-                        break;
-                    }
-                }
-            }
-            updateFormFields();
-        });
+    // Cart validation already handles restrictions, so don't disable any options
+    // This allows users to see all options and get proper error messages when adding to cart
+    const ticketTypeSelect = document.getElementById('ticket_type');
+    const adultOption = ticketTypeSelect.querySelector('option[value="adult"]');
+    const crewOption = ticketTypeSelect.querySelector('option[value="crew"]');
+
+    // Enable all options
+    if (adultOption) {
+        adultOption.disabled = false;
+        adultOption.title = '';
+    }
+    if (crewOption) {
+        crewOption.disabled = false;
+        crewOption.title = '';
+    }
+
+    updateFormFields();
 }
 window.addEventListener('DOMContentLoaded', applyTicketExclusivity);
 document.getElementById('ticket_type').addEventListener('focus', applyTicketExclusivity);
