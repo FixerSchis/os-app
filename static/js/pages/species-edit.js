@@ -21,6 +21,9 @@ $(document).ready(function() {
             $(this).find('.ability-starting-skills select').attr('name', 'ability_starting_skills_' + i + '[]');
             $(this).find('.ability-skill-discounts select.select2-multiple').attr('name', 'ability_discount_skills_' + i + '[]');
             $(this).find('.ability-skill-discounts input[type=number]').attr('name', 'ability_discount_value_' + i);
+            $(this).find('.ability-starting-item select').attr('name', 'ability_starting_item_blueprint_' + i);
+            $(this).find('.ability-starting-reputation select').attr('name', 'ability_starting_reputation_faction_' + i);
+            $(this).find('.ability-starting-reputation input[type=number]').attr('name', 'ability_starting_reputation_value_' + i);
         });
     }
 
@@ -60,7 +63,7 @@ $(document).ready(function() {
     $('.select2-single').select2({
         theme: 'bootstrap-5',
         width: '100%',
-        placeholder: 'Select a skill...',
+        placeholder: 'Select an option...',
         allowClear: true
     });
 
@@ -83,6 +86,8 @@ $(document).ready(function() {
         // Remove required from all discount value inputs in this block
         block.find('.ability-skill-discounts input[type=number]').prop('required', false);
         block.find('.ability-starting-item select').prop('required', false);
+        block.find('.ability-starting-reputation select').prop('required', false);
+        block.find('.ability-starting-reputation input[type=number]').prop('required', false);
         if ($(this).val() === 'starting_skills') {
             block.find('.ability-starting-skills').show();
         } else if ($(this).val() === 'skill_discounts') {
@@ -93,6 +98,11 @@ $(document).ready(function() {
             block.find('.ability-starting-item').show();
             // Only add required if visible
             block.find('.ability-starting-item select').prop('required', true);
+        } else if ($(this).val() === 'starting_reputation') {
+            block.find('.ability-starting-reputation').show();
+            // Only add required if visible
+            block.find('.ability-starting-reputation select').prop('required', true);
+            block.find('.ability-starting-reputation input[type=number]').prop('required', true);
         }
     });
 
@@ -142,6 +152,16 @@ $(document).ready(function() {
                     <option value="">Select Item Blueprint</option>
                 </select>
             </div>
+            <div class="form-group mb-2 ability-extra ability-starting-reputation" style="display:none;">
+                <label>Starting Reputation - Faction</label>
+                <select class="form-control" name="ability_starting_reputation_faction_${idx}">
+                    <option value="">Select Faction</option>
+                </select>
+            </div>
+            <div class="form-group mb-2 ability-extra ability-starting-reputation" style="display:none;">
+                <label>Starting Reputation - Value</label>
+                <input type="number" class="form-control" name="ability_starting_reputation_value_${idx}" placeholder="0">
+            </div>
             <div class="form-group mb-2">
                 <label>Description *</label>
                 <textarea class="form-control" name="ability_description_${idx}" required></textarea>
@@ -163,6 +183,15 @@ $(document).ready(function() {
             });
         }
 
+        // Populate faction options for reputation dropdown
+        var reputationFactionSelect = block.find('select[name^="ability_starting_reputation_faction"]');
+        if (window.FACTIONS) {
+            reputationFactionSelect.append('<option value="">Select Faction</option>');
+            window.FACTIONS.forEach(function(faction) {
+                reputationFactionSelect.append('<option value="' + faction.id + '">' + faction.name + '</option>');
+            });
+        }
+
         $('#abilities-list').append(block);
         block.find('.select2-multiple').select2({
             theme: 'bootstrap-5',
@@ -175,6 +204,13 @@ $(document).ready(function() {
             theme: 'bootstrap-5',
             width: '100%',
             placeholder: 'Select Item Blueprint...',
+            allowClear: true
+        });
+        // Initialize Select2 for the new reputation faction select
+        block.find('select[name^="ability_starting_reputation_faction"]').addClass('select2-single').select2({
+            theme: 'bootstrap-5',
+            width: '100%',
+            placeholder: 'Select Faction...',
             allowClear: true
         });
         // Remove 'required' from all Select2 fields in the new block

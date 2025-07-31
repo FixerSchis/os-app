@@ -23,6 +23,15 @@ class Ability(db.Model):
     starting_item_blueprint_id = db.Column(
         db.Integer, db.ForeignKey("item_blueprints.id"), nullable=True
     )
+    starting_reputation_faction_id = db.Column(
+        db.Integer, db.ForeignKey("faction.id"), nullable=True
+    )
+    starting_reputation_value = db.Column(db.Integer, nullable=True)
+
+    # Relationships
+    starting_reputation_faction = db.relationship(
+        "Faction", foreign_keys=[starting_reputation_faction_id]
+    )
 
     @property
     def starting_skills_list(self):

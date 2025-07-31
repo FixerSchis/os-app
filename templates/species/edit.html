@@ -6,8 +6,11 @@
 
 {% block content %}
 <div class="container">
-    <div class="character-management">
+    <div class="species-management">
         <h1>{{ 'Edit' if species else 'Create' }} Species</h1>
+
+        <!-- Hidden data for JavaScript -->
+        <div id="factions-data" data-factions='{{ factions_dict | tojson | safe }}' style="display: none;"></div>
 
         <form method="POST" class="settings-form">
             <div class="form-group">
@@ -73,6 +76,7 @@
                 {% set is_starting_skills = ability.type == AbilityType.STARTING_SKILLS %}
                 {% set is_skill_discounts = ability.type == AbilityType.SKILL_DISCOUNTS %}
                 {% set is_starting_item = ability.type == AbilityType.STARTING_ITEM %}
+                {% set is_starting_reputation = ability.type == AbilityType.STARTING_REPUTATION %}
                 <div class="ability-block card mb-3 p-3">
                     <div class="form-row mb-2">
                         <div class="col-md-4 mb-2">
@@ -125,6 +129,24 @@
                             {% endfor %}
                         </select>
                     </div>
+                    <div class="form-group mb-2 ability-extra ability-starting-reputation" {% if not is_starting_reputation %}style="display:none;"{% endif %}>
+                        <label>Starting Reputation - Faction</label>
+                        <select class="form-control select2-single" name="ability_starting_reputation_faction_{{ loop.index0 }}" {% if is_starting_reputation %}required{% endif %}>
+                            <option value="">Select Faction</option>
+                            {% for faction in factions %}
+                            <option value="{{ faction.id }}" {% if is_starting_reputation and ability.starting_reputation_faction_id == faction.id %}selected{% endif %}>
+                                {{ faction.name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group mb-2 ability-extra ability-starting-reputation" {% if not is_starting_reputation %}style="display:none;"{% endif %}>
+                        <label>Starting Reputation - Value</label>
+                        <input type="number" class="form-control" name="ability_starting_reputation_value_{{ loop.index0 }}"
+                               value="{{ ability.starting_reputation_value if ability.starting_reputation_value else 0 }}"
+                               {% if is_starting_reputation %}required{% endif %}
+                               placeholder="0">
+                    </div>
                     <div class="form-group mb-2">
                         <label>Description *</label>
                         <textarea class="form-control" name="ability_description_{{ loop.index0 }}" required>{{ ability.description }}</textarea>
@@ -157,5 +179,6 @@
 <script>
 window.ABILITY_TYPE_OPTIONS_HTML = document.getElementById('ability-type-options-template').innerHTML;
 window.ITEM_BLUEPRINTS = JSON.parse('{{ item_blueprints | tojson | safe }}');
+window.FACTIONS = JSON.parse(document.getElementById('factions-data').dataset.factions);
 </script>
 {% endblock %}

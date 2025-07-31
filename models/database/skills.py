@@ -17,6 +17,8 @@ class Skill(db.Model):
     adds_engineering_mods = db.Column(db.Integer, default=0)
     adds_engineering_downtime = db.Column(db.Integer, default=0)
     adds_science_downtime = db.Column(db.Integer, default=0)
+    adds_reputation_faction_id = db.Column(db.Integer, db.ForeignKey("faction.id"), nullable=True)
+    adds_reputation_value = db.Column(db.Integer, default=0)
     science_type = db.Column(
         db.Enum(
             ScienceType,
@@ -44,6 +46,7 @@ class Skill(db.Model):
 
     # Relationships
     required_skill = db.relationship("Skill", remote_side=[id], backref="prerequisites")
+    adds_reputation_faction = db.relationship("Faction", foreign_keys=[adds_reputation_faction_id])
 
     def __repr__(self):
         return f"<Skill {self.name}>"
@@ -149,6 +152,8 @@ class Skill(db.Model):
             "adds_engineering_mods": self.adds_engineering_mods,
             "adds_engineering_downtime": self.adds_engineering_downtime,
             "adds_science_downtime": self.adds_science_downtime,
+            "adds_reputation_faction_id": self.adds_reputation_faction_id,
+            "adds_reputation_value": self.adds_reputation_value,
             "science_type": self.science_type,
             "character_sheet_values": self.character_sheet_values_list,
         }
