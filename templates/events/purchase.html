@@ -67,7 +67,7 @@
                         </div>
                         {% else %}
                         <div class="alert alert-info">
-                            <i class="fas fa-info-circle"></i> You need to enter a character ID to purchase tickets.
+                            <i class="fas fa-info-circle"></i> You can purchase crew tickets for yourself or enter a character ID to purchase adult tickets for others.
                         </div>
                         <input type="hidden" name="ticket_for" value="other">
                         {% endif %}
@@ -522,6 +522,23 @@ function updateFormFields() {
     // Adult: show character selection
     if (ticketType === 'adult') {
         document.getElementById('ticket_recipient_section').style.display = '';
+
+        // If user has no active character, disable "Myself" option
+        if (!singleActiveCharacterPk && !hasMultipleChars) {
+            if (document.getElementById('ticket_for_self')) {
+                document.getElementById('ticket_for_self').disabled = true;
+                document.getElementById('ticket_for_self').title = 'You need an active character to purchase adult tickets for yourself';
+            }
+            if (document.getElementById('ticket_for_other')) {
+                document.getElementById('ticket_for_other').checked = true;
+            }
+        } else {
+            if (document.getElementById('ticket_for_self')) {
+                document.getElementById('ticket_for_self').disabled = false;
+                document.getElementById('ticket_for_self').removeAttribute('title');
+            }
+        }
+
         if (ticketForSelf) {
             if (hasMultipleChars) {
                 document.getElementById('self_character_selection_section').style.display = '';
@@ -625,6 +642,11 @@ function addToCart() {
             recipientName = document.getElementById('character_name').textContent || `Character ID: ${characterId}`;
             targetUserId = characterId.split('.')[0];
         } else { // ticketFor === 'self'
+            // Check if user has an active character
+            if (!singleActiveCharacterPk && !hasMultipleChars) {
+                showFlashMessage('You need an active character to purchase adult tickets for yourself. You can purchase crew tickets for yourself or enter a character ID to purchase adult tickets for others.');
+                return;
+            }
             if (hasMultipleChars) {
                 const select = document.getElementById('self_character_select');
                 selfCharacterId = select.value;

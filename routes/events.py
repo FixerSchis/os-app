@@ -176,10 +176,6 @@ def purchase_ticket(event_id):
         user_id=current_user.id, status=CharacterStatus.ACTIVE.value
     ).all()
 
-    if not user_characters:
-        flash("You need an active character to purchase tickets.", "error")
-        return redirect(url_for("events.event_list"))
-
     return render_template(
         "events/purchase.html",
         event=event,

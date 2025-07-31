@@ -298,3 +298,32 @@ def test_character_activation_with_starting_items(test_client, db, new_user):
     assert item is not None
     assert item.blueprint_id == blueprint.id
     assert item.item_id == 1  # First item for this blueprint
+
+
+def test_retire_character_uses_correct_id(test_client, authenticated_user, db):
+    """Test that retiring a character uses the correct character ID."""
+    # Create a character for the user
+    character = Character(
+        user_id=authenticated_user.id,
+        name="Test Character",
+        status=CharacterStatus.ACTIVE.value,
+        character_id=1,  # This is the character number, not the database ID
+    )
+    db.session.add(character)
+    db.session.commit()
+
+    # Store the database ID for verification
+    db_character_id = character.id
+
+    with test_client.session_transaction() as session:
+        session["_user_id"] = authenticated_user.id
+        session["_fresh"] = True
+
+    # Retire the character
+    response = test_client.post(f"/characters/{db_character_id}/retire", follow_redirects=True)
+    assert response.status_code == 200
+
+    # Verify the correct character was retired
+    db.session.refresh(character)
+    assert character.status == CharacterStatus.RETIRED.value
+    assert character.id == db_character_id  # Should be the same database ID

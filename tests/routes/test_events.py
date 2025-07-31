@@ -204,7 +204,7 @@ def test_purchase_ticket_get_no_active_character(test_client, authenticated_user
 
     response = test_client.get(f"/events/{event.id}/purchase", follow_redirects=True)
     assert response.status_code == 200
-    # Should redirect due to no active character
+    # Should now allow access since crew/child tickets don't require characters
 
 
 def test_purchase_ticket_post_blank_character_id(test_client, authenticated_user, db):
@@ -1667,3 +1667,108 @@ def test_regular_user_can_buy_crew_ticket(test_client, authenticated_user, db):
     ).first()
     assert crew_ticket is not None
     assert crew_ticket.character_id is None  # Crew tickets don't have characters
+
+
+def test_user_without_active_character_can_buy_crew_ticket(test_client, authenticated_user, db):
+    """Test that users without active characters can purchase crew tickets."""
+    event = Event(
+        event_number="TEST016",
+        name="Test Event",
+        event_type="mainline",
+        description="A test event",
+        early_booking_deadline=datetime.now() + timedelta(days=30),
+        booking_deadline=datetime.now() + timedelta(days=40),
+        start_date=datetime.now() + timedelta(days=45),
+        end_date=datetime.now() + timedelta(days=47),
+        location="Test Location",
+        standard_ticket_price=50.00,
+        early_booking_ticket_price=45.00,
+        child_ticket_price_12_15=25.00,
+        child_ticket_price_7_11=15.00,
+        child_ticket_price_under_7=0.00,
+    )
+    db.session.add(event)
+    db.session.commit()
+
+    # Remove active character from user
+    authenticated_user.active_character_id = None
+    db.session.commit()
+
+    with test_client.session_transaction() as session:
+        session["_user_id"] = authenticated_user.id
+        session["_fresh"] = True
+
+    # User without active character should be able to purchase a crew ticket
+    cart_data = [
+        {
+            "ticketType": "crew",
+            "mealTicket": False,
+            "requiresBunk": False,
+            "ticketFor": "self",
+            "price": 0.00,
+        }
+    ]
+    response = test_client.post(
+        f"/events/{event.id}/purchase", data={"cart": json.dumps(cart_data)}, follow_redirects=True
+    )
+    assert response.status_code == 200
+
+    # Verify the crew ticket was created
+    crew_ticket = EventTicket.query.filter_by(
+        event_id=event.id, user_id=authenticated_user.id, ticket_type="crew"
+    ).first()
+    assert crew_ticket is not None
+    assert crew_ticket.character_id is None  # Crew tickets don't have characters
+
+
+def test_user_without_active_character_cannot_buy_adult_ticket_for_self(
+    test_client, authenticated_user, db
+):
+    """Test that users without active characters cannot purchase adult tickets for themselves."""
+    event = Event(
+        event_number="TEST017",
+        name="Test Event",
+        event_type="mainline",
+        description="A test event",
+        early_booking_deadline=datetime.now() + timedelta(days=30),
+        booking_deadline=datetime.now() + timedelta(days=40),
+        start_date=datetime.now() + timedelta(days=45),
+        end_date=datetime.now() + timedelta(days=47),
+        location="Test Location",
+        standard_ticket_price=50.00,
+        early_booking_ticket_price=45.00,
+        child_ticket_price_12_15=25.00,
+        child_ticket_price_7_11=15.00,
+        child_ticket_price_under_7=0.00,
+    )
+    db.session.add(event)
+    db.session.commit()
+
+    # Remove active character from user
+    authenticated_user.active_character_id = None
+    db.session.commit()
+
+    with test_client.session_transaction() as session:
+        session["_user_id"] = authenticated_user.id
+        session["_fresh"] = True
+
+    # User without active character should NOT be able to purchase an adult ticket for themselves
+    cart_data = [
+        {
+            "ticketType": "adult",
+            "mealTicket": False,
+            "requiresBunk": False,
+            "ticketFor": "self",
+            "price": 50.00,
+        }
+    ]
+    response = test_client.post(
+        f"/events/{event.id}/purchase", data={"cart": json.dumps(cart_data)}, follow_redirects=True
+    )
+    assert response.status_code == 200
+
+    # Verify no adult ticket was created (should be blocked)
+    adult_ticket = EventTicket.query.filter_by(
+        event_id=event.id, user_id=authenticated_user.id, ticket_type="adult"
+    ).first()
+    assert adult_ticket is None
