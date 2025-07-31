@@ -370,9 +370,10 @@ def purchase_ticket_post(event_id):
     db.session.commit()
     if tickets_created:
         flash(f"{tickets_created} ticket(s) updated successfully!", "success")
+        return redirect(url_for("events.event_list"))
     else:
-        flash("No tickets were updated.", "error")
-    return redirect(url_for("events.event_list"))
+        flash("No tickets were purchased.", "error")
+        return redirect(url_for("events.purchase_ticket", event_id=event_id))
 
 
 @events_bp.route("/<int:event_id>/assign", methods=["GET"])
