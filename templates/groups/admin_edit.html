@@ -49,6 +49,26 @@
                         </select>
                     </div>
 
+                    <div class="form-group mb-3">
+                        <label for="background">Background</label>
+                        <textarea class="form-control" id="background" name="background" rows="3" {% if not group %}required{% endif %}>{{ group.background if group else '' }}</textarea>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="objective">Objective</label>
+                                <textarea class="form-control" id="objective" name="objective" rows="3" {% if not group %}required{% endif %}>{{ group.objective if group else '' }}</textarea>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="goals">Goals</label>
+                                <textarea class="form-control" id="goals" name="goals" rows="3" {% if not group %}required{% endif %}>{{ group.goals if group else '' }}</textarea>
+                            </div>
+                        </div>
+                    </div>
+
                     {% if not group %}
                     <div class="form-group">
                         <label for="character_id">Initial Member</label>
@@ -116,7 +136,7 @@
                 </div>
 
                 <div class="mt-4">
-                    <button type="button" class="btn btn-danger disband-btn" data-disband-url="{{ url_for('groups.disband_group_post', group_id=group.id) }}" data-warning="This action is not reversible and cannot be recovered.">Disband Group</button>
+                    <button type="button" class="btn btn-danger disband-btn" data-disband-url="{{ url_for('groups.disband_group_admin', group_id=group.id) }}" data-warning="This action is not reversible and cannot be recovered.">Disband Group</button>
                 </div>
             </div>
         </div>
