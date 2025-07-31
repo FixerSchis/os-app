@@ -908,6 +908,10 @@ def test_process_downtime_valid(
 ):
     make_period_completed(db, downtime_period, downtime_pack)
 
+    # Add some research data to reproduce the issue
+    downtime_pack.research = [{"project_id": "RES001", "research_for": "self"}]
+    db.session.commit()
+
     login_user(test_client, downtime_team_user)
     response = test_client.post(f"/downtime/process/{downtime_period.id}")
     assert response.status_code == 302  # Route redirects on success
@@ -915,6 +919,22 @@ def test_process_downtime_valid(
     # Check that period was processed (remains COMPLETED since there's no PROCESSED state)
     db.session.refresh(downtime_period)
     assert downtime_period.status == DowntimeStatus.COMPLETED
+
+
+def test_process_downtime_with_list_research_data(
+    test_client, downtime_team_user, downtime_period, downtime_pack, db
+):
+    """Test processing downtime with research data stored as a list instead of dict."""
+    make_period_completed(db, downtime_period, downtime_pack)
+
+    # Simulate the error by storing research data as a list instead of dict
+    downtime_pack.research = [["RES001", "self"]]  # This should be handled gracefully
+    db.session.commit()
+
+    login_user(test_client, downtime_team_user)
+    response = test_client.post(f"/downtime/process/{downtime_period.id}")
+    # This should now succeed due to error handling
+    assert response.status_code == 302
 
 
 def test_process_downtime_incomplete(

@@ -208,7 +208,6 @@ def start_downtime():
         pack.items.clear()
         pack.samples.clear()
         pack.exotics.clear()
-        pack.medicaments.clear()
         pack.energy_chits = 0
         pack.completion.clear()
         character.pack = pack
@@ -219,7 +218,6 @@ def start_downtime():
         pack.items.clear()
         pack.samples.clear()
         pack.exotics.clear()
-        pack.medicaments.clear()
         pack.energy_chits = 0
         pack.completion.clear()
         group.pack = pack
@@ -289,7 +287,7 @@ def enter_pack_contents_post(period_id, character_id):
         return redirect(url_for("downtime.index"))
 
     # Get selected items
-    pack.items = request.form.getlist("items[]")
+    pack.items = request.form.getlist("item_ids[]")
 
     # Get exotics with amounts
     exotics = []
@@ -343,9 +341,20 @@ def enter_pack_contents_post(period_id, character_id):
             from models.tools.character import CharacterAuditLog
 
             for condition in pack.conditions:
-                if condition and condition not in pack.character.active_conditions:
-                    condition_obj = db.session.get(Condition, condition["id"])
-                    if condition_obj:
+                condition_id = int(condition["id"])  # Ensure it's an integer
+                condition_obj = db.session.get(Condition, condition_id)
+                if condition_obj:
+                    # Check if condition already exists for this character
+                    existing_condition = next(
+                        (
+                            cc
+                            for cc in pack.character.active_conditions
+                            if cc.condition_id == condition_id
+                        ),
+                        None,
+                    )
+
+                    if not existing_condition:
                         # Create audit log for condition addition
                         audit = CharacterAuditLog(
                             character_id=pack.character.id,
@@ -356,14 +365,24 @@ def enter_pack_contents_post(period_id, character_id):
                         )
                         db.session.add(audit)
 
-                        pack.character.active_conditions.append(
-                            CharacterCondition(
-                                character_id=pack.character.id,
-                                condition_id=condition["id"],
-                                current_stage=1,
-                                current_duration=condition["duration"],
-                            )
+                        # Create the CharacterCondition object
+                        character_condition = CharacterCondition(
+                            character_id=pack.character.id,
+                            condition_id=condition_id,
+                            current_stage=1,
+                            current_duration=condition["duration"],
                         )
+
+                        # Add to session explicitly and handle potential duplicate
+                        try:
+                            db.session.add(character_condition)
+                            pack.character.active_conditions.append(character_condition)
+                        except Exception:
+                            # If there's a unique constraint violation, just ignore it
+                            # The condition already exists
+                            db.session.rollback()
+                            # Re-add the audit log since it was rolled back
+                            db.session.add(audit)
 
         # Add cybernetics to character with audit logging
         if pack.cybernetics:
@@ -372,21 +391,32 @@ def enter_pack_contents_post(period_id, character_id):
 
             for cybernetic_id in pack.cybernetics:
                 cybernetic = db.session.get(Cybernetic, cybernetic_id)
-                if cybernetic and cybernetic not in pack.character.cybernetics:
-                    # Create audit log for cybernetic addition
-                    audit = CharacterAuditLog(
-                        character_id=pack.character.id,
-                        editor_user_id=current_user.id,
-                        action=CharacterAuditAction.CYBERNETICS_CHANGE.value,
-                        changes=f"Cybernetic added via downtime: {cybernetic.name}",
+                if cybernetic:
+                    # Check if cybernetic already exists for this character
+                    existing_cybernetic = next(
+                        (
+                            cc
+                            for cc in pack.character.cybernetics_link
+                            if cc.cybernetic_id == cybernetic_id
+                        ),
+                        None,
                     )
-                    db.session.add(audit)
 
-                    db.session.add(
-                        CharacterCybernetic(
-                            character_id=pack.character.id, cybernetic_id=cybernetic_id
+                    if not existing_cybernetic:
+                        # Create audit log for cybernetic addition
+                        audit = CharacterAuditLog(
+                            character_id=pack.character.id,
+                            editor_user_id=current_user.id,
+                            action=CharacterAuditAction.CYBERNETICS_CHANGE.value,
+                            changes=f"Cybernetic added via downtime: {cybernetic.name}",
                         )
-                    )
+                        db.session.add(audit)
+
+                        db.session.add(
+                            CharacterCybernetic(
+                                character_id=pack.character.id, cybernetic_id=cybernetic_id
+                            )
+                        )
         pack.status = DowntimeTaskStatus.ENTER_DOWNTIME
         if pack.energy_credits > 0:
             pack.character.add_funds(
@@ -911,6 +941,13 @@ def process_downtime(period_id):
     # Process engineering modifications
     for pack in packs:
         for engineering in pack.engineering:
+            # Handle case where engineering data might be stored incorrectly
+            if not isinstance(engineering, dict):
+                print(
+                    f"WARNING: Skipping invalid engineering data: {engineering} "
+                    f"(type: {type(engineering)})"
+                )
+                continue
             if engineering.get("action") == "modify":
                 item = db.session.get(Item, engineering.get("item_id"))
                 mod = db.session.get(Mod, engineering.get("mod_id"))
@@ -958,6 +995,12 @@ def process_downtime(period_id):
     # Process science
     for pack in packs:
         for science in pack.science:
+            # Handle case where science data might be stored incorrectly
+            if not isinstance(science, dict):
+                print(
+                    f"WARNING: Skipping invalid science data: {science} " f"(type: {type(science)})"
+                )
+                continue
             if science.get("action") == "synthesize":
                 science_type = science.get("science_type", ScienceType.GENERIC)
 
@@ -1118,6 +1161,12 @@ def process_downtime(period_id):
                         )
 
         for research in pack.research:
+            # Handle case where research data might be stored incorrectly
+            if not isinstance(research, dict):
+                print(
+                    f"WARNING: Skipping invalid research data: {research} (type: {type(research)})"
+                )
+                continue
             project_id = research.get("project_id")
             support_target = research.get("support_target")
             support_target_id = research.get("support_target_id")
