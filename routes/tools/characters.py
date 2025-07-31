@@ -857,9 +857,7 @@ def activate_character(character_id):
                 )
                 new_reputation = current_reputation + ability.starting_reputation_value
                 character.set_reputation(
-                    ability.starting_reputation_faction_id, 
-                    new_reputation, 
-                    current_user.id
+                    ability.starting_reputation_faction_id, new_reputation, current_user.id
                 )
                 reputation_changes.append(
                     f"Added {ability.starting_reputation_value} reputation with "
