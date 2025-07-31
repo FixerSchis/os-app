@@ -241,15 +241,23 @@
                                 </div>
                                 <div class="row g-2">
                                     <div class="col-md-6 col-xl-4">
-                                        <select id="new-condition" class="form-select">
+                                        <select id="add_condition_id" name="add_condition_id" class="form-select">
                                             <option value="">Select a condition to add...</option>
                                             {% for condition in all_conditions %}
                                             <option value="{{ condition.id }}">{{ condition.name }}</option>
                                             {% endfor %}
                                         </select>
                                     </div>
+                                    <div class="col-md-3 col-xl-2">
+                                        <select id="add_condition_stage" name="add_condition_stage" class="form-select">
+                                            <option value="">Stage...</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3 col-xl-2">
+                                        <input type="number" id="add_condition_duration" name="add_condition_duration" class="form-control" placeholder="Duration" min="0">
+                                    </div>
                                     <div class="col-auto">
-                                        <button type="button" class="btn btn-primary" id="add-condition">
+                                        <button type="submit" name="add_condition" value="1" class="btn btn-primary">
                                             <i class="fas fa-plus me-1"></i>Add Condition
                                         </button>
                                     </div>

@@ -750,6 +750,11 @@ a:hover {
     color: var(--text-primary);
 }
 
+[data-theme="dark"] .form-select option {
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
 [data-theme="dark"] .card .form-control,
 [data-theme="dark"] .card .form-select {
     background-color: var(--bg-primary) !important;

@@ -57,7 +57,7 @@ header, .navbar, .site-header {
                             </thead>
                             <tbody>
                                 {% for pack_data in character_packs %}
-                                <tr>
+                                <tr data-character-id="{{ pack_data.character.id }}">
                                     <td>
                                         <strong>{{ pack_data.user.first_name }} {{ pack_data.user.surname }}</strong><br>
                                         <small>{{ pack_data.character.name }}</small>
@@ -111,7 +111,7 @@ header, .navbar, .site-header {
                             </thead>
                             <tbody>
                                 {% for pack_data in group_packs %}
-                                <tr>
+                                <tr data-group-id="{{ pack_data.group.id }}">
                                     <td>
                                         <strong>{{ pack_data.group.name }}</strong>
                                     </td>

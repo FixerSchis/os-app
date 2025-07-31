@@ -101,7 +101,7 @@ class Character(db.Model):
     @pack.setter
     def pack(self, pack):
         self.character_pack = pack.to_dict()
-        self.pack_complete = pack.is_complete()
+        self.pack_complete = pack.is_completed
 
     @classmethod
     def get_by_player_reference(cls, player_reference):
