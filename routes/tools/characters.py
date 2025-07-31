@@ -8,6 +8,7 @@ from models.database.cybernetic import CharacterCybernetic, Cybernetic
 from models.database.faction import Faction
 from models.database.item import Item
 from models.database.item_blueprint import ItemBlueprint
+from models.database.sample import Sample
 from models.database.species import Species
 from models.enums import AbilityType, CharacterAuditAction, PrintTemplateType, Role
 from models.extensions import db
@@ -241,6 +242,16 @@ def edit(character_id):
     if current_user.has_role(Role.USER_ADMIN.value):
         item_blueprints = ItemBlueprint.query.order_by(ItemBlueprint.name).all()
 
+    # Get character samples and available samples for assignment (admin only)
+    character_samples = character.samples.order_by(Sample.name).all()
+    available_samples = []
+    if current_user.has_role(Role.USER_ADMIN.value):
+        all_samples = Sample.query.order_by(Sample.name).all()
+        assigned_sample_ids = {s.id for s in character_samples}
+        available_samples = [
+            sample for sample in all_samples if sample.id not in assigned_sample_ids
+        ]
+
     return render_template(
         "characters/edit.html",
         character=character,
@@ -254,6 +265,8 @@ def edit(character_id):
         inventory_items=inventory_items,
         available_items=available_items,
         item_blueprints=item_blueprints,
+        character_samples=character_samples,
+        available_samples=available_samples,
     )
 
 
@@ -382,6 +395,7 @@ def edit_post(character_id):
     # Track condition changes for CONDITION_CHANGE action
     condition_changes = []
     cybernetic_changes = []  # Initialize cybernetic_changes outside the if block
+    sample_changes = []  # Initialize sample_changes outside the if block
 
     if current_user.has_role("user_admin"):
         # Remove condition
@@ -512,6 +526,50 @@ def edit_post(character_id):
             if tag and tag not in character.tags:
                 character.tags.append(tag)
 
+        # Handle sample management (admin only)
+
+        # Remove samples
+        remove_sample_id = request.form.get("remove_sample")
+        if remove_sample_id:
+            sample = Sample.query.get(remove_sample_id)
+            if sample and sample in character.samples:
+                sample_changes.append(f"Sample removed: {sample.name}")
+                character.samples.remove(sample)
+                db.session.commit()
+                flash("Sample removed.", "success")
+                redirect_url = url_for("characters.edit", character_id=character.id)
+                if admin_context:
+                    redirect_url += "?admin_context=1"
+                return redirect(redirect_url)
+
+        # Add samples
+        if request.form.get("add_sample"):
+            sample_id = request.form.get("add_sample_id")
+            if sample_id:
+                sample = Sample.query.get(sample_id)
+                if sample and sample not in character.samples:
+                    # Remove sample from any other characters first
+                    for other_character in Character.query.all():
+                        if other_character != character and sample in other_character.samples:
+                            other_character.samples.remove(sample)
+                            sample_changes.append(
+                                f"Sample removed from {other_character.name}: {sample.name}"
+                            )
+
+                    # Add sample to current character
+                    sample_changes.append(f"Sample added: {sample.name}")
+                    character.samples.append(sample)
+                    db.session.commit()
+                    flash("Sample added.", "success")
+                    redirect_url = url_for("characters.edit", character_id=character.id)
+                    if admin_context:
+                        redirect_url += "?admin_context=1"
+                    return redirect(redirect_url)
+                else:
+                    flash("Sample not found or already assigned to character.", "error")
+            else:
+                flash("Please select a sample.", "error")
+
     # Create separate audit logs for different types of changes
     if basic_changes:
         audit = CharacterAuditLog(
@@ -537,6 +595,15 @@ def edit_post(character_id):
             editor_user_id=current_user.id,
             action=CharacterAuditAction.CYBERNETICS_CHANGE.value,
             changes="; ".join(cybernetic_changes),
+        )
+        db.session.add(audit)
+
+    if sample_changes:
+        audit = CharacterAuditLog(
+            character_id=character.id,
+            editor_user_id=current_user.id,
+            action=CharacterAuditAction.EDIT.value,
+            changes="; ".join(sample_changes),
         )
         db.session.add(audit)
 

@@ -364,6 +364,93 @@
                 {% endif %}
                 {% endif %}
 
+                <!-- Character Samples (Admin Only) -->
+                {% if current_user.has_role('user_admin') and character %}
+                <div class="col-lg-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Character Samples</h5>
+                        </div>
+                        <div class="card-body">
+                            <!-- Current Samples -->
+                            <div class="mb-3">
+                                <h6>Current Samples</h6>
+                                {% if character_samples %}
+                                    <div class="table-responsive">
+                                        <table class="table table-sm">
+                                            <thead>
+                                                <tr>
+                                                    <th>Sample</th>
+                                                    <th>Type</th>
+                                                    <th>Researched</th>
+                                                    {% if current_user.has_role('user_admin') %}
+                                                    <th>Actions</th>
+                                                    {% endif %}
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for sample in character_samples %}
+                                                <tr>
+                                                    <td>{{ sample.name }}</td>
+                                                    <td>{{ sample.type.value }}</td>
+                                                    <td>
+                                                        {% if sample.is_researched %}
+                                                            <span class="badge bg-success">Yes</span>
+                                                        {% else %}
+                                                            <span class="badge bg-warning">No</span>
+                                                        {% endif %}
+                                                    </td>
+                                                    {% if current_user.has_role('user_admin') %}
+                                                    <td>
+                                                        <form method="POST" action="{{ url_for('characters.edit_post', character_id=character.id) }}"
+                                                              style="display: inline;"
+                                                              onsubmit="return confirm('Are you sure you want to remove this sample?')">
+                                                            <input type="hidden" name="remove_sample" value="{{ sample.id }}">
+                                                            {% if admin_context %}
+                                                            <input type="hidden" name="admin_context" value="1">
+                                                            {% endif %}
+                                                            <button type="submit" class="btn btn-sm btn-danger">Remove</button>
+                                                        </form>
+                                                    </td>
+                                                    {% endif %}
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                {% else %}
+                                    <p class="text-muted">No samples assigned to this character.</p>
+                                {% endif %}
+                            </div>
+
+                            <!-- Add Sample -->
+                            <div>
+                                <h6>Add Sample</h6>
+                                <form method="POST" action="{{ url_for('characters.edit_post', character_id=character.id) }}">
+                                    {% if admin_context %}
+                                    <input type="hidden" name="admin_context" value="1">
+                                    {% endif %}
+                                    <input type="hidden" name="add_sample" value="1">
+                                    <div class="mb-3">
+                                        <select class="form-select select2-sample" id="add_sample_id" name="add_sample_id" required>
+                                            <option value="">Choose a sample...</option>
+                                            {% for sample in available_samples %}
+                                            <option value="{{ sample.id }}">
+                                                {{ sample.name }} ({{ sample.type.value }})
+                                            </option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary btn-sm">
+                                        <i class="fas fa-plus me-1"></i>Add Sample
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
                 <!-- Character Inventory (Only show when editing existing character) -->
                 {% if character and character.id %}
                 <div class="col-12">
@@ -435,6 +522,53 @@
                 </div>
                 {% endif %}
                 {% endif %}
+
+                <!-- Assign New Item (Admin Only) - Moved outside main form to fix nested form issue -->
+                {% if current_user.has_role('user_admin') and character %}
+                <div class="mt-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Assign New Item</h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="POST" action="{{ url_for('tools_items.assign_item_to_character', character_id=character.id) }}">
+                                <input type="hidden" name="from_character_edit" value="1">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="item_id" class="form-label">Select Existing Item</label>
+                                            <select class="form-select select2-single" id="item_id" name="item_id">
+                                                <option value="">Choose an existing item...</option>
+                                                {% for item in available_items %}
+                                                <option value="{{ item.id }}">
+                                                    {{ item.blueprint.name }} ({{ item.full_code }})
+                                                </option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="blueprint_id" class="form-label">Or Create New Item from Blueprint</label>
+                                            <select class="form-select select2-single" id="blueprint_id" name="blueprint_id">
+                                                <option value="">Choose a blueprint...</option>
+                                                {% for blueprint in item_blueprints %}
+                                                <option value="{{ blueprint.id }}">
+                                                    {{ blueprint.name }} ({{ blueprint.full_code }})
+                                                </option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-plus me-1"></i>Assign Item
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
             </div>
 
             <div class="mt-4">
@@ -446,53 +580,6 @@
                 </a>
             </div>
         </form>
-
-        <!-- Assign New Item (Admin Only) - Moved outside main form to fix nested form issue -->
-        {% if current_user.has_role('user_admin') and character %}
-        <div class="mt-4">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">Assign New Item</h5>
-                </div>
-                <div class="card-body">
-                    <form method="POST" action="{{ url_for('tools_items.assign_item_to_character', character_id=character.id) }}">
-                        <input type="hidden" name="from_character_edit" value="1">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="item_id" class="form-label">Select Existing Item</label>
-                                    <select class="form-select select2-single" id="item_id" name="item_id">
-                                        <option value="">Choose an existing item...</option>
-                                        {% for item in available_items %}
-                                        <option value="{{ item.id }}">
-                                            {{ item.blueprint.name }} ({{ item.full_code }})
-                                        </option>
-                                        {% endfor %}
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="blueprint_id" class="form-label">Or Create New Item from Blueprint</label>
-                                    <select class="form-select select2-single" id="blueprint_id" name="blueprint_id">
-                                        <option value="">Choose a blueprint...</option>
-                                        {% for blueprint in item_blueprints %}
-                                        <option value="{{ blueprint.id }}">
-                                            {{ blueprint.name }} ({{ blueprint.full_code }})
-                                        </option>
-                                        {% endfor %}
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-plus me-1"></i>Assign Item
-                        </button>
-                    </form>
-                </div>
-            </div>
-        </div>
-        {% endif %}
     </div>
 </div>
 {% endblock %}

@@ -35,6 +35,8 @@ class Sample(db.Model):
     updated_at = db.Column(
         db.DateTime, nullable=False, default=db.func.now(), onupdate=db.func.now()
     )
+    # Note: group_id and group relationship are deprecated and will be removed
+    # Samples are now assigned to characters via the character_samples association table
     group_id = db.Column(db.Integer, db.ForeignKey("group.id"), nullable=True)
     group = db.relationship("Group", back_populates="samples")
 

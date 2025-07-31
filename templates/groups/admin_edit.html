@@ -40,14 +40,7 @@
                         <input type="text" class="form-control" id="bank_account" name="bank_account" value="{{ group.bank_account if group else '0' }}">
                     </div>
 
-                    <div class="form-group mb-3">
-                        <label for="samples">Assigned Samples</label>
-                        <select class="form-control select2" id="sample_ids" name="sample_ids" multiple>
-                            {% for sample in samples %}
-                                <option value="{{ sample.id }}" {% if sample.id in assigned_sample_ids %}selected{% endif %}>{{ sample.name }} (Researched: {{ sample.is_researched }})</option>
-                            {% endfor %}
-                        </select>
-                    </div>
+
 
                     <div class="form-group mb-3">
                         <label for="background">Background</label>
