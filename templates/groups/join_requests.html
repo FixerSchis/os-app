@@ -1,0 +1,61 @@
+{% extends "_template.html" %}
+
+{% block title %}Join Requests - {{ group.name }} - Orion Sphere LRP{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Join Requests - {{ group.name }}</h1>
+        <a href="{{ url_for('groups.group_list') }}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Groups
+        </a>
+    </div>
+
+    {% if join_requests %}
+        <div class="card">
+            <div class="card-header">
+                <h2>Pending Join Requests</h2>
+            </div>
+            <div class="card-body">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Character</th>
+                            <th>Species</th>
+                            <th>Faction</th>
+                            <th>Requested</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for request in join_requests %}
+                        <tr>
+                            <td>{{ request.character.name }}</td>
+                            <td>{{ request.character.species.name }}</td>
+                            <td>{{ request.character.faction.name }}</td>
+                            <td>{{ request.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                            <td>
+                                <form method="POST" action="{{ url_for('groups.respond_to_join_request', group_id=group.id, request_id=request.id) }}" style="display: inline;">
+                                    <input type="hidden" name="action" value="approve">
+                                    <button type="submit" class="btn btn-success btn-sm me-2">Approve</button>
+                                </form>
+                                <form method="POST" action="{{ url_for('groups.respond_to_join_request', group_id=group.id, request_id=request.id) }}" style="display: inline;">
+                                    <input type="hidden" name="action" value="deny">
+                                    <button type="submit" class="btn btn-danger btn-sm">Deny</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    {% else %}
+        <div class="card">
+            <div class="card-body">
+                <p class="text-muted">No pending join requests for this group.</p>
+            </div>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

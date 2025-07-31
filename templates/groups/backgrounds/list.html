@@ -1,0 +1,54 @@
+{% extends "_template.html" %}
+
+{% block title %}Group Background Reviews - Orion Sphere LRP{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Group Background Reviews</h1>
+        <a href="{{ url_for('groups.group_list') }}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Groups
+        </a>
+    </div>
+
+    {% if backgrounds %}
+        <div class="card">
+            <div class="card-header">
+                <h2>Backgrounds Needing Review</h2>
+            </div>
+            <div class="card-body">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Group</th>
+                            <th>Type</th>
+                            <th>Updated</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for background in backgrounds %}
+                        <tr>
+                            <td>{{ background.group.name }}</td>
+                            <td>{{ background.group.group_type.name }}</td>
+                            <td>{{ background.updated_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                            <td>
+                                <a href="{{ url_for('groups.review_group_background', background_id=background.id) }}" class="btn btn-primary btn-sm">
+                                    Review
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    {% else %}
+        <div class="card">
+            <div class="card-body">
+                <p class="text-muted">No group backgrounds need review at this time.</p>
+            </div>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
