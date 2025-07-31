@@ -1,6 +1,6 @@
 {% extends "_template.html" %}
 
-{% block title %}Enter Pack Contents - {{ pack.name }}{% endblock %}
+{% block title %}Enter Pack Contents - {{ character.name }}{% endblock %}
 
 {% block head %}
 {{ super() }}
@@ -10,7 +10,7 @@
 {% block content %}
 <div class="container">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1>Enter Pack Contents - {{ pack.name }}</h1>
+        <h1>Enter Pack Contents - {{ character.name }}</h1>
         <a href="{{ url_for('downtime.index') }}" class="btn btn-secondary">Back to Downtime</a>
     </div>
 
@@ -30,7 +30,7 @@
                                 {% for item in items %}
                                 <option value="{{ item.id }}"
                                     {% if item.id|string in pack.items|map(attribute='id')|list %}selected{% endif %}>
-                                    {{ item.name }} ({{ item.full_code }})
+                                    {{ item.blueprint.name }} ({{ item.full_code }})
                                 </option>
                                 {% endfor %}
                             </select>
@@ -38,35 +38,7 @@
                     </div>
                 </div>
 
-                <!-- Medicaments -->
-                <div class="card mb-4">
-                    <div class="card-header">
-                        <h5 class="mb-0">Medicaments</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="form-group">
-                            <label for="medicaments">Select Medicaments</label>
-                            <select class="form-control select2" id="medicaments" name="medicament_ids[]" multiple>
-                                {% for medicament in medicaments %}
-                                <option value="{{ medicament.id }}"
-                                    {% if medicament.id|string in pack.medicaments|map(attribute='id')|list %}selected{% endif %}>
-                                    {{ medicament.name }}
-                                </option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div id="medicament_amounts">
-                            {% for medicament in medicaments %}
-                            <div class="form-group medicament-amount" data-medicament-id="{{ medicament.id }}" style="display: none;">
-                                <label for="medicament_amount_{{ medicament.id }}">Amount of {{ medicament.name }}</label>
-                                <input type="number" class="form-control" id="medicament_amount_{{ medicament.id }}"
-                                       name="medicament_amount_{{ medicament.id }}" min="1"
-                                       value="{{ pack.medicaments|selectattr('id', 'equalto', medicament.id|string)|map(attribute='amount')|first|default(1) }}">
-                            </div>
-                            {% endfor %}
-                        </div>
-                    </div>
-                </div>
+
 
                 <!-- Exotic Substances -->
                 <div class="card mb-4">

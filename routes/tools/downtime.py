@@ -208,7 +208,6 @@ def start_downtime():
         pack.items.clear()
         pack.samples.clear()
         pack.exotics.clear()
-        pack.medicaments.clear()
         pack.energy_chits = 0
         pack.completion.clear()
         character.pack = pack
@@ -219,7 +218,6 @@ def start_downtime():
         pack.items.clear()
         pack.samples.clear()
         pack.exotics.clear()
-        pack.medicaments.clear()
         pack.energy_chits = 0
         pack.completion.clear()
         group.pack = pack
