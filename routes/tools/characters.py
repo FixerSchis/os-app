@@ -827,6 +827,44 @@ def activate_character(character_id):
                     )
                     db.session.add(item_audit)
 
+    # Handle reputation from skills and species abilities
+    reputation_changes = []
+
+    # Add reputation from skills
+    for character_skill in character.skills:
+        skill = character_skill.skill
+        if skill.adds_reputation_faction_id and skill.adds_reputation_value:
+            current_reputation = character.get_reputation(skill.adds_reputation_faction_id)
+            new_reputation = current_reputation + skill.adds_reputation_value
+            character.set_reputation(
+                skill.adds_reputation_faction_id, new_reputation, current_user.id
+            )
+            reputation_changes.append(
+                f"Added {skill.adds_reputation_value} reputation with "
+                f"{skill.adds_reputation_faction.name} from skill {skill.name}"
+            )
+
+    # Add reputation from species abilities
+    if character.species:
+        for ability in character.species.abilities:
+            if (
+                ability.type == AbilityType.STARTING_REPUTATION.value
+                and ability.starting_reputation_faction_id
+                and ability.starting_reputation_value
+            ):
+                current_reputation = character.get_reputation(
+                    ability.starting_reputation_faction_id
+                )
+                new_reputation = current_reputation + ability.starting_reputation_value
+                character.set_reputation(
+                    ability.starting_reputation_faction_id, new_reputation, current_user.id
+                )
+                reputation_changes.append(
+                    f"Added {ability.starting_reputation_value} reputation with "
+                    f"{ability.starting_reputation_faction.name} from species ability "
+                    f"{ability.name}"
+                )
+
     db.session.commit()
     # Audit log for activation
     audit = CharacterAuditLog(

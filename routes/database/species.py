@@ -77,6 +77,15 @@ def edit_species(species_id):
     factions = Faction.query.all()
     item_blueprints = ItemBlueprint.query.order_by(ItemBlueprint.name).all()
 
+    # Convert factions to dictionaries for JSON serialization
+    factions_dict = [
+        {
+            "id": faction.id,
+            "name": faction.name,
+        }
+        for faction in factions
+    ]
+
     # Convert item blueprints to dictionaries for JSON serialization
     item_blueprints_dict = [
         {
@@ -93,6 +102,7 @@ def edit_species(species_id):
         species=species,
         BodyHitsType=BodyHitsType,
         factions=factions,
+        factions_dict=factions_dict,
         AbilityType=AbilityType,
         skills_list=skills_list,
         item_blueprints=item_blueprints_dict,
@@ -127,6 +137,12 @@ def edit_species_post(species_id):
     ability_starting_item_blueprints = extract_indexed_fields(
         "ability_starting_item_blueprint", request.form
     )
+    ability_starting_reputation_factions = extract_indexed_fields(
+        "ability_starting_reputation_faction", request.form
+    )
+    ability_starting_reputation_values = extract_indexed_fields(
+        "ability_starting_reputation_value", request.form
+    )
 
     if not all([name, wiki_page, body_hits_type, body_hits, death_count, permitted_factions]):
         flash("All fields are required.", "error")
@@ -135,6 +151,13 @@ def edit_species_post(species_id):
             species=species,
             BodyHitsType=BodyHitsType,
             factions=Faction.query.all(),
+            factions_dict=[
+                {
+                    "id": faction.id,
+                    "name": faction.name,
+                }
+                for faction in Faction.query.all()
+            ],
             AbilityType=AbilityType,
             skills_list=Skill.query.all(),
             item_blueprints=ItemBlueprint.query.order_by(ItemBlueprint.name).all(),
@@ -177,6 +200,11 @@ def edit_species_post(species_id):
             elif ab_type == AbilityType.STARTING_ITEM.value:
                 if ability_starting_item_blueprints[i]:
                     ab.starting_item_blueprint_id = int(ability_starting_item_blueprints[i])
+            elif ab_type == AbilityType.STARTING_REPUTATION.value:
+                if ability_starting_reputation_factions[i]:
+                    ab.starting_reputation_faction_id = int(ability_starting_reputation_factions[i])
+                if ability_starting_reputation_values[i]:
+                    ab.starting_reputation_value = int(ability_starting_reputation_values[i])
             db.session.add(ab)
         db.session.commit()
         flash("Species updated successfully.", "success")
@@ -203,11 +231,23 @@ def new_species():
         return redirect(url_for("index"))
 
     skills_list = Skill.query.all()
+    factions = Faction.query.all()
     item_blueprints = ItemBlueprint.query.order_by(ItemBlueprint.name).all()
+
+    # Convert factions to dictionaries for JSON serialization
+    factions_dict = [
+        {
+            "id": faction.id,
+            "name": faction.name,
+        }
+        for faction in factions
+    ]
+
     return render_template(
         "species/edit.html",
         BodyHitsType=BodyHitsType,
-        factions=Faction.query.all(),
+        factions=factions,
+        factions_dict=factions_dict,
         AbilityType=AbilityType,
         skills_list=skills_list,
         item_blueprints=item_blueprints,
@@ -238,6 +278,12 @@ def new_species_post():
     ability_starting_item_blueprints = extract_indexed_fields(
         "ability_starting_item_blueprint", request.form
     )
+    ability_starting_reputation_factions = extract_indexed_fields(
+        "ability_starting_reputation_faction", request.form
+    )
+    ability_starting_reputation_values = extract_indexed_fields(
+        "ability_starting_reputation_value", request.form
+    )
     # Skill discounts
     if not all([name, wiki_page, body_hits_type, body_hits, death_count, permitted_factions]):
         flash("All fields are required.", "error")
@@ -251,10 +297,19 @@ def new_species_post():
             }
             for bp in item_blueprints
         ]
+        factions = Faction.query.all()
+        factions_dict = [
+            {
+                "id": faction.id,
+                "name": faction.name,
+            }
+            for faction in factions
+        ]
         return render_template(
             "species/edit.html",
             BodyHitsType=BodyHitsType,
-            factions=Faction.query.all(),
+            factions=factions,
+            factions_dict=factions_dict,
             AbilityType=AbilityType,
             skills_list=Skill.query.all(),
             item_blueprints=item_blueprints_dict,
@@ -295,6 +350,11 @@ def new_species_post():
             elif ab_type == AbilityType.STARTING_ITEM.value:
                 if ability_starting_item_blueprints[i]:
                     ab.starting_item_blueprint_id = int(ability_starting_item_blueprints[i])
+            elif ab_type == AbilityType.STARTING_REPUTATION.value:
+                if ability_starting_reputation_factions[i]:
+                    ab.starting_reputation_faction_id = int(ability_starting_reputation_factions[i])
+                if ability_starting_reputation_values[i]:
+                    ab.starting_reputation_value = int(ability_starting_reputation_values[i])
             db.session.add(ab)
         db.session.commit()
         flash("Species created successfully.", "success")

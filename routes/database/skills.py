@@ -115,6 +115,8 @@ def edit_skill_post(skill_id):
     required_species = request.form.getlist("required_species")
     required_factions = request.form.getlist("required_factions")
     required_tags = request.form.getlist("required_tags")
+    adds_reputation_faction_id = request.form.get("adds_reputation_faction_id")
+    adds_reputation_value = request.form.get("adds_reputation_value")
 
     # Handle character sheet values
     character_sheet_values = []
@@ -184,6 +186,10 @@ def edit_skill_post(skill_id):
         skill.required_factions_list = required_factions
         skill.required_tags_list = tag_ids
         skill.character_sheet_values_list = character_sheet_values
+        skill.adds_reputation_faction_id = (
+            int(adds_reputation_faction_id) if adds_reputation_faction_id else None
+        )
+        skill.adds_reputation_value = int(adds_reputation_value) if adds_reputation_value else 0
 
         db.session.commit()
         flash("Skill updated successfully.", "success")
@@ -212,6 +218,8 @@ def new_skill():
         required_species = request.form.getlist("required_species")
         required_factions = request.form.getlist("required_factions")
         required_tags = request.form.getlist("required_tags")
+        adds_reputation_faction_id = request.form.get("adds_reputation_faction_id")
+        adds_reputation_value = request.form.get("adds_reputation_value")
 
         # Handle character sheet values
         character_sheet_values = []
@@ -284,6 +292,10 @@ def new_skill():
                 required_factions_list=required_factions,
                 required_tags_list=tag_ids,
                 character_sheet_values_list=character_sheet_values,
+                adds_reputation_faction_id=(
+                    int(adds_reputation_faction_id) if adds_reputation_faction_id else None
+                ),
+                adds_reputation_value=int(adds_reputation_value) if adds_reputation_value else 0,
             )
             db.session.add(skill)
             db.session.commit()

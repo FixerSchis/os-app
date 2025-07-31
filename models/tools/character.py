@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from sqlalchemy import JSON
 
 from models.database.mods import Mod
-from models.enums import CharacterAuditAction, CharacterStatus, ScienceType
+from models.enums import AbilityType, CharacterAuditAction, CharacterStatus, ScienceType
 from models.extensions import db
 from models.tools.pack import Pack
 
@@ -138,6 +138,19 @@ class Character(db.Model):
                 for i in range(character_skill.times_purchased):
                     purchase_cost = skill.base_cost + i
                     # Apply species discounts
+                    if self.species:
+                        for ability in self.species.abilities:
+                            if (
+                                ability.type == "skill_discounts"
+                                and str(skill.id) in ability.skill_discounts_dict
+                            ):
+                                discount = ability.skill_discounts_dict[str(skill.id)]
+                                purchase_cost = max(0, purchase_cost - discount)
+                    total_cost += purchase_cost
+            else:
+                purchase_cost = skill.base_cost
+                # Apply species discounts
+                if self.species:
                     for ability in self.species.abilities:
                         if (
                             ability.type == "skill_discounts"
@@ -145,18 +158,7 @@ class Character(db.Model):
                         ):
                             discount = ability.skill_discounts_dict[str(skill.id)]
                             purchase_cost = max(0, purchase_cost - discount)
-                    total_cost += purchase_cost
-            else:
-                purchase_cost = skill.base_cost
-                # Apply species discounts
-                for ability in self.species.abilities:
-                    if (
-                        ability.type == "skill_discounts"
-                        and str(skill.id) in ability.skill_discounts_dict
-                    ):
-                        discount = ability.skill_discounts_dict[str(skill.id)]
-                        purchase_cost = max(0, purchase_cost - discount)
-                total_cost += purchase_cost * character_skill.times_purchased
+                total_cost += purchase_cost
         return total_cost
 
     def get_faction_name(self):
@@ -200,11 +202,12 @@ class Character(db.Model):
                 base_cost += count  # Cost of the (N+1)th purchase
 
         # Apply species discounts if any
-        for ability in self.species.abilities:
-            if ability.type == "skill_discounts":
-                if str(skill.id) in ability.skill_discounts_dict:
-                    discount = ability.skill_discounts_dict[str(skill.id)]
-                    base_cost = max(0, base_cost - discount)
+        if self.species:
+            for ability in self.species.abilities:
+                if ability.type == "skill_discounts":
+                    if str(skill.id) in ability.skill_discounts_dict:
+                        discount = ability.skill_discounts_dict[str(skill.id)]
+                        base_cost = max(0, base_cost - discount)
 
         return base_cost
 
@@ -288,6 +291,51 @@ class Character(db.Model):
             )
             db.session.add(character_skill)
 
+        # Handle reputation from skill if character is active
+        if (
+            self.status == CharacterStatus.ACTIVE.value
+            and skill.adds_reputation_faction_id
+            and skill.adds_reputation_value
+        ):
+            current_reputation = self.get_reputation(skill.adds_reputation_faction_id)
+            new_reputation = current_reputation + skill.adds_reputation_value
+            self.set_reputation(skill.adds_reputation_faction_id, new_reputation, user.id)
+
+        db.session.commit()
+        return True
+
+    def activate(self, user):
+        """Activate the character and handle reputation from skills and species abilities."""
+        if self.status != CharacterStatus.DEVELOPING.value:
+            raise ValueError("Only developing characters can be activated")
+
+        self.status = CharacterStatus.ACTIVE.value
+
+        # Handle reputation from skills
+        for character_skill in self.skills:
+            skill = character_skill.skill
+            if skill.adds_reputation_faction_id and skill.adds_reputation_value:
+                current_reputation = self.get_reputation(skill.adds_reputation_faction_id)
+                new_reputation = current_reputation + skill.adds_reputation_value
+                self.set_reputation(skill.adds_reputation_faction_id, new_reputation, user.id)
+
+        # Handle reputation from species abilities
+        if self.species:
+            for ability in self.species.abilities:
+                if (
+                    (
+                        ability.type == AbilityType.STARTING_REPUTATION.value
+                        or ability.type == AbilityType.STARTING_REPUTATION
+                    )
+                    and ability.starting_reputation_faction_id
+                    and ability.starting_reputation_value
+                ):
+                    current_reputation = self.get_reputation(ability.starting_reputation_faction_id)
+                    new_reputation = current_reputation + ability.starting_reputation_value
+                    self.set_reputation(
+                        ability.starting_reputation_faction_id, new_reputation, user.id
+                    )
+
         db.session.commit()
         return True
 
@@ -319,6 +367,16 @@ class Character(db.Model):
 
         # Calculate refund amount for this specific skill purchase
         refund_amount = self.get_skill_cost(skill, is_refund=True)
+
+        # Handle reputation removal if character is active
+        if (
+            self.status == CharacterStatus.ACTIVE.value
+            and skill.adds_reputation_faction_id
+            and skill.adds_reputation_value
+        ):
+            current_reputation = self.get_reputation(skill.adds_reputation_faction_id)
+            new_reputation = current_reputation - skill.adds_reputation_value
+            self.set_reputation(skill.adds_reputation_faction_id, new_reputation, user.id)
 
         if character_skill.times_purchased <= 1:
             # Remove the skill entirely

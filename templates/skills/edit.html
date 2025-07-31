@@ -60,6 +60,23 @@
             </div>
 
             <div class="form-group">
+                <label for="adds_reputation_faction_id">Adds Reputation - Faction</label>
+                <select class="form-control select2-single" id="adds_reputation_faction_id" name="adds_reputation_faction_id">
+                    <option value="">None</option>
+                    {% for faction in factions %}
+                    <option value="{{ faction.id }}" {% if skill and skill.adds_reputation_faction_id == faction.id %}selected{% endif %}>
+                        {{ faction.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="adds_reputation_value">Adds Reputation - Value</label>
+                <input type="number" class="form-control" id="adds_reputation_value" name="adds_reputation_value" value="{{ skill.adds_reputation_value if skill else 0 }}" min="0">
+            </div>
+
+            <div class="form-group">
                 <label for="base_cost">Base Cost *</label>
                 <input type="number" class="form-control" id="base_cost" name="base_cost" value="{{ skill.base_cost if skill else 0 }}" required min="0">
             </div>
