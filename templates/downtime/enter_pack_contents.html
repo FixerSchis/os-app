@@ -29,7 +29,7 @@
                             <select class="form-control select2" id="items" name="item_ids[]" multiple>
                                 {% for item in items %}
                                 <option value="{{ item.id }}"
-                                    {% if item.id|string in pack.items|map(attribute='id')|list %}selected{% endif %}>
+                                    {% if item.id|string in pack.items %}selected{% endif %}>
                                     {{ item.blueprint.name }} ({{ item.full_code }})
                                 </option>
                                 {% endfor %}
