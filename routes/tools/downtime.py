@@ -19,6 +19,7 @@ from models.enums import (
     EventType,
     ResearchRequirementType,
     ScienceType,
+    TicketType,
 )
 from models.event import Event
 from models.extensions import db
@@ -1583,6 +1584,42 @@ def process_downtime(period_id):
         pack.character.pack = character_pack
 
         send_downtime_completed_notification(pack.character.user, pack, pack.character)
+
+    # Add character points to event attendees and crew
+    event = period.event
+    if event:
+        # Determine character points based on event type
+        if event.event_type == EventType.MAINLINE:
+            adult_points = 1.0
+            crew_points = 1.0
+        elif event.event_type in [EventType.SANCTIONED_CONTINUITY, EventType.SANCTIONED_CHRONICLE]:
+            adult_points = 0.5
+            crew_points = 0.5
+        else:
+            # Online events get no character points
+            adult_points = 0.0
+            crew_points = 0.0
+
+        # Get all tickets for this event
+        event_tickets = EventTicket.query.filter_by(event_id=event.id).all()
+
+        for ticket in event_tickets:
+            if ticket.ticket_type == TicketType.ADULT and ticket.character_id:
+                # Add points to the character's user
+                ticket.character.user.add_character_points(adult_points)
+                ticket.character.pack.add_downtime_result(
+                    (
+                        str(ticket.character.downtime_packs[-1].id)
+                        if ticket.character.downtime_packs
+                        else "0"
+                    ),
+                    f"Received {adult_points} character points for attending {event.name}",
+                )
+            elif ticket.ticket_type == TicketType.CREW and ticket.user_id:
+                # Add points directly to the user
+                ticket.user.add_character_points(crew_points)
+                # Note: Crew tickets don't have a character, so we can't add to downtime results
+                # The points are added directly to the user account
 
     period.status = DowntimeStatus.COMPLETED
 

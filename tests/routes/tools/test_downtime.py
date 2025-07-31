@@ -1358,3 +1358,198 @@ def test_manual_review_with_both_other_fields(
     # Verify pack was completed
     db.session.refresh(downtime_pack_enter_downtime)
     assert downtime_pack_enter_downtime.status == DowntimeTaskStatus.COMPLETED
+
+
+def test_process_downtime_character_points_crew_tickets(
+    test_client, downtime_team_user, downtime_period, downtime_pack, db
+):
+    """Test that character points are added to crew ticket holders during downtime processing."""
+    from models.enums import EventType, TicketType
+    from models.event import Event
+    from models.tools.event_ticket import EventTicket
+    from models.tools.user import User
+
+    # Create a test event with mainline type
+    event = Event(
+        event_number="TEST001",
+        name="Test Event",
+        event_type=EventType.MAINLINE.value,
+        early_booking_deadline=datetime.now() + timedelta(days=30),
+        booking_deadline=datetime.now() + timedelta(days=15),
+        start_date=datetime.now() + timedelta(days=1),
+        end_date=datetime.now() + timedelta(days=2),
+        standard_ticket_price=50.0,
+        early_booking_ticket_price=40.0,
+        child_ticket_price_12_15=25.0,
+        child_ticket_price_7_11=15.0,
+        child_ticket_price_under_7=5.0,
+    )
+    db.session.add(event)
+    db.session.flush()
+
+    # Create a crew user
+    crew_user = User(
+        email="crew@test.com",
+        first_name="Crew",
+        surname="User",
+        character_points=0.0,
+    )
+    db.session.add(crew_user)
+    db.session.flush()
+
+    # Create crew ticket
+    crew_ticket = EventTicket(
+        event_id=event.id,
+        user_id=crew_user.id,
+        ticket_type=TicketType.CREW.value,
+        price_paid=0.0,
+        assigned_by_id=downtime_team_user.id,
+    )
+    db.session.add(crew_ticket)
+
+    # Update the downtime period to use our test event
+    downtime_period.event_id = event.id
+    db.session.commit()
+
+    # Complete the downtime pack
+    downtime_pack.status = DowntimeTaskStatus.COMPLETED
+    db.session.commit()
+
+    # Process the downtime
+    login_user(test_client, downtime_team_user)
+    response = test_client.post(f"/downtime/process/{downtime_period.id}", follow_redirects=True)
+    assert response.status_code == 200
+
+    # Verify crew user received character points
+    db.session.refresh(crew_user)
+    assert crew_user.character_points == 1.0  # Mainline event gives 1.0 points
+
+
+def test_process_downtime_character_points_sanctioned_event(
+    test_client, downtime_team_user, downtime_period, downtime_pack, db
+):
+    """Test that character points are added correctly for sanctioned events."""
+    from models.enums import EventType, TicketType
+    from models.event import Event
+    from models.tools.event_ticket import EventTicket
+    from models.tools.user import User
+
+    # Create a test event with sanctioned type
+    event = Event(
+        event_number="TEST002",
+        name="Test Sanctioned Event",
+        event_type=EventType.SANCTIONED_CONTINUITY.value,
+        early_booking_deadline=datetime.now() + timedelta(days=30),
+        booking_deadline=datetime.now() + timedelta(days=15),
+        start_date=datetime.now() + timedelta(days=1),
+        end_date=datetime.now() + timedelta(days=2),
+        standard_ticket_price=50.0,
+        early_booking_ticket_price=40.0,
+        child_ticket_price_12_15=25.0,
+        child_ticket_price_7_11=15.0,
+        child_ticket_price_under_7=5.0,
+    )
+    db.session.add(event)
+    db.session.flush()
+
+    # Create a crew user
+    crew_user = User(
+        email="crew_sanctioned@test.com",
+        first_name="Crew",
+        surname="UserSanctioned",
+        character_points=0.0,
+    )
+    db.session.add(crew_user)
+    db.session.flush()
+
+    # Create crew ticket
+    crew_ticket = EventTicket(
+        event_id=event.id,
+        user_id=crew_user.id,
+        ticket_type=TicketType.CREW.value,
+        price_paid=0.0,
+        assigned_by_id=downtime_team_user.id,
+    )
+    db.session.add(crew_ticket)
+
+    # Update the downtime period to use our test event
+    downtime_period.event_id = event.id
+    db.session.commit()
+
+    # Complete the downtime pack
+    downtime_pack.status = DowntimeTaskStatus.COMPLETED
+    db.session.commit()
+
+    # Process the downtime
+    login_user(test_client, downtime_team_user)
+    response = test_client.post(f"/downtime/process/{downtime_period.id}", follow_redirects=True)
+    assert response.status_code == 200
+
+    # Verify crew user received character points
+    db.session.refresh(crew_user)
+    assert crew_user.character_points == 0.5  # Sanctioned event gives 0.5 points
+
+
+def test_process_downtime_character_points_online_event(
+    test_client, downtime_team_user, downtime_period, downtime_pack, db
+):
+    """Test that character points are not added for online events."""
+    from models.enums import EventType, TicketType
+    from models.event import Event
+    from models.tools.event_ticket import EventTicket
+    from models.tools.user import User
+
+    # Create a test event with online type
+    event = Event(
+        event_number="TEST003",
+        name="Test Online Event",
+        event_type=EventType.ONLINE.value,
+        early_booking_deadline=datetime.now() + timedelta(days=30),
+        booking_deadline=datetime.now() + timedelta(days=15),
+        start_date=datetime.now() + timedelta(days=1),
+        end_date=datetime.now() + timedelta(days=2),
+        standard_ticket_price=50.0,
+        early_booking_ticket_price=40.0,
+        child_ticket_price_12_15=25.0,
+        child_ticket_price_7_11=15.0,
+        child_ticket_price_under_7=5.0,
+    )
+    db.session.add(event)
+    db.session.flush()
+
+    # Create a crew user
+    crew_user = User(
+        email="crew_online@test.com",
+        first_name="Crew",
+        surname="UserOnline",
+        character_points=0.0,
+    )
+    db.session.add(crew_user)
+    db.session.flush()
+
+    # Create crew ticket
+    crew_ticket = EventTicket(
+        event_id=event.id,
+        user_id=crew_user.id,
+        ticket_type=TicketType.CREW.value,
+        price_paid=0.0,
+        assigned_by_id=downtime_team_user.id,
+    )
+    db.session.add(crew_ticket)
+
+    # Update the downtime period to use our test event
+    downtime_period.event_id = event.id
+    db.session.commit()
+
+    # Complete the downtime pack
+    downtime_pack.status = DowntimeTaskStatus.COMPLETED
+    db.session.commit()
+
+    # Process the downtime
+    login_user(test_client, downtime_team_user)
+    response = test_client.post(f"/downtime/process/{downtime_period.id}", follow_redirects=True)
+    assert response.status_code == 200
+
+    # Verify crew user did not receive character points
+    db.session.refresh(crew_user)
+    assert crew_user.character_points == 0.0  # Online events give no points
