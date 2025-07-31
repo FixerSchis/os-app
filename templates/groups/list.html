@@ -114,17 +114,6 @@
                     </tbody>
                 </table>
 
-                <h3>Group Samples</h3>
-                <div class="mb-3">
-                    {% if character.group.samples.count() > 0 %}
-                        {% for sample in character.group.samples %}
-                            <span class="badge bg-info text-dark mr-1">{{ sample.name }}</span>
-                        {% endfor %}
-                    {% else %}
-                        <span class="text-muted">No samples assigned to this group.</span>
-                    {% endif %}
-                </div>
-
                 {% if character.group.is_active %}
                     <div class="mt-4">
                         <h3>Invite Character</h3>

@@ -28,6 +28,25 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
+// Initialize Select2 for sample selection
+document.addEventListener('DOMContentLoaded', function() {
+    const sampleSelect = document.getElementById('add_sample_id');
+    if (sampleSelect) {
+        $(sampleSelect).select2({
+            placeholder: 'Choose a sample...',
+            allowClear: true,
+            width: '100%'
+        }).on('select2:open', function() {
+            // Apply dark mode styling if dark mode is active
+            const isDarkMode = document.documentElement.getAttribute('data-theme') === 'dark';
+            if (isDarkMode) {
+                $('.select2-container--bootstrap-5').addClass('select2-dark');
+                $('.select2-dropdown').addClass('select2-dark');
+            }
+        });
+    }
+});
+
 // Initialize species filter
 document.addEventListener('DOMContentLoaded', function() {
     // Get user role information from the script tag

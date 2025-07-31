@@ -617,8 +617,6 @@ def create_group_admin():
 @user_admin_required
 def edit_group_admin(group_id):
     group = Group.query.get_or_404(group_id)
-    samples = Sample.query.order_by(Sample.name).all()
-    assigned_sample_ids = {sample.id for sample in group.samples}
     # Get active characters that are not in any group (available to add)
     available_characters = (
         Character.query.filter_by(group_id=None, status=CharacterStatus.ACTIVE.value)
@@ -629,8 +627,6 @@ def edit_group_admin(group_id):
         "groups/admin_edit.html",
         group=group,
         group_types=GroupType.query.all(),
-        samples=samples,
-        assigned_sample_ids=assigned_sample_ids,
         available_characters=available_characters,
     )
 
@@ -648,7 +644,6 @@ def edit_group_admin_post(group_id):
     background = request.form.get("background", "")
     objective = request.form.get("objective", "")
     goals = request.form.get("goals", "")
-    sample_ids = request.form.getlist("sample_ids")
 
     group_types = GroupType.query.all()
 
@@ -693,13 +688,6 @@ def edit_group_admin_post(group_id):
     group.background = background
     group.objective = objective
     group.goals = goals
-
-    # Update samples
-    if sample_ids:
-        new_samples = Sample.query.filter(Sample.id.in_(sample_ids)).all()
-        group.samples = new_samples
-    else:
-        group.samples = []
 
     # Create audit log if there were changes
     if changes:

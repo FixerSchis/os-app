@@ -27,7 +27,6 @@
                             Show Inactive Groups
                         </label>
                     </div>
-                    <button type="submit" class="btn btn-outline-primary btn-sm">Apply Filter</button>
                 </form>
             </div>
         </div>
@@ -41,7 +40,6 @@
                             <th>Type</th>
                             <th>Bank Account</th>
                             <th>Members</th>
-                            <th>Samples</th>
                             <th>Status</th>
                             <th>Actions</th>
                         </tr>
@@ -52,22 +50,7 @@
                             <td>{{ group.name }}</td>
                             <td>{{ group.group_type.name }}</td>
                             <td>{{ group.bank_account }}</td>
-                            <td>
-                                <ul class="list-unstyled">
-                                    {% for character in group.characters %}
-                                    <li>{{ character.name }} ({{ character.faction.name }})</li>
-                                    {% endfor %}
-                                </ul>
-                            </td>
-                            <td>
-                                {% if group.samples.count() > 0 %}
-                                    {% for sample in group.samples %}
-                                        <span class="badge bg-info text-dark mr-1">{{ sample.name }} (Researched: {{ sample.is_researched }})</span>
-                                    {% endfor %}
-                                {% else %}
-                                    <span class="text-muted">No samples</span>
-                                {% endif %}
-                            </td>
+                            <td>{{ group.characters|length }}</td>
                             <td>
                                 {% if group.is_active %}
                                     <span class="badge bg-success">Active</span>

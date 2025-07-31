@@ -14,6 +14,13 @@ character_tags = db.Table(
     db.Column("tag_id", db.Integer, db.ForeignKey("character_tag.id"), primary_key=True),
 )
 
+# Association table for many-to-many relationship between Character and Sample
+character_samples = db.Table(
+    "character_samples",
+    db.Column("character_id", db.Integer, db.ForeignKey("character.id"), primary_key=True),
+    db.Column("sample_id", db.Integer, db.ForeignKey("sample.id"), primary_key=True),
+)
+
 
 class CharacterTag(db.Model):
     __tablename__ = "character_tag"
@@ -88,6 +95,7 @@ class Character(db.Model):
     downtime_packs = db.relationship("DowntimePack", back_populates="character")
     event_tickets = db.relationship("EventTicket", back_populates="character")
     inventory_items = db.relationship("CharacterItem", back_populates="character")
+    samples = db.relationship("Sample", secondary="character_samples", lazy="dynamic")
 
     @property
     def pack(self):

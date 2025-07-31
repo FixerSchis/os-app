@@ -4,7 +4,7 @@ $(document).ready(function() {
         placeholder: 'Search for groups...',
         allowClear: true,
         ajax: {
-            url: '/api/groups/search',
+            url: '/groups/api/groups/search',
             dataType: 'json',
             delay: 250,
             data: function(params) {
@@ -31,6 +31,13 @@ $(document).ready(function() {
             cache: true
         },
         minimumInputLength: 2
+    }).on('select2:open', function() {
+        // Apply dark mode styling if dark mode is active
+        const isDarkMode = document.documentElement.getAttribute('data-theme') === 'dark';
+        if (isDarkMode) {
+            $('.select2-container--bootstrap-5').addClass('select2-dark');
+            $('.select2-dropdown').addClass('select2-dark');
+        }
     });
 
     // Handle group selection

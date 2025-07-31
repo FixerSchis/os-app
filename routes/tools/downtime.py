@@ -22,7 +22,7 @@ from models.enums import (
 )
 from models.event import Event
 from models.extensions import db
-from models.tools.character import Character, CharacterCondition
+from models.tools.character import Character, CharacterCondition, character_samples
 from models.tools.character_inventory import CharacterItem
 from models.tools.downtime import DowntimePack, DowntimePeriod
 from models.tools.event_ticket import EventTicket
@@ -324,12 +324,18 @@ def enter_pack_contents_post(period_id, character_id):
 
     # On confirm, add samples to group inventory and conditions to player
     if request.form.get("confirm_complete"):
-        # Add samples to group inventory
-        if pack.character.group and pack.samples:
+        # Add samples to character inventory
+        if pack.samples:
             for sample_id in pack.samples:
                 sample = db.session.get(Sample, sample_id)
-                if sample and sample not in pack.character.group.samples:
-                    pack.character.group.samples.append(sample)
+                if sample and sample not in pack.character.samples:
+                    # Remove sample from any other characters first
+                    for other_character in Character.query.all():
+                        if other_character != pack.character and sample in other_character.samples:
+                            other_character.samples.remove(sample)
+
+                    # Add sample to current character
+                    pack.character.samples.append(sample)
 
         # Add conditions to player with audit logging
         if pack.conditions:
@@ -439,14 +445,20 @@ def enter_downtime(period_id, character_id):
         {"id": bp.id, "name": bp.name, "base_cost": bp.base_cost} for bp in blueprints
     ]
 
+    # Get available samples from all group members' inventories
+    available_samples = []
     if character.group:
-        available_samples = character.group.samples.order_by(Sample.name).all()
-    else:
+        # Get all samples from all group members
+        group_member_ids = [c.id for c in character.group.characters]
         available_samples = (
-            Sample.query.filter(Sample.id.in_(pack.samples)).order_by(Sample.name).all()
-            if pack.samples
-            else []
+            Sample.query.join(character_samples)
+            .filter(character_samples.c.character_id.in_(group_member_ids))
+            .order_by(Sample.name)
+            .all()
         )
+    else:
+        # For characters without a group, use their own samples
+        available_samples = character.samples.order_by(Sample.name).all()
 
     # Research projects for science step
     my_projects = CharacterResearch.query.filter_by(character_id=character.id).all()
