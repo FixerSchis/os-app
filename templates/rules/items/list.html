@@ -158,9 +158,9 @@
                     <td>{{ item.base_cost_calc(0) if item.base_cost_calc(0) is not none else '-' }}</td>
                     <td>
                         {% if item.expiry is not none %}
-                            Before Event {{ item.expiry }}
+                            E{{ item.expiry }}
                         {% else %}
-                            <span class="text-muted">No expiry</span>
+                            <span class="text-muted">E#</span>
                         {% endif %}
                     </td>
                     <td>
