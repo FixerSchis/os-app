@@ -39,12 +39,12 @@
                                         <td>
                                             {% if character_item.item.expiry is not none %}
                                                 {% if character_item.item.is_expired() %}
-                                                    <span class="badge bg-danger">Expired (Before Event {{ character_item.item.expiry }})</span>
+                                                    <span class="badge bg-danger">Expired (E{{ character_item.item.expiry }})</span>
                                                 {% else %}
-                                                    <span class="badge bg-success">Before Event {{ character_item.item.expiry }}</span>
+                                                    <span class="badge bg-success">E{{ character_item.item.expiry }}</span>
                                                 {% endif %}
                                             {% else %}
-                                                <span class="text-muted">No expiry</span>
+                                                <span class="text-muted">E#</span>
                                             {% endif %}
                                         </td>
                                         <td>{{ character_item.assigned_at.strftime('%Y-%m-%d %H:%M') }}</td>
