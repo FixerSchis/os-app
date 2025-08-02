@@ -1,0 +1,94 @@
+User-agent: *
+Disallow: /admin/
+Disallow: /api/
+Disallow: /database/
+Disallow: /tools/
+Disallow: /user_management/
+Disallow: /settings/
+Disallow: /messages/
+Disallow: /tickets/
+Disallow: /groups/
+Disallow: /factions/
+Disallow: /research/
+Disallow: /events/
+Disallow: /downtime/
+Disallow: /banking/
+Disallow: /character_skills/
+Disallow: /characters/
+Disallow: /wiki/
+Disallow: /rules/
+Disallow: /samples/
+Disallow: /species/
+Disallow: /skills/
+Disallow: /templates/
+Disallow: /auth/
+Disallow: /errors/
+Disallow: /logs/
+Disallow: /migrations/
+Disallow: /db/
+Disallow: /config/
+Disallow: /models/
+Disallow: /routes/
+Disallow: /utils/
+Disallow: /scripts/
+Disallow: /tests/
+Disallow: /venv/
+Disallow: /static/css/
+Disallow: /static/js/
+Disallow: /static/images/
+Disallow: /static/external/
+Disallow: /static/email_templates/
+Disallow: /data/
+Disallow: /migrations/
+
+# Request that AI training bots do not crawl this site
+User-agent: GPTBot
+Disallow: /
+
+User-agent: ChatGPT-User
+Disallow: /
+
+User-agent: CCBot
+Disallow: /
+
+User-agent: anthropic-ai
+Disallow: /
+
+User-agent: Claude-Web
+Disallow: /
+
+User-agent: Omgilibot
+Disallow: /
+
+User-agent: Google-Extended
+Disallow: /
+
+User-agent: CCBot
+Disallow: /
+
+User-agent: ChatGPT-User
+Disallow: /
+
+User-agent: GPTBot
+Disallow: /
+
+User-agent: anthropic-ai
+Disallow: /
+
+User-agent: Claude-Web
+Disallow: /
+
+User-agent: Omgilibot
+Disallow: /
+
+User-agent: Google-Extended
+Disallow: /
+
+# Allow access to public pages only
+Allow: /
+Allow: /favicon.ico
+Allow: /logo.png
+Allow: /navbar-background.jpg
+
+# Crawl-delay to be respectful
+Crawl-delay: 10
