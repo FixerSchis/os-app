@@ -27,7 +27,7 @@
 
             <div class="form-group">
                 <label for="item_types">Type Restrictions</label>
-                <select class="form-select" id="item_types" name="item_types" multiple>
+                <select class="form-select" id="item_types" name="item_types" multiple title="Select item types for mod restrictions">
                     {% for item_type in item_types %}
                     <option value="{{ item_type.id }}" {% if mod and item_type in mod.item_types %}selected{% endif %}>{{ item_type.name }}</option>
                     {% endfor %}

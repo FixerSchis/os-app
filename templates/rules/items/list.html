@@ -32,7 +32,7 @@
                 <!-- Item Type Filter -->
                 <div class="col-md-3">
                     <label for="item_type_id" class="form-label">Item Type</label>
-                    <select class="form-select" id="item_type_id" name="item_type_id">
+                    <select class="form-select" id="item_type_id" name="item_type_id" title="Filter by item type">
                         <option value="">All Types</option>
                         {% for type in item_types %}
                         <option value="{{ type.id }}" {% if item_type_id == type.id %}selected{% endif %}>{{ type.name }}</option>
@@ -43,7 +43,7 @@
                 <!-- Blueprint Filter -->
                 <div class="col-md-3">
                     <label for="blueprint_id" class="form-label">Blueprint</label>
-                    <select class="form-select" id="blueprint_id" name="blueprint_id">
+                    <select class="form-select" id="blueprint_id" name="blueprint_id" title="Filter by blueprint">
                         <option value="">All Blueprints</option>
                         {% for bp in blueprints.values() %}
                         <option value="{{ bp.id }}" {% if blueprint_id == bp.id %}selected{% endif %}>{{ bp.name }}</option>
@@ -54,7 +54,7 @@
                 <!-- Mod Filter -->
                 <div class="col-md-3">
                     <label for="mod_id" class="form-label">Mod</label>
-                    <select class="form-select" id="mod_id" name="mod_id">
+                    <select class="form-select" id="mod_id" name="mod_id" title="Filter by mod">
                         <option value="">All Mods</option>
                         {% for mod in mods %}
                         <option value="{{ mod.id }}" {% if mod_id == mod.id %}selected{% endif %}>{{ mod.name }}</option>
@@ -65,7 +65,7 @@
                 <!-- Expiry Filter -->
                 <div class="col-md-3">
                     <label for="expiry" class="form-label">Expiry Status</label>
-                    <select class="form-select" id="expiry" name="expiry" disabled>
+                    <select class="form-select" id="expiry" name="expiry" disabled title="Filter by expiry status">
                         <option value="all" {% if expiry_filter == 'all' %}selected{% endif %}>All</option>
                         <option value="active" {% if expiry_filter == 'active' %}selected{% endif %}>Active</option>
                         <option value="expired" {% if expiry_filter == 'expired' %}selected{% endif %}>Expired</option>
@@ -77,7 +77,7 @@
                 <!-- Sort Controls -->
                 <div class="col-md-3">
                     <label for="sort_by" class="form-label">Sort By</label>
-                    <select class="form-select" id="sort_by" name="sort_by">
+                    <select class="form-select" id="sort_by" name="sort_by" title="Select sort field">
                         <option value="item_id" {% if sort_by == 'item_id' %}selected{% endif %}>Item ID</option>
                         <option value="blueprint" {% if sort_by == 'blueprint' %}selected{% endif %}>Blueprint</option>
                         <option value="expiry" {% if sort_by == 'expiry' %}selected{% endif %}>Expiry</option>
@@ -86,7 +86,7 @@
 
                 <div class="col-md-3">
                     <label for="sort_order" class="form-label">Sort Order</label>
-                    <select class="form-select" id="sort_order" name="sort_order">
+                    <select class="form-select" id="sort_order" name="sort_order" title="Select sort order">
                         <option value="asc" {% if sort_order == 'asc' %}selected{% endif %}>Ascending</option>
                         <option value="desc" {% if sort_order == 'desc' %}selected{% endif %}>Descending</option>
                     </select>

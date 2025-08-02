@@ -18,7 +18,7 @@
         <form method="POST">
             <div class="form-group mb-3">
                 <label for="blueprint_id">Blueprint</label>
-                <select class="form-select" id="blueprint_id" name="blueprint_id" required>
+                <select class="form-select" id="blueprint_id" name="blueprint_id" required title="Select item blueprint">
                     <option value="" disabled {% if not item %}selected{% endif %}>Select Blueprint</option>
                     {% for bp in blueprints %}
                     <option value="{{ bp.id }}" {% if item and item.blueprint_id == bp.id %}selected{% endif %}>{{ bp.name }}</option>
@@ -54,7 +54,7 @@
                     {% set initial_mods = initial_mods if initial_mods is defined else [] %}
                     {% if initial_mods|length == 0 %}
                         <div class="input-group d-flex align-items-center mb-2 mod-row">
-                            <select class="form-select mod-select flex-grow-1" name="mods_applied[]">
+                            <select class="form-select mod-select flex-grow-1" name="mods_applied[]" title="Select mod to apply">
                                 <option value="" disabled selected>Select mod...</option>
                                 {% for mod in mods %}
                                 <option value="{{ mod.id }}">{{ mod.name }}</option>
@@ -65,7 +65,7 @@
                     {% else %}
                         {% for mod_id in initial_mods %}
                         <div class="input-group d-flex align-items-center mb-2 mod-row">
-                            <select class="form-select mod-select flex-grow-1" name="mods_applied[]">
+                            <select class="form-select mod-select flex-grow-1" name="mods_applied[]" title="Select mod to apply">
                                 <option value="" disabled>Select mod...</option>
                                 {% for mod in mods %}
                                 <option value="{{ mod.id }}" {% if mod.id == mod_id %}selected{% endif %}>{{ mod.name }}</option>

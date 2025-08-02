@@ -37,9 +37,13 @@ def test_has_enter_downtime_packs_context_processor_no_packs(
 
 
 def test_has_enter_downtime_packs_context_processor_with_pack(
-    app, test_client, authenticated_user, downtime_pack, db
+    app, test_client, downtime_team_user, downtime_pack, db
 ):
     """Test the has_enter_downtime_packs context processor when a pack exists."""
+    with test_client.session_transaction() as session:
+        session["_user_id"] = downtime_team_user.id
+        session["_fresh"] = True
+
     with app.test_request_context():
         response = test_client.get(url_for("test_page"))
         assert b'data-has-downtime-packs="True"' in response.data
@@ -55,9 +59,13 @@ def test_has_research_projects_context_processor_no_projects(
 
 
 def test_has_research_projects_context_processor_with_project(
-    app, test_client, authenticated_user, character_research, db
+    app, test_client, rules_team_user, character_research, db
 ):
     """Test the has_research_projects context processor when a project exists."""
+    with test_client.session_transaction() as session:
+        session["_user_id"] = rules_team_user.id
+        session["_fresh"] = True
+
     with app.test_request_context():
         response = test_client.get(url_for("test_page"))
         assert b'data-has-research-projects="True"' in response.data

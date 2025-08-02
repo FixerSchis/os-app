@@ -109,9 +109,9 @@ class TestDatabaseManagementRoutes:
 
     def test_database_management_route_requires_admin(self, test_client, authenticated_user):
         """Test that database management route requires admin role."""
-        # User without admin role should get 403
+        # User without admin role should get 302 (redirect)
         response = test_client.get("/tools/database")
-        assert response.status_code == 403
+        assert response.status_code == 302
 
     def test_database_management_route_with_admin(self, test_client, admin_user):
         """Test that database management route works with admin role."""
@@ -122,9 +122,9 @@ class TestDatabaseManagementRoutes:
     def test_create_backup_requires_admin(self, test_client, authenticated_user):
         """Test that create backup route requires admin role."""
         response = test_client.post("/tools/database/create-backup")
-        assert response.status_code == 403
+        assert response.status_code == 302
 
     def test_restore_backup_requires_admin(self, test_client, authenticated_user):
         """Test that restore backup route requires admin role."""
         response = test_client.post("/tools/database/restore-backup")
-        assert response.status_code == 403
+        assert response.status_code == 302

@@ -17,17 +17,18 @@
         </div>
 
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <span class="h5 mb-0">Available CP: <strong>{{ character.get_available_character_points() }}</strong></span>
-            <span class="h5 mb-0">Spent CP: <strong>{{ character.get_total_skill_cost() }}</strong></span>
+            <span class="h5 mb-0" id="available-cp">Available CP: <strong>{{ character.get_available_character_points() }}</strong></span>
+            <span class="h5 mb-0" id="spent-cp">Spent CP: <strong>{{ character.get_total_skill_cost() }}</strong></span>
         </div>
 
         <div class="table-responsive">
-            <table class="table table-striped w-100">
+            <table class="table table-striped w-100" aria-labelledby="skills-table-caption">
+                <caption id="skills-table-caption" class="sr-only">Character skills list with purchase options</caption>
                 <thead>
                     <tr>
-                        <th style="width: 80%">Skill</th>
-                        <th style="width: 10%">Cost</th>
-                        <th style="width: 10%">Actions</th>
+                        <th scope="col" class="width-80">Skill</th>
+                        <th scope="col" class="width-10">Cost</th>
+                        <th scope="col" class="width-10">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -41,7 +42,7 @@
                         {% set character_skill = character.skills|selectattr('skill_id', 'equalto', skill.id)|first %}
                         {% set cost = character.get_skill_cost(skill) %}
                         {% set can_afford = character.get_available_character_points() >= cost %}
-                        {% set can_refund = current_user.has_role('user_admin') or character.status == 'developing' %}
+                        {% set can_refund = has_permission('character.edit_all') or character.status == 'developing' %}
                         <tr>
                             <td class="ps-4" style="padding-left: 2em;">
                                 <div><strong>
@@ -68,17 +69,21 @@
                                 {% if skill.can_purchase_multiple %}
                                     <div class="d-flex align-items-center justify-content-center gap-2" style="min-width:120px;">
                                         <form method="POST" action="{{ url_for('character_skills.refund_skill', character_id=character.id) }}" style="display:inline;">
-                                            <input type="hidden" name="skill_id" value="{{ skill.id }}">
+                                            <label for="refund_skill_{{ skill.id }}" class="sr-only">Refund {{ skill.name }}</label>
+                                            <input type="hidden" id="refund_skill_{{ skill.id }}" name="skill_id" value="{{ skill.id }}">
                                             <button type="submit" class="btn btn-outline-primary btn-sm"
-                                                {% if not character_skill or character_skill.times_purchased == 0 or not can_refund %}disabled{% endif %}>
+                                                {% if not character_skill or character_skill.times_purchased == 0 or not can_refund %}disabled{% endif %}
+                                                aria-label="Decrease {{ skill.name }} level">
                                                 <i class="fas fa-minus"></i>
                                             </button>
                                         </form>
-                                        <span class="text-center" style="width:2em;">{{ character_skill.times_purchased if character_skill else 0 }}</span>
+                                        <span class="text-center" style="width:2em;" aria-label="Current level of {{ skill.name }}">{{ character_skill.times_purchased if character_skill else 0 }}</span>
                                         <form method="POST" action="{{ url_for('character_skills.purchase_skill', character_id=character.id) }}" style="display:inline;">
-                                            <input type="hidden" name="skill_id" value="{{ skill.id }}">
+                                            <label for="purchase_skill_{{ skill.id }}" class="sr-only">Purchase {{ skill.name }}</label>
+                                            <input type="hidden" id="purchase_skill_{{ skill.id }}" name="skill_id" value="{{ skill.id }}">
                                             <button type="submit" class="btn btn-outline-primary btn-sm"
-                                                {% if not can_afford %}disabled{% endif %}>
+                                                {% if not can_afford %}disabled{% endif %}
+                                                aria-label="Increase {{ skill.name }} level">
                                                 <i class="fas fa-plus"></i>
                                             </button>
                                         </form>
@@ -86,13 +91,15 @@
                                 {% else %}
                                     {% if character_skill %}
                                         <form method="POST" action="{{ url_for('character_skills.refund_skill', character_id=character.id) }}" class="d-inline">
-                                            <input type="hidden" name="skill_id" value="{{ skill.id }}">
-                                            <button type="submit" class="btn btn-danger btn-sm" {% if not can_refund %}disabled{% endif %}>Refund</button>
+                                            <label for="refund_skill_single_{{ skill.id }}" class="sr-only">Refund {{ skill.name }}</label>
+                                            <input type="hidden" id="refund_skill_single_{{ skill.id }}" name="skill_id" value="{{ skill.id }}">
+                                            <button type="submit" class="btn btn-danger btn-sm" {% if not can_refund %}disabled{% endif %} aria-label="Refund {{ skill.name }}">Refund</button>
                                         </form>
                                     {% else %}
                                         <form method="POST" action="{{ url_for('character_skills.purchase_skill', character_id=character.id) }}" class="d-inline">
-                                            <input type="hidden" name="skill_id" value="{{ skill.id }}">
-                                            <button type="submit" class="btn btn-primary btn-sm" {% if not can_afford %}disabled{% endif %}>Buy</button>
+                                            <label for="purchase_skill_single_{{ skill.id }}" class="sr-only">Purchase {{ skill.name }}</label>
+                                            <input type="hidden" id="purchase_skill_single_{{ skill.id }}" name="skill_id" value="{{ skill.id }}">
+                                            <button type="submit" class="btn btn-primary btn-sm" {% if not can_afford %}disabled{% endif %} aria-label="Buy {{ skill.name }}">Buy</button>
                                         </form>
                                     {% endif %}
                                 {% endif %}

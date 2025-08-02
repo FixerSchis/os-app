@@ -34,7 +34,7 @@
                             <div class="col-md-6">
                                 <div class="mb-3">
                                     <label for="ticket_type" class="form-label">Ticket Type</label>
-                                    <select class="form-select" id="ticket_type" name="ticket_type" required>
+                                    <select class="form-select" id="ticket_type" name="ticket_type" required title="Select ticket type">
                                         {% for ticket_type in TicketType.values() %}
                                         <option value="{{ ticket_type }}">{{ TicketType.descriptions()[ticket_type] }}</option>
                                         {% endfor %}
@@ -57,7 +57,7 @@
                                 <!-- User Selection (for Crew and Child tickets) -->
                                 <div class="mb-3" id="user_section" style="display: none;">
                                     <label for="user_id" class="form-label">User</label>
-                                    <select class="form-select" id="user_id" name="user_id">
+                                    <select class="form-select" id="user_id" name="user_id" title="Select user for ticket">
                                         <option value="">Select a user...</option>
                                         {% for user in users %}
                                         <option value="{{ user.id }}">{{ user.first_name }} {{ user.surname }} ({% if is_admin %}{{ user.email }}{% else %}{{ mask_email(user.email) }}{% endif %})</option>
@@ -98,7 +98,7 @@
                         </div>
 
                         <div class="mt-4">
-                            <button type="submit" class="btn btn-primary">Assign Ticket</button>
+                            <button type="submit" class="btn btn-primary" aria-label="Assign ticket to selected user">Assign Ticket</button>
                             <a href="{{ url_for('events.event_list') }}" class="btn btn-secondary">Cancel</a>
                         </div>
                     </div>

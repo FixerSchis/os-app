@@ -1,0 +1,164 @@
+{% extends "_template.html" %}
+
+{% block title %}Role Management{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Role Management</h1>
+        <div class="d-flex gap-2">
+            <a href="{{ url_for('role_management.permission_list') }}" class="btn btn-outline-info">
+                <i class="bi bi-list-check"></i> View All Permissions
+            </a>
+            <a href="{{ url_for('user_management.user_management') }}" class="btn btn-outline-secondary">
+                <i class="bi bi-people"></i> Manage Users
+            </a>
+            {% if current_user.has_permission('owner.promote') %}
+                <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#promoteUserModal">
+                    <i class="bi bi-arrow-up-circle"></i> Promote User to Owner
+                </button>
+            {% endif %}
+            <a href="{{ url_for('role_management.role_create') }}" class="btn btn-primary">
+                <i class="bi bi-plus-circle"></i> Create New Role
+            </a>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">Roles</h5>
+        </div>
+        <div class="card-body">
+            {% if roles %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Description</th>
+                                <th>Permissions</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for role in roles %}
+                            <tr>
+                                <td>
+                                    <strong>{{ role.name }}</strong>
+                                    {% if role.name == "owner" %}
+                                        <span class="badge bg-danger">Owner</span>
+                                    {% elif role.name == "default" %}
+                                        <span class="badge bg-warning">Default</span>
+                                    {% elif role.is_system_role %}
+                                        <span class="badge bg-secondary">System</span>
+                                    {% else %}
+                                        <span class="badge bg-success">Custom</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ role.description or 'No description' }}</td>
+                                <td>
+                                    <span class="badge bg-info">{{ role.permissions|length }} permissions</span>
+                                    {% if role.name == "owner" %}
+                                        <span class="badge bg-danger ms-1">All Permissions</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <a href="{{ url_for('role_management.role_view', role_id=role.id) }}"
+                                           class="btn btn-outline-primary">
+                                            <i class="bi bi-eye"></i> View
+                                        </a>
+                                        {% if role.name != "owner" %}
+                                            <a href="{{ url_for('role_management.role_edit', role_id=role.id) }}"
+                                               class="btn btn-outline-warning">
+                                                <i class="bi bi-pencil"></i> Edit
+                                            </a>
+                                        {% endif %}
+                                        {% if role.name not in ["owner", "default"] %}
+                                            <button type="button" class="btn btn-outline-danger"
+                                                onclick="confirmDelete('{{ role.name }}', {{ role.id }})"
+                                                aria-label="Delete role {{ role.name }}">
+                                                <i class="bi bi-trash"></i> Delete
+                                            </button>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="text-center text-muted py-4">
+                    <i class="bi bi-shield-x fs-1"></i>
+                    <p class="mt-2">No roles found.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm Delete</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete the role "<span id="roleName"></span>"?</p>
+                <p class="text-danger"><strong>This action cannot be undone.</strong></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="deleteForm" method="POST" style="display: inline;">
+                    <button type="submit" class="btn btn-danger">Delete Role</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Promote User Modal -->
+{% if current_user.has_permission('owner.promote') %}
+<div class="modal fade" id="promoteUserModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Promote User to Owner</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-warning"><strong>Warning:</strong> This action will transfer ownership to another user. You will lose your owner privileges and be assigned the next highest role.</p>
+                <form id="promoteForm" method="POST" action="{{ url_for('role_management.promote_user') }}">
+                    <div class="mb-3">
+                        <label for="userSelect" class="form-label">Select User to Promote:</label>
+                        <select class="form-select" id="userSelect" name="user_id" required title="Select user to promote to owner">
+                            <option value="">Choose a user...</option>
+                            {% for user in users %}
+                                {% if user.role and user.role.name != "owner" %}
+                                    <option value="{{ user.id }}">{{ user.username }} ({{ user.role.name }})</option>
+                                {% endif %}
+                            {% endfor %}
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" form="promoteForm" class="btn btn-danger">Promote User</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<script>
+function confirmDelete(roleName, roleId) {
+    document.getElementById('roleName').textContent = roleName;
+    document.getElementById('deleteForm').action = `/tools/roles/roles/${roleId}/delete`;
+    new bootstrap.Modal(document.getElementById('deleteModal')).show();
+}
+</script>
+{% endblock %}

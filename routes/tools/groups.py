@@ -7,11 +7,8 @@ from models.enums import CharacterAuditAction, CharacterStatus, GroupAuditAction
 from models.extensions import db
 from models.tools.character import Character, CharacterAuditLog
 from models.tools.group import Group, GroupAuditLog, GroupBackground, GroupInvite, GroupJoinRequest
-from utils.decorators import (
-    email_verified_required,
-    has_active_character_required,
-    user_admin_required,
-)
+from utils.decorators import email_verified_required, has_active_character_required
+from utils.permission_decorators import permission_required
 
 groups_bp = Blueprint("groups", __name__)
 
@@ -24,7 +21,7 @@ def group_list():
     # The 'admin_view' parameter will be 'false' when they switch to user view.
     admin_view_param = request.args.get("admin_view", "true")
     is_admin_and_wants_admin_view = (
-        current_user.has_role(Role.USER_ADMIN.value) and admin_view_param == "true"
+        current_user.has_permission("group.view_all") and admin_view_param == "true"
     )
 
     if is_admin_and_wants_admin_view:
@@ -173,7 +170,7 @@ def edit_group_post(group_id):
     character_id = request.form.get("character_id")
 
     # Prevent editing inactive groups (unless user is admin)
-    if not group.is_active and not current_user.has_role(Role.USER_ADMIN.value):
+    if not group.is_active and not current_user.has_permission("group.edit"):
         flash("Cannot edit inactive groups", "error")
         if admin_view == "false":
             return redirect(
@@ -200,13 +197,13 @@ def edit_group_post(group_id):
         background_changes.append("Goals updated")
 
     # Only allow type changes for admins
-    if current_user.has_role(Role.USER_ADMIN.value) and type and group.group_type_id != int(type):
+    if current_user.has_permission("group.edit") and type and group.group_type_id != int(type):
         group_type = GroupType.query.get(type)
         changes.append(f"Type changed from '{group.group_type.name}' to '{group_type.name}'")
         group.group_type_id = int(type)
 
     # Handle bank account changes using centralized methods
-    if current_user.has_role(Role.USER_ADMIN.value) and bank_account:
+    if current_user.has_permission("group.edit") and bank_account:
         try:
             bank_account_int = int(bank_account)
             if group.bank_account != bank_account_int:
@@ -470,7 +467,7 @@ def disband_group_post(group_id):
 @groups_bp.route("/<int:group_id>/disband/admin", methods=["POST"])
 @login_required
 @email_verified_required
-@user_admin_required
+@permission_required(permissions=["group.edit"])
 def disband_group_admin(group_id):
     group = Group.query.get_or_404(group_id)
 
@@ -496,7 +493,7 @@ def disband_group_admin(group_id):
 @groups_bp.route("/<int:group_id>/remove/<int:character_id>", methods=["POST"])
 @login_required
 @email_verified_required
-@user_admin_required
+@permission_required(permissions=["group.edit"])
 def remove_character(group_id, character_id):
     group = Group.query.get_or_404(group_id)
     character = Character.query.get_or_404(character_id)
@@ -532,7 +529,7 @@ def remove_character(group_id, character_id):
 @groups_bp.route("/create/admin", methods=["GET", "POST"])
 @login_required
 @email_verified_required
-@user_admin_required
+@permission_required(permissions=["group.edit"])
 def create_group_admin():
     if request.method == "GET":
         # Get active characters that are not in any group
@@ -614,7 +611,7 @@ def create_group_admin():
 @groups_bp.route("/<int:group_id>/edit/admin", methods=["GET"])
 @login_required
 @email_verified_required
-@user_admin_required
+@permission_required(permissions=["group.edit"])
 def edit_group_admin(group_id):
     group = Group.query.get_or_404(group_id)
     # Get active characters that are not in any group (available to add)
@@ -634,7 +631,7 @@ def edit_group_admin(group_id):
 @groups_bp.route("/<int:group_id>/edit/admin", methods=["POST"])
 @login_required
 @email_verified_required
-@user_admin_required
+@permission_required(permissions=["group.edit"])
 def edit_group_admin_post(group_id):
     group = Group.query.get_or_404(group_id)
 
@@ -675,12 +672,12 @@ def edit_group_admin_post(group_id):
         changes.append(f"Name changed from '{group.name}' to '{name}'")
 
     # Only allow type changes for admins
-    if current_user.has_role(Role.USER_ADMIN.value) and type and group.group_type_id != int(type):
+    if current_user.has_permission("group.edit") and type and group.group_type_id != int(type):
         changes.append(f"Type changed from '{group.group_type.name}' to '{group_type.name}'")
         group.group_type_id = int(type)
 
     # Handle bank account changes using centralized methods
-    if current_user.has_role(Role.USER_ADMIN.value):
+    if current_user.has_permission("group.edit"):
         if group.bank_account != bank_account_int:
             group.set_funds(bank_account_int, current_user.id, "Admin group edit")
 
@@ -707,7 +704,7 @@ def edit_group_admin_post(group_id):
 @groups_bp.route("/<int:group_id>/add_character/admin", methods=["POST"])
 @login_required
 @email_verified_required
-@user_admin_required
+@permission_required(permissions=["group.edit"])
 def add_character_admin(group_id):
     Group.query.get_or_404(group_id)
     character_id = request.form.get("character_id")
@@ -750,7 +747,7 @@ def group_audit_log(group_id):
     # Check if user has access to this group
     # User can view audit log if they are a member of the group or an admin
     user_has_access = False
-    if current_user.has_role(Role.USER_ADMIN.value):
+    if current_user.has_permission("group.view_all"):
         user_has_access = True
     else:
         # Check if any of user's characters are in this group
@@ -787,7 +784,7 @@ def activate_group(group_id):
 
     # Check if user is admin or if user has a character in this group
     user_has_access = False
-    if current_user.has_role(Role.USER_ADMIN.value):
+    if current_user.has_permission("group.edit"):
         user_has_access = True
     else:
         # Check if any of user's characters are in this group
@@ -821,7 +818,7 @@ def deactivate_group(group_id):
     character_id = request.form.get("character_id")
 
     # Only user-admins can deactivate groups with characters in them
-    if len(group.characters) > 0 and not current_user.has_role(Role.USER_ADMIN.value):
+    if len(group.characters) > 0 and not current_user.has_permission("group.edit"):
         flash("Only administrators can deactivate groups with members", "error")
         if admin_view == "false":
             return redirect(
@@ -917,7 +914,7 @@ def api_characters_search():
         characters_query = characters_query.filter(Character.name.ilike(f"%{query}%"))
 
     # Only apply faction filter for non-admin users
-    if faction_id and not current_user.has_role(Role.USER_ADMIN.value):
+    if faction_id and not current_user.has_permission("group.view_all"):
         characters_query = characters_query.filter(Character.faction_id == faction_id)
 
     # Limit results
@@ -1001,7 +998,7 @@ def view_join_requests(group_id):
     # Check if user has access to view join requests
     # User can view if they are a member of the group or an admin
     user_has_access = False
-    if current_user.has_role(Role.USER_ADMIN.value):
+    if current_user.has_permission("group.view_all"):
         user_has_access = True
     else:
         # Check if any of user's characters are in this group
@@ -1037,7 +1034,7 @@ def respond_to_join_request(group_id, request_id):
     # Check if user has access to respond to join requests
     # User can respond if they are a member of the group or an admin
     user_has_access = False
-    if current_user.has_role(Role.USER_ADMIN.value):
+    if current_user.has_permission("group.view_all"):
         user_has_access = True
     else:
         # Check if any of user's characters are in this group
@@ -1069,7 +1066,7 @@ def respond_to_join_request(group_id, request_id):
 @groups_bp.route("/backgrounds/")
 @login_required
 @email_verified_required
-@user_admin_required
+@permission_required(permissions=["group.background_approve"])
 def list_group_backgrounds():
     """List all group backgrounds that need review."""
     backgrounds = GroupBackground.query.filter_by(needs_review=True).all()
@@ -1083,7 +1080,7 @@ def list_group_backgrounds():
 @groups_bp.route("/backgrounds/<int:background_id>/review", methods=["GET"])
 @login_required
 @email_verified_required
-@user_admin_required
+@permission_required(permissions=["group.background_approve"])
 def review_group_background(background_id):
     """Review a specific group background."""
     background = GroupBackground.query.get_or_404(background_id)
@@ -1101,7 +1098,7 @@ def review_group_background(background_id):
 @groups_bp.route("/backgrounds/<int:background_id>/review", methods=["POST"])
 @login_required
 @email_verified_required
-@user_admin_required
+@permission_required(permissions=["group.background_approve"])
 def review_group_background_post(background_id):
     """Handle the review submission."""
     background = GroupBackground.query.get_or_404(background_id)

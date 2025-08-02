@@ -213,13 +213,21 @@ class Character(db.Model):
 
     def get_available_character_points(self):
         """Get the available character points for the character to spend."""
+        from models.tools.user import User
+
+        # Query the user directly to get the current character points
+        user = User.query.get(self.user_id)
+        user_points = user.character_points if user else 0
+
         character_cp_balance = self.base_character_points - self.get_total_skill_cost()
-        return self.user.character_points + max(0, character_cp_balance)
+        total_available = user_points + max(0, character_cp_balance)
+
+        return total_available
 
     def can_purchase_skill(self, skill, user):
         """Check if the character can purchase a skill."""
         # Check if user has permission
-        if not (user.id == self.user_id or user.has_role("user_admin")):
+        if not (user.id == self.user_id or user.has_permission("character.edit_all")):
             return False, "You don't have permission to modify this character's skills"
 
         # Check character status
@@ -227,7 +235,7 @@ class Character(db.Model):
             self.status == CharacterStatus.DEAD.value
             or self.status == CharacterStatus.RETIRED.value
         ):
-            if not user.has_role("user_admin"):
+            if not user.has_permission("character.edit_all"):
                 return False, "Only admins can modify skills of dead/retired characters"
 
         # Check if skill can be purchased multiple times
@@ -272,6 +280,8 @@ class Character(db.Model):
         # Spend CP if character is active
         if self.status == CharacterStatus.ACTIVE.value and cp_from_user > 0:
             user.spend_character_points(cp_from_user)
+            # Ensure the user is tracked in the session
+            db.session.merge(user)
 
         # Create or update the character skill
         character_skill = CharacterSkill.query.filter_by(
@@ -342,7 +352,7 @@ class Character(db.Model):
     def refund_skill(self, skill, user):
         """Refund a skill purchase for the character."""
         # Check if user has permission
-        if not (user.id == self.user_id or user.has_role("user_admin")):
+        if not (user.id == self.user_id or user.has_permission("character.edit_all")):
             raise ValueError("You don't have permission to modify this character's skills")
 
         # Check character status
@@ -350,7 +360,7 @@ class Character(db.Model):
             self.status == CharacterStatus.DEAD.value
             or self.status == CharacterStatus.RETIRED.value
         ):
-            if not user.has_role("user_admin"):
+            if not user.has_permission("character.edit_all"):
                 raise ValueError("Only admins can modify skills of dead/retired characters")
 
         # Get the character skill
@@ -394,7 +404,14 @@ class Character(db.Model):
 
         # Refund CP if character is active
         if self.status == CharacterStatus.ACTIVE.value and refund_to_user > 0:
-            self.user.add_character_points(refund_to_user)
+            # Query the user directly to ensure we have the latest state
+            from models.tools.user import User
+
+            user_to_refund = User.query.get(self.user_id)
+            if user_to_refund:
+                user_to_refund.add_character_points(refund_to_user)
+                # Ensure the user is tracked in the session
+                db.session.merge(user_to_refund)
 
         db.session.commit()
         return True
@@ -435,7 +452,7 @@ class Character(db.Model):
             log = CharacterAuditLog(
                 character_id=self.id,
                 editor_user_id=editor_user_id,
-                action=CharacterAuditAction.REPUTATION_CHANGE,
+                action=CharacterAuditAction.REPUTATION_CHANGE.value,
                 changes=(
                     f"Reputation with faction {faction_id} changed from {old_value} " f"to {value}"
                 ),
@@ -612,6 +629,38 @@ class Character(db.Model):
             changes=f"Funds set from {old_balance} to {new_balance} for {reason}",
         )
         db.session.add(audit_log)
+
+    def can_edit(self, user):
+        """Check if a user can edit this character."""
+        if not user or not user.is_authenticated:
+            return False
+        if user.id == self.user_id or user.has_permission("character.edit_all"):
+            return True
+        return False
+
+    def can_delete(self, user):
+        """Check if a user can delete this character."""
+        if not user or not user.is_authenticated:
+            return False
+        if user.has_permission("character.edit_all"):
+            return True
+        return False
+
+    def can_view_details(self, user):
+        """Check if a user can view detailed information about this character."""
+        if not user or not user.is_authenticated:
+            return False
+        if user.id == self.user_id or user.has_permission("character.view_all"):
+            return True
+        return False
+
+    def can_manage_inventory(self, user):
+        """Check if a user can manage this character's inventory."""
+        if not user or not user.is_authenticated:
+            return False
+        if user.has_permission("character.edit_all"):
+            return True
+        return False
 
 
 def assign_character_id(user_id):

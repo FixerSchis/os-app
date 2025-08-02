@@ -6,7 +6,7 @@
 <div class="container">
     <h1>Downtime</h1>
 
-    {% if current_user.has_role('downtime_team') %}
+    {% if has_permission('downtime.manage') %}
         <!-- Downtime Team View -->
         {% if not active_period %}
             <div class="row mb-4">
@@ -14,7 +14,7 @@
                     <form action="{{ url_for('downtime.start_downtime') }}" method="POST" id="start-downtime-form">
                         <div class="mb-3">
                             <label for="event-select" class="form-label">Select Event for Downtime</label>
-                            <select class="form-select select2" id="event-select" name="event_id" required>
+                            <select class="form-select select2" id="event-select" name="event_id" required title="Select event for downtime">
                                 <option value="">Select an event...</option>
                             </select>
                         </div>
@@ -38,7 +38,7 @@
                     <h2>Character Packs</h2>
                     <div class="mb-3">
                         <label for="status-filter" class="form-label">Filter by Status:</label>
-                        <select class="form-select" id="status-filter">
+                        <select class="form-select" id="status-filter" title="Filter downtime packs by status">
                             {% for status in DowntimeTaskStatus %}
                                 {% if status.value in packs_by_status %}
                                     <option value="{{ status.value }}" {% if status.value == default_status %}selected{% endif %}>
@@ -119,7 +119,7 @@
     {% endif %}
 </div>
 
-{% if current_user.has_role('downtime_team') %}
+{% if has_permission('downtime.manage') %}
 <script src="{{ url_for('static', filename='js/pages/downtime-index.js') }}"></script>
 {% endif %}
 {% endblock %}

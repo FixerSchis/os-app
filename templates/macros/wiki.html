@@ -1,7 +1,7 @@
 {% macro wiki_page_select(input_id, select_name, initial_slug='', initial_title='', required=false, placeholder='Search for a wiki page...', help_text='The wiki page this item is documented on') %}
 <div class="form-group">
     <label for="{{ input_id }}">Wiki Page {% if required %}*{% endif %}</label>
-    <select id="{{ input_id }}" name="{{ select_name }}" class="form-control select2-wiki" {% if required %}required{% endif %} style="width: 100%;">
+    <select id="{{ input_id }}" name="{{ select_name }}" class="form-control select2-wiki width-100" {% if required %}required{% endif %} title="Select wiki page">
         {% if initial_slug and initial_title %}
             <option value="{{ initial_slug }}" selected>{{ initial_title }} ({{ initial_slug }})</option>
         {% elif initial_slug %}

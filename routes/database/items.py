@@ -17,17 +17,15 @@ from models.extensions import db
 from models.tools.downtime import DowntimePack
 from models.tools.print_template import PrintTemplate
 from utils import generate_qr_code, generate_web_qr_code
+from utils.permission_decorators import permission_required
 
 items_bp = Blueprint("items", __name__)
 
 
 @items_bp.route("/")
 @login_required
+@permission_required(permissions=["rules.items"])
 def list():
-    if not current_user.has_role(Role.RULES_TEAM.value):
-        flash("You do not have permission to access this page", "error")
-        return redirect(url_for("index"))
-
     # Get query parameters
     sort_by = request.args.get("sort_by", "item_id")
     sort_order = request.args.get("sort_order", "asc")
@@ -129,10 +127,8 @@ def list():
 
 @items_bp.route("/create", methods=["GET"])
 @login_required
+@permission_required(permissions=["rules.items"])
 def create():
-    if not current_user.has_role(Role.RULES_TEAM.value):
-        flash("You do not have permission to access this page", "error")
-        return redirect(url_for("index"))
     blueprints = ItemBlueprint.query.order_by(ItemBlueprint.name).all()
     mods = Mod.query.order_by(Mod.name).all()
     mods_dict = [{"id": mod.id, "name": mod.name} for mod in mods]
@@ -141,10 +137,8 @@ def create():
 
 @items_bp.route("/create", methods=["POST"])
 @login_required
+@permission_required(permissions=["rules.items"])
 def create_post():
-    if not current_user.has_role(Role.RULES_TEAM.value):
-        flash("You do not have permission to access this page", "error")
-        return redirect(url_for("index"))
     blueprints = ItemBlueprint.query.order_by(ItemBlueprint.name).all()
     mods = Mod.query.order_by(Mod.name).all()
     mods_dict = [{"id": mod.id, "name": mod.name} for mod in mods]
@@ -201,10 +195,8 @@ def create_post():
 
 @items_bp.route("/<int:id>/edit", methods=["GET"])
 @login_required
+@permission_required(permissions=["rules.items"])
 def edit(id):
-    if not current_user.has_role(Role.RULES_TEAM.value):
-        flash("You do not have permission to access this page", "error")
-        return redirect(url_for("index"))
     item = Item.query.get_or_404(id)
     blueprints = {bp.id: bp for bp in ItemBlueprint.query.all()}
     mods = Mod.query.order_by(Mod.name).all()
@@ -234,10 +226,8 @@ def edit(id):
 
 @items_bp.route("/<int:id>/edit", methods=["POST"])
 @login_required
+@permission_required(permissions=["rules.items"])
 def edit_post(id):
-    if not current_user.has_role(Role.RULES_TEAM.value):
-        flash("You do not have permission to access this page", "error")
-        return redirect(url_for("index"))
     item = Item.query.get_or_404(id)
     blueprints = {bp.id: bp for bp in ItemBlueprint.query.all()}
     mods = Mod.query.order_by(Mod.name).all()
@@ -345,10 +335,8 @@ def edit_post(id):
 
 @items_bp.route("/<int:id>/delete", methods=["POST"])
 @login_required
+@permission_required(permissions=["rules.items"])
 def delete(id):
-    if not current_user.has_role(Role.RULES_TEAM.value):
-        flash("You do not have permission to access this page", "error")
-        return redirect(url_for("index"))
     item = Item.query.get_or_404(id)
     try:
         db.session.delete(item)
@@ -497,7 +485,7 @@ def view(id, version):
 
     # Determine edit URL based on permissions
     edit_url = None
-    if current_user.is_authenticated and current_user.has_role("rules_team"):
+    if current_user.is_authenticated and current_user.has_permission("rules.items"):
         edit_url = url_for("items.edit", id=item.id)
 
     return render_template(
@@ -517,12 +505,9 @@ def view(id, version):
 
 @items_bp.route("/print_unprinted")
 @login_required
+@permission_required(permissions=["rules.items"])
 def print_unprinted_items():
     """Print all unprinted items and mark them as printed."""
-    if not current_user.has_role(Role.RULES_TEAM.value):
-        flash("You do not have permission to access this page", "error")
-        return redirect(url_for("index"))
-
     # Get all unprinted items
     unprinted_items = Item.query.filter_by(printed=False).all()
 
@@ -569,12 +554,9 @@ def print_unprinted_items():
 
 @items_bp.route("/<int:id>/mark_unprinted", methods=["POST"])
 @login_required
+@permission_required(permissions=["rules.items"])
 def mark_item_unprinted(id):
     """Mark a specific item as unprinted so it will be included in the next batch."""
-    if not current_user.has_role(Role.RULES_TEAM.value):
-        flash("You do not have permission to access this page", "error")
-        return redirect(url_for("index"))
-
     item = Item.query.get_or_404(id)
 
     if not item.printed:
@@ -604,12 +586,9 @@ def mark_item_unprinted(id):
 
 @items_bp.route("/<int:id>/mark_printed", methods=["POST"])
 @login_required
+@permission_required(permissions=["rules.items"])
 def mark_item_printed(id):
     """Mark a specific item as printed."""
-    if not current_user.has_role(Role.RULES_TEAM.value):
-        flash("You do not have permission to access this page", "error")
-        return redirect(url_for("index"))
-
     item = Item.query.get_or_404(id)
 
     if item.printed:

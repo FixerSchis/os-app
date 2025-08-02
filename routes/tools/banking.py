@@ -5,7 +5,8 @@ from models.enums import CharacterStatus
 from models.extensions import db
 from models.tools.character import Character
 from models.tools.group import Group
-from utils.decorators import email_verified_required, user_admin_required
+from utils.decorators import email_verified_required
+from utils.permission_decorators import permission_required
 
 banking_bp = Blueprint("banking", __name__)
 
@@ -26,7 +27,9 @@ def bank():
         target_accounts.append({"type": "group", "id": group.id, "name": f"{group.name} (Group)"})
 
     # --- Logic for Admins ---
-    if current_user.has_role("user_admin"):
+    if current_user.has_permission("banking.manage") or current_user.has_permission(
+        "banking.view_all"
+    ):
         # Add balance information to source accounts for admins
         source_accounts = []
         for char in all_characters:
@@ -113,7 +116,7 @@ def bank():
 @banking_bp.route("/update-balance", methods=["POST"])
 @login_required
 @email_verified_required
-@user_admin_required
+@permission_required(permissions=["banking.manage"])
 def update_balance():
     account_type = request.form.get("account_type")
     account_id = request.form.get("account_id")
@@ -170,13 +173,13 @@ def transfer():
     # Get source account
     if source_type == "character":
         source = Character.query.get_or_404(source_id)
-        if not current_user.has_role("user_admin") and source.user_id != current_user.id:
+        if not current_user.has_permission("banking.manage") and source.user_id != current_user.id:
             flash("You do not have access to this account", "error")
             return redirect(url_for("banking.bank"))
         source_name = source.name
     else:
         source = Group.query.get_or_404(source_id)
-        if not current_user.has_role("user_admin"):
+        if not current_user.has_permission("banking.manage"):
             active_character = Character.query.filter_by(
                 user_id=current_user.id, status=CharacterStatus.ACTIVE.value
             ).first()

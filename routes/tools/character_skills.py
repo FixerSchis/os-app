@@ -6,11 +6,9 @@ from models.database.skills import Skill
 from models.enums import CharacterAuditAction, CharacterStatus
 from models.extensions import db
 from models.tools.character import Character, CharacterAuditLog, CharacterSkill
-from utils.decorators import (
-    character_owner_or_user_admin_required,
-    email_verified_required,
-    user_admin_required,
-)
+from models.tools.user import User
+from utils.decorators import character_owner_or_user_admin_required, email_verified_required
+from utils.permission_decorators import permission_required
 
 character_skills_bp = Blueprint("character_skills", __name__)
 
@@ -204,10 +202,18 @@ def refund_skill(character_id):
 
     skill = Skill.query.get_or_404(skill_id)
 
-    # Only allow non-admins to refund skills for their own character if it's in development
-    if not current_user.has_role("user_admin"):
+    # Only allow users with refund permission or character edit permission to refund skills
+    # for non-developing characters
+    if not (
+        current_user.has_permission("character.refund")
+        or current_user.has_permission("character.edit_all")
+    ):
         if character.status != CharacterStatus.DEVELOPING.value:
-            flash("Only admins can refund skills for non-developing characters.", "error")
+            flash(
+                "Only users with refund permission can refund skills for "
+                "non-developing characters.",
+                "error",
+            )
             return redirect(url_for("character_skills.character_skills", character_id=character_id))
 
     # Check if this skill is a prerequisite for any other skills the character has

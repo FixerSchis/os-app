@@ -15,7 +15,8 @@ from models.tools.character_inventory import (
     ItemTransferStatus,
 )
 from models.tools.user import User
-from utils.decorators import email_verified_required, user_admin_required
+from utils.decorators import email_verified_required
+from utils.permission_decorators import permission_required
 
 items_bp = Blueprint("tools_items", __name__)
 
@@ -26,7 +27,7 @@ items_bp = Blueprint("tools_items", __name__)
 def items_list():
     """Display the items page - different views for user_admin vs regular users."""
 
-    if current_user.has_role(Role.USER_ADMIN.value):
+    if current_user.has_permission("character.edit_all"):
         return _admin_items_view()
     else:
         return _user_items_view()
@@ -138,7 +139,7 @@ def _user_items_view():
 @items_bp.route("/character/<int:character_id>/inventory")
 @login_required
 @email_verified_required
-@user_admin_required
+@permission_required(permissions=["character.edit_all"])
 def character_inventory(character_id):
     """Admin view of a specific character's inventory."""
 
@@ -175,7 +176,7 @@ def character_inventory(character_id):
 @items_bp.route("/character/<int:character_id>/assign-item", methods=["POST"])
 @login_required
 @email_verified_required
-@user_admin_required
+@permission_required(permissions=["character.edit_all"])
 def assign_item_to_character(character_id):
     """Assign an item to a character (admin only)."""
 
@@ -292,7 +293,7 @@ def assign_item_to_character(character_id):
 @items_bp.route("/character/<int:character_id>/remove-item", methods=["POST"])
 @login_required
 @email_verified_required
-@user_admin_required
+@permission_required(permissions=["character.edit_all"])
 def remove_item_from_character(character_id):
     """Remove an item from a character (admin only)."""
 
@@ -410,7 +411,7 @@ def create_transfer_request():
 @items_bp.route("/transfer-request/<int:request_id>/process", methods=["POST"])
 @login_required
 @email_verified_required
-@user_admin_required
+@permission_required(permissions=["character.edit_all"])
 def process_transfer_request(request_id):
     """Process a transfer request (approve or deny)."""
 

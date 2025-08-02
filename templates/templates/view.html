@@ -7,7 +7,7 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1>{{ title }}</h1>
         <div>
-            {% if current_user.is_authenticated and current_user.has_role('admin') %}
+            {% if current_user.is_authenticated and has_permission('template.edit') %}
             <button class="btn btn-primary print-btn" data-template-type="{{ template.type.value }}" data-id="{{ character.id if character else item.id }}">
                 <i class="fas fa-print"></i> Print
             </button>

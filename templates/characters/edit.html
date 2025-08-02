@@ -32,7 +32,7 @@
                             <h5 class="mb-0">Basic Information</h5>
                         </div>
                         <div class="card-body">
-                            {% set is_readonly = character and character.status in ['retired', 'dead'] and not current_user.has_role('user_admin') %}
+                            {% set is_readonly = character and character.status in ['retired', 'dead'] and not has_permission('character.edit_all') %}
                             <div class="form-group mb-3">
                                 <label for="name" class="form-label">Character Name *</label>
                                 <input type="text" class="form-control" id="name" name="name" value="{{ character.name if character else '' }}" required {% if is_readonly %}readonly{% endif %}>
@@ -73,14 +73,14 @@
                         <div class="card-body">
                             <div class="form-group">
                                 <label for="faction" class="form-label">Faction{% if can_edit_faction %} *{% endif %}</label>
-                                {% set can_edit_faction = (not character) or (current_user.has_role('user_admin') or current_user.has_role('npc')) and not is_readonly %}
+                                {% set can_edit_faction = (not character) or (has_permission('character.edit_all') or has_permission('character.edit_all')) and not is_readonly %}
                                 {% set owner = user if user is defined else current_user %}
-                                {% set show_megacorps = owner.has_role('npc') %}
+                                {% set show_megacorps = has_permission('character.edit_all') %}
                                 {% if can_edit_faction %}
-                                <select id="faction" name="faction" class="form-select" required>
+                                <select id="faction" name="faction" class="form-select" required title="Select character faction">
                                     <option value="">Select a faction...</option>
                                     {% for faction in factions %}
-                                        {% if faction.allow_player_characters or current_user.has_role('npc') or current_user.has_role('user_admin') %}
+                                        {% if faction.allow_player_characters or has_permission('character.edit_all') or has_permission('character.edit_all') %}
                                             <option value="{{ faction.id }}" {% if character and character.faction_id == faction.id %}selected{% endif %}>
                                                 {{ faction.name }}
                                             </option>
@@ -88,18 +88,19 @@
                                     {% endfor %}
                                 </select>
                                 {% else %}
-                                <input type="text" class="form-control" value="{{ character.faction.name if character and character.faction else '' }}" readonly>
+                                <label for="faction_display" class="sr-only">Faction</label>
+                                <input type="text" class="form-control" id="faction_display" value="{{ character.faction.name if character and character.faction else '' }}" readonly>
                                 <input type="hidden" name="faction" value="{{ character.faction_id if character and character.faction else '' }}">
                                 {% endif %}
                             </div>
 
                             <div class="form-group mb-0">
                                 <label for="species_id" class="form-label">Species{% if can_edit_species %} *{% endif %}</label>
-                                {% set user_is_admin = current_user.has_role('user_admin') %}
-                                {% set user_is_npc = current_user.has_role('npc') %}
+                                {% set user_is_admin = has_permission('character.edit_all') %}
+                                {% set user_is_npc = has_permission('character.edit_all') %}
                                 {% set can_edit_species = (not character) or (user_is_admin or user_is_npc) and not is_readonly %}
                                 {% if can_edit_species %}
-                                <select id="species_id" name="species_id" class="form-select select2-species" style="width: 100%;" data-placeholder="Select species..." required {% if is_readonly %}disabled{% endif %}>
+                                <select id="species_id" name="species_id" class="form-select select2-species width-100" data-placeholder="Select species..." title="Select character species" required {% if is_readonly %}disabled{% endif %}>
                                     <option value="">Select species...</option>
                                     {% for species in species_list %}
                                         <option value="{{ species.id }}" data-factions="{{ species.permitted_factions_list|tojson }}" {% if character and character.species_id == species.id %}selected{% endif %}>{{ species.name }}</option>
@@ -109,7 +110,8 @@
                                 <input type="hidden" name="species_id" value="{{ character.species_id if character and character.species else '' }}">
                                 {% endif %}
                                 {% else %}
-                                <input type="text" class="form-control" value="{{ character.species.name if character and character.species else '' }}" readonly>
+                                <label for="species_display" class="sr-only">Species</label>
+                                <input type="text" class="form-control" id="species_display" value="{{ character.species.name if character and character.species else '' }}" readonly>
                                 <input type="hidden" name="species_id" value="{{ character.species_id if character and character.species else '' }}">
                                 {% endif %}
                             </div>
@@ -165,7 +167,7 @@
 
                 {% if character %}
                 <!-- Cybernetics -->
-                {% if current_user.has_role('user_admin') or character.cybernetics %}
+                {% if has_permission('character.edit_all') or character.cybernetics %}
                 <div class="col-lg-6">
                     <div class="card">
                         <div class="card-header">
@@ -173,8 +175,8 @@
                         </div>
                         <div class="card-body">
                             <div class="form-group mb-0">
-                                {% if current_user.has_role('user_admin') %}
-                                <select id="cybernetic_ids" name="cybernetic_ids[]" class="form-select select2-cybernetics" multiple style="width: 100%;" data-placeholder="Select cybernetics...">
+                                {% if has_permission('character.edit_all') %}
+                                <select id="cybernetic_ids" name="cybernetic_ids[]" class="form-select select2-cybernetics width-100" multiple data-placeholder="Select cybernetics..." title="Select cybernetics...">
                                     {% for cyber in all_cybernetics %}
                                     <option value="{{ cyber.id }}" {% if character and cyber in character.cybernetics %}selected{% endif %}>{{ cyber.name }}</option>
                                     {% endfor %}
@@ -196,17 +198,17 @@
                 {% endif %}
 
                 <!-- Active Conditions -->
-                {% if character and (current_user.has_role('user_admin') or character.active_conditions) %}
+                {% if character and (has_permission('character.edit_all') or character.active_conditions) %}
                 <div class="col-lg-6">
                     <div class="card">
                         <div class="card-header">
                             <h5 class="mb-0">Active Conditions</h5>
                         </div>
                         <div class="card-body">
-                            {% if current_user.has_role('user_admin') %}
+                            {% if has_permission('character.edit_all') %}
                                 <div class="row g-2 align-items-end mb-3">
                                     <div class="col-md-6">
-                                        <select id="add_condition_id" name="add_condition_id" class="form-select">
+                                        <select id="add_condition_id" name="add_condition_id" class="form-select" title="Select condition to add">
                                             <option value="">Select a condition...</option>
                                             {% for condition in all_conditions %}
                                             <option value="{{ condition.id }}">{{ condition.name }}</option>
@@ -214,7 +216,7 @@
                                         </select>
                                     </div>
                                     <div class="col-auto">
-                                        <button type="submit" name="add_condition" value="1" class="btn btn-primary">
+                                        <button type="submit" name="add_condition" value="1" class="btn btn-primary" aria-label="Add condition to character">
                                             <i class="fas fa-plus me-1"></i>Add Condition
                                         </button>
                                     </div>
@@ -227,10 +229,10 @@
                                         <thead>
                                             <tr>
                                                 <th>Condition</th>
-                                                <th style="width: 150px;">Current Stage</th>
-                                                <th style="width: 150px;">Events Remaining</th>
-                                                {% if current_user.has_role('user_admin') %}
-                                                <th style="width: 100px;">Actions</th>
+                                                <th class="width-150-px">Current Stage</th>
+                                                <th class="width-150-px">Events Remaining</th>
+                                                {% if has_permission('character.edit_all') %}
+                                                <th class="width-100-px">Actions</th>
                                                 {% endif %}
                                             </tr>
                                         </thead>
@@ -238,9 +240,9 @@
                                             {% for ac in character.active_conditions %}
                                             <tr>
                                                 <td>{{ ac.condition.name }}</td>
-                                                {% if current_user.has_role('user_admin') %}
+                                                {% if has_permission('character.edit_all') %}
                                                 <td>
-                                                    <select name="condition_stage_{{ ac.id }}" class="form-select form-select-sm" style="width: 100px;">
+                                                    <select name="condition_stage_{{ ac.id }}" class="form-select form-select-sm width-100-px" title="Select condition stage">
                                                         {% for condition in all_conditions %}
                                                             {% if condition.id == ac.condition_id %}
                                                                 {% for stage in condition.stages %}
@@ -253,11 +255,12 @@
                                                     </select>
                                                 </td>
                                                 <td>
-                                                    <input type="number" name="condition_duration_{{ ac.id }}" value="{{ ac.current_duration }}"
-                                                           class="form-control form-control-sm" min="0" style="width: 80px;">
+                                                    <label for="condition_duration_{{ ac.id }}" class="sr-only">Condition duration</label>
+                                                    <input type="number" id="condition_duration_{{ ac.id }}" name="condition_duration_{{ ac.id }}" value="{{ ac.current_duration }}"
+                                                           class="form-control form-control-sm width-80-px" min="0">
                                                 </td>
                                                 <td>
-                                                    <button type="submit" name="remove_condition" value="{{ ac.id }}" class="btn btn-danger btn-sm">
+                                                    <button type="submit" name="remove_condition" value="{{ ac.id }}" class="btn btn-danger btn-sm" aria-label="Remove condition">
                                                         <i class="fas fa-times"></i>
                                                     </button>
                                                 </td>
@@ -277,7 +280,7 @@
                 {% endif %}
 
                 <!-- Tags -->
-                {% if character and (current_user.has_role('user_admin') or character.tags.all()) %}
+                {% if character and (has_permission('character.edit_all') or character.tags.all()) %}
                 <div class="col-lg-6">
                     <div class="card">
                         <div class="card-header">
@@ -285,8 +288,8 @@
                         </div>
                         <div class="card-body">
                             <div class="form-group mb-0">
-                                {% if current_user.has_role('user_admin') %}
-                                <select name="tag_ids[]" class="form-select select2-tags" multiple style="width: 100%;" data-placeholder="Add tags...">
+                                {% if has_permission('character.edit_all') %}
+                                <select name="tag_ids[]" class="form-select select2-tags width-100" multiple data-placeholder="Add tags..." title="Select character tags">
                                     {% for tag in character.tags %}
                                     <option value="{{ tag.id }}" selected>{{ tag.name }}</option>
                                     {% endfor %}
@@ -304,7 +307,7 @@
                 </div>
                 {% endif %}
 
-                {% if current_user.has_role('user_admin') %}
+                {% if has_permission('character.edit_all') %}
                 <!-- Character Points -->
                 <div class="col-lg-6">
                     <div class="card">
@@ -315,7 +318,7 @@
                             <div class="form-group mb-0">
                                 <label for="base_character_points" class="form-label">Base Character Points</label>
                                 <input type="number" id="base_character_points" name="base_character_points" class="form-control"
-                                       value="{{ character.base_character_points if character else (30 if current_user.has_role('npc') else 10) }}"
+                                       value="{{ character.base_character_points if character else (30 if has_permission('character.edit_all') else 10) }}"
                                        min="0" {% if is_readonly %}readonly{% endif %}>
                                 <div class="form-text text-muted">Default is 10 CP, or 30 CP for NPCs</div>
                             </div>
@@ -336,7 +339,7 @@
                                     <thead>
                                         <tr>
                                             <th>Faction</th>
-                                            <th style="width: 120px;">Reputation</th>
+                                            <th class="width-120-px">Reputation</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -344,8 +347,10 @@
                                         <tr>
                                             <td>{{ faction.name }}</td>
                                             <td>
-                                                {% if current_user.has_role('user_admin') %}
+                                                {% if has_permission('character.edit_all') %}
+                                                <label for="reputation_{{ faction.id }}" class="sr-only">Reputation for {{ faction.name }}</label>
                                                 <input type="number"
+                                                       id="reputation_{{ faction.id }}"
                                                        class="form-control form-control-sm"
                                                        name="reputation_{{ faction.id }}"
                                                        value="{{ character.get_reputation(faction.id) }}">
@@ -365,7 +370,7 @@
                 {% endif %}
 
                 <!-- Character Samples (Admin Only) -->
-                {% if current_user.has_role('user_admin') and character %}
+                {% if has_permission('character.edit_all') and character %}
                 <div class="col-lg-6">
                     <div class="card">
                         <div class="card-header">
@@ -383,7 +388,7 @@
                                                     <th>Sample</th>
                                                     <th>Type</th>
                                                     <th>Researched</th>
-                                                    {% if current_user.has_role('user_admin') %}
+                                                    {% if has_permission('character.edit_all') %}
                                                     <th>Actions</th>
                                                     {% endif %}
                                                 </tr>
@@ -400,7 +405,7 @@
                                                             <span class="badge bg-warning">No</span>
                                                         {% endif %}
                                                     </td>
-                                                    {% if current_user.has_role('user_admin') %}
+                                                    {% if has_permission('character.edit_all') %}
                                                     <td>
                                                         <form method="POST" action="{{ url_for('characters.edit_post', character_id=character.id) }}"
                                                               style="display: inline;"
@@ -409,7 +414,7 @@
                                                             {% if admin_context %}
                                                             <input type="hidden" name="admin_context" value="1">
                                                             {% endif %}
-                                                            <button type="submit" class="btn btn-sm btn-danger">Remove</button>
+                                                            <button type="submit" class="btn btn-sm btn-danger" aria-label="Remove sample from character">Remove</button>
                                                         </form>
                                                     </td>
                                                     {% endif %}
@@ -432,7 +437,7 @@
                                     {% endif %}
                                     <input type="hidden" name="add_sample" value="1">
                                     <div class="mb-3">
-                                        <select class="form-select select2-sample" id="add_sample_id" name="add_sample_id" required>
+                                        <select class="form-select select2-sample" id="add_sample_id" name="add_sample_id" required title="Select sample to add">
                                             <option value="">Choose a sample...</option>
                                             {% for sample in available_samples %}
                                             <option value="{{ sample.id }}">
@@ -441,7 +446,7 @@
                                             {% endfor %}
                                         </select>
                                     </div>
-                                    <button type="submit" class="btn btn-primary btn-sm">
+                                    <button type="submit" class="btn btn-primary btn-sm" aria-label="Add sample to character">
                                         <i class="fas fa-plus me-1"></i>Add Sample
                                     </button>
                                 </form>
@@ -473,7 +478,7 @@
                                                         <th>Type</th>
                                                         <th>Expiry</th>
                                                         <th>Assigned</th>
-                                                        {% if current_user.has_role('user_admin') %}
+                                                        {% if has_permission('character.edit_all') %}
                                                         <th>Actions</th>
                                                         {% endif %}
                                                     </tr>
@@ -496,14 +501,14 @@
                                                             {% endif %}
                                                         </td>
                                                         <td>{{ character_item.assigned_at.strftime('%Y-%m-%d %H:%M') }}</td>
-                                                        {% if current_user.has_role('user_admin') %}
+                                                        {% if has_permission('character.edit_all') %}
                                                         <td>
                                                             <form method="POST" action="{{ url_for('tools_items.remove_item_from_character', character_id=character.id) }}"
                                                                   style="display: inline;"
                                                                   onsubmit="return confirm('Are you sure you want to remove this item?')">
                                                                 <input type="hidden" name="character_item_id" value="{{ character_item.id }}">
                                                                 <input type="hidden" name="from_character_edit" value="1">
-                                                                <button type="submit" class="btn btn-sm btn-danger">Remove</button>
+                                                                <button type="submit" class="btn btn-sm btn-danger" aria-label="Remove item from character inventory">Remove</button>
                                                             </form>
                                                         </td>
                                                         {% endif %}
@@ -524,7 +529,7 @@
                 {% endif %}
 
                 <!-- Assign New Item (Admin Only) - Moved outside main form to fix nested form issue -->
-                {% if current_user.has_role('user_admin') and character %}
+                {% if has_permission('character.edit_all') and character %}
                 <div class="mt-4">
                     <div class="card">
                         <div class="card-header">
@@ -537,7 +542,7 @@
                                     <div class="col-md-6">
                                         <div class="mb-3">
                                             <label for="item_id" class="form-label">Select Existing Item</label>
-                                            <select class="form-select select2-single" id="item_id" name="item_id">
+                                            <select class="form-select select2-single" id="item_id" name="item_id" title="Select existing item">
                                                 <option value="">Choose an existing item...</option>
                                                 {% for item in available_items %}
                                                 <option value="{{ item.id }}">
@@ -550,7 +555,7 @@
                                     <div class="col-md-6">
                                         <div class="mb-3">
                                             <label for="blueprint_id" class="form-label">Or Create New Item from Blueprint</label>
-                                            <select class="form-select select2-single" id="blueprint_id" name="blueprint_id">
+                                            <select class="form-select select2-single" id="blueprint_id" name="blueprint_id" title="Select blueprint for new item">
                                                 <option value="">Choose a blueprint...</option>
                                                 {% for blueprint in item_blueprints %}
                                                 <option value="{{ blueprint.id }}">
@@ -561,7 +566,7 @@
                                         </div>
                                     </div>
                                 </div>
-                                <button type="submit" class="btn btn-primary">
+                                <button type="submit" class="btn btn-primary" aria-label="Assign item to character">
                                     <i class="fas fa-plus me-1"></i>Assign Item
                                 </button>
                             </form>
@@ -572,7 +577,7 @@
             </div>
 
             <div class="mt-4">
-                <button type="submit" class="btn btn-primary">
+                <button type="submit" class="btn btn-primary" aria-label="Save character changes">
                     <i class="fas fa-save me-1"></i>Save Changes
                 </button>
                 <a href="{{ url_for('characters.character_list') }}" class="btn btn-secondary">
@@ -587,10 +592,10 @@
 {% block scripts %}
 {{ super() }}
 <script id="js-variables" type="application/json">
-  {{ {'userIsAdmin': current_user.has_role('user_admin'), 'userIsNpc': current_user.has_role('npc')} | tojson | safe }}
+  {{ {'userIsAdmin': has_permission('character.edit_all'), 'userIsNpc': has_permission('character.edit_all')} | tojson | safe }}
 </script>
 
-{% if current_user.has_role('user_admin') %}
+{% if has_permission('character.edit_all') %}
 <link href="{{ url_for('static', filename='external/css/select2.min.css') }}" rel="stylesheet" />
 <link href="{{ url_for('static', filename='css/components/select2-custom.css') }}" rel="stylesheet" />
 <script src="{{ url_for('static', filename='js/components/tag-select.js') }}"></script>
@@ -598,7 +603,7 @@
 
 
 <script src="{{ url_for('static', filename='js/components/character-species-filter.js') }}"></script>
-{% if character and current_user.has_role('user_admin') %}
+{% if character and has_permission('character.edit_all') %}
 <script src="{{ url_for('static', filename='js/components/character-conditions.js') }}"></script>
 {% endif %}
 <script src="{{ url_for('static', filename='js/pages/character-edit.js') }}"></script>

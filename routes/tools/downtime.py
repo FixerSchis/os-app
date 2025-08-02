@@ -35,8 +35,9 @@ from models.tools.research import (
     ResearchStage,
     ResearchStageRequirement,
 )
-from utils.decorators import character_owner_or_downtime_team_required, downtime_team_required
+from utils.decorators import character_owner_or_downtime_team_required, email_verified_required
 from utils.email import send_downtime_completed_notification, send_downtime_pack_enter_notification
+from utils.permission_decorators import permission_required
 
 bp = Blueprint("downtime", __name__)
 
@@ -125,7 +126,7 @@ def index():
         )
 
     # For downtime team users
-    if current_user.has_role("downtime_team"):
+    if current_user.has_permission("downtime.manage"):
         # Get all packs and group them by status
         packs_by_status = {}
         for pack in active_period.packs:
@@ -186,7 +187,7 @@ def index():
 
 @bp.route("/start", methods=["POST"])
 @login_required
-@downtime_team_required
+@permission_required(permissions=["downtime.manage"])
 def start_downtime():
     """Start a new downtime period."""
     if DowntimePeriod.query.filter_by(status=DowntimeStatus.PENDING).first():
@@ -238,7 +239,7 @@ def start_downtime():
 
 @bp.route("/enter-pack-contents/<int:period_id>/<int:character_id>", methods=["GET"])
 @login_required
-@downtime_team_required
+@character_owner_or_downtime_team_required
 def enter_pack_contents(period_id, character_id):
     """Display the pack contents entry page."""
     pack = DowntimePack.query.filter_by(
@@ -276,7 +277,7 @@ def enter_pack_contents(period_id, character_id):
 
 @bp.route("/enter-pack-contents/<int:period_id>/<int:character_id>", methods=["POST"])
 @login_required
-@downtime_team_required
+@character_owner_or_downtime_team_required
 def enter_pack_contents_post(period_id, character_id):
     """Handle pack contents entry submission."""
     pack = DowntimePack.query.filter_by(
@@ -649,7 +650,7 @@ def enter_downtime_post(period_id, character_id):
 
 @bp.route("/manual-review/<int:period_id>/<int:character_id>", methods=["GET"])
 @login_required
-@downtime_team_required
+@permission_required(permissions=["downtime.manage"])
 def manual_review(period_id, character_id):
     """Display the manual review page for downtime activities."""
     character = Character.query.get_or_404(character_id)
@@ -724,7 +725,7 @@ def manual_review(period_id, character_id):
 
 @bp.route("/manual-review/<int:period_id>/<int:character_id>", methods=["POST"])
 @login_required
-@downtime_team_required
+@permission_required(permissions=["downtime.manage"])
 def manual_review_post(period_id, character_id):
     """Handle manual review submission."""
     pack = DowntimePack.query.filter_by(
@@ -822,7 +823,7 @@ def manual_review_post(period_id, character_id):
 
 @bp.route("/process/<int:period_id>", methods=["POST"])
 @login_required
-@downtime_team_required
+@permission_required(permissions=["downtime.manage"])
 def process_downtime(period_id):
     """Process a completed downtime period."""
     period = DowntimePeriod.query.get_or_404(period_id)

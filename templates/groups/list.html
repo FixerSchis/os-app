@@ -6,7 +6,7 @@
 <div class="container">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1>Groups</h1>
-        {% if current_user.has_role('user_admin') %}
+        {% if has_permission('group.view_all') %}
             <a href="{{ url_for('groups.group_list', admin_view='true') }}" class="btn btn-outline-secondary">
                 <i class="fas fa-user-shield"></i> Switch to Admin View
             </a>
@@ -18,7 +18,7 @@
         <div class="col-md-6">
             <div class="input-group">
                 <label class="input-group-text" for="character-selector">Active Character:</label>
-                <select class="form-select" id="character-selector">
+                <select class="form-select" id="character-selector" title="Select active character">
                     {% for char in user_characters %}
                         <option value="{{ char.id }}" {% if char.id == character.id %}selected{% endif %}>
                             {{ char.name }}
@@ -57,13 +57,13 @@
                         </div>
 
                         <div class="form-group mb-3">
-                            <label>Group Type</label>
-                            <input type="text" class="form-control" value="{{ character.group.group_type.name }}" readonly>
+                            <label for="group_type_display">Group Type</label>
+                            <input type="text" class="form-control" id="group_type_display" value="{{ character.group.group_type.name }}" readonly>
                         </div>
 
                         <div class="form-group mb-3">
-                            <label>Bank Balance</label>
-                            <input type="text" class="form-control" value="{{ character.group.bank_account }}" readonly>
+                            <label for="bank_balance_display">Bank Balance</label>
+                            <input type="text" class="form-control" id="bank_balance_display" value="{{ character.group.bank_account }}" readonly>
                         </div>
 
                         <div class="form-group mb-3">
@@ -121,7 +121,7 @@
                             <input type="hidden" name="admin_view" value="false">
                             <input type="hidden" name="redirect_character_id" value="{{ character.id }}">
                             <div class="input-group">
-                                <select class="form-control character-select2" name="character_id" required>
+                                <select class="form-control character-select2" name="character_id" required title="Select character to invite to group">
                                     <option value="">Search for a character to invite...</option>
                                 </select>
                                 <button type="submit" class="btn btn-primary">Send Invite</button>
@@ -142,13 +142,13 @@
                         <form method="POST" action="{{ url_for('groups.leave_group_post', group_id=character.group.id) }}" id="leaveGroupForm" class="mr-2">
                             <input type="hidden" name="admin_view" value="false">
                             <input type="hidden" name="character_id" value="{{ character.id }}">
-                            <button type="button" class="btn btn-warning confirmation-trigger" data-form="leaveGroupForm" data-message="Are you sure you want to leave the group?">Leave Group</button>
+                            <button type="button" class="btn btn-warning confirmation-trigger" data-form="leaveGroupForm" data-message="Are you sure you want to leave the group?" aria-label="Leave the group">Leave Group</button>
                         </form>
                     {% else %}
                         <form method="POST" action="{{ url_for('groups.disband_group_post', group_id=character.group.id) }}" id="disbandGroupForm-last-member" class="mr-2">
                             <input type="hidden" name="admin_view" value="false">
                             <input type="hidden" name="character_id" value="{{ character.id }}">
-                            <button type="button" class="btn btn-danger confirmation-trigger" data-form="disbandGroupForm-last-member" data-message="Are you sure you want to disband the group?">Disband Group</button>
+                            <button type="button" class="btn btn-danger confirmation-trigger" data-form="disbandGroupForm-last-member" data-message="Are you sure you want to disband the group?" aria-label="Disband the group">Disband Group</button>
                         </form>
                     {% endif %}
                 {% else %}
@@ -213,7 +213,7 @@
 
                 <h3>Search Groups</h3>
                 <div class="mb-3">
-                    <select class="form-control" id="groupSearch" style="width: 100%;">
+                    <select class="form-control" id="groupSearch" class="width-100" title="Search for groups to join">
                         <option value="">Search for groups...</option>
                     </select>
                 </div>
@@ -242,7 +242,7 @@
                     </div>
                     <div class="form-group mb-3">
                         <label for="new_group_type">Group Type</label>
-                        <select class="form-control" id="new_group_type" name="type" required>
+                        <select class="form-control" id="new_group_type" name="type" required title="Select group type">
                             <option value="">Select Group Type</option>
                             {% for group_type in group_types %}
                             <option value="{{ group_type.id }}">{{ group_type.name }}</option>

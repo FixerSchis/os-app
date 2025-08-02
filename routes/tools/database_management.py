@@ -26,14 +26,14 @@ from models.tools.group import Group
 from models.tools.message import Message
 from models.tools.research import CharacterResearch
 from models.tools.user import User
-from utils.decorators import admin_required
+from utils.permission_decorators import permission_required
 
 database_management_bp = Blueprint("database_management", __name__)
 
 
 @database_management_bp.route("/database")
 @login_required
-@admin_required
+@permission_required(permissions=["database.backup", "database.restore"])
 def database_management():
     """Database management page showing status and backup options."""
 
@@ -56,7 +56,7 @@ def database_management():
 
 @database_management_bp.route("/database/create-backup", methods=["POST"])
 @login_required
-@admin_required
+@permission_required(permissions=["database.backup"])
 def create_backup():
     """Create a new database backup."""
     try:
@@ -87,7 +87,7 @@ def create_backup():
 
 @database_management_bp.route("/database/restore-backup", methods=["POST"])
 @login_required
-@admin_required
+@permission_required(permissions=["database.restore"])
 def restore_backup():
     """Restore database from a backup."""
     try:

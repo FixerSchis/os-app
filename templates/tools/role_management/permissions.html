@@ -1,0 +1,52 @@
+{% extends "_template.html" %}
+
+{% block title %}Permissions{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Permissions</h1>
+        <a href="{{ url_for('role_management.role_list') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Back to Roles
+        </a>
+    </div>
+
+    <div class="row">
+        {% for category, permissions in permissions_by_category.items() %}
+        <div class="col-md-6 col-lg-4 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0 text-capitalize">{{ category }}</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled mb-0">
+                        {% for permission in permissions %}
+                        <li class="mb-2">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <strong>{{ permission.name }}</strong>
+                                    {% if permission.description %}
+                                        <br><small class="text-muted">{{ permission.description }}</small>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                <div class="card-footer text-muted">
+                    <small>{{ permissions|length }} permission{{ 's' if permissions|length != 1 else '' }}</small>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    {% if not permissions_by_category %}
+    <div class="text-center text-muted py-5">
+        <i class="bi bi-shield-x fs-1"></i>
+        <p class="mt-2">No permissions found.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -5,26 +5,23 @@ from models.database.cybernetic import Cybernetic
 from models.enums import Role, ScienceType
 from models.extensions import db
 from models.wiki import WikiPage, get_or_create_wiki_page
+from utils.permission_decorators import permission_required
 
 cybernetics_bp = Blueprint("cybernetics", __name__)
 
 
 @cybernetics_bp.route("/")
 @login_required
+@permission_required(permissions=["rules.cybernetics"])
 def list():
-    if not current_user.has_role(Role.RULES_TEAM.value):
-        flash("You do not have permission to access this page", "error")
-        return redirect(url_for("index"))
     cybernetics = Cybernetic.query.order_by(Cybernetic.name).all()
     return render_template("rules/cybernetics/list.html", cybernetics=cybernetics)
 
 
 @cybernetics_bp.route("/new", methods=["GET", "POST"])
 @login_required
+@permission_required(permissions=["rules.cybernetics"])
 def create():
-    if not current_user.has_role(Role.RULES_TEAM.value):
-        flash("You do not have permission to access this page", "error")
-        return redirect(url_for("index"))
     if request.method == "POST":
         name = request.form.get("name")
         neural_shock_value = request.form.get("neural_shock_value", type=int)
@@ -67,10 +64,8 @@ def create():
 
 @cybernetics_bp.route("/<int:id>/edit", methods=["GET", "POST"])
 @login_required
+@permission_required(permissions=["rules.cybernetics"])
 def edit(id):
-    if not current_user.has_role(Role.RULES_TEAM.value):
-        flash("You do not have permission to access this page", "error")
-        return redirect(url_for("index"))
     cyber = Cybernetic.query.get_or_404(id)
     initial_title = ""
     if cyber.wiki_slug:
@@ -118,10 +113,8 @@ def edit(id):
 
 @cybernetics_bp.route("/<int:id>/delete", methods=["POST"])
 @login_required
+@permission_required(permissions=["rules.cybernetics"])
 def delete(id):
-    if not current_user.has_role(Role.RULES_TEAM.value):
-        flash("You do not have permission to access this page", "error")
-        return redirect(url_for("index"))
     cyber = Cybernetic.query.get_or_404(id)
     db.session.delete(cyber)
     db.session.commit()

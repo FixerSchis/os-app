@@ -71,7 +71,12 @@ def init_app(app):
 
 @login_manager.user_loader
 def load_user(user_id):
-    return db.session.get(User, int(user_id))
+    if user_id is None or user_id == "None":
+        return None
+    try:
+        return db.session.get(User, int(user_id))
+    except (ValueError, TypeError):
+        return None
 
 
 __all__ = [

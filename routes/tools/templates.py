@@ -7,6 +7,8 @@ from flask_login import current_user, login_required
 from models.database.conditions import Condition
 from models.database.exotic_substances import ExoticSubstance
 from models.database.item import Item
+from models.database.item_blueprint import ItemBlueprint
+from models.database.item_type import ItemType
 from models.database.medicaments import Medicament
 from models.enums import PrintTemplateType
 from models.extensions import db
@@ -19,7 +21,7 @@ from models.tools.samples.exotic import get_sample_exotic_substance
 from models.tools.samples.item import get_sample_item
 from models.tools.samples.medicament import get_sample_medicament
 from utils import generate_qr_code, generate_web_qr_code
-from utils.decorators import admin_required
+from utils.permission_decorators import permission_required
 from utils.print_layout import PrintLayout
 
 templates_bp = Blueprint("templates", __name__)
@@ -27,7 +29,7 @@ templates_bp = Blueprint("templates", __name__)
 
 @templates_bp.route("/list")
 @login_required
-@admin_required
+@permission_required(permissions=["template.edit"])
 def template_list():
     """List all available templates"""
     templates = PrintTemplate.query.all()
@@ -38,7 +40,7 @@ def template_list():
 
 @templates_bp.route("/<int:template_id>/edit", methods=["GET"])
 @login_required
-@admin_required
+@permission_required(permissions=["template.edit"])
 def template_edit(template_id):
     """Edit an existing template"""
     template = db.session.get(PrintTemplate, template_id)
@@ -59,7 +61,7 @@ def template_edit(template_id):
 
 @templates_bp.route("/<int:template_id>/edit", methods=["POST"])
 @login_required
-@admin_required
+@permission_required(permissions=["template.edit"])
 def template_edit_post(template_id):
     """Handle template editing"""
     template = db.session.get(PrintTemplate, template_id)
@@ -78,7 +80,7 @@ def template_edit_post(template_id):
 
 @templates_bp.route("/api/<int:template_id>/render", methods=["POST"])
 @login_required
-@admin_required
+@permission_required(permissions=["template.edit"])
 def render_template_preview(template_id):
     """API endpoint to render a template preview with sample data"""
     template = db.session.get(PrintTemplate, template_id)
@@ -151,10 +153,11 @@ def render_template_preview(template_id):
 
 @templates_bp.route("/<type>/<int:id>/print")
 @login_required
+@permission_required(permissions=["template.edit"])
 def print_item_sheet(type, id):
     """Generate PDF for a single item (character sheet, item card, etc.)"""
-    if not current_user.has_role("admin"):
-        flash("Access denied. Admin role required.", "error")
+    if not current_user.has_permission("template.create"):
+        flash("Access denied. Template creation permission required.", "error")
         return jsonify({"error": "Access denied"}), 403
 
     layout_manager = PrintLayout()
@@ -162,7 +165,10 @@ def print_item_sheet(type, id):
         if type == "characters":
             # Get character and generate PDF
             character = Character.query.get_or_404(id)
-            if not (current_user.has_role("user_admin") or current_user.id == character.user_id):
+            if not (
+                current_user.has_permission("character.edit_all")
+                or current_user.id == character.user_id
+            ):
                 return jsonify({"error": "Access denied"}), 403
             # Get the template for character sheets
             template = PrintTemplate.query.filter_by(type=PrintTemplateType.CHARACTER_SHEET).first()
@@ -228,10 +234,11 @@ def print_item_sheet(type, id):
 
 @templates_bp.route("/events/<int:event_id>/print/<type>")
 @login_required
+@permission_required(permissions=["template.edit"])
 def print_event_items(event_id, type):
     """Generate PDFs for all items of a given type in an event."""
-    if not current_user.has_role("admin"):
-        flash("Access denied. Admin role required.", "error")
+    if not current_user.has_permission("template.create"):
+        flash("Access denied. Template creation permission required.", "error")
         return jsonify({"error": "Access denied"}), 403
 
     layout_manager = PrintLayout()
@@ -322,8 +329,6 @@ def generate_template_completions(template_type):
 
         completions["item"] = item_fields
         # Also include blueprint and type fields
-        from models.database.item_blueprint import ItemBlueprint
-        from models.database.item_type import ItemType
 
         blueprint_fields = {}
         for column in ItemBlueprint.__table__.columns:
@@ -397,7 +402,7 @@ def generate_template_completions(template_type):
 
 @templates_bp.route("/api/<int:template_id>/print_preview", methods=["POST"])
 @login_required
-@admin_required
+@permission_required(permissions=["template.edit"])
 def print_template_preview(template_id):
     """Generate a full page preview PDF of the template with sample data."""
     template = db.session.get(PrintTemplate, template_id)
@@ -550,7 +555,7 @@ def get_jinja_completions():
 
 @templates_bp.route("/<int:template_id>/layout", methods=["GET", "POST"])
 @login_required
-@admin_required
+@permission_required(permissions=["template.edit"])
 def template_layout(template_id):
     """Edit layout settings for a template"""
     template = PrintTemplate.query.get_or_404(template_id)
@@ -582,7 +587,7 @@ def template_layout(template_id):
 
 @templates_bp.route("/print/exotics-sheet", methods=["POST"])
 @login_required
-@admin_required
+@permission_required(permissions=["template.edit"])
 def print_exotics_sheet():
     """Generate PDF for exotic substances."""
     layout_manager = PrintLayout()

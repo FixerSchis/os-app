@@ -7,7 +7,7 @@
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h1 class="mb-0">{{ character.name }}</h1>
         <div class="d-flex gap-2">
-            {% if current_user.has_role('user_admin') %}
+            {% if has_permission('character.edit_all') %}
             <button class="btn btn-primary print-character-btn" data-character-id="{{ character.id }}">
                 <i class="fas fa-print"></i> Print Character Sheet
             </button>

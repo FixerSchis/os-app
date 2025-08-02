@@ -25,7 +25,7 @@
 
             <div class="form-group mb-3">
                 <label for="wiki-tags">Tags</label>
-                <select id="wiki-tags" name="tags" multiple="multiple" class="form-control">
+                <select id="wiki-tags" name="tags" multiple="multiple" class="form-control" title="Select wiki page tags">
                     {% if page and page.tags %}
                         {% for tag in page.tags %}
                             <option value="{{ tag.id }}" selected>{{ tag.name }}</option>

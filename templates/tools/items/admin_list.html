@@ -50,10 +50,10 @@
                                     {% endif %}
                                 </td>
                                 <td>
-                                    <button class="btn btn-sm btn-success" data-request-id="{{ request.id }}" data-action="approve" type="button">
+                                    <button class="btn btn-sm btn-success" data-request-id="{{ request.id }}" data-action="approve" type="button" aria-label="Approve transfer request for {{ request.requesting_character.name }}">
                                         Approve
                                     </button>
-                                    <button class="btn btn-sm btn-danger" data-request-id="{{ request.id }}" data-action="deny" type="button">
+                                    <button class="btn btn-sm btn-danger" data-request-id="{{ request.id }}" data-action="deny" type="button" aria-label="Deny transfer request for {{ request.requesting_character.name }}">
                                         Deny
                                     </button>
                                 </td>
@@ -74,12 +74,13 @@
             <div class="d-flex justify-content-between align-items-center">
                 <h2 class="mb-0">Character Inventories</h2>
                 <form class="d-flex" method="GET" action="{{ url_for('tools_items.items_list') }}">
-                    <input type="text" class="form-control me-2" name="search"
+                    <label for="character-search" class="sr-only">Search characters</label>
+                    <input type="text" class="form-control me-2" id="character-search" name="search"
                            placeholder="Search by name, user_id.character_id, or player name..."
-                           value="{{ search_query or '' }}" style="min-width: 300px;">
-                    <button type="submit" class="btn btn-primary">Search</button>
+                           value="{{ search_query or '' }}" style="min-width: 300px;" aria-label="Search characters">
+                    <button type="submit" class="btn btn-primary" aria-label="Submit search">Search</button>
                     {% if search_query %}
-                        <a href="{{ url_for('tools_items.items_list') }}" class="btn btn-secondary ms-2">Clear</a>
+                        <a href="{{ url_for('tools_items.items_list') }}" class="btn btn-secondary ms-2" aria-label="Clear search">Clear</a>
                     {% endif %}
                 </form>
             </div>
@@ -135,7 +136,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">Process Transfer Request</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close modal"></button>
             </div>
             <form id="processRequestForm" method="POST">
                 <div class="modal-body">

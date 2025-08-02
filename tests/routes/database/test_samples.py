@@ -12,10 +12,13 @@ def test_sample_list_get(test_client, admin_user):
     assert response.status_code == 200
 
 
-def test_sample_list_unauthorized(test_client, authenticated_user):
+def test_sample_list_unauthorized(test_client, authenticated_user, db):
     """Test sample list page when user is not authorized."""
-    response = test_client.get("/db/samples/", follow_redirects=True)
-    assert response.status_code in [200, 403]  # Can be either redirect or forbidden
+    with test_client.session_transaction() as session:
+        session["_user_id"] = authenticated_user.id
+        session["_fresh"] = True
+    response = test_client.get("/db/samples/")
+    assert response.status_code == 302  # Should redirect to index
 
 
 def test_sample_list_unauthenticated(test_client):
@@ -121,15 +124,17 @@ def test_create_sample_with_existing_tags(test_client, admin_user, db):
     assert "new_tag" in tag_names
 
 
-def test_create_sample_unauthorized(test_client, authenticated_user):
+def test_create_sample_unauthorized(test_client, authenticated_user, db):
     """Test sample creation when user is not authorized."""
+    with test_client.session_transaction() as session:
+        session["_user_id"] = authenticated_user.id
+        session["_fresh"] = True
     response = test_client.post(
         "/db/samples/create",
         data={"name": "Test Sample", "type": "generic", "description": "A test sample"},
-        follow_redirects=True,
     )
 
-    assert response.status_code in [200, 403]  # Can be either redirect or forbidden
+    assert response.status_code == 302  # Should redirect to index
 
 
 def test_create_sample_unauthenticated(test_client):

@@ -1,17 +1,17 @@
 from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
-from flask_login import login_required
+from flask_login import current_user, login_required
 
 from models.database.sample import Sample, SampleTag
 from models.enums import ScienceType
 from models.extensions import db
-from utils.decorators import downtime_or_rules_team_required
+from utils.permission_decorators import permission_required
 
 samples_bp = Blueprint("samples", __name__)
 
 
 @samples_bp.route("/")
 @login_required
-@downtime_or_rules_team_required
+@permission_required(permissions=["rules.items"])
 def sample_list():
     """List all samples."""
     samples = Sample.query.order_by(Sample.name).all()
@@ -20,7 +20,7 @@ def sample_list():
 
 @samples_bp.route("/new", methods=["GET"])
 @login_required
-@downtime_or_rules_team_required
+@permission_required(permissions=["rules.items"])
 def create():
     """Show the create sample form."""
     return render_template(
@@ -33,7 +33,7 @@ def create():
 
 @samples_bp.route("/new", methods=["POST"])
 @login_required
-@downtime_or_rules_team_required
+@permission_required(permissions=["rules.items"])
 def create_post():
     """Handle the create sample form submission."""
     name = request.form.get("name")
@@ -74,7 +74,7 @@ def create_post():
 
 @samples_bp.route("/<int:id>/edit", methods=["GET"])
 @login_required
-@downtime_or_rules_team_required
+@permission_required(permissions=["rules.items"])
 def edit(id):
     """Show the edit sample form."""
     sample = Sample.query.get_or_404(id)
@@ -88,7 +88,7 @@ def edit(id):
 
 @samples_bp.route("/<int:id>/edit", methods=["POST"])
 @login_required
-@downtime_or_rules_team_required
+@permission_required(permissions=["rules.items"])
 def edit_post(id):
     """Handle the edit sample form submission."""
     sample = Sample.query.get_or_404(id)
@@ -130,7 +130,7 @@ def edit_post(id):
 
 @samples_bp.route("/<int:id>/delete", methods=["POST"])
 @login_required
-@downtime_or_rules_team_required
+@permission_required(permissions=["rules.items"])
 def delete(id):
     """Delete a sample."""
     sample = Sample.query.get_or_404(id)
@@ -142,7 +142,7 @@ def delete(id):
 
 @samples_bp.route("/create", methods=["POST"])
 @login_required
-@downtime_or_rules_team_required
+@permission_required(permissions=["rules.items"])
 def create_sample():
     """Create a new sample."""
     name = request.form.get("name")

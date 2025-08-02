@@ -14,7 +14,7 @@
             <form action="{{ url_for('research.add_assignee', research_id=research.id) }}" method="POST">
                 <div class="form-group">
                     <label for="character_id">Select Character</label>
-                    <select class="form-control select2" id="character_id" name="character_id" required>
+                    <select class="form-control select2" id="character_id" name="character_id" required title="Select character to assign to research">
                         <option value="">Choose a character...</option>
                         {% for character in available_characters %}
                         <option value="{{ character.id }}">{{ character.name }}</option>

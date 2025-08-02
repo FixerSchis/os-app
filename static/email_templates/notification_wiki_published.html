@@ -1,7 +1,8 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Wiki Version Published</title>
     <style>
         body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
@@ -10,6 +11,10 @@
         .content { background-color: #f8f9fa; padding: 20px; }
         .footer { text-align: center; padding: 20px; color: #6c757d; font-size: 12px; }
         .btn { display: inline-block; padding: 10px 20px; background-color: #fd7e14; color: white; text-decoration: none; border-radius: 5px; }
+        .view-wiki-btn {
+            text-align: center;
+            margin: 30px 0;
+        }
     </style>
 </head>
 <body>
@@ -42,7 +47,7 @@
 
             <p>Check out the latest updates to the game rules and lore in the wiki.</p>
 
-            <p style="text-align: center; margin: 30px 0;">
+            <p class="view-wiki-btn">
                 <a href="{{ url_for('wiki.index', _external=True) }}" class="btn">View Wiki</a>
             </p>
 

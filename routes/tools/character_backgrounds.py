@@ -1,10 +1,11 @@
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
-from models.enums import CharacterAuditAction, Role
+from models.enums import CharacterAuditAction
 from models.extensions import db
-from models.tools.character import Character, CharacterAuditLog, CharacterBackground
-from utils.decorators import email_verified_required, user_admin_required
+from models.tools.character import CharacterAuditLog, CharacterBackground
+from utils.decorators import email_verified_required
+from utils.permission_decorators import permission_required
 
 character_backgrounds_bp = Blueprint("character_backgrounds", __name__)
 
@@ -12,7 +13,7 @@ character_backgrounds_bp = Blueprint("character_backgrounds", __name__)
 @character_backgrounds_bp.route("/")
 @login_required
 @email_verified_required
-@user_admin_required
+@permission_required(permissions=["character.background_approve"])
 def list_backgrounds():
     """List all character backgrounds that need review."""
     backgrounds = CharacterBackground.query.filter_by(needs_review=True).all()
@@ -26,7 +27,7 @@ def list_backgrounds():
 @character_backgrounds_bp.route("/<int:background_id>/review", methods=["GET"])
 @login_required
 @email_verified_required
-@user_admin_required
+@permission_required(permissions=["character.background_approve"])
 def review_background(background_id):
     """Review a specific character background."""
     background = CharacterBackground.query.get_or_404(background_id)
@@ -44,7 +45,7 @@ def review_background(background_id):
 @character_backgrounds_bp.route("/<int:background_id>/review", methods=["POST"])
 @login_required
 @email_verified_required
-@user_admin_required
+@permission_required(permissions=["character.background_approve"])
 def review_background_post(background_id):
     """Handle the review submission."""
     background = CharacterBackground.query.get_or_404(background_id)

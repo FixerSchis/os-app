@@ -11,6 +11,7 @@ from models.enums import AbilityType, BodyHitsType, Role
 from models.extensions import db
 from models.tools.character import Character
 from utils.decorators import email_verified_required
+from utils.permission_decorators import permission_required
 
 species_bp = Blueprint("species", __name__)
 
@@ -29,7 +30,7 @@ def species_list():
         return ""
 
     # If user is not rules team, filter species
-    if not current_user.is_authenticated or not current_user.has_role(Role.RULES_TEAM.value):
+    if not current_user.is_authenticated or not current_user.has_permission("rules.species"):
         # Get user's active character species if they have one
         user_species_id = None
         if current_user.is_authenticated:
@@ -60,18 +61,15 @@ def species_list():
         "species/list.html",
         species=species,
         factions=factions,
-        can_edit=current_user.is_authenticated and current_user.has_role(Role.RULES_TEAM.value),
+        can_edit=current_user.is_authenticated and current_user.has_permission("rules.species"),
     )
 
 
 @species_bp.route("/<int:species_id>/edit", methods=["GET"])
 @login_required
 @email_verified_required
+@permission_required(permissions=["rules.species"])
 def edit_species(species_id):
-    if not current_user.has_role(Role.RULES_TEAM.value):
-        flash("You do not have permission to access this page.", "error")
-        return redirect(url_for("index"))
-
     species = Species.query.get_or_404(species_id)
     skills_list = Skill.query.all()
     factions = Faction.query.all()
@@ -112,11 +110,8 @@ def edit_species(species_id):
 @species_bp.route("/<int:species_id>/edit", methods=["POST"])
 @login_required
 @email_verified_required
+@permission_required(permissions=["rules.species"])
 def edit_species_post(species_id):
-    if not current_user.has_role(Role.RULES_TEAM.value):
-        flash("You do not have permission to access this page.", "error")
-        return redirect(url_for("index"))
-
     species = Species.query.get_or_404(species_id)
 
     name = request.form.get("name")
@@ -225,11 +220,8 @@ def edit_species_post(species_id):
 @species_bp.route("/new", methods=["GET"])
 @login_required
 @email_verified_required
+@permission_required(permissions=["rules.species"])
 def new_species():
-    if not current_user.has_role(Role.RULES_TEAM.value):
-        flash("You do not have permission to access this page.", "error")
-        return redirect(url_for("index"))
-
     skills_list = Skill.query.all()
     factions = Faction.query.all()
     item_blueprints = ItemBlueprint.query.order_by(ItemBlueprint.name).all()
@@ -257,10 +249,8 @@ def new_species():
 @species_bp.route("/new", methods=["POST"])
 @login_required
 @email_verified_required
+@permission_required(permissions=["rules.species"])
 def new_species_post():
-    if not current_user.has_role(Role.RULES_TEAM.value):
-        flash("You do not have permission to access this page.", "error")
-        return redirect(url_for("index"))
     name = request.form.get("name")
     wiki_page = request.form.get("wiki_page")
     body_hits_type = request.form.get("body_hits_type")

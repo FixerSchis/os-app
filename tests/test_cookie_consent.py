@@ -241,9 +241,18 @@ def client(app):
 @pytest.fixture
 def authenticated_user(db_session):
     """Create an authenticated user for testing."""
+    import uuid
+
     from models.tools.user import User
 
-    user = User(first_name="Test", email="test@example.com", password_hash="hashed_password")
+    unique_id = uuid.uuid4()
+    user = User(
+        email=f"test.user.{unique_id}@example.com",
+        first_name="Test",
+        surname="User",
+        email_verified=True,
+    )
+    user.set_password("password")
     db_session.add(user)
     db_session.commit()
     return user

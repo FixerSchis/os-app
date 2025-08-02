@@ -23,13 +23,13 @@ from models.tools.event_ticket import EventTicket
 from models.tools.group import Group
 from models.tools.pack import Pack
 from models.tools.user import User
-from utils.decorators import admin_required, user_admin_required
 from utils.email import (
     send_event_details_updated_notification,
     send_event_ticket_assigned_notification_to_user,
     send_new_event_notification_to_all,
 )
 from utils.mask_email import mask_email
+from utils.permission_decorators import permission_required
 
 events_bp = Blueprint("events", __name__)
 
@@ -38,7 +38,7 @@ events_bp = Blueprint("events", __name__)
 def event_list():
     show_previous = request.args.get("show_previous", "false").lower() == "true"
 
-    if show_previous and current_user.has_role("user_admin"):
+    if show_previous and current_user.has_permission("event.manage"):
         events = (
             Event.query.filter(Event.end_date <= datetime.now())
             .order_by(Event.start_date.desc())
@@ -59,14 +59,14 @@ def event_list():
 
 @events_bp.route("/new", methods=["GET"])
 @login_required
-@user_admin_required
+@permission_required(permissions=["event.create"])
 def create_event():
     return render_template("events/edit.html", EventType=EventType)
 
 
 @events_bp.route("/new", methods=["POST"])
 @login_required
-@user_admin_required
+@permission_required(permissions=["event.create"])
 def create_event_post():
     event = Event(
         event_number=request.form["event_number"],
@@ -108,7 +108,7 @@ def create_event_post():
 
 @events_bp.route("/<int:event_id>/edit", methods=["GET"])
 @login_required
-@user_admin_required
+@permission_required(permissions=["event.edit"])
 def edit_event(event_id):
     event = Event.query.get_or_404(event_id)
     return render_template("events/edit.html", event=event, EventType=EventType)
@@ -116,7 +116,7 @@ def edit_event(event_id):
 
 @events_bp.route("/<int:event_id>/edit", methods=["POST"])
 @login_required
-@user_admin_required
+@permission_required(permissions=["event.edit"])
 def edit_event_post(event_id):
     event = Event.query.get_or_404(event_id)
     event.event_number = request.form["event_number"]
@@ -393,12 +393,12 @@ def purchase_ticket_post(event_id):
 
 @events_bp.route("/<int:event_id>/assign", methods=["GET"])
 @login_required
-@user_admin_required
+@permission_required(permissions=["event.assign_tickets"])
 def assign_ticket(event_id):
     event = Event.query.get_or_404(event_id)
     users = User.query.order_by(User.first_name, User.surname).all()
     # Check if current user has admin role (not just user_admin)
-    is_admin = current_user.has_role(Role.ADMIN.value)
+    is_admin = current_user.has_permission("event.manage")
 
     return render_template(
         "events/assign.html",
@@ -412,7 +412,7 @@ def assign_ticket(event_id):
 
 @events_bp.route("/<int:event_id>/assign", methods=["POST"])
 @login_required
-@user_admin_required
+@permission_required(permissions=["event.assign_tickets"])
 def assign_ticket_post(event_id):
     ticket_type = request.form["ticket_type"]
     price_paid = 0 if ticket_type == "crew" else float(request.form["price_paid"])
@@ -549,7 +549,7 @@ def assign_ticket_post(event_id):
 
 @events_bp.route("/<int:event_id>/tickets/<int:ticket_id>/remove", methods=["POST"])
 @login_required
-@user_admin_required
+@permission_required(permissions=["event.assign_tickets"])
 def remove_ticket(event_id, ticket_id):
     """Remove an assigned ticket."""
     ticket = EventTicket.query.get_or_404(ticket_id)
@@ -598,7 +598,7 @@ def remove_ticket(event_id, ticket_id):
 
 @events_bp.route("/<int:event_id>/attendees", methods=["GET"])
 @login_required
-@user_admin_required
+@permission_required(permissions=["event.manage_attendees"])
 def view_attendees(event_id):
     event = Event.query.get_or_404(event_id)
     tickets = (
@@ -616,7 +616,7 @@ def view_attendees(event_id):
 
 @events_bp.route("/<int:event_id>/packs", methods=["GET"])
 @login_required
-@admin_required
+@permission_required(permissions=["event.manage_attendees"])
 def view_packs(event_id):
     """View packs for an event."""
     event = Event.query.get_or_404(event_id)
@@ -801,7 +801,7 @@ def view_packs(event_id):
 
 @events_bp.route("/<int:event_id>/packs/character/<int:character_id>/update", methods=["POST"])
 @login_required
-@admin_required
+@permission_required(permissions=["event.manage_attendees"])
 def update_character_pack(event_id, character_id):
     """Update character pack completion status."""
     character = Character.query.get_or_404(character_id)
@@ -864,7 +864,7 @@ def update_character_pack(event_id, character_id):
 
 @events_bp.route("/<int:event_id>/packs/group/<int:group_id>/generate", methods=["POST"])
 @login_required
-@admin_required
+@permission_required(permissions=["event.manage_attendees"])
 def generate_group_pack(event_id, group_id):
     """Generate group pack contents based on group type settings."""
     group = Group.query.get_or_404(group_id)
@@ -1020,7 +1020,7 @@ def generate_group_pack(event_id, group_id):
 
 @events_bp.route("/<int:event_id>/packs/group/<int:group_id>/update", methods=["POST"])
 @login_required
-@admin_required
+@permission_required(permissions=["event.manage_attendees"])
 def update_group_pack(event_id, group_id):
     """Update group pack completion status."""
     group = Group.query.get_or_404(group_id)
@@ -1084,7 +1084,7 @@ def update_group_pack(event_id, group_id):
 
 @events_bp.route("/<int:event_id>/packs/print/character-sheets")
 @login_required
-@admin_required
+@permission_required(permissions=["event.edit"])
 def print_character_sheets(event_id):
     """Print character sheets for incomplete character packs."""
     import base64
@@ -1143,7 +1143,7 @@ def print_character_sheets(event_id):
 
 @events_bp.route("/<int:event_id>/packs/print/character-id-badges")
 @login_required
-@admin_required
+@permission_required(permissions=["event.edit"])
 def print_character_id_badges(event_id):
     """Print character ID badges for incomplete character packs."""
     from models.enums import PrintTemplateType
@@ -1200,7 +1200,7 @@ def print_character_id_badges(event_id):
 
 @events_bp.route("/<int:event_id>/packs/print/items")
 @login_required
-@admin_required
+@permission_required(permissions=["event.edit"])
 def print_items(event_id):
     """Print all unprinted items and mark them as printed."""
     from models.database.item_blueprint import ItemBlueprint
@@ -1254,7 +1254,7 @@ def print_items(event_id):
 
 @events_bp.route("/<int:event_id>/packs/print/medicaments")
 @login_required
-@admin_required
+@permission_required(permissions=["event.edit"])
 def print_medicaments(event_id):
     """Print medicaments for incomplete character and group packs."""
     from models.database.medicaments import Medicament
@@ -1584,7 +1584,7 @@ def get_user_event_status():
 
 @events_bp.route("/<int:event_id>/packs/debug", methods=["GET"])
 @login_required
-@admin_required
+@permission_required(permissions=["event.edit"])
 def debug_packs(event_id):
     """Debug route to see what pack data looks like."""
     # event = Event.query.get_or_404(event_id)  # Remove unused variable
@@ -1629,7 +1629,7 @@ def debug_packs(event_id):
 
 @events_bp.route("/<int:event_id>/attendees/export", methods=["GET"])
 @login_required
-@admin_required
+@permission_required(permissions=["event.manage_attendees"])
 def export_attendees(event_id):
     """Export attendees for an event to CSV."""
     event = Event.query.get_or_404(event_id)

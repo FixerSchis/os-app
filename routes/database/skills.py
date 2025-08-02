@@ -10,6 +10,7 @@ from models.enums import Role, ScienceType
 from models.extensions import db
 from models.tools.character import CharacterTag
 from utils.decorators import email_verified_required
+from utils.permission_decorators import permission_required
 
 skills_bp = Blueprint("skills", __name__)
 
@@ -65,18 +66,15 @@ def skills_list():
         "skills/list.html",
         skills_by_type=sorted_skills_by_type,
         type_friendly_names=type_friendly_names,
-        can_edit=current_user.is_authenticated and current_user.has_role(Role.RULES_TEAM.value),
+        can_edit=current_user.is_authenticated and current_user.has_permission("rules.skills"),
     )
 
 
 @skills_bp.route("/<int:skill_id>/edit", methods=["GET"])
 @login_required
 @email_verified_required
+@permission_required(permissions=["rules.skills"])
 def edit_skill(skill_id):
-    if not current_user.has_role(Role.RULES_TEAM.value):
-        flash("You do not have permission to access this page.", "error")
-        return redirect(url_for("index"))
-
     skill = Skill.query.get_or_404(skill_id)
     species_list = Species.query.all()
     skills_list = Skill.query.all()
@@ -98,11 +96,8 @@ def edit_skill(skill_id):
 @skills_bp.route("/<int:skill_id>/edit", methods=["POST"])
 @login_required
 @email_verified_required
+@permission_required(permissions=["rules.skills"])
 def edit_skill_post(skill_id):
-    if not current_user.has_role(Role.RULES_TEAM.value):
-        flash("You do not have permission to access this page.", "error")
-        return redirect(url_for("index"))
-
     skill = Skill.query.get_or_404(skill_id)
 
     name = request.form.get("name")
@@ -202,11 +197,8 @@ def edit_skill_post(skill_id):
 @skills_bp.route("/new", methods=["GET", "POST"])
 @login_required
 @email_verified_required
+@permission_required(permissions=["rules.skills"])
 def new_skill():
-    if not current_user.has_role(Role.RULES_TEAM.value):
-        flash("You do not have permission to access this page.", "error")
-        return redirect(url_for("index"))
-
     if request.method == "POST":
         name = request.form.get("name")
         description = request.form.get("description")

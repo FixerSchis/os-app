@@ -14,14 +14,6 @@
     <div class="database-status">
         <h2>Database Status</h2>
         <div class="status-grid">
-            <div class="status-item">
-                <div class="count">{{ current_version }}</div>
-                <div class="label">Current Version</div>
-            </div>
-        </div>
-
-        <h3>Database Contents</h3>
-        <div class="status-grid">
             {% for name, count in stats.items() %}
             <div class="status-item">
                 <div class="count">{{ count }}</div>
@@ -40,7 +32,7 @@
                 <i class="fas fa-download"></i> Create Backup
             </button>
 
-            <select id="backup-select" class="backup-select">
+            <select id="backup-select" class="backup-select" title="Select a backup to restore...">
                 <option value="">Select a backup to restore...</option>
                 {% for backup in backups %}
                 <option value="{{ backup.filename }}" data-date="{{ backup.formatted_date }}" data-size="{{ backup.size }}">

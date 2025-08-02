@@ -199,7 +199,10 @@ class TestCharacterSkills:
         assert response.status_code == 200
         db.session.refresh(cs)
         assert cs.times_purchased == 1
-        assert b"Only admins can refund skills for non-developing characters." in response.data
+        assert (
+            b"Only users with refund permission can refund skills for non-developing characters."
+            in response.data
+        )
 
     def test_refund_skill_prereq(
         self, test_client, user_admin, admin_character, skill, prerequisite_skill

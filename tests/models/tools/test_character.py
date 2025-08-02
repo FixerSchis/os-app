@@ -30,7 +30,8 @@ def test_character_points(db, new_user, character, skill, species, faction):
     # Purchase a skill and check points again
     character.purchase_skill(skill, new_user)
     db.session.commit()
-    db.session.refresh(new_user)
+    # Remove the problematic refresh call
+    # db.session.refresh(new_user)
     db.session.refresh(character)
 
     # The skill costs 5, so the character should have 5 points left.
@@ -41,8 +42,11 @@ def test_character_points(db, new_user, character, skill, species, faction):
     # Give the user some points and buy another skill that costs more than available
     # base points
     new_user.add_character_points(10)
+    # Ensure the user is in the current session
+    db.session.merge(new_user)
     db.session.commit()
-    db.session.refresh(new_user)
+    # Remove the problematic refresh call
+    # db.session.refresh(new_user)
 
     expensive_skill = Skill(
         name="Expensive Skill",
@@ -57,7 +61,8 @@ def test_character_points(db, new_user, character, skill, species, faction):
     db.session.commit()
 
     # Refresh the objects to get the latest state from the database
-    db.session.refresh(new_user)
+    # Remove the problematic refresh call
+    # db.session.refresh(new_user)
     db.session.refresh(character)
 
     # Character had 5 points left from the first skill purchase (cost 5).
@@ -65,7 +70,11 @@ def test_character_points(db, new_user, character, skill, species, faction):
     # 5 points are taken from the character's base points (10 - 5 = 5 remaining).
     # 5 points are taken from the user's points.
     # Expected user points: 10 - 5 = 5
-    assert new_user.character_points == 5
+    # Query the user directly to get the updated points
+    from models.tools.user import User
+
+    updated_user = User.query.get(new_user.id)
+    assert updated_user.character_points == 5
     # Expected available character points: 0, as all base points are used
     assert character.get_available_character_points() == 5
 
@@ -89,27 +98,39 @@ def test_refund_skill(db, new_user, character, skill, species, faction):
 
     # Test refunding a skill that used user points
     new_user.add_character_points(10)
+    # Ensure the user is in the current session
+    db.session.merge(new_user)
+    db.session.commit()
+
     expensive_skill = Skill(name="Expensive Skill", description="An expensive skill", base_cost=15)
     db.session.add(expensive_skill)
     db.session.commit()
 
     character.purchase_skill(expensive_skill, new_user)
     db.session.commit()
-    db.session.refresh(new_user)
+    # Remove the problematic refresh call
+    # db.session.refresh(new_user)
     db.session.refresh(character)
 
     # Character has 10 base points, skill costs 15. 5 points are spent from user.
-    assert new_user.character_points == 5
+    # Query the user directly to get the updated points
+    from models.tools.user import User
+
+    updated_user = User.query.get(new_user.id)
+    assert updated_user.character_points == 5
     assert character.get_available_character_points() == 5
 
     # Refund the expensive skill
     character.refund_skill(expensive_skill, new_user)
     db.session.commit()
-    db.session.refresh(new_user)
+    # Remove the problematic refresh call
+    # db.session.refresh(new_user)
     db.session.refresh(character)
 
     # Check that points are returned to both character and user
-    assert new_user.character_points == 10
+    # Query the user directly to get the updated points
+    updated_user = User.query.get(new_user.id)
+    assert updated_user.character_points == 10
     assert character.get_available_character_points() == 20
 
 

@@ -12,7 +12,7 @@
     <div class="d-flex flex-wrap gap-2">
         <a href="{{ url_for('wiki.wiki_change_log') }}" class="btn btn-info btn-sm">Change Log</a>
         <a href="{{ url_for('wiki.wiki_list') }}" class="btn btn-primary btn-sm">Index</a>
-        {% if current_user.is_authenticated and current_user.has_role("plot_team") %}
+        {% if current_user.is_authenticated and has_permission("wiki.edit") %}
         <a href="{{ url_for('wiki.wiki_pending_changes') }}" class="btn btn-info btn-sm">Pending Changes</a>
         <a href="{{ url_for('wiki.wiki_new') }}" class="btn btn-primary btn-sm">New Page</a>
         {% if not is_version_view %}
@@ -35,11 +35,12 @@
     </div>
     <form method="GET" action="{{ url_for('wiki.wiki_search') }}" class="d-flex flex-grow-1 justify-content-end" id="wiki-search-form" autocomplete="off">
         <div class="input-group input-group-sm wiki-search-group" style="max-width: 300px;">
+            <label for="wiki-search-input" class="sr-only">Search wiki</label>
             <input type="text" class="form-control" id="wiki-search-input" name="q" placeholder="Search wiki..." autocomplete="off">
-            <button type="submit" class="btn btn-outline-secondary search-button">
+            <button type="submit" class="btn btn-outline-secondary search-button" aria-label="Search wiki">
                 <i class="bi bi-search"></i>
             </button>
-            <div id="wiki-search-dropdown" class="dropdown-menu" style="width: 100%; max-height: 300px; overflow-y: auto; position: absolute; top: 100%; left: 0; z-index: 1000; display: none;"></div>
+            <div id="wiki-search-dropdown" class="dropdown-menu width-100" style="max-height: 300px; overflow-y: auto; position: absolute; top: 100%; left: 0; z-index: 1000; display: none;"></div>
         </div>
     </form>
 </div>

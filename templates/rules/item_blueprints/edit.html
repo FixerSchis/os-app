@@ -13,7 +13,7 @@
             </div>
             <div class="form-group mb-3">
                 <label for="item_type_id">Item Type</label>
-                <select class="form-select" id="item_type_id" name="item_type_id" required>
+                <select class="form-select" id="item_type_id" name="item_type_id" required title="Select item type">
                     <option value="" disabled {% if not blueprint %}selected{% endif %}>Select Item Type</option>
                     {% for item_type in item_types %}
                     <option value="{{ item_type.id }}" {% if blueprint and blueprint.item_type_id == item_type.id %}selected{% endif %}>{{ item_type.name }}</option>
@@ -30,7 +30,7 @@
                     {% set initial_mods = initial_mods if initial_mods is defined else (blueprint.mods_applied|map(attribute='id')|list if blueprint and blueprint.mods_applied else []) %}
                     {% if initial_mods|length == 0 %}
                         <div class="input-group d-flex align-items-center mb-2 mod-row">
-                            <select class="form-select mod-select flex-grow-1" name="mods_applied[]">
+                            <select class="form-select mod-select flex-grow-1" name="mods_applied[]" title="Select mod to apply">
                                 <option value="" disabled selected>Select mod...</option>
                                 {% for mod in mods %}
                                 <option value="{{ mod.id }}">{{ mod.name }}</option>
@@ -41,7 +41,7 @@
                     {% else %}
                         {% for mod_id in initial_mods %}
                         <div class="input-group d-flex align-items-center mb-2 mod-row">
-                            <select class="form-select mod-select flex-grow-1" name="mods_applied[]">
+                            <select class="form-select mod-select flex-grow-1" name="mods_applied[]" title="Select mod to apply">
                                 <option value="" disabled>Select mod...</option>
                                 {% for mod in mods %}
                                 <option value="{{ mod.id }}" {% if mod.id == mod_id %}selected{% endif %}>{{ mod.name }}</option>

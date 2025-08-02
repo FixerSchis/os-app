@@ -57,7 +57,7 @@
                     <!-- Ticket Recipient Selection -->
                     <div class="mb-4" id="ticket_recipient_section">
                         <label class="form-label">Who is this ticket for?</label>
-                        {% if current_user.has_active_character() %}
+                        {% if has_active_character() %}
                         <div class="btn-group w-100" role="group">
                             <input type="radio" class="btn-check" name="ticket_for" id="ticket_for_self" value="self" checked>
                             <label class="btn btn-outline-primary" for="ticket_for_self">Myself</label>
@@ -73,10 +73,11 @@
                         {% endif %}
 
                         <!-- Character ID Input (shown if "Someone Else" selected or no active character) -->
-                        <div id="character_id_section" class="mt-3" {% if current_user.has_active_character() %}style="display: none;"{% endif %}>
+                        <div id="character_id_section" class="mt-3" {% if has_active_character() %}style="display: none;"{% endif %}>
                             <div class="input-group">
+                                <label for="character_id" class="sr-only">Character ID</label>
                                 <input type="text" class="form-control" id="character_id" name="character_id"
-                                       placeholder="Enter character ID (e.g., 1.1)" pattern="^\d+\.\d+$" {% if not current_user.has_active_character() %}required{% endif %}>
+                                       placeholder="Enter character ID (e.g., 1.1)" pattern="^\d+\.\d+$" {% if not has_active_character() %}required{% endif %}>
                                 <span class="input-group-text" id="character_id_status">
                                     <i class="fas fa-question text-muted"></i>
                                 </span>
@@ -88,7 +89,7 @@
                         <!-- Character selection for self-purchase (if multiple characters) -->
                         <div id="self_character_selection_section" class="mt-3" style="display: none;">
                             <label for="self_character_select" class="form-label">Select Your Character</label>
-                            <select class="form-select" id="self_character_select" name="self_character_id">
+                            <select class="form-select" id="self_character_select" name="self_character_id" title="Select your character for purchase">
                                 {% for char in user_characters %}
                                     <option value="{{ char.id }}">{{ char.name }}</option>
                                 {% endfor %}
@@ -99,7 +100,7 @@
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label for="ticket_type" class="form-label">Ticket Type</label>
-                            <select class="form-select" id="ticket_type" name="ticket_type" required>
+                            <select class="form-select" id="ticket_type" name="ticket_type" required title="Select ticket type">
                                 {% for ticket_type in TicketType.values() %}
                                     <option value="{{ ticket_type }}">{{ TicketType.descriptions()[ticket_type] }}</option>
                                 {% endfor %}
@@ -135,7 +136,7 @@
                         </div>
                     </div>
                     {% endif %}
-                    <button type="button" class="btn btn-primary" onclick="addToCart()">Add to Cart</button>
+                    <button type="button" class="btn btn-primary" onclick="addToCart()" aria-label="Add ticket to cart">Add to Cart</button>
                 </div>
             </form>
         </div>
@@ -182,7 +183,7 @@
 <input type="hidden" id="current_user_name" value="{{ current_user.first_name }} {{ current_user.surname }}">
 <input type="hidden" id="single_active_character_pk" value="{{ user_characters[0].id if user_characters|length == 1 else '' }}">
 <input type="hidden" id="single_active_character_name" value="{{ user_characters[0].name if user_characters|length == 1 else '' }}">
-<input type="hidden" id="active_character_id" value="{{ current_user.get_active_character().character_id if current_user.has_active_character() else '' }}">
+<input type="hidden" id="active_character_id" value="{{ current_user.get_active_character().character_id if has_active_character() else '' }}">
 {% endblock %}
 
 {% block scripts %}
@@ -693,85 +694,14 @@ function addToCart() {
                 return;
             }
             if (cart.some(i => i.ticketType === 'adult' && i.targetUserId === targetUserId)) {
-                showFlashMessage(`${friendlyName} already ha${parseInt(targetUserId) === parseInt(currentUserId) ? 've' : 's'} an adult ticket in the basket.`);
+                showFlashMessage(`${friendlyName} already has an adult ticket in your cart.`);
                 return;
             }
-            if (cart.some(i => i.ticketType === 'crew' && i.targetUserId === targetUserId)) {
-                showFlashMessage(`${friendlyName} already ha${parseInt(targetUserId) === parseInt(currentUserId) ? 've' : 's'} a crew ticket in the basket and cannot also have an adult ticket.`);
-                return;
-            }
-        }
-
-    }
-    // Crew: only allow self, no character
-    else if (ticketType === 'crew') {
-        ticketFor = 'self';
-        characterId = null;
-        recipientName = currentUserName;
-        targetUserId = currentUserId;
-
-        const friendlyName = "You";
-        const status = userEventStatus[targetUserId] || {};
-
-        // Skip validation if we're editing an existing ticket
-        if (!isEditingExistingTicket) {
-            if (status.has_crew_ticket) {
-                showFlashMessage("You already have a crew ticket for this event.");
-                return;
-            }
-            if (status.has_adult_ticket) {
-                showFlashMessage("You already have an adult ticket and cannot also have a crew ticket.");
-                return;
-            }
-            if (cart.some(i => i.ticketType === 'crew' && i.targetUserId === targetUserId)) {
-                showFlashMessage("You already have a crew ticket in the basket.");
-                return;
-            }
-            if (cart.some(i => i.ticketType === 'adult' && i.targetUserId === targetUserId)) {
-                showFlashMessage("You already have an adult ticket in the basket and cannot also have a crew ticket.");
-                return;
-            }
-        }
-
-    }
-    // Child: require child name
-    else if (["child_12_15", "child_7_11", "child_under_7"].includes(ticketType)) {
-        childName = document.getElementById('child_name').value.trim();
-        if (!childName) {
-            showFlashMessage("Please enter the child's name.");
-            return;
-        }
-        characterId = null;
-        recipientName = childName;
-    }
-
-    // Calculate price, accounting for existing tickets when editing
-    let price = getTicketPrice(ticketType);
-
-    // If editing an existing ticket, calculate the price difference
-    if (isEditingExistingTicket && lastFetchedTicket) {
-        // Calculate what was already paid
-        let existingPrice = getTicketPrice(lastFetchedTicket.ticket_type);
-        if (lastFetchedTicket.meal_ticket) {
-            existingPrice += PRICES.meal_ticket;
-        }
-
-        // Calculate what's being requested now
-        let newPrice = getTicketPrice(ticketType);
-        if (mealTicket) {
-            newPrice += PRICES.meal_ticket;
-        }
-
-        // The price to charge is the difference
-        price = newPrice - existingPrice;
-    } else {
-        // For new tickets, add meal ticket price if selected
-        if (mealTicket) {
-            price += PRICES.meal_ticket;
         }
     }
 
-    cart.push({
+    // Add to cart
+    const cartItem = {
         ticketType: ticketType,
         ticketType_name: ticketType_name,
         mealTicket: mealTicket,
@@ -780,148 +710,97 @@ function addToCart() {
         characterId: characterId,
         selfCharacterId: selfCharacterId,
         childName: childName,
-        price: price,
         recipientName: recipientName,
-        targetUserId: targetUserId
-    });
+        targetUserId: targetUserId,
+        price: getTicketPrice(ticketType) + (mealTicket ? PRICES.meal_ticket : 0)
+    };
+
+    cart.push(cartItem);
     updateCartDisplay();
+    updateFormFields();
+}
+
+function updateCartDisplay() {
+    const cartContainer = document.getElementById('cartItems');
+    const subtotalElement = document.getElementById('subtotal');
+    const totalElement = document.getElementById('total');
+    const checkoutBtn = document.getElementById('checkoutBtn');
+
+    cartContainer.innerHTML = '';
+    let subtotal = 0;
+
+    cart.forEach((item, index) => {
+        const itemElement = document.createElement('div');
+        itemElement.className = 'cart-item mb-2 p-2 border rounded';
+        itemElement.innerHTML = `
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <strong>${item.ticketType_name}</strong><br>
+                    <small>${item.recipientName}</small>
+                    ${item.mealTicket ? '<br><small class="text-success">+ Meal Ticket</small>' : ''}
+                    ${item.requiresBunk ? '<br><small class="text-info">+ Bunk Required</small>' : ''}
+                </div>
+                <div class="text-end">
+                    <strong>£${item.price.toFixed(2)}</strong><br>
+                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeFromCart(${index})">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+        cartContainer.appendChild(itemElement);
+        subtotal += item.price;
+    });
+
+    subtotalElement.textContent = `£${subtotal.toFixed(2)}`;
+    totalElement.textContent = `£${subtotal.toFixed(2)}`;
+    checkoutBtn.disabled = cart.length === 0;
+
+    // Update hidden cart input
+    document.getElementById('cart').value = JSON.stringify(cart);
 }
 
 function removeFromCart(index) {
     cart.splice(index, 1);
     updateCartDisplay();
-}
-
-function resetForm() {
-    document.getElementById('ticket_type').value = '{{ TicketType.ADULT.value }}';
-    if (document.getElementById('has_meal_ticket')) {
-        document.getElementById('has_meal_ticket').checked = false;
-    }
-    if (document.getElementById('requires_bunk')) {
-        document.getElementById('requires_bunk').checked = false;
-    }
-    if (hasMultipleChars) {
-        document.getElementById('ticket_for_self').checked = true;
-        document.getElementById('character_id_section').style.display = 'none';
-    }
-    document.getElementById('character_id').value = '';
-    document.getElementById('character_id').required = !hasMultipleChars;
-    document.getElementById('character_name').style.display = 'none';
-    document.getElementById('character_id_status').innerHTML = '<i class="fas fa-question text-muted"></i>';
-    document.getElementById('child_name').value = '';
-
-    // Update form fields to show/hide appropriate sections
     updateFormFields();
 }
 
-function updateCartDisplay() {
-    const cartItems = document.getElementById('cartItems');
-    const subtotalElement = document.getElementById('subtotal');
-    const totalElement = document.getElementById('total');
-    const checkoutBtn = document.getElementById('checkoutBtn');
-    const cartDataInput = document.getElementById('cart');
+function updateFormFields() {
+    // Reset form
+    document.getElementById('ticketForm').reset();
 
-    cartItems.innerHTML = '';
-    let subtotal = 0;
-
-    if (cart.length === 0) {
-        cartItems.innerHTML = '<p class="text-muted">Your cart is empty.</p>';
-        subtotalElement.textContent = formatPrice(0);
-        totalElement.textContent = formatPrice(0);
-        checkoutBtn.disabled = true;
-        cartDataInput.value = '';
-        return;
+    // Reset character ID validation
+    const characterIdInput = document.getElementById('character_id');
+    if (characterIdInput) {
+        characterIdInput.value = '';
+        document.getElementById('character_id_status').innerHTML = '<i class="fas fa-question text-muted"></i>';
+        document.getElementById('character_name').style.display = 'none';
     }
 
-    cart.forEach((item, index) => {
-        let itemTotal = item.price;
-        // Don't add meal ticket price again - it's already included in item.price
-        subtotal += itemTotal;
+    // Hide existing ticket info
+    hideExistingTicketInfo();
 
-        const itemElement = document.createElement('div');
-        itemElement.className = 'd-flex justify-content-between align-items-center mb-2';
-
-        const recipientDisplay = `For: ${item.recipientName}`;
-
-        itemElement.innerHTML = `
-            <div>
-                <div>${item.ticketType_name}${item.mealTicket ? ' + Meal' : ''}${item.requiresBunk ? ' + Bunk' : ''}</div>
-                <small class="text-muted">
-                    ${recipientDisplay}
-                </small>
-            </div>
-            <div class="d-flex align-items-center">
-                <span class="me-2">${formatPrice(itemTotal)}</span>
-                <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeFromCart(${index})">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-        `;
-        cartItems.appendChild(itemElement);
+    // Reset disables and warnings
+    document.getElementById('has_meal_ticket')?.removeAttribute('disabled');
+    document.getElementById('has_meal_ticket')?.removeAttribute('title');
+    document.getElementById('ticket_type').querySelectorAll('option').forEach(opt => {
+        opt.removeAttribute('disabled');
+        opt.removeAttribute('title');
     });
+    document.getElementById('requires_bunk')?.removeAttribute('disabled');
+    document.getElementById('requires_bunk')?.removeAttribute('title');
 
-    // Update totals
-    subtotalElement.textContent = formatPrice(subtotal);
-    totalElement.textContent = formatPrice(subtotal);
-
-    // Enable checkout and store cart data
-    checkoutBtn.disabled = false;
-    cartDataInput.value = JSON.stringify(cart);
-
-    // Update checkout button text based on total
-    if (subtotal === 0) {
-        checkoutBtn.textContent = 'Confirm tickets';
-    } else {
-        checkoutBtn.textContent = 'Proceed to Checkout';
-    }
+    // Hide group warning
+    hideGroupWarning();
 }
 
-// Initialize cart display
-updateCartDisplay();
-
-function updatePrice() {
-    const ticketType = document.getElementById('ticket_type').value;
-    const hasMealTicket = document.getElementById('has_meal_ticket')?.checked || false;
-
-    let price = PRICES[ticketType];
-    if (hasMealTicket) {
-        price += PRICES.meal_ticket;
-    }
-
-    document.getElementById('total_price').textContent = `£${price.toFixed(2)}`;
-    document.getElementById('price_paid').value = price;
+// Initialize form fields
+if (document.getElementById('ticket_for_self')) {
+    document.getElementById('ticket_for_self').addEventListener('change', updateFormFields);
 }
-
-// --- Ticket exclusivity logic ---
-function applyTicketExclusivity() {
-    // Cart validation already handles restrictions, so don't disable any options
-    // This allows users to see all options and get proper error messages when adding to cart
-    const ticketTypeSelect = document.getElementById('ticket_type');
-    const adultOption = ticketTypeSelect.querySelector('option[value="adult"]');
-    const crewOption = ticketTypeSelect.querySelector('option[value="crew"]');
-
-    // Enable all options
-    if (adultOption) {
-        adultOption.disabled = false;
-        adultOption.title = '';
-    }
-    if (crewOption) {
-        crewOption.disabled = false;
-        crewOption.title = '';
-    }
-
-    updateFormFields();
+if (document.getElementById('ticket_for_other')) {
+    document.getElementById('ticket_for_other').addEventListener('change', updateFormFields);
 }
-window.addEventListener('DOMContentLoaded', applyTicketExclusivity);
-document.getElementById('ticket_type').addEventListener('focus', applyTicketExclusivity);
-
-// Add an event listener to the self-character select dropdown
-const selfCharSelect = document.getElementById('self_character_select');
-if (selfCharSelect) {
-    selfCharSelect.addEventListener('change', function() {
-        // The user ID is always the current user for this dropdown
-        fetchUserEventStatus(currentUserId);
-    });
-}
-</script>
+window.addEventListener('DOMContentLoaded', updateFormFields);
 {% endblock %}

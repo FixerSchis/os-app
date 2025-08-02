@@ -1,4 +1,4 @@
-{% set user_is_admin = current_user.has_role('user_admin') %}
+{% set user_is_admin = has_permission('character.edit_all') %}
 {% set has_active = false %}
 {% for c in characters %}
     {% if c.status == 'active' and c.user_id == current_user.id %}

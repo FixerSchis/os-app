@@ -23,8 +23,8 @@
                         <thead>
                             <tr>
                                 <th>Faction</th>
-                                <th style="width: 120px;">Current Reputation</th>
-                                <th style="width: 120px;">New Reputation</th>
+                                <th class="width-120-px">Current Reputation</th>
+                                <th class="width-120-px">New Reputation</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -36,12 +36,15 @@
                                 </td>
                                 <td>
                                     {% set saved_reputation = review_data.get('reputation_changes', {}).get(faction.id|string, {}).get('new_value') %}
+                                    <label for="reputation-{{ faction.id }}" class="sr-only">Reputation for {{ faction.name }}</label>
                                     <input type="number"
                                            class="form-control form-control-sm reputation-input"
+                                           id="reputation-{{ faction.id }}"
                                            name="reputation_{{ faction.id }}"
                                            value="{{ saved_reputation if saved_reputation is not none else character.get_reputation(faction.id) }}"
                                            data-faction-id="{{ faction.id }}"
-                                           data-original-value="{{ character.get_reputation(faction.id) }}">
+                                           data-original-value="{{ character.get_reputation(faction.id) }}"
+                                           aria-label="Reputation for {{ faction.name }}">
                                 </td>
                             </tr>
                             {% endfor %}
@@ -114,7 +117,8 @@
                                 <input type="text" class="form-control"
                                        id="invention_name"
                                        name="invention_name"
-                                       value="{{ review_data.get('invention_name', '') }}">
+                                       value="{{ review_data.get('invention_name', '') }}"
+                                       aria-label="Project name for new invention">
                             </div>
                             <div class="mb-2">
                                 <label for="invention_description" class="form-label">Description</label>
@@ -135,7 +139,8 @@
                             <label for="existing_invention" class="form-label">Select Invention to Improve</label>
                             <select class="form-control"
                                     id="existing_invention"
-                                    name="existing_invention">
+                                    name="existing_invention"
+                                    title="Select invention to improve">
                                 <option value="">Select an invention...</option>
                                 {% for research in character.research %}
                                     {% if research.current_stage_id is none %}
