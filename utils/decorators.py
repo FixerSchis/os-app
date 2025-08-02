@@ -45,8 +45,8 @@ def email_verified_required(f):
 
 def character_owner_or_user_admin_required(f):
     """
-    Decorator that checks if the current user is the owner of the character or has character edit permissions.
-    It expects 'character_id' in the view arguments.
+    Decorator that checks if the current user is the owner of the character or has
+    character edit permissions. It expects 'character_id' in the view arguments.
     """
 
     @wraps(f)
@@ -59,9 +59,9 @@ def character_owner_or_user_admin_required(f):
         character = Character.query.get_or_404(character_id)
 
         # User is owner of the character or has character edit permissions
-        if character.user_id == current_user.id or current_user.has_permission(
-            "character.edit_all"
-        ):
+        is_owner = character.user_id == current_user.id
+        has_edit_permission = current_user.has_permission("character.edit_all")
+        if is_owner or has_edit_permission:
             return f(*args, **kwargs)
 
         abort(403)
@@ -71,8 +71,8 @@ def character_owner_or_user_admin_required(f):
 
 def character_owner_or_downtime_team_required(f):
     """
-    Decorator that checks if the current user is the owner of the character or has downtime management permissions.
-    It expects 'character_id' in the view arguments.
+    Decorator that checks if the current user is the owner of the character or has
+    downtime management permissions. It expects 'character_id' in the view arguments.
     """
 
     @wraps(f)
@@ -85,7 +85,9 @@ def character_owner_or_downtime_team_required(f):
         character = Character.query.get_or_404(character_id)
 
         # User is owner of the character or has downtime management permissions
-        if character.user_id == current_user.id or current_user.has_permission("downtime.manage"):
+        is_owner = character.user_id == current_user.id
+        has_downtime_permission = current_user.has_permission("downtime.manage")
+        if is_owner or has_downtime_permission:
             return f(*args, **kwargs)
 
         abort(403)

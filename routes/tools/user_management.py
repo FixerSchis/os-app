@@ -141,7 +141,8 @@ def user_management_edit_user_post(user_id):
                     current_user.role = next_highest_role
 
                     flash(
-                        f"User {user.email} has been promoted to owner. You now have the {next_highest_role.name} role.",
+                        f"User {user.email} has been promoted to owner. "
+                        f"You now have the {next_highest_role.name} role.",
                         "success",
                     )
                 else:

@@ -16,7 +16,8 @@ class TestRoleManagement:
             sess["_fresh"] = True
 
         response = test_client.get("/tools/roles")
-        # User should be redirected to login if not authenticated, or get 403 if authenticated but no permission
+        # User should be redirected to login if not authenticated, or get 403 if authenticated
+        # but no permission
         assert response.status_code in [302, 403]
         if response.status_code == 302:
             # The redirect might go to '/' which then redirects to login
@@ -36,7 +37,8 @@ class TestRoleManagement:
             sess["_fresh"] = True
 
         response = test_client.get("/tools/roles/new")
-        # User should be redirected to login if not authenticated, or get 403 if authenticated but no permission
+        # User should be redirected to login if not authenticated, or get 403 if authenticated
+        # but no permission
         assert response.status_code in [302, 403]
         if response.status_code == 302:
             # The redirect might go to '/' which then redirects to login
@@ -92,7 +94,8 @@ class TestRoleManagement:
             sess["_fresh"] = True
 
         response = test_client.post("/tools/roles/promote-user")
-        # User should be redirected to login if not authenticated, or get 403 if authenticated but no permission
+        # User should be redirected to login if not authenticated, or get 403 if authenticated
+        # but no permission
         assert response.status_code in [302, 403]
         if response.status_code == 302:
             # The redirect might go to '/' which then redirects to login
@@ -103,8 +106,6 @@ class TestRoleManagement:
 def auth_user_with_roles_permission(test_client, db_session):
     """Create a user with user.roles permission."""
     import uuid
-
-    from models.tools.user import User
 
     # Create a new user
     unique_id = uuid.uuid4().hex

@@ -8,6 +8,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+# flake8: noqa: E402
 from app import create_app
 from models.database.permissions import Permission, Role
 from models.extensions import db

@@ -202,14 +202,16 @@ def refund_skill(character_id):
 
     skill = Skill.query.get_or_404(skill_id)
 
-    # Only allow users with refund permission or character edit permission to refund skills for non-developing characters
+    # Only allow users with refund permission or character edit permission to refund skills
+    # for non-developing characters
     if not (
         current_user.has_permission("character.refund")
         or current_user.has_permission("character.edit_all")
     ):
         if character.status != CharacterStatus.DEVELOPING.value:
             flash(
-                "Only users with refund permission can refund skills for non-developing characters.",
+                "Only users with refund permission can refund skills for "
+                "non-developing characters.",
                 "error",
             )
             return redirect(url_for("character_skills.character_skills", character_id=character_id))

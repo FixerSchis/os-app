@@ -329,8 +329,6 @@ def generate_template_completions(template_type):
 
         completions["item"] = item_fields
         # Also include blueprint and type fields
-        from models.database.item_blueprint import ItemBlueprint
-        from models.database.item_type import ItemType
 
         blueprint_fields = {}
         for column in ItemBlueprint.__table__.columns:

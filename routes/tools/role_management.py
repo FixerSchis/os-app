@@ -153,7 +153,8 @@ def role_delete(role_id):
     users_with_role = User.query.filter_by(role_id=role_id).count()
     if users_with_role > 0:
         flash(
-            f"Cannot delete role '{role.name}' because {users_with_role} user(s) are assigned to it.",
+            f"Cannot delete role '{role.name}' because {users_with_role} "
+            f"user(s) are assigned to it.",
             "error",
         )
         return redirect(url_for("role_management.role_list"))
@@ -202,7 +203,8 @@ def promote_user():
 
     db.session.commit()
     flash(
-        f"User {user.username} has been promoted to owner. You now have the {next_highest_role.name} role.",
+        f"User {user.username} has been promoted to owner. "
+        f"You now have the {next_highest_role.name} role.",
         "success",
     )
     return redirect(url_for("role_management.role_list"))
