@@ -483,7 +483,7 @@ class TestItemsRoutes:
 class TestCharacterBackgroundAuditLogging:
     """Test character background audit logging functionality."""
 
-    def test_background_changes_audit_logged(self, test_client, regular_user, db_session):
+    def test_background_changes_audit_logged(self, test_client, user_admin, db_session):
         """Test that background changes are audit logged during character editing."""
         # Create required faction and species for the test
         from models.database.faction import Faction
@@ -510,7 +510,7 @@ class TestCharacterBackgroundAuditLogging:
 
         # Create a character with the required faction and species
         character = Character(
-            user_id=regular_user.id,
+            user_id=user_admin.id,
             name="Test Character",
             status=CharacterStatus.ACTIVE.value,
             faction_id=faction.id,
@@ -520,7 +520,7 @@ class TestCharacterBackgroundAuditLogging:
         db_session.commit()
 
         with test_client.session_transaction() as sess:
-            sess["_user_id"] = regular_user.id
+            sess["_user_id"] = user_admin.id
             sess["_fresh"] = True
 
         # Get the edit form to get required fields

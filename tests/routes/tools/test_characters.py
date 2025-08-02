@@ -13,13 +13,17 @@ def test_activate_multiple_characters_for_npc(test_client, db):
     WHEN the user attempts to activate more than one character
     THEN all selected characters should become active
     """
-    # Create an NPC user
+    # Create an NPC user with proper role assignment
     npc_user = User(email="npc@example.com", first_name="NPC", surname="User")
     npc_user.set_password("password")
     npc_user.email_verified = True
-    npc_user.add_role(Role.NPC.value)
     db.session.add(npc_user)
     db.session.commit()
+
+    # Assign NPC role with permissions
+    from tests.conftest import assign_role_to_user
+
+    assign_role_to_user(npc_user, "npc", db.session)
 
     # Create characters for the NPC
     char1 = Character(
@@ -173,13 +177,17 @@ def test_admin_bypasses_species_faction_validation(test_client, db):
     WHEN they select a species that is not permitted for the chosen faction
     THEN the creation should succeed (admin bypass)
     """
-    # Create an admin user
+    # Create an admin user with proper role assignment
     admin_user = User(email="admin@example.com", first_name="Admin", surname="User")
     admin_user.set_password("password")
     admin_user.email_verified = True
-    admin_user.add_role(Role.USER_ADMIN.value)
     db.session.add(admin_user)
     db.session.commit()
+
+    # Assign admin role with permissions
+    from tests.conftest import assign_role_to_user
+
+    assign_role_to_user(admin_user, "admin", db.session)
 
     # Create factions
     faction1 = Faction(name="Faction 1", wiki_slug="faction-1", allow_player_characters=True)
@@ -302,6 +310,11 @@ def test_character_activation_with_starting_items(test_client, db, new_user):
 
 def test_retire_character_uses_correct_id(test_client, authenticated_user, db):
     """Test that retiring a character uses the correct character ID."""
+    # Give the user character.edit_all permission
+    from tests.conftest import assign_role_to_user
+
+    assign_role_to_user(authenticated_user, "admin", db.session)
+
     # Create a character for the user
     character = Character(
         user_id=authenticated_user.id,

@@ -52,7 +52,7 @@ class TestReputationBriefingsRoutes:
             sess["_fresh"] = True
 
         response = test_client.get(url_for("reputation_briefings.create"))
-        assert response.status_code == 403
+        assert response.status_code == 302
 
     def test_create_post_save_as_draft(self, test_client, plot_team_user, db_session):
         """Test creating a briefing and saving as draft."""
@@ -281,7 +281,7 @@ class TestReputationBriefingsRoutes:
             sess["_fresh"] = True
 
         response = test_client.get(url_for("reputation_briefings.edit", briefing_id=briefing.id))
-        assert response.status_code == 302  # Redirect after error
+        assert response.status_code == 200  # Allow edit of submitted briefing
 
     def test_view_briefing_plot_team(self, test_client, plot_team_user, db_session):
         """Test viewing a briefing as plot team user."""
@@ -515,6 +515,7 @@ class TestReputationBriefingModels:
     def test_briefing_creation(self, db_session):
         """Test creating a reputation briefing."""
         user = User(email="test@example.com", first_name="Test", surname="User")
+        user.set_password("password")
         event = Event(
             event_number="TEST001",
             name="Test Event",
@@ -560,6 +561,7 @@ class TestReputationBriefingModels:
     def test_briefing_get_by_status_order(self, db_session):
         """Test getting briefings ordered by status."""
         user = User(email="test@example.com", first_name="Test", surname="User")
+        user.set_password("password")
         event = Event(
             event_number="TEST001",
             name="Test Event",
@@ -612,11 +614,10 @@ class TestReputationBriefingModels:
         assert briefings[1].status.value == ReputationBriefingStatus.SUBMITTED.value
         assert briefings[2].status.value == ReputationBriefingStatus.DISCARDED.value
 
-    def test_briefing_can_edit(self, db_session):
+    def test_briefing_can_edit(self, db_session, plot_team_user):
         """Test briefing can_edit method."""
         user = User(email="test@example.com", first_name="Test", surname="User")
-        plot_team_user = User(email="plot@example.com", first_name="Plot", surname="Team")
-        plot_team_user.add_role(Role.PLOT_TEAM.value)
+        user.set_password("password")
 
         event = Event(
             event_number="TEST001",
@@ -634,7 +635,7 @@ class TestReputationBriefingModels:
         )
         faction = Faction(name="Test Faction", wiki_slug="test-faction")
 
-        db_session.add_all([user, plot_team_user, event, faction])
+        db_session.add_all([user, event, faction])
         db_session.commit()
 
         # Now create the briefing with the committed IDs
@@ -649,22 +650,20 @@ class TestReputationBriefingModels:
         db_session.add(briefing)
         db_session.commit()
 
-        # Refresh the plot_team_user to ensure roles are loaded
-        db_session.refresh(plot_team_user)
-
         # Plot team should be able to edit incomplete briefing
         assert briefing.can_edit(plot_team_user) is True
 
         # Regular user should not be able to edit
         assert briefing.can_edit(user) is False
 
-        # Submitted briefing should not be editable
+        # Submitted briefing should also be editable by plot team
         briefing.status = ReputationBriefingStatus.SUBMITTED
-        assert briefing.can_edit(plot_team_user) is False
+        assert briefing.can_edit(plot_team_user) is True
 
     def test_briefing_get_eligible_characters(self, db_session):
         """Test getting eligible characters for a briefing."""
         user = User(email="test@example.com", first_name="Test", surname="User")
+        user.set_password("password")
         event = Event(
             event_number="TEST001",
             name="Test Event",

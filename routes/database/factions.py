@@ -6,6 +6,7 @@ from models.enums import Role
 from models.extensions import db
 from models.wiki import WikiPage, get_or_create_wiki_page
 from utils.decorators import email_verified_required
+from utils.permission_decorators import permission_required
 
 factions_bp = Blueprint("factions", __name__)
 
@@ -16,18 +17,15 @@ def faction_list():
     return render_template(
         "factions/list.html",
         factions=factions,
-        can_edit=current_user.is_authenticated and current_user.has_role(Role.RULES_TEAM.value),
+        can_edit=current_user.is_authenticated and current_user.has_permission("rules.factions"),
     )
 
 
 @factions_bp.route("/<int:faction_id>/edit", methods=["GET", "POST"])
 @login_required
 @email_verified_required
+@permission_required(permissions=["rules.factions"])
 def edit_faction(faction_id):
-    if not current_user.has_role(Role.RULES_TEAM.value):
-        flash("You do not have permission to access this page.", "error")
-        return redirect(url_for("index"))
-
     faction = Faction.query.get_or_404(faction_id)
 
     if request.method == "POST":
@@ -65,11 +63,8 @@ def edit_faction(faction_id):
 @factions_bp.route("/new", methods=["GET", "POST"])
 @login_required
 @email_verified_required
+@permission_required(permissions=["rules.factions"])
 def new_faction():
-    if not current_user.has_role(Role.RULES_TEAM.value):
-        flash("You do not have permission to access this page.", "error")
-        return redirect(url_for("index"))
-
     if request.method == "POST":
         name = request.form.get("name")
         wiki_page = request.form.get("wiki_page")

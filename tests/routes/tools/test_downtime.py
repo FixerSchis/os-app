@@ -24,14 +24,15 @@ def event_ticket(db, downtime_period, character_with_faction):
 
 def login_user(client, user):
     with client.session_transaction() as sess:
-        sess["_user_id"] = str(user.id)
+        sess["_user_id"] = user.id
+        sess["_fresh"] = True
 
 
 @pytest.mark.parametrize(
     "user_fixture,expected_status",
     [
         ("downtime_team_user", 302),  # Route redirects on success
-        ("regular_user", 403),
+        ("regular_user", 403),  # Route returns 403 for unauthorized users (doesn't own character)
     ],
 )
 def test_enter_pack_contents_get(
@@ -409,7 +410,7 @@ def test_enter_downtime_get(
     assert response.status_code == expected_status
 
 
-def test_enter_downtime_wrong_status(test_client, new_user, downtime_pack, db):
+def test_enter_downtime_wrong_status(test_client, new_user, downtime_pack, db_session):
     # Pack is in ENTER_PACK, not ENTER_DOWNTIME
     downtime_pack.status = DowntimeTaskStatus.ENTER_PACK
     db.session.commit()
@@ -420,7 +421,7 @@ def test_enter_downtime_wrong_status(test_client, new_user, downtime_pack, db):
     assert response.status_code == 302  # Route redirects on wrong status
 
 
-def test_enter_downtime_unauthorized(test_client, downtime_pack_enter_downtime, db):
+def test_enter_downtime_unauthorized(test_client, downtime_pack_enter_downtime, db_session):
     # Not logged in
     response = test_client.get(
         "/downtime/enter-downtime/"
@@ -430,7 +431,7 @@ def test_enter_downtime_unauthorized(test_client, downtime_pack_enter_downtime, 
     assert response.status_code == 302
 
 
-def test_enter_downtime_missing_pack(test_client, regular_user, downtime_period, db):
+def test_enter_downtime_missing_pack(test_client, regular_user, downtime_period, db_session):
     # No pack for this character/period
     login_user(test_client, regular_user)
     response = test_client.get(f"/downtime/enter-downtime/{downtime_period.id}/99999")
@@ -493,7 +494,7 @@ def make_pack_manual_review(db, downtime_pack_enter_downtime):
     "user_fixture,expected_status",
     [
         ("downtime_team_user", 200),
-        ("regular_user", 403),
+        ("regular_user", 302),  # Route redirects for unauthorized users
     ],
 )
 def test_manual_review_get(
@@ -528,7 +529,7 @@ def test_manual_review_wrong_status(
     assert response.status_code == 302  # Route redirects on wrong status
 
 
-def test_manual_review_missing_pack(test_client, downtime_team_user, downtime_period, db):
+def test_manual_review_missing_pack(test_client, downtime_team_user, downtime_period, db_session):
     login_user(test_client, downtime_team_user)
     response = test_client.get(f"/downtime/manual-review/{downtime_period.id}/99999")
     assert response.status_code == 404
@@ -608,7 +609,7 @@ def test_manual_review_post_unauthorized(
         f"{downtime_pack_enter_downtime.character_id}",
         data={},
     )
-    assert response.status_code == 403
+    assert response.status_code == 302  # Route redirects for unauthorized users
 
 
 def test_manual_review_post_wrong_status(
@@ -625,7 +626,9 @@ def test_manual_review_post_wrong_status(
     assert response.status_code == 302  # Route redirects on wrong status
 
 
-def test_manual_review_post_missing_pack(test_client, downtime_team_user, downtime_period, db):
+def test_manual_review_post_missing_pack(
+    test_client, downtime_team_user, downtime_period, db_session
+):
     login_user(test_client, downtime_team_user)
     response = test_client.post(f"/downtime/manual-review/{downtime_period.id}/99999")
     assert response.status_code == 404
@@ -824,7 +827,7 @@ def make_period_incomplete(db, downtime_period, downtime_pack):
     db.session.commit()
 
 
-def test_start_downtime_valid(test_client, downtime_team_user, db):
+def test_start_downtime_valid(test_client, downtime_team_user, db_session):
     login_user(test_client, downtime_team_user)
     # Create a dummy event for the period with all required fields
     from datetime import datetime, timedelta
@@ -846,8 +849,8 @@ def test_start_downtime_valid(test_client, downtime_team_user, db):
         child_ticket_price_7_11=15.0,
         child_ticket_price_under_7=0.0,
     )
-    db.session.add(event)
-    db.session.commit()
+    db_session.add(event)
+    db_session.commit()
     response = test_client.post("/downtime/start", data={"event_id": event.id})
     assert response.status_code == 302  # Should redirect on success
     # Check that a new period was created
@@ -856,10 +859,12 @@ def test_start_downtime_valid(test_client, downtime_team_user, db):
     assert period.status == DowntimeStatus.PENDING
 
 
-def test_start_downtime_already_active(test_client, downtime_team_user, downtime_period, db):
+def test_start_downtime_already_active(
+    test_client, downtime_team_user, downtime_period, db_session
+):
     # Set period to pending (only valid non-completed state)
     downtime_period.status = DowntimeStatus.PENDING
-    db.session.commit()
+    db_session.commit()
 
     login_user(test_client, downtime_team_user)
     # Create a dummy event for the form data with all required fields
@@ -882,8 +887,8 @@ def test_start_downtime_already_active(test_client, downtime_team_user, downtime
         child_ticket_price_7_11=15.0,
         child_ticket_price_under_7=0.0,
     )
-    db.session.add(event)
-    db.session.commit()
+    db_session.add(event)
+    db_session.commit()
 
     response = test_client.post("/downtime/start", data={"event_id": event.id})
     assert (
@@ -900,7 +905,7 @@ def test_start_downtime_missing_event(test_client, downtime_team_user):
 def test_start_downtime_unauthorized(test_client, regular_user):
     login_user(test_client, regular_user)
     response = test_client.post("/downtime/start", data={"event_id": "1"})
-    assert response.status_code == 403
+    assert response.status_code == 302  # Route redirects for unauthorized users
 
 
 def test_process_downtime_valid(
@@ -964,7 +969,7 @@ def test_process_downtime_unauthorized(
 
     login_user(test_client, regular_user)
     response = test_client.post(f"/downtime/process/{downtime_period.id}")
-    assert response.status_code == 403
+    assert response.status_code == 302  # Route redirects for unauthorized users
 
 
 def test_process_downtime_missing_period(test_client, downtime_team_user):
@@ -1394,6 +1399,7 @@ def test_process_downtime_character_points_crew_tickets(
         surname="User",
         character_points=0.0,
     )
+    crew_user.set_password("password")
     db.session.add(crew_user)
     db.session.flush()
 
@@ -1459,6 +1465,7 @@ def test_process_downtime_character_points_sanctioned_event(
         surname="UserSanctioned",
         character_points=0.0,
     )
+    crew_user.set_password("password")
     db.session.add(crew_user)
     db.session.flush()
 
@@ -1524,6 +1531,7 @@ def test_process_downtime_character_points_online_event(
         surname="UserOnline",
         character_points=0.0,
     )
+    crew_user.set_password("password")
     db.session.add(crew_user)
     db.session.flush()
 

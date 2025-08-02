@@ -26,7 +26,7 @@
                     <div class="card-body">
                         <div class="form-group">
                             <label for="event_id">Event *</label>
-                            <select name="event_id" id="event_id" class="form-control select2" required>
+                            <select name="event_id" id="event_id" class="form-control select2" required title="Select event for briefing">
                                 <option value="">Select an event...</option>
                                 {% for event in events %}
                                 <option value="{{ event.id }}">
@@ -38,7 +38,7 @@
 
                         <div class="form-group">
                             <label for="faction_id">Faction *</label>
-                            <select name="faction_id" id="faction_id" class="form-control select2" required>
+                            <select name="faction_id" id="faction_id" class="form-control select2" required title="Select faction for briefing">
                                 <option value="">Select a faction...</option>
                                 {% for faction in factions %}
                                 <option value="{{ faction.id }}">{{ faction.name }}</option>

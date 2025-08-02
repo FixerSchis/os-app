@@ -6,6 +6,7 @@ from models.enums import ScienceType
 from models.extensions import db
 from models.wiki import WikiPage
 from utils.decorators import email_verified_required
+from utils.permission_decorators import permission_required
 
 exotic_substances_bp = Blueprint("exotic_substances", __name__)
 
@@ -14,7 +15,9 @@ exotic_substances_bp = Blueprint("exotic_substances", __name__)
 def list():
     # Get all substances and order by type and name
     substances = ExoticSubstance.query.order_by(ExoticSubstance.type, ExoticSubstance.name).all()
-    can_edit = current_user.is_authenticated and current_user.has_role("rules_team")
+    can_edit = current_user.is_authenticated and current_user.has_permission(
+        "rules.exotic_substances"
+    )
     type_friendly_names = ScienceType.descriptions()
     return render_template(
         "rules/exotic_substances/list.html",
@@ -27,11 +30,8 @@ def list():
 @exotic_substances_bp.route("/new", methods=["GET"])
 @login_required
 @email_verified_required
+@permission_required(permissions=["rules.exotic_substances"])
 def create():
-    if not current_user.has_role("rules_team"):
-        flash("You do not have permission to access this page", "error")
-        return redirect(url_for("index"))
-
     types = [t for t in ScienceType]
     wiki_pages = [
         {"title": page.title, "slug": page.slug}
@@ -48,11 +48,8 @@ def create():
 @exotic_substances_bp.route("/new", methods=["POST"])
 @login_required
 @email_verified_required
+@permission_required(permissions=["rules.exotic_substances"])
 def create_post():
-    if not current_user.has_role("rules_team"):
-        flash("You do not have permission to access this page", "error")
-        return redirect(url_for("index"))
-
     name = request.form.get("name")
     substance_type = request.form.get("type")
     wiki_slug = request.form.get("wiki_slug")
@@ -99,11 +96,8 @@ def create_post():
 @exotic_substances_bp.route("/<int:id>/edit", methods=["GET"])
 @login_required
 @email_verified_required
+@permission_required(permissions=["rules.exotic_substances"])
 def edit(id):
-    if not current_user.has_role("rules_team"):
-        flash("You do not have permission to access this page", "error")
-        return redirect(url_for("index"))
-
     substance = ExoticSubstance.query.get_or_404(id)
     types = [t for t in ScienceType]
     wiki_pages = [
@@ -122,11 +116,8 @@ def edit(id):
 @exotic_substances_bp.route("/<int:id>/edit", methods=["POST"])
 @login_required
 @email_verified_required
+@permission_required(permissions=["rules.exotic_substances"])
 def edit_post(id):
-    if not current_user.has_role("rules_team"):
-        flash("You do not have permission to access this page", "error")
-        return redirect(url_for("index"))
-
     substance = ExoticSubstance.query.get_or_404(id)
 
     name = request.form.get("name")

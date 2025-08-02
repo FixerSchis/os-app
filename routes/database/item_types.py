@@ -4,6 +4,7 @@ from flask_login import current_user, login_required
 from models.database.item_type import ItemType
 from models.enums import Role
 from models.extensions import db
+from utils.permission_decorators import permission_required
 
 item_types_bp = Blueprint("item_types", __name__)
 
@@ -12,25 +13,21 @@ item_types_bp = Blueprint("item_types", __name__)
 def list():
     # Get all item types and order by id_prefix, then name
     item_types = ItemType.query.order_by(ItemType.id_prefix, ItemType.name).all()
-    can_edit = current_user.is_authenticated and current_user.has_role(Role.RULES_TEAM.value)
+    can_edit = current_user.is_authenticated and current_user.has_permission("rules.item_types")
     return render_template("rules/item_types/list.html", item_types=item_types, can_edit=can_edit)
 
 
 @item_types_bp.route("/create", methods=["GET"])
 @login_required
+@permission_required(permissions=["rules.item_types"])
 def create():
-    if not current_user.has_role(Role.RULES_TEAM.value):
-        flash("You do not have permission to access this page", "error")
-        return redirect(url_for("index"))
     return render_template("rules/item_types/edit.html")
 
 
 @item_types_bp.route("/create", methods=["POST"])
 @login_required
+@permission_required(permissions=["rules.item_types"])
 def create_post():
-    if not current_user.has_role(Role.RULES_TEAM.value):
-        flash("You do not have permission to access this page", "error")
-        return redirect(url_for("index"))
     name = request.form.get("name")
     id_prefix = request.form.get("id_prefix")
     if not name or not id_prefix:
@@ -55,20 +52,16 @@ def create_post():
 
 @item_types_bp.route("/<int:id>/edit", methods=["GET"])
 @login_required
+@permission_required(permissions=["rules.item_types"])
 def edit(id):
-    if not current_user.has_role(Role.RULES_TEAM.value):
-        flash("You do not have permission to access this page", "error")
-        return redirect(url_for("index"))
     item_type = ItemType.query.get_or_404(id)
     return render_template("rules/item_types/edit.html", item_type=item_type)
 
 
 @item_types_bp.route("/<int:id>/edit", methods=["POST"])
 @login_required
+@permission_required(permissions=["rules.item_types"])
 def edit_post(id):
-    if not current_user.has_role(Role.RULES_TEAM.value):
-        flash("You do not have permission to access this page", "error")
-        return redirect(url_for("index"))
     item_type = ItemType.query.get_or_404(id)
     name = request.form.get("name")
     id_prefix = request.form.get("id_prefix")
@@ -94,18 +87,18 @@ def edit_post(id):
 
 @item_types_bp.route("/<int:id>/delete", methods=["POST"])
 @login_required
+@permission_required(permissions=["rules.item_types"])
 def delete(id):
-    if not current_user.has_role(Role.RULES_TEAM.value):
-        flash("You do not have permission to access this page", "error")
-        return redirect(url_for("index"))
     item_type = ItemType.query.get_or_404(id)
-    if item_type.blueprints and len(item_type.blueprints) > 0:
-        flash(
-            "Cannot delete item type with associated blueprints. "
-            "Please delete or reassign the blueprints first.",
-            "error",
-        )
+
+    # Check if there are associated blueprints
+    from models.database.item_blueprint import ItemBlueprint
+
+    associated_blueprints = ItemBlueprint.query.filter_by(item_type_id=id).first()
+    if associated_blueprints:
+        flash("Cannot delete item type with associated blueprints", "error")
         return redirect(url_for("item_types.list"))
+
     try:
         db.session.delete(item_type)
         db.session.commit()

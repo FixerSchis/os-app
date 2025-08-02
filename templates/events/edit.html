@@ -20,7 +20,7 @@
         <div class="row">
             <div class="col-md-6 mb-3">
                 <label for="event_type" class="form-label">Event Type</label>
-                <select class="form-select" id="event_type" name="event_type" required>
+                <select class="form-select" id="event_type" name="event_type" required title="Select event type">
                     {% for event_type in EventType.values() %}
                     <option value="{{ event_type }}" {% if event and event.event_type == event_type %}selected{% endif %}>{{ EventType.descriptions()[event_type] }}</option>
                     {% endfor %}
@@ -115,7 +115,7 @@
         </div>
 
         <div class="mt-4">
-            <button type="submit" class="btn btn-primary">{% if event %}Update{% else %}Create{% endif %} Event</button>
+            <button type="submit" class="btn btn-primary" aria-label="{% if event %}Update{% else %}Create{% endif %} event">{% if event %}Update{% else %}Create{% endif %} Event</button>
             <a href="{{ url_for('events.event_list') }}" class="btn btn-secondary">Cancel</a>
         </div>
     </form>

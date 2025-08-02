@@ -14,10 +14,10 @@
                     <h2>Character Balance</h2>
                 </div>
                 <div class="card-body">
-                    {% if current_user.has_role('user_admin') or (characters_for_select and characters_for_select|length > 1) %}
+                    {% if has_permission('banking.manage') or (characters_for_select and characters_for_select|length > 1) %}
                         <div class="form-group mb-3">
                             <label for="character_select">Select Character</label>
-                            <select class="form-control select2" id="character_select">
+                            <select class="form-control select2" id="character_select" title="Select character to view balance">
                                 <option value="">Select a character...</option>
                                 {% for char in characters_for_select %}
                                 <option value="{{ char.id }}" data-balance="{{ char.bank_account }}">{{ char.name }}</option>
@@ -26,12 +26,13 @@
                         </div>
                         <div id="character_balance_display" class="mt-2" style="display:none;">
                             <h4>Balance: <span id="character_balance"></span></h4>
-                            {% if current_user.has_role('user_admin') %}
+                            {% if has_permission('banking.manage') %}
                             <div class="mt-3">
                                 <form method="POST" action="{{ url_for('banking.update_balance') }}" class="d-inline">
                                     <input type="hidden" name="account_type" value="character">
                                     <input type="hidden" name="account_id" id="character_account_id">
                                     <div class="input-group">
+                                        <label for="character_balance_input" class="sr-only">New balance</label>
                                         <input type="number" class="form-control" name="balance" id="character_balance_input" placeholder="New balance">
                                         <button type="submit" class="btn btn-warning">Update Balance</button>
                                     </div>
@@ -53,10 +54,10 @@
                     <h2>Group Balance</h2>
                 </div>
                 <div class="card-body">
-                    {% if current_user.has_role('user_admin') or (groups_for_select and groups_for_select|length > 0) %}
+                    {% if has_permission('banking.manage') or (groups_for_select and groups_for_select|length > 0) %}
                         <div class="form-group mb-3">
                             <label for="group_select">Select Group</label>
-                            <select class="form-control select2" id="group_select">
+                            <select class="form-control select2" id="group_select" title="Select group to view balance">
                                 <option value="">Select a group...</option>
                                 {% for group in groups_for_select %}
                                 <option value="{{ group.id }}" data-balance="{{ group.bank_account }}">{{ group.name }}</option>
@@ -65,12 +66,13 @@
                         </div>
                         <div id="group_balance_display" class="mt-2" style="display:none;">
                             <h4>Balance: <span id="group_balance"></span></h4>
-                            {% if current_user.has_role('user_admin') %}
+                            {% if has_permission('banking.manage') %}
                             <div class="mt-3">
                                 <form method="POST" action="{{ url_for('banking.update_balance') }}" class="d-inline">
                                     <input type="hidden" name="account_type" value="group">
                                     <input type="hidden" name="account_id" id="group_account_id">
                                     <div class="input-group">
+                                        <label for="group_balance_input" class="sr-only">New balance</label>
                                         <input type="number" class="form-control" name="balance" id="group_balance_input" placeholder="New balance">
                                         <button type="submit" class="btn btn-warning">Update Balance</button>
                                     </div>
@@ -100,11 +102,12 @@
                     <div class="col-md-4">
                         <label for="source_account">From</label>
                         {% if show_source_dropdown is defined and not show_source_dropdown %}
-                            <input type="text" class="form-control" value="{{ active_character.name }} (Balance: {{ active_character.bank_account }})" readonly>
+                            <label for="active_character_display" class="sr-only">Active character</label>
+                            <input type="text" class="form-control" id="active_character_display" value="{{ active_character.name }} (Balance: {{ active_character.bank_account }})" readonly>
                             <input type="hidden" name="source_type" value="character">
                             <input type="hidden" name="source_id" value="{{ active_character.id }}">
                         {% else %}
-                            <select class="form-control select2" id="source_account" name="source_account" required>
+                            <select class="form-control select2" id="source_account" name="source_account" required title="Select source account for transfer">
                                 <option value="">Select source account...</option>
                                 {% for account in source_accounts %}
                                 <option value="{{ account.type }}_{{ account.id }}">
@@ -120,7 +123,7 @@
                     </div>
                     <div class="col-md-4">
                         <label for="target_account">To</label>
-                        <select class="form-control select2" id="target_account" name="target_account" required>
+                        <select class="form-control select2" id="target_account" name="target_account" required title="Select target account for transfer">
                             <option value="">Select target account...</option>
                             {% for account in target_accounts %}
                             <option value="{{ account.type }}_{{ account.id }}">{{ account.name }}</option>

@@ -6,7 +6,7 @@
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1>Research Projects</h1>
-        {% if current_user.has_role('rules_team') %}
+        {% if has_permission('research.create') %}
         <a href="{{ url_for('research.research_create') }}" class="btn btn-primary">New Research</a>
         {% endif %}
     </div>

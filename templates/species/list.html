@@ -15,7 +15,7 @@
         <div class="col-md-4">
             <div class="form-group">
                 <label for="faction-filter">Filter by Faction</label>
-                <select class="form-control select2-single" id="faction-filter">
+                <select class="form-control select2-single" id="faction-filter" title="Filter species by faction">
                     <option value="">All Factions</option>
                     {% for faction_id, faction_name in factions.items() %}
                     <option value="{{ faction_id }}">{{ faction_name }}</option>

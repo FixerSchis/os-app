@@ -19,7 +19,8 @@ from models.tools.research import (
     ResearchStage,
     ResearchStageRequirement,
 )
-from utils.decorators import rules_team_required
+from utils.decorators import email_verified_required
+from utils.permission_decorators import permission_required
 
 research_bp = Blueprint("research", __name__)
 
@@ -58,7 +59,8 @@ def req_to_dict(req):
 
 @research_bp.route("/")
 @login_required
-@rules_team_required
+@email_verified_required
+@permission_required(permissions=["research.create"])
 def research_list():
     researches = Research.query.order_by(Research.project_name).all()
     return render_template("research/list.html", researches=researches)
@@ -66,7 +68,8 @@ def research_list():
 
 @research_bp.route("/create", methods=["GET"])
 @login_required
-@rules_team_required
+@email_verified_required
+@permission_required(permissions=["research.create"])
 def research_create():
     items = Item.query.join(ItemBlueprint).order_by(ItemBlueprint.name).all()
     blueprints = ItemBlueprint.query.order_by(ItemBlueprint.name).all()
@@ -87,7 +90,8 @@ def research_create():
 
 @research_bp.route("/create", methods=["POST"])
 @login_required
-@rules_team_required
+@email_verified_required
+@permission_required(permissions=["research.create"])
 def research_create_post():
     project_name = request.form.get("project_name")
     type_value = request.form.get("type")
@@ -211,7 +215,8 @@ def research_create_post():
 
 @research_bp.route("/<int:research_id>/edit", methods=["GET"])
 @login_required
-@rules_team_required
+@email_verified_required
+@permission_required(permissions=["research.edit"])
 def research_edit(research_id):
     research = Research.query.get_or_404(research_id)
     items = Item.query.join(ItemBlueprint).order_by(ItemBlueprint.name).all()
@@ -235,7 +240,8 @@ def research_edit(research_id):
 
 @research_bp.route("/<int:research_id>/edit", methods=["POST"])
 @login_required
-@rules_team_required
+@email_verified_required
+@permission_required(permissions=["research.edit"])
 def research_edit_post(research_id):
     research = Research.query.get_or_404(research_id)
     description = request.form.get("description")
@@ -446,7 +452,7 @@ def research_edit_post(research_id):
 
 @research_bp.route("/api/blueprints")
 @login_required
-@rules_team_required
+@permission_required(permissions=["research.create"])
 def api_blueprints():
     q = request.args.get("q", "").strip().lower()
     query = ItemBlueprint.query
@@ -465,7 +471,7 @@ def api_blueprints():
 
 @research_bp.route("/api/exotics")
 @login_required
-@rules_team_required
+@permission_required(permissions=["research.create"])
 def api_exotics():
     q = request.args.get("q", "").strip().lower()
     query = ExoticSubstance.query
@@ -478,7 +484,7 @@ def api_exotics():
 
 @research_bp.route("/<int:research_id>/assignees")
 @login_required
-@rules_team_required
+@permission_required(permissions=["research.assign"])
 def assignees(research_id):
     research = Research.query.get_or_404(research_id)
     if not research.stages:
@@ -508,7 +514,7 @@ def assignees(research_id):
 
 @research_bp.route("/<int:research_id>/assignees/add", methods=["POST"])
 @login_required
-@rules_team_required
+@permission_required(permissions=["research.assign"])
 def add_assignee(research_id):
     research = Research.query.get_or_404(research_id)
     if not research.stages:
@@ -545,7 +551,7 @@ def add_assignee(research_id):
 
 @research_bp.route("/<int:research_id>/assignees/<int:character_id>/remove", methods=["POST"])
 @login_required
-@rules_team_required
+@permission_required(permissions=["research.assign"])
 def remove_assignee(research_id, character_id):
     character_research = CharacterResearch.query.filter_by(
         research_id=research_id, character_id=character_id
@@ -560,7 +566,7 @@ def remove_assignee(research_id, character_id):
 
 @research_bp.route("/<int:research_id>/assignees/<int:character_id>/progress", methods=["GET"])
 @login_required
-@rules_team_required
+@permission_required(permissions=["research.assign"])
 def edit_progress(research_id, character_id):
     character_research = CharacterResearch.query.filter_by(
         research_id=research_id, character_id=character_id
@@ -586,7 +592,7 @@ def edit_progress(research_id, character_id):
 
 @research_bp.route("/<int:research_id>/assignees/<int:character_id>/progress", methods=["POST"])
 @login_required
-@rules_team_required
+@permission_required(permissions=["research.assign"])
 def edit_progress_post(research_id, character_id):
     character_research = CharacterResearch.query.filter_by(
         research_id=research_id, character_id=character_id
@@ -677,7 +683,7 @@ def project_info():
                     and char.user_id == user_id
                     and (
                         char.user_id == current_user.id
-                        or current_user.has_role(Role.DOWNTIME_TEAM.value)
+                        or current_user.has_permission("downtime.manage")
                     )
                 ):
                     result["valid"] = True

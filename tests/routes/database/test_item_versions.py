@@ -129,8 +129,11 @@ def test_print_unprinted_items_route(test_client, rules_team_user, item, print_t
     assert response.mimetype == "application/pdf"
 
     # Check that item was marked as printed
-    db.session.refresh(item)
-    assert item.printed is True
+    # Remove the problematic refresh call
+    # db.session.refresh(item)
+    # Instead, query the item again to get the updated state
+    updated_item = db.session.get(Item, item.id)
+    assert updated_item.printed is True
 
     # Check audit log was created
     audit_log = ItemAuditLog.query.filter_by(item_id=item.id).first()

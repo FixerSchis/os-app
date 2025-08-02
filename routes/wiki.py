@@ -23,9 +23,9 @@ from models.wiki import (
     WikiTag,
     db,
 )
-from utils.decorators import plot_team_required
 from utils.email import send_wiki_published_notification_to_all
 from utils.mask_email import mask_email
+from utils.permission_decorators import permission_required
 
 wiki_bp = Blueprint("wiki", __name__)
 
@@ -192,11 +192,7 @@ def wiki_list():
 
 def has_access(section, user):
     # Always allow for wiki_admin or rules_team
-    if (
-        user
-        and user.is_authenticated
-        and (user.has_role("wiki_admin") or user.has_role("rules_team"))
-    ):
+    if user and user.is_authenticated and user.has_permission("wiki.edit"):
         return True
     if not section.restriction_type:
         return True
@@ -204,7 +200,8 @@ def has_access(section, user):
     if section.restriction_type == SectionRestrictionType.ROLE:
         if not user or not user.is_authenticated:
             return False
-        return user.has_role(section.restriction_value)
+        # If you want to support dynamic permissions, you could do:
+        return user.has_permission(f"wiki.section.{section.restriction_value}")
     # Character-based restrictions
     if section.restriction_type in [
         SectionRestrictionType.FACTION,
@@ -257,7 +254,7 @@ def has_access(section, user):
 
 @wiki_bp.route("/delete/<path:slug>", methods=["POST"])
 @login_required
-@plot_team_required
+@permission_required(permissions=["wiki.delete"])
 def wiki_delete(slug):
     page = db.session.get(WikiPage, slug)
     if not page:
@@ -272,7 +269,7 @@ def wiki_delete(slug):
 
 @wiki_bp.route("/restore/<path:slug>", methods=["POST"])
 @login_required
-@plot_team_required
+@permission_required(permissions=["wiki.edit"])
 def wiki_restore(slug):
     page = db.session.get(WikiPage, slug)
     version = get_pending_version(page, current_user)
@@ -290,7 +287,7 @@ def wiki_view(slug):
     page = db.session.get(WikiPage, slug)
     if not page:
         return render_template("errors/404.html"), 404
-    is_editor = current_user.is_authenticated and current_user.has_role("plot_team")
+    is_editor = current_user.is_authenticated and current_user.has_permission("wiki.edit")
     user = current_user if current_user.is_authenticated else None
     version_id = request.args.get("version", type=int)
     current = request.args.get("current", type=bool)
@@ -404,7 +401,7 @@ def api_wiki_pages():
 
 @wiki_bp.route("/<path:slug>/edit", methods=["GET"])
 @login_required
-@plot_team_required
+@permission_required(permissions=["wiki.edit"])
 def wiki_edit(slug):
     page = db.session.get(WikiPage, slug)
     if not page:
@@ -451,7 +448,7 @@ def wiki_edit(slug):
 
 @wiki_bp.route("/<path:slug>/edit", methods=["POST"])
 @login_required
-@plot_team_required
+@permission_required(permissions=["wiki.edit"])
 def wiki_edit_post(slug):
     page = db.session.get(WikiPage, slug)
     version = get_pending_version(page, current_user)
@@ -490,7 +487,7 @@ def wiki_edit_post(slug):
 
 @wiki_bp.route("/new", methods=["GET"])
 @login_required
-@plot_team_required
+@permission_required(permissions=["wiki.create"])
 def wiki_new():
     role_descriptions = Role.descriptions()
     available_roles = [{"value": v, "label": role_descriptions[v]} for v in Role.values()]
@@ -520,7 +517,7 @@ def wiki_new():
 
 @wiki_bp.route("/new", methods=["POST"])
 @login_required
-@plot_team_required
+@permission_required(permissions=["wiki.create"])
 def wiki_new_post():
     if request.is_json:
         data = request.get_json()
@@ -576,7 +573,7 @@ def wiki_new_post():
 
 @wiki_bp.route("/upload_image", methods=["POST"])
 @login_required
-@plot_team_required
+@permission_required(permissions=["wiki.edit"])
 def wiki_upload_image():
     file = request.files.get("file")
     if not file:
@@ -603,7 +600,7 @@ def wiki_image(image_id):
 
 @wiki_bp.route("/changes/pending", methods=["GET"])
 @login_required
-@plot_team_required
+@permission_required(permissions=["wiki.publish"])
 def wiki_pending_changes():
     pages = WikiPage.query.order_by(WikiPage.title).all()
     pending_pages = []
@@ -683,7 +680,7 @@ def wiki_pending_changes():
 
 @wiki_bp.route("/changes/pending", methods=["POST"])
 @login_required
-@plot_team_required
+@permission_required(permissions=["wiki.publish"])
 def wiki_pending_changes_post():
     selected_slugs = request.form.getlist("selected_pages")
     changelog = request.form.get("changelog", "").strip()
@@ -785,7 +782,7 @@ def wiki_change_log():
         WikiChangeLog.timestamp.desc(), WikiChangeLog.id.desc()
     ).all()
     # Check if current user has admin role (not just user_admin)
-    is_admin = current_user.is_authenticated and current_user.has_role(Role.ADMIN.value)
+    is_admin = current_user.is_authenticated and current_user.has_permission("wiki.edit")
 
     return render_template(
         "wiki/change_log.html", logs=logs, is_admin=is_admin, mask_email=mask_email
@@ -920,7 +917,7 @@ def wiki_tags():
 
 @wiki_bp.route("/tags", methods=["POST"])
 @login_required
-@plot_team_required
+@permission_required(permissions=["wiki.manage_sections"])
 def wiki_tags_post():
     name = request.json.get("name", "").strip()
     if not name:

@@ -5,8 +5,11 @@ from models.extensions import db
 
 
 class TestGlobalSettingsRoutes:
-    def test_list_global_settings_authenticated(self, test_client, authenticated_user):
-        """Test that authenticated users can view global settings."""
+    def test_list_global_settings_authenticated(self, test_client, rules_team_user):
+        """Test that authenticated users with proper permissions can view global settings."""
+        with test_client.session_transaction() as sess:
+            sess["_user_id"] = rules_team_user.id
+            sess["_fresh"] = True
         response = test_client.get("/db/global-settings/")
         assert response.status_code == 200
         assert b"Global Settings" in response.data
@@ -18,8 +21,11 @@ class TestGlobalSettingsRoutes:
 
     def test_edit_global_settings_rules_team_required(self, test_client, authenticated_user):
         """Test that non-rules-team users cannot access edit page."""
+        with test_client.session_transaction() as sess:
+            sess["_user_id"] = authenticated_user.id
+            sess["_fresh"] = True
         response = test_client.get("/db/global-settings/edit")
-        assert response.status_code == 403  # Forbidden
+        assert response.status_code == 302  # Redirect to index (no permission)
 
     def test_edit_global_settings_rules_team_allowed(self, test_client, rules_team_user):
         """Test that rules team users can access edit page."""

@@ -11,12 +11,13 @@ from models.extensions import db, login_manager
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(120), unique=True, nullable=False)
-    password_hash = db.Column(db.String(128))
+    password_hash = db.Column(db.String(255), nullable=False)
     first_name = db.Column(db.String(50), nullable=False)
     surname = db.Column(db.String(50), nullable=True)
     pronouns_subject = db.Column(db.String(20), nullable=True)
     pronouns_object = db.Column(db.String(20), nullable=True)
-    roles = db.Column(db.String(255), nullable=False, default="")
+    role_id = db.Column(db.Integer, db.ForeignKey("role.id"), nullable=True)
+    role = db.relationship("Role", backref="users")
     character_points = db.Column(db.Float, nullable=False, default=0.0)
 
     # Relationships
@@ -60,34 +61,43 @@ class User(UserMixin, db.Model):
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
 
-    def has_role(self, role_name):
-        roles = (self.roles or "").split(",")
-        if role_name == "owner":
-            return "owner" in roles
-        elif role_name == "admin":
-            return "owner" in roles or "admin" in roles
-        else:
-            return "owner" in roles or "admin" in roles or role_name in roles
+    def has_permission(self, permission_name):
+        """Check if the user has a specific permission."""
+        if self.role:
+            return self.role.has_permission(permission_name)
+        return False
 
-    def has_any_role(self, role_names):
-        """Check if the user has any of the specified roles."""
-        return any(self.has_role(role_name) for role_name in role_names)
+    def has_any_permission(self, permission_names):
+        """Check if the user has any of the specified permissions."""
+        if self.role:
+            return any(self.role.has_permission(perm) for perm in permission_names)
+        return False
 
-    def add_role(self, role_name):
-        if role_name in Role.values() and not self.has_role(role_name):
-            current_roles = (self.roles or "").split(",") if self.roles else []
-            current_roles.append(role_name)
-            self.roles = ",".join([r for r in current_roles if r])
-
-    def remove_role(self, role_name):
-        if self.has_role(role_name):
-            current_roles = (self.roles or "").split(",")
-            current_roles = [r for r in current_roles if r and r != role_name]
-            self.roles = ",".join(current_roles)
+    def has_all_permissions(self, permission_names):
+        """Check if the user has all of the specified permissions."""
+        if self.role:
+            return all(self.role.has_permission(perm) for perm in permission_names)
+        return False
 
     @property
-    def role_list(self):
-        return [role for role in (self.roles or "").split(",") if role]
+    def roles(self):
+        """Return the role name as a string for template compatibility."""
+        if self.role:
+            return self.role.name
+        return ""
+
+    def add_role(self, role_name):
+        """Add a role to the user (compatibility method)."""
+        from models.database.permissions import Role as NewRole
+
+        role = NewRole.query.filter_by(name=role_name).first()
+        if role:
+            self.role = role
+
+    def remove_role(self, role_name):
+        """Remove a role from the user (compatibility method)."""
+        if self.role and self.role.name == role_name:
+            self.role = None
 
     def add_character_points(self, points):
         """Add character points to the user's total."""

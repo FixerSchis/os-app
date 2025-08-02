@@ -39,8 +39,12 @@ def test_create_event_get(test_client, admin_user):
 
 def test_create_event_get_unauthorized(test_client, authenticated_user):
     """Test create event page when user is not admin."""
-    response = test_client.get("/events/new", follow_redirects=True)
-    assert response.status_code in [200, 403]  # Can be either redirect or forbidden
+    with test_client.session_transaction() as session:
+        session["_user_id"] = authenticated_user.id
+        session["_fresh"] = True
+
+    response = test_client.get("/events/new")
+    assert response.status_code in [200, 302]  # Can be either redirect or forbidden
 
 
 def test_create_event_post(test_client, admin_user, db):
@@ -138,8 +142,12 @@ def test_edit_event_get_unauthorized(test_client, authenticated_user, db):
     db.session.add(event)
     db.session.commit()
 
-    response = test_client.get(f"/events/{event.id}/edit", follow_redirects=True)
-    assert response.status_code in [200, 403]  # Can be either redirect or forbidden
+    with test_client.session_transaction() as session:
+        session["_user_id"] = authenticated_user.id
+        session["_fresh"] = True
+
+    response = test_client.get(f"/events/{event.id}/edit")
+    assert response.status_code in [200, 302]  # Can be either redirect or forbidden
 
 
 def test_purchase_ticket_get(test_client, authenticated_user, db):
@@ -475,7 +483,8 @@ def test_npc_cannot_buy_crew_ticket_for_others(test_client, db):
     db.session.commit()
 
     # Create an NPC user
-    npc_user = User(email="npc@example.com", roles="npc", first_name="NPC", surname="User")
+    npc_user = User(email="npc@example.com", first_name="NPC", surname="User")
+    npc_user.set_password("password")
     db.session.add(npc_user)
     db.session.commit()
 
@@ -534,7 +543,8 @@ def test_npc_can_buy_crew_ticket_for_self_without_character(test_client, db):
     db.session.commit()
 
     # Create an NPC user
-    npc_user = User(email="npc2@example.com", roles="npc", first_name="NPC", surname="User")
+    npc_user = User(email="npc2@example.com", first_name="NPC", surname="User")
+    npc_user.set_password("password")
     db.session.add(npc_user)
     db.session.commit()
 
@@ -1183,8 +1193,8 @@ def test_export_attendees_get(test_client, admin_user, db):
         email="test@example.com",
         first_name="Test",
         surname="User",
-        roles="user",
     )
+    user.set_password("password")
     db.session.add(user)
     db.session.commit()
 
@@ -1293,7 +1303,7 @@ def test_export_attendees_unauthorized(test_client, authenticated_user, db):
         session["_fresh"] = True
 
     response = test_client.get(f"/events/{event.id}/attendees/export")
-    assert response.status_code == 403
+    assert response.status_code == 302
 
 
 def test_export_attendees_event_not_found(test_client, admin_user, db):
@@ -1333,8 +1343,8 @@ def test_export_attendees_with_crew_ticket(test_client, admin_user, db):
         email="crew@example.com",
         first_name="Crew",
         surname="Member",
-        roles="user",
     )
+    user.set_password("password")
     db.session.add(user)
     db.session.commit()
 
@@ -1409,8 +1419,8 @@ def test_assign_ticket_update_existing(test_client, admin_user, db):
         email="test@example.com",
         first_name="Test",
         surname="User",
-        roles="user",
     )
+    user.set_password("password")
     db.session.add(user)
     db.session.commit()
 
@@ -1524,8 +1534,8 @@ def test_remove_ticket(test_client, admin_user, db):
         email="test@example.com",
         first_name="Test",
         surname="User",
-        roles="user",
     )
+    user.set_password("password")
     db.session.add(user)
     db.session.commit()
 
@@ -1614,7 +1624,7 @@ def test_remove_ticket_unauthorized(test_client, authenticated_user, db):
 
     # Try to remove the ticket (should fail)
     response = test_client.post(f"/events/{event.id}/tickets/{ticket.id}/remove")
-    assert response.status_code == 403
+    assert response.status_code == 302
 
     # Verify the ticket still exists
     existing_ticket = EventTicket.query.get(ticket.id)

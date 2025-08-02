@@ -65,7 +65,7 @@ class TestMessagesRoutes:
         sample_character.ec = 20
         db.session.commit()
         response = test_client.post(
-            "/messages/messages/send",
+            "/messages/send",
             data={
                 "sender_id": sample_character.id,
                 "recipient_name": "Test Recipient",
@@ -93,7 +93,7 @@ class TestMessagesRoutes:
         db.session.refresh(sample_user)
         db.session.refresh(sample_character)
         response = test_client.post(
-            "/messages/messages/send",
+            "/messages/send",
             data={
                 "recipient_name": "Test Recipient",
                 "content": "Test message content",
@@ -119,7 +119,7 @@ class TestMessagesRoutes:
         sample_character.bank_account = 0
         db.session.commit()
         response = test_client.post(
-            "/messages/messages/send",
+            "/messages/send",
             data={
                 "recipient_name": "Test Recipient",
                 "content": "Test message content",
@@ -146,7 +146,7 @@ class TestMessagesRoutes:
         db.session.refresh(group)
 
         response = test_client.post(
-            "/messages/messages/send",
+            "/messages/send",
             data={
                 "recipient_name": "Test Recipient",
                 "content": "Test message content",
@@ -185,7 +185,7 @@ class TestMessagesRoutes:
         db.session.refresh(group)
 
         response = test_client.post(
-            "/messages/messages/send",
+            "/messages/send",
             data={
                 "recipient_name": "Test Recipient",
                 "content": "Test message content",
@@ -211,7 +211,7 @@ class TestMessagesRoutes:
             sess["_user_id"] = str(npc_user.id)
             sess["_fresh"] = True
         response = test_client.post(
-            "/messages/messages/send",
+            "/messages/send",
             data={
                 "sender_id": sample_character.id,
                 "content": "Test message content",
@@ -228,7 +228,7 @@ class TestMessagesRoutes:
             sess["_user_id"] = str(npc_user.id)
             sess["_fresh"] = True
         response = test_client.post(
-            "/messages/messages/send",
+            "/messages/send",
             data={
                 "sender_id": 99999,  # Non-existent character
                 "recipient_name": "Test Recipient",
@@ -254,7 +254,7 @@ class TestMessagesRoutes:
         db.session.add(message)
         db.session.commit()
         response = test_client.post(
-            f"/messages/messages/{message.id}/respond",
+            f"/messages/{message.id}/respond",
             data={"response": "Test response"},
             follow_redirects=True,
         )
@@ -283,7 +283,7 @@ class TestMessagesRoutes:
         db.session.add(message)
         db.session.commit()
         response = test_client.post(
-            f"/messages/messages/{message.id}/respond",
+            f"/messages/{message.id}/respond",
             data={"response": ""},
             follow_redirects=True,
         )
@@ -297,12 +297,67 @@ class TestMessagesRoutes:
             sess["_fresh"] = True
 
         response = test_client.post(
-            "/messages/messages/99999/respond",
+            "/messages/99999/respond",
             data={"response": "Test response"},
             follow_redirects=True,
         )
 
-        assert response.status_code == 404
+        # Should get a flash message and redirect for non-existent messages
+        assert response.status_code == 200
+        assert b"Message not found" in response.data
+
+    def test_respond_to_message_route_registration(self, test_client, sample_user):
+        """Test that the respond route is registered correctly"""
+        with test_client.session_transaction() as sess:
+            sess["_user_id"] = str(sample_user.id)
+            sess["_fresh"] = True
+
+        # Try a GET request to see if the route exists
+        response = test_client.get("/messages/99999/respond")
+        assert response.status_code == 405  # Method Not Allowed
+
+        # Try a POST request without data to see what happens
+        response = test_client.post("/messages/99999/respond")
+        assert response.status_code == 302  # Redirect for unauthorized users
+
+    def test_respond_to_message_authorized(self, test_client, npc_user, sample_character, db):
+        """Test responding to message as authorized user (NPC)"""
+        with test_client.session_transaction() as sess:
+            sess["_user_id"] = str(npc_user.id)
+            sess["_fresh"] = True
+
+        # Create a message
+        message = Message(
+            sender_id=sample_character.id,
+            recipient_name="Test Recipient",
+            content="Test question",
+        )
+        db.session.add(message)
+        db.session.commit()
+
+        response = test_client.post(
+            f"/messages/{message.id}/respond",
+            data={"response": "Test response"},
+            follow_redirects=True,
+        )
+
+        # Should work for authorized users
+        assert response.status_code == 200
+
+    def test_respond_to_message_unauthorized_nonexistent(self, test_client, sample_user):
+        """Test responding to non-existent message as unauthorized user"""
+        with test_client.session_transaction() as sess:
+            sess["_user_id"] = str(sample_user.id)
+            sess["_fresh"] = True
+
+        response = test_client.post(
+            "/messages/99999/respond",
+            data={"response": "Test response"},
+            follow_redirects=False,  # Don't follow redirects
+        )
+
+        # Should be forbidden for non-NPC users (permission_required redirects to index)
+        assert response.status_code == 302  # Redirect to index page
 
     def test_respond_to_message_unauthorized(self, test_client, sample_user, sample_character, db):
         """Test responding to message as non-NPC user"""
@@ -320,13 +375,13 @@ class TestMessagesRoutes:
         db.session.commit()
 
         response = test_client.post(
-            f"/messages/messages/{message.id}/respond",
+            f"/messages/{message.id}/respond",
             data={"response": "Test response"},
-            follow_redirects=True,
+            follow_redirects=False,  # Don't follow redirects
         )
 
-        # Should be forbidden for non-NPC users
-        assert response.status_code in [403, 302]  # 403 Forbidden or redirect
+        # Should be forbidden for non-NPC users (permission_required redirects to index)
+        assert response.status_code == 302  # Redirect to index page
 
     def test_message_response_sends_notification(self, test_client, npc_user, sample_character, db):
         """Test that responding to a message sends a notification email to the user."""
@@ -348,7 +403,7 @@ class TestMessagesRoutes:
         ):
             mock_render.return_value = ("text", "<p>html</p>")
             response = test_client.post(
-                f"/messages/messages/{message.id}/respond",
+                f"/messages/{message.id}/respond",
                 data={"response": "Test response"},
                 follow_redirects=True,
             )
@@ -375,7 +430,7 @@ class TestMessagesRoutes:
         db.session.refresh(sample_character)
         db.session.refresh(group)
         response = test_client.post(
-            "/messages/messages/send",
+            "/messages/send",
             data={
                 "recipient_name": "Test Recipient",
                 "content": "Test message content",
@@ -403,7 +458,7 @@ class TestMessagesRoutes:
         db.session.refresh(sample_character)
         db.session.refresh(group)
         response = test_client.post(
-            "/messages/messages/send",
+            "/messages/send",
             data={
                 "recipient_name": "Test Recipient",
                 "content": "Test message content",
@@ -431,7 +486,7 @@ class TestMessagesRoutes:
         db.session.refresh(sample_character)
         db.session.refresh(group)
         response = test_client.post(
-            "/messages/messages/send",
+            "/messages/send",
             data={
                 "recipient_name": "Test Recipient",
                 "content": "Test message content",
@@ -459,7 +514,7 @@ class TestMessagesRoutes:
         db.session.refresh(sample_character)
         db.session.refresh(group)
         response = test_client.post(
-            "/messages/messages/send",
+            "/messages/send",
             data={
                 "recipient_name": "Test Recipient",
                 "content": "Test message content",

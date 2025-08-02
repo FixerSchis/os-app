@@ -106,7 +106,8 @@
                         <ul class="list-unstyled">
                             {% for mod in character.get_known_modifications() %}
                             <li class="form-group d-flex align-items-center">
-                                <input type="text" class="form-control" value="{{ mod.name }}" disabled>
+                                <label for="mod_name_{{ mod.id }}" class="sr-only">Modification name</label>
+                                <input type="text" class="form-control" id="mod_name_{{ mod.id }}" value="{{ mod.name }}" disabled>
                                 <div class="mod-forget-group">
                                     <input type="checkbox" class="form-check-input" id="forget_mod_{{ mod.id }}" name="forget_mods[]" value="{{ mod.id }}"
                                         {% if pack_modifications and pack_modifications|selectattr('mod_id', 'equalto', mod.id|string)|selectattr('type', 'equalto', 'forgetting')|list %}checked{% endif %}>
@@ -118,7 +119,7 @@
                             {% set learning_mods = pack_modifications | selectattr('type', 'equalto', 'learning') | list %}
                             {% for i in range(available_slots) %}
                             <li class="form-group">
-                                <select class="form-control select2 mod-select" name="mod_learning[]">
+                                <select class="form-control select2 mod-select" name="mod_learning[]" title="Select modification to learn">
                                     <option value="">Select a modification</option>
                                     {% for mod in all_mods %}
                                     <option value="{{ mod.id }}"
@@ -148,7 +149,7 @@
                             </div>
                             <div class="eng-slot-row">
                                 <label class="eng-slot-label">Action:</label>
-                                <select name="eng_action_{{ loop.index0 }}" class="form-control eng-action-select" data-slot="{{ loop.index0 }}">
+                                <select name="eng_action_{{ loop.index0 }}" class="form-control eng-action-select" data-slot="{{ loop.index0 }}" title="Select engineering action">
                                     <option value="">Select an action</option>
                                     <option value="maintain" {% if eng_data and eng_data.action == 'maintain' %}selected{% endif %}>Maintain</option>
                                     <option value="modify" {% if eng_data and eng_data.action == 'modify' %}selected{% endif %}>Modify</option>
@@ -164,7 +165,7 @@
                             </div>
                             <div class="eng-slot-row eng-item-row" data-source="own" data-slot="{{ loop.index0 }}" {% if eng_data and eng_data.source != 'own' %}style="display:none;"{% endif %}>
                                 <label class="eng-slot-label">Item:</label>
-                                <select name="eng_item_own_{{ loop.index0 }}" class="form-control select2 eng-item-own-select" data-slot="{{ loop.index0 }}">
+                                <select name="eng_item_own_{{ loop.index0 }}" class="form-control select2 eng-item-own-select" data-slot="{{ loop.index0 }}" title="Select item from your pack">
                                     <option value="">Select an item</option>
                                     {% for item in pack_items %}
                                     <option value="{{ item.id }}" {% if eng_data and eng_data.source == 'own' and eng_data.item_id and eng_data.item_id|string == item.id|string %}selected{% endif %}>{{ item.name }} ({{ item.full_code }})</option>
@@ -176,7 +177,7 @@
                             </div>
                             <div class="eng-slot-row eng-item-row" data-source="group" data-slot="{{ loop.index0 }}" {% if not eng_data or eng_data.source != 'group' %}style="display:none;"{% endif %}>
                                 <label class="eng-slot-label">Item:</label>
-                                <select name="eng_item_group_{{ loop.index0 }}" class="form-control select2 eng-item-group-select" data-slot="{{ loop.index0 }}">
+                                <select name="eng_item_group_{{ loop.index0 }}" class="form-control select2 eng-item-group-select" data-slot="{{ loop.index0 }}" title="Select item from group packs">
                                     <option value="">Select an item</option>
                                     {% for item in group_items %}
                                     <option value="{{ item.id }}" {% if eng_data and eng_data.source == 'group' and eng_data.item_id and eng_data.item_id|string == item.id|string %}selected{% endif %}>{{ item.name }} ({{ item.full_code }})</option>
@@ -184,8 +185,8 @@
                                 </select>
                             </div>
                             <div class="eng-slot-row eng-item-row" data-source="manual" data-slot="{{ loop.index0 }}" {% if not eng_data or eng_data.source != 'manual' %}style="display:none;"{% endif %}>
-                                <label class="eng-slot-label">Item ID:</label>
-                                <input type="text" name="eng_item_manual_{{ loop.index0 }}" class="form-control eng-item-manual" data-slot="{{ loop.index0 }}" placeholder="e.g. WP0001-001" style="width: 180px;" value="{% if eng_data and eng_data.source == 'manual' %}{{ eng_data.full_code or eng_data.item_id }}{% endif %}">
+                                <label for="eng_item_manual_{{ loop.index0 }}" class="eng-slot-label">Item ID:</label>
+                                <input type="text" id="eng_item_manual_{{ loop.index0 }}" name="eng_item_manual_{{ loop.index0 }}" class="form-control eng-item-manual" data-slot="{{ loop.index0 }}" placeholder="e.g. WP0001-001" class="width-180-px" value="{% if eng_data and eng_data.source == 'manual' %}{{ eng_data.full_code or eng_data.item_id }}{% endif %}">
                                 <span class="manual-item-status" data-slot="{{ loop.index0 }}" style="margin-left: 1em;"></span>
                                 <input type="hidden" class="manual-item-id" data-slot="{{ loop.index0 }}" name="eng_item_manual_id_{{ loop.index0 }}" value="{% if eng_data and eng_data.source == 'manual' and eng_data.item_id %}{{ eng_data.item_id }}{% endif %}">
                             </div>
@@ -195,7 +196,7 @@
                             </div>
                             <div class="eng-slot-row eng-modify-row" style="display:none;">
                                 <label class="eng-slot-label">Modification:</label>
-                                <select name="eng_mod_{{ loop.index0 }}" class="form-control select2 eng-mod-select" data-slot="{{ loop.index0 }}">
+                                <select name="eng_mod_{{ loop.index0 }}" class="form-control select2 eng-mod-select" data-slot="{{ loop.index0 }}" title="Select modification to apply">
                                     <option value="">Select a modification</option>
                                     {% for mod in all_mods %}
                                     <option value="{{ mod.id }}" {% if eng_data and eng_data.mod_id and eng_data.mod_id|string == mod.id|string %}selected{% endif %}>{{ mod.name }}</option>
@@ -231,7 +232,7 @@
                                 </div>
                                 <div class="mb-2">
                                     <label>Action:</label>
-                                    <select name="science_action_{{ science_type.value }}_{{ loop.index0 }}" class="form-control science-action-select" data-science-type="{{ science_type.value }}" data-slot="{{ loop.index0 }}">
+                                    <select name="science_action_{{ science_type.value }}_{{ loop.index0 }}" class="form-control science-action-select" data-science-type="{{ science_type.value }}" data-slot="{{ loop.index0 }}" title="Select science action">
                                         <option value="synthesize" {% if sci_data and sci_data.action == 'synthesize' %}selected{% endif %}>Synthesize Exotics</option>
                                         {% if science_type.value == 'generic' %}
                                         <option value="theorise" {% if sci_data and sci_data.action == 'theorise' %}selected{% endif %}>Theorise an Invention</option>
@@ -243,8 +244,8 @@
                                 </div>
                                 <div class="science-theorise-fields" style="display:none;">
                                     <div class="mb-2">
-                                        <label>Name of Invention:</label>
-                                        <input type="text" class="form-control" name="science_theorise_name_{{ science_type.value }}_{{ loop.index0 }}" value="{% if sci_data and sci_data.action == 'theorise' %}{{ sci_data.theorise_name }}{% endif %}">
+                                        <label for="science_theorise_name_{{ science_type.value }}_{{ loop.index0 }}">Name of Invention:</label>
+                                        <input type="text" class="form-control" id="science_theorise_name_{{ science_type.value }}_{{ loop.index0 }}" name="science_theorise_name_{{ science_type.value }}_{{ loop.index0 }}" value="{% if sci_data and sci_data.action == 'theorise' %}{{ sci_data.theorise_name }}{% endif %}">
                                     </div>
                                     <div class="mb-2">
                                         <label>Description:</label>
@@ -254,7 +255,7 @@
                                 <div class="science-research-sample-fields" style="display:none;">
                                     <div class="mb-2">
                                         <label>Sample:</label>
-                                        <select class="form-control select2 science-sample-select" name="science_sample_{{ science_type.value }}_{{ loop.index0 }}" data-science-type="{{ science_type.value }}">
+                                        <select class="form-control select2 science-sample-select" name="science_sample_{{ science_type.value }}_{{ loop.index0 }}" data-science-type="{{ science_type.value }}" title="Select sample to research">
                                             <option value="">Select a sample</option>
                                             {% for sample in available_samples %}
                                             <option value="{{ sample.id }}" {% if sci_data and sci_data.action == 'research_sample' and sci_data.sample_id|string == sample.id|string %}selected{% endif %}>{{ sample.name }}</option>
@@ -276,7 +277,7 @@
                                     <div class="project-select-row" data-project-source="my">
                                         <div class="mb-2">
                                             <label>Project:</label>
-                                            <select class="form-control select2 science-project-select" name="science_project_my_{{ science_type.value }}_{{ loop.index0 }}" data-project-source="my">
+                                            <select class="form-control select2 science-project-select" name="science_project_my_{{ science_type.value }}_{{ loop.index0 }}" data-project-source="my" title="Select my research project">
                                                 <option value="">Select a project</option>
                                                 {% for project in my_projects %}
                                                 <option value="{{ project.research_id }}" {% if sci_data and sci_data.action == 'research_project' and sci_data.project_source == 'my' and sci_data.project_id|string == project.research_id|string %}selected{% endif %}>{{ project.project_name }}</option>
@@ -287,7 +288,7 @@
                                     <div class="project-select-row" data-project-source="group" style="display:none;">
                                         <div class="mb-2">
                                             <label>Project:</label>
-                                            <select class="form-control select2 science-project-select" name="science_project_group_{{ science_type.value }}_{{ loop.index0 }}" data-project-source="group">
+                                            <select class="form-control select2 science-project-select" name="science_project_group_{{ science_type.value }}_{{ loop.index0 }}" data-project-source="group" title="Select group research project">
                                                 <option value="">Select a project</option>
                                                 {% for project in group_projects %}
                                                 <option value="{{ project.research_id }}" {% if sci_data and sci_data.action == 'research_project' and sci_data.project_source == 'group' and sci_data.project_id|string == project.research_id|string %}selected{% endif %}>{{ project.project_name }} ({{ project.character_name }})</option>
@@ -297,8 +298,8 @@
                                     </div>
                                     <div class="project-select-row" data-project-source="id" style="display:none;">
                                         <div class="mb-2">
-                                            <label>Project ID:</label>
-                                            <input type="text" class="form-control science-project-id-input" name="science_project_id_{{ science_type.value }}_{{ loop.index0 }}" placeholder="Enter project ID" value="{% if sci_data and sci_data.action == 'research_project' and sci_data.project_source == 'id' %}{{ sci_data.project_id }}{% endif %}">
+                                            <label for="science_project_id_{{ science_type.value }}_{{ loop.index0 }}">Project ID:</label>
+                                            <input type="text" class="form-control science-project-id-input" id="science_project_id_{{ science_type.value }}_{{ loop.index0 }}" name="science_project_id_{{ science_type.value }}_{{ loop.index0 }}" placeholder="Enter project ID" value="{% if sci_data and sci_data.action == 'research_project' and sci_data.project_source == 'id' %}{{ sci_data.project_id }}{% endif %}">
                                             <span class="science-project-id-status"></span>
                                         </div>
                                     </div>
@@ -309,14 +310,14 @@
                                             {% if group_members %}
                                             <button type="button" class="btn btn-outline-primary" data-research-for="group">Group Member</button>
                                             {% endif %}
-                                            <button type="button" class="btn btn-outline-primary" data-research-for="other">Enter ID</button>
+                                            <button type="button" class="btn btn-outline-primary" data-research-for="other" aria-label="Enter research project ID manually">Enter ID</button>
                                         </div>
                                     </div>
                                     {% if group_members %}
                                     <div class="science-research-for-group-select" style="display:none;">
                                         <div class="mb-2">
                                             <label>Group Member:</label>
-                                            <select class="form-control select2 science-research-for-group-select" name="science_research_for_group_{{ science_type.value }}_{{ loop.index0 }}">
+                                            <select class="form-control select2 science-research-for-group-select" name="science_research_for_group_{{ science_type.value }}_{{ loop.index0 }}" title="Select group member for research">
                                                 <option value="">Select a group member</option>
                                                 {% for member in group_members %}
                                                 <option value="{{ member.id }}" {% if sci_data and sci_data.action == 'research_project' and sci_data.research_for == 'group' and sci_data.research_for_id|string == member.id|string %}selected{% endif %}>{{ member.name }}</option>
@@ -327,15 +328,15 @@
                                     {% endif %}
                                     <div class="science-research-for-id-input" style="display:none;">
                                         <div class="mb-2">
-                                            <label>Character ID:</label>
-                                            <input type="text" class="form-control" name="science_research_for_id_{{ science_type.value }}_{{ loop.index0 }}" placeholder="Enter PlayerID.CharacterID" value="{% if sci_data and sci_data.action == 'research_project' and sci_data.research_for == 'other' %}{{ sci_data.research_for_id }}{% endif %}">
+                                            <label for="science_research_for_id_{{ science_type.value }}_{{ loop.index0 }}">Character ID:</label>
+                                            <input type="text" class="form-control" id="science_research_for_id_{{ science_type.value }}_{{ loop.index0 }}" name="science_research_for_id_{{ science_type.value }}_{{ loop.index0 }}" placeholder="Enter PlayerID.CharacterID" value="{% if sci_data and sci_data.action == 'research_project' and sci_data.research_for == 'other' %}{{ sci_data.research_for_id }}{% endif %}">
                                             <span class="science-research-for-status"></span>
                                         </div>
                                     </div>
                                     <div class="science-project-science-type-row" style="display:none;">
                                         <div class="mb-2">
                                             <label>Science Type:</label>
-                                            <select class="form-control select2 science-project-science-type-select" name="science_project_science_type_{{ science_type.value }}_{{ loop.index0 }}">
+                                            <select class="form-control select2 science-project-science-type-select" name="science_project_science_type_{{ science_type.value }}_{{ loop.index0 }}" title="Select science type for project">
                                                 <option value="">Select a science type</option>
                                             </select>
                                         </div>
@@ -345,7 +346,7 @@
                                 <div class="science-teach-invention-fields" style="display:none;">
                                     <div class="mb-2">
                                         <label>Project:</label>
-                                        <select class="form-control select2 science-teach-project-select" name="science_teach_project_{{ science_type.value }}_{{ loop.index0 }}">
+                                        <select class="form-control select2 science-teach-project-select" name="science_teach_project_{{ science_type.value }}_{{ loop.index0 }}" title="Select project to teach">
                                             <option value="">Select a project</option>
                                             {% for project in my_projects %}
                                             <option value="{{ project.research_id }}" {% if sci_data and sci_data.action == 'teach_invention' and sci_data.project_id|string == project.research_id|string %}selected{% endif %}>{{ project.project_name }}</option>
@@ -362,7 +363,7 @@
                                     <div class="science-teach-to-group-select">
                                         <div class="mb-2">
                                             <label>Group Member:</label>
-                                            <select class="form-control select2 science-teach-to-group-select" name="science_teach_to_group_{{ science_type.value }}_{{ loop.index0 }}">
+                                            <select class="form-control select2 science-teach-to-group-select" name="science_teach_to_group_{{ science_type.value }}_{{ loop.index0 }}" title="Select group member to teach">
                                                 <option value="">Select a group member</option>
                                                 {% for member in group_members %}
                                                 <option value="{{ member.id }}" {% if sci_data and sci_data.action == 'teach_invention' and sci_data.teach_to == 'group' and sci_data.teach_to_id|string == member.id|string %}selected{% endif %}>{{ member.name }}</option>
@@ -372,8 +373,8 @@
                                     </div>
                                     <div class="science-teach-to-id-input" style="display:none;">
                                         <div class="mb-2">
-                                            <label>Character ID:</label>
-                                            <input type="text" class="form-control" name="science_teach_to_id_{{ science_type.value }}_{{ loop.index0 }}" placeholder="Enter PlayerID.CharacterID" value="{% if sci_data and sci_data.action == 'teach_invention' and sci_data.teach_to == 'other' %}{{ sci_data.teach_to_id }}{% endif %}">
+                                            <label for="science_teach_to_id_{{ science_type.value }}_{{ loop.index0 }}">Character ID:</label>
+                                            <input type="text" class="form-control" id="science_teach_to_id_{{ science_type.value }}_{{ loop.index0 }}" name="science_teach_to_id_{{ science_type.value }}_{{ loop.index0 }}" placeholder="Enter PlayerID.CharacterID" value="{% if sci_data and sci_data.action == 'teach_invention' and sci_data.teach_to == 'other' %}{{ sci_data.teach_to_id }}{% endif %}">
                                             <span class="science-teach-to-status"></span>
                                         </div>
                                     </div>
@@ -408,7 +409,7 @@
                     <div class="card-body">
                         <div class="mb-3">
                             <label for="reputation-faction-select" class="form-label">Select Faction</label>
-                            <select class="form-control" id="reputation-faction-select" name="reputation_faction">
+                            <select class="form-control" id="reputation-faction-select" name="reputation_faction" title="Select faction for reputation change">
                                 <option value="">-- Select a Faction --</option>
                                 {% for faction in character.get_factions_with_reputation() %}
                                 <option value="{{ faction.id }}">{{ faction.name }}</option>

@@ -1,15 +1,17 @@
-from flask import Blueprint, flash, redirect, render_template, request, url_for
+from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from models.database.faction import Faction
 from models.database.reputation_briefing import ReputationBriefing, ReputationBriefingLevel
-from models.enums import ReputationBriefingStatus, Role
+from models.enums import CharacterStatus, ReputationBriefingStatus
 from models.event import Event
 from models.extensions import db
-from models.tools.character import Character, CharacterStatus
+from models.tools.character import Character
 from models.tools.event_ticket import EventTicket
-from utils.decorators import email_verified_required, plot_team_required
+from models.tools.user import User
+from utils.decorators import email_verified_required
 from utils.email import send_notification_email
+from utils.permission_decorators import permission_required
 
 reputation_briefings_bp = Blueprint("reputation_briefings", __name__)
 
@@ -19,7 +21,7 @@ reputation_briefings_bp = Blueprint("reputation_briefings", __name__)
 @email_verified_required
 def index():
     """List reputation briefings - admin view for plot team, user view for regular users."""
-    if current_user.has_role(Role.PLOT_TEAM.value):
+    if current_user.has_permission("plot.reputation_briefings"):
         # Admin view - show all briefings
         briefings = ReputationBriefing.get_by_status_order()
         return render_template(
@@ -67,7 +69,7 @@ def index():
 @reputation_briefings_bp.route("/create", methods=["GET", "POST"])
 @login_required
 @email_verified_required
-@plot_team_required
+@permission_required(permissions=["plot.reputation_briefings"])
 def create():
     """Create a new reputation briefing."""
     if request.method == "POST":
@@ -144,10 +146,10 @@ def create():
     )
 
 
-@reputation_briefings_bp.route("/<int:briefing_id>/edit", methods=["GET", "POST"])
+@reputation_briefings_bp.route("/<int:briefing_id>/edit", methods=["GET"])
 @login_required
 @email_verified_required
-@plot_team_required
+@permission_required(permissions=["plot.reputation_briefings"])
 def edit(briefing_id):
     """Edit an incomplete reputation briefing."""
     briefing = ReputationBriefing.query.get_or_404(briefing_id)
@@ -238,7 +240,7 @@ def edit(briefing_id):
 @reputation_briefings_bp.route("/<int:briefing_id>/reopen")
 @login_required
 @email_verified_required
-@plot_team_required
+@permission_required(permissions=["plot.reputation_briefings"])
 def reopen(briefing_id):
     """Reopen a discarded briefing."""
     briefing = ReputationBriefing.query.get_or_404(briefing_id)
@@ -264,7 +266,7 @@ def view(briefing_id):
         return redirect(url_for("reputation_briefings.index"))
 
     # For regular users, check if they have a character that meets the criteria
-    if not current_user.has_role(Role.PLOT_TEAM.value):
+    if not current_user.has_permission("plot.reputation_briefings"):
         user_characters = Character.query.filter_by(
             user_id=current_user.id, status=CharacterStatus.ACTIVE.value
         ).all()

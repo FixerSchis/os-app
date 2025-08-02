@@ -56,12 +56,20 @@ from routes.tools.items import items_bp as tools_items_bp  # noqa: E402
 from routes.tools.messages import bp as messages_bp  # noqa: E402
 from routes.tools.reputation_briefings import reputation_briefings_bp  # noqa: E402
 from routes.tools.research import research_bp  # noqa: E402
+from routes.tools.role_management import bp as role_management_bp  # noqa: E402
 from routes.tools.templates import templates_bp  # noqa: E402
 from routes.tools.tickets import tickets_bp  # noqa: E402
 from routes.tools.user_management import user_management_bp  # noqa: E402
 from routes.wiki import wiki_bp  # noqa: E402
 from utils.database_init import initialize_database  # noqa: E402
 from utils.email import mail  # noqa: E402
+from utils.template_helpers import (  # noqa: E402
+    can_approve_character_backgrounds,
+    can_approve_group_backgrounds,
+    has_all_permissions,
+    has_any_permission,
+    has_permission,
+)
 
 
 def create_app(config_class=None):
@@ -204,6 +212,7 @@ def create_app(config_class=None):
     app.register_blueprint(templates_bp, url_prefix="/templates")
     app.register_blueprint(tickets_bp, url_prefix="/tickets")
     app.register_blueprint(user_management_bp, url_prefix="/users")
+    app.register_blueprint(role_management_bp, url_prefix="/tools")
     app.register_blueprint(database_management_bp, url_prefix="/tools")
     app.register_blueprint(tools_items_bp, url_prefix="/tools/items")
     app.register_blueprint(reputation_briefings_bp, url_prefix="/tools/reputation-briefings")
@@ -233,31 +242,25 @@ def create_app(config_class=None):
 
     @app.context_processor
     def utility_processor():
+        def has_active_character():
+            return current_user.is_authenticated and current_user.get_active_character() is not None
+
         def has_enter_downtime_packs():
-            if not current_user.is_authenticated:
-                return False
-            active_period = DowntimePeriod.query.filter_by(status=DowntimeStatus.PENDING).first()
-            if not active_period:
-                return False
-            return any(
-                pack.character.user_id == current_user.id
-                and pack.status == DowntimeTaskStatus.ENTER_DOWNTIME
-                for pack in active_period.packs
-            )
+            return current_user.is_authenticated and current_user.has_permission("downtime.manage")
 
         def has_research_projects():
-            if not current_user.is_authenticated:
-                return False
-            return (
-                CharacterResearch.query.join(CharacterResearch.character)
-                .filter(Character.user_id == current_user.id)
-                .first()
-                is not None
-            )
+            return current_user.is_authenticated and current_user.has_permission("research.create")
 
         return dict(
+            has_active_character=has_active_character,
             has_enter_downtime_packs=has_enter_downtime_packs,
             has_research_projects=has_research_projects,
+            # Permission helpers
+            has_permission=has_permission,
+            has_any_permission=has_any_permission,
+            has_all_permissions=has_all_permissions,
+            can_approve_character_backgrounds=can_approve_character_backgrounds,
+            can_approve_group_backgrounds=can_approve_group_backgrounds,
         )
 
     if app.config.get("TESTING"):
@@ -274,7 +277,7 @@ def create_app(config_class=None):
         @app.route("/admin-only")
         @login_required
         def admin_only_route():
-            if not current_user.has_role("admin"):
+            if not current_user.has_permission("user.roles"):
                 abort(403)
             return "Admin content"
 

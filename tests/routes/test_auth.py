@@ -7,6 +7,7 @@ import pytest
 from models.database.cybernetic import Cybernetic
 from models.database.faction import Faction
 from models.database.mods import Mod
+from models.database.permissions import Role as RoleModel
 from models.database.skills import Skill
 from models.database.species import Species
 from models.enums import Role
@@ -22,6 +23,12 @@ def test_register_get(test_client, db):
 
 def test_register_success_first_user(test_client, db, wiki_index_page):
     """Test successful registration of the first user (owner)."""
+    # Create default roles that the registration process expects
+    owner_role = RoleModel(name="owner", description="System owner", is_system_role=True)
+    default_role = RoleModel(name="default", description="Default user role", is_system_role=True)
+    db.session.add_all([owner_role, default_role])
+    db.session.commit()
+
     # Create required default data that the registration process expects
 
     # Create default species
@@ -98,7 +105,9 @@ def test_register_success_first_user(test_client, db, wiki_index_page):
         assert user is not None
         assert user.first_name == "Test"
         assert user.surname == "User"
-        assert user.has_role(Role.OWNER.value)
+        # Check that user has owner role (first user gets owner role)
+        assert user.role is not None
+        assert user.role.name == "owner"
         assert user.email_verified is True
 
 
@@ -121,6 +130,12 @@ def test_register_duplicate_email(test_client, db, new_user):
 
 def test_register_subsequent_user(test_client, db, new_user):
     """Test registration of subsequent users (not owner)."""
+    # Create default roles that the registration process expects
+    owner_role = RoleModel(name="owner", description="System owner", is_system_role=True)
+    default_role = RoleModel(name="default", description="Default user role", is_system_role=True)
+    db.session.add_all([owner_role, default_role])
+    db.session.commit()
+
     with patch("routes.auth.send_verification_email") as mock_send_email:
         response = test_client.post(
             "/auth/register",
@@ -140,7 +155,9 @@ def test_register_subsequent_user(test_client, db, new_user):
         assert user is not None
         assert user.first_name == "Test2"
         assert user.surname == "User2"
-        assert not user.has_role(Role.OWNER.value)
+        # Check that user has default role (not owner)
+        assert user.role is not None
+        assert user.role.name == "default"
         assert user.email_verified is False
 
         # Check that verification email was sent

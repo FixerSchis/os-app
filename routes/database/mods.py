@@ -6,6 +6,7 @@ from models.database.mods import Mod
 from models.extensions import db
 from models.wiki import WikiPage
 from utils.decorators import email_verified_required
+from utils.permission_decorators import permission_required
 
 mods_bp = Blueprint("mods", __name__)
 
@@ -22,18 +23,15 @@ def list():
         return (len(type_names), type_names, mod.name)
 
     mods = sorted(mods, key=mod_sort_key)
-    can_edit = current_user.is_authenticated and current_user.has_role("rules_team")
+    can_edit = current_user.is_authenticated and current_user.has_permission("rules.mods")
     return render_template("rules/mods/list.html", mods=mods, can_edit=can_edit)
 
 
 @mods_bp.route("/new", methods=["GET"])
 @login_required
 @email_verified_required
+@permission_required(permissions=["rules.mods"])
 def create():
-    if not current_user.has_role("rules_team"):
-        flash("You do not have permission to access this page", "error")
-        return redirect(url_for("index"))
-
     wiki_pages = [
         {"title": page.title, "slug": page.slug}
         for page in WikiPage.query.order_by(WikiPage.title).all()
@@ -45,11 +43,8 @@ def create():
 @mods_bp.route("/new", methods=["POST"])
 @login_required
 @email_verified_required
+@permission_required(permissions=["rules.mods"])
 def create_post():
-    if not current_user.has_role("rules_team"):
-        flash("You do not have permission to access this page", "error")
-        return redirect(url_for("index"))
-
     name = request.form.get("name")
     wiki_slug = request.form.get("wiki_slug")
     description = request.form.get("description", "").strip()
@@ -79,11 +74,8 @@ def create_post():
 @mods_bp.route("/<int:id>/edit", methods=["GET"])
 @login_required
 @email_verified_required
+@permission_required(permissions=["rules.mods"])
 def edit(id):
-    if not current_user.has_role("rules_team"):
-        flash("You do not have permission to access this page", "error")
-        return redirect(url_for("index"))
-
     mod = Mod.query.get_or_404(id)
     wiki_pages = [
         {"title": page.title, "slug": page.slug}
@@ -98,11 +90,8 @@ def edit(id):
 @mods_bp.route("/<int:id>/edit", methods=["POST"])
 @login_required
 @email_verified_required
+@permission_required(permissions=["rules.mods"])
 def edit_post(id):
-    if not current_user.has_role("rules_team"):
-        flash("You do not have permission to access this page", "error")
-        return redirect(url_for("index"))
-
     mod = Mod.query.get_or_404(id)
 
     name = request.form.get("name")
@@ -118,18 +107,17 @@ def edit_post(id):
         ]
         item_types = ItemType.query.order_by(ItemType.name).all()
         return render_template(
-            "rules/mods/edit.html",
-            mod=mod,
-            wiki_pages=wiki_pages,
-            item_types=item_types,
+            "rules/mods/edit.html", mod=mod, wiki_pages=wiki_pages, item_types=item_types
         )
 
     mod.name = name
     mod.wiki_slug = wiki_slug
     mod.description = description if description else None
 
-    if item_type_ids is not None:
+    if item_type_ids:
         mod.item_types = ItemType.query.filter(ItemType.id.in_(item_type_ids)).all()
+    else:
+        mod.item_types = []
 
     db.session.commit()
 

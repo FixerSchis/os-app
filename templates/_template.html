@@ -20,6 +20,8 @@
     {% block head %}{% endblock %}
 </head>
 <body>
+    <!-- Skip to main content link for screen readers -->
+    <a href="#main-content" class="skip-link sr-only sr-only-focusable">Skip to main content</a>
     <nav>
         <div class="nav-wrapper">
             <a href="{{ url_for('index') }}" class="brand-logo">
@@ -40,7 +42,7 @@
                 <li class="dropdown">
                     <a href="#" class="dropbtn">Database <i class="fas fa-caret-down"></i></a>
                     <div class="dropdown-content">
-                        {% if current_user.is_authenticated and current_user.has_role('rules_team') %}
+                        {% if current_user.is_authenticated and has_permission('rules.global_settings') %}
                             <a href="{{ url_for('global_settings.list_global_settings') }}">Global Settings</a>
                             <hr>
                         {% endif %}
@@ -49,17 +51,17 @@
                         <a href="{{ url_for('skills.skills_list') }}">Skills</a>
                         <a href="{{ url_for('group_types.list_group_types') }}">Group Types</a>
                         <hr>
-                        {% if current_user.is_authenticated and current_user.has_role('rules_team') %}
+                        {% if current_user.is_authenticated and has_permission('rules.item_types') %}
                             <a href="{{ url_for('item_types.list') }}">Item Types</a>
                         {% endif %}
                         <a href="{{ url_for('item_blueprints.list') }}">Base Items</a>
-                        {% if current_user.is_authenticated and current_user.has_role('rules_team') %}
+                        {% if current_user.is_authenticated and has_permission('rules.items') %}
                             <a href="{{ url_for('items.list') }}">Item Database</a>
                             <hr>
                             <a href="{{ url_for('conditions.list') }}">Conditions</a>
                             <a href="{{ url_for('cybernetics.list') }}">Cybernetics</a>
                             <a href="{{ url_for('samples.sample_list') }}">Samples</a>
-                        {% elif current_user.is_authenticated and current_user.has_role('downtime_team') %}
+                        {% elif current_user.is_authenticated and has_permission('downtime.manage') %}
                             <a href="{{ url_for('samples.sample_list') }}">Samples</a>
                         {% else %}
                             <hr>
@@ -73,36 +75,39 @@
                 <li class="dropdown">
                     <a href="#" class="dropbtn">Tools <i class="fas fa-caret-down"></i></a>
                     <div class="dropdown-content">
-                        {% if current_user.is_authenticated and current_user.has_role('admin') %}
+                        {% if current_user.is_authenticated and has_permission('database.backup') %}
                             <a href="{{ url_for('database_management.database_management') }}">Database</a>
                         {% endif %}
-                        {% if current_user.is_authenticated and current_user.has_role('user_admin') %}
+                        {% if current_user.is_authenticated and has_permission('user.roles') %}
+                            <a href="{{ url_for('role_management.role_list') }}">Manage Roles</a>
+                        {% endif %}
+                        {% if current_user.is_authenticated and has_permission('user.view') %}
                             <a href="{{ url_for('user_management.user_management') }}">Users</a>
                             <a href="{{ url_for('character_backgrounds.list_backgrounds') }}">Character Backgrounds</a>
                             <a href="{{ url_for('groups.list_group_backgrounds') }}">Group Backgrounds</a>
                         {% endif %}
                         <a href="{{ url_for('characters.character_list') }}">Characters</a>
-                        {% if current_user.has_role('user_admin') or current_user.has_active_character() %}
+                        {% if has_permission('user.view') or has_active_character() %}
                         <a href="{{ url_for('groups.group_list') }}">Groups</a>
                         <a href="{{ url_for('banking.bank') }}">Bank</a>
                         {% endif %}
                         <a href="{{ url_for('tools_items.items_list') }}">Inventory</a>
                         <a href="{{ url_for('tickets.list_tickets') }}">Tickets</a>
-                        {% if current_user.has_role('npc') or current_user.has_active_character() %}
+                        {% if has_permission('character.edit_all') or has_active_character() %}
                         <a href="{{ url_for('messages.messages') }}">SMS</a>
                         {% endif %}
-                        {% if current_user.has_role('downtime_team') or has_enter_downtime_packs %}
+                        {% if has_permission('downtime.manage') or has_enter_downtime_packs %}
                         <a href="{{ url_for('downtime.index') }}">Downtime</a>
                         {% endif %}
-                        {% if current_user.has_role('rules_team') or has_research_projects %}
-                        <a href="{{ url_for('research.research_list') if current_user.has_role('rules_team') else url_for('research.view_research_list') }}">Research</a>
+                        {% if has_permission('research.create') or has_research_projects %}
+                        <a href="{{ url_for('research.research_list') if has_permission('research.create') else url_for('research.view_research_list') }}">Research</a>
                         {% endif %}
-                        {% if current_user.has_role('plot_team') or current_user.has_active_character() %}
+                        {% if has_permission('plot.reputation_briefings') or has_active_character() %}
                         <a href="{{ url_for('reputation_briefings.index') }}">Reputation Briefings</a>
                         {% endif %}
                     </div>
                 </li>
-                {% if current_user.has_role('admin') %}
+                {% if has_permission('template.edit') %}
                 <li><a href="{{ url_for('templates.template_list') }}">Templates</a></li>
                 {% endif %}
                 <li><a href="{{ url_for('settings.settings') }}">Settings</a></li>
@@ -120,7 +125,7 @@
         </div>
     </nav>
 
-    <div class="main-content">
+    <div class="main-content" id="main-content">
         <div class="container">
             {% with messages = get_flashed_messages() %}
                 {% if messages %}

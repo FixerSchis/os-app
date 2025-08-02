@@ -18,6 +18,7 @@ from models.database.item_blueprint import ItemBlueprint
 from models.database.item_type import ItemType
 from models.database.medicaments import Medicament
 from models.database.mods import Mod
+from models.database.permissions import Role as RoleModel
 from models.database.sample import Sample, SampleTag
 from models.database.skills import Skill
 from models.database.species import Ability, Species
@@ -47,11 +48,237 @@ from models.tools.research import (
     ResearchStage,
     ResearchStageRequirement,
 )
-from models.tools.role import Role as RoleModel
 from models.tools.user import User
 from models.wiki import WikiChangeLog, WikiImage, WikiPage, WikiPageVersion, WikiSection, WikiTag
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
+
+def initialize_test_permissions(db_session):
+    """Initialize permissions for testing."""
+    from models.database.permissions import Permission
+
+    # Create all the permissions that might be needed in tests
+    permissions_data = [
+        ("rules.conditions", "Manage conditions", "rules"),
+        ("rules.skills", "Manage skills", "rules"),
+        ("rules.species", "Manage species", "rules"),
+        ("rules.cybernetics", "Manage cybernetics", "rules"),
+        ("rules.exotic_substances", "Manage exotic substances", "rules"),
+        ("rules.factions", "Manage factions", "rules"),
+        ("rules.items", "Manage items", "rules"),
+        ("rules.medicaments", "Manage medicaments", "rules"),
+        ("rules.mods", "Manage mods", "rules"),
+        ("rules.item_types", "Manage item types", "rules"),
+        ("rules.item_blueprints", "Manage item blueprints", "rules"),
+        ("rules.global_settings", "Manage global settings", "rules"),
+        ("rules.group_types", "Manage group types", "rules"),
+        ("event.create", "Create events", "event"),
+        ("event.edit", "Edit events", "event"),
+        ("event.delete", "Delete events", "event"),
+        ("event.assign_tickets", "Assign event tickets", "event"),
+        ("event.manage_attendees", "Manage event attendees", "event"),
+        ("user.view", "View user list", "user"),
+        ("user.edit", "Edit user details", "user"),
+        ("user.roles", "Manage user roles", "user"),
+        ("owner.promote", "Promote users to owner", "owner"),
+        ("wiki.create", "Create wiki pages", "wiki"),
+        ("wiki.edit", "Edit wiki pages", "wiki"),
+        ("wiki.delete", "Delete wiki pages", "wiki"),
+        ("wiki.publish", "Publish wiki pages", "wiki"),
+        ("wiki.manage_sections", "Manage wiki sections", "wiki"),
+        ("plot.reputation_briefings", "Manage reputation briefings", "plot"),
+        ("character.view_all", "View all characters", "character"),
+        ("character.edit_all", "Edit any character", "character"),
+        ("character.background_approve", "Approve character backgrounds", "character"),
+        ("character.refund", "Refund character skills from active characters", "character"),
+        ("banking.view_all", "View all bank accounts", "banking"),
+        ("banking.manage", "Manage banking operations", "banking"),
+        ("database.backup", "Create database backups", "database"),
+        ("database.restore", "Restore database backups", "database"),
+        ("group.view_all", "View all groups", "group"),
+        ("group.edit", "Edit groups", "group"),
+        ("group.background_approve", "Approve group backgrounds", "group"),
+        ("messages.view_all", "View all messages", "messages"),
+        ("messages.respond", "Respond to messages", "messages"),
+        ("messages.send_for_character", "Send messages for characters", "messages"),
+        ("messages.send_for_other", "Send messages on behalf of other users", "messages"),
+        ("research.create", "Create research projects", "research"),
+        ("research.edit", "Edit research projects", "research"),
+        ("research.delete", "Delete research projects", "research"),
+        ("research.assign", "Assign research projects", "research"),
+        ("template.create", "Create templates", "template"),
+        ("template.edit", "Edit templates", "template"),
+        ("downtime.manage", "Manage downtime packs", "downtime"),
+    ]
+
+    for name, description, category in permissions_data:
+        permission = Permission.query.filter_by(name=name).first()
+        if not permission:
+            permission = Permission(name=name, description=description, category=category)
+            db_session.add(permission)
+
+    db_session.commit()
+
+
+def assign_role_to_user(user, role_name, db_session):
+    """Helper function to assign a role to a user."""
+    # Initialize permissions first
+    initialize_test_permissions(db_session)
+
+    role = RoleModel.query.filter_by(name=role_name).first()
+    if role:
+        user.role = role
+        db_session.commit()
+    else:
+        # Create the role if it doesn't exist (for testing)
+        role = RoleModel(name=role_name, description=f"Test {role_name} role")
+        db_session.add(role)
+        db_session.commit()
+
+        # Assign appropriate permissions based on role name
+        if role_name == "rules_team":
+            # Add rules-related permissions
+            from models.database.permissions import Permission
+
+            rules_permissions = [
+                "rules.conditions",
+                "rules.skills",
+                "rules.species",
+                "rules.cybernetics",
+                "rules.exotic_substances",
+                "rules.factions",
+                "rules.items",
+                "rules.medicaments",
+                "rules.mods",
+                "rules.item_types",
+                "rules.item_blueprints",
+                "rules.global_settings",
+                "rules.group_types",
+            ]
+            # Add event permissions
+            event_permissions = [
+                "event.create",
+                "event.edit",
+                "event.delete",
+                "event.assign_tickets",
+                "event.manage_attendees",
+            ]
+            # Add research permissions
+            research_permissions = [
+                "research.create",
+                "research.edit",
+                "research.delete",
+                "research.assign",
+            ]
+            all_permissions = rules_permissions + event_permissions + research_permissions
+            for perm_name in all_permissions:
+                permission = Permission.query.filter_by(name=perm_name).first()
+                if permission:
+                    role.add_permission(permission)
+        elif role_name == "admin":
+            # Add all permissions to admin role
+            from models.database.permissions import Permission
+
+            all_permissions = [
+                "rules.conditions",
+                "rules.skills",
+                "rules.species",
+                "rules.cybernetics",
+                "rules.exotic_substances",
+                "rules.factions",
+                "rules.items",
+                "rules.medicaments",
+                "rules.mods",
+                "rules.item_types",
+                "rules.item_blueprints",
+                "rules.global_settings",
+                "rules.group_types",
+                "event.create",
+                "event.edit",
+                "event.delete",
+                "event.assign_tickets",
+                "event.manage_attendees",
+                "user.view",
+                "user.edit",
+                "user.roles",
+                "owner.promote",
+                "character.view_all",
+                "character.edit_all",
+                "character.background_approve",
+                "character.refund",
+                "banking.view_all",
+                "banking.manage",
+                "database.backup",
+                "database.restore",
+                "group.view_all",
+                "group.edit",
+                "group.background_approve",
+                "messages.view_all",
+                "messages.respond",
+                "messages.send_for_character",
+                "messages.send_for_other",
+                "template.create",
+                "template.edit",
+                "research.create",
+                "research.edit",
+                "research.delete",
+                "research.assign",
+                "wiki.create",
+                "wiki.edit",
+                "wiki.delete",
+                "wiki.publish",
+                "wiki.manage_sections",
+                "plot.reputation_briefings",
+                "downtime.manage",
+            ]
+            for perm_name in all_permissions:
+                permission = Permission.query.filter_by(name=perm_name).first()
+                if permission:
+                    role.add_permission(permission)
+        elif role_name == "plot_team":
+            # Add plot team permissions
+            from models.database.permissions import Permission
+
+            plot_permissions = [
+                "wiki.create",
+                "wiki.edit",
+                "wiki.delete",
+                "wiki.publish",
+                "wiki.manage_sections",
+                "plot.reputation_briefings",
+            ]
+            for perm_name in plot_permissions:
+                permission = Permission.query.filter_by(name=perm_name).first()
+                if permission:
+                    role.add_permission(permission)
+        elif role_name == "npc":
+            # Add NPC permissions - NPCs can have multiple active characters
+            from models.database.permissions import Permission
+
+            npc_permissions = [
+                "character.edit_all",
+                "messages.respond",
+                "messages.view_all",
+                "messages.send_for_character",
+                "messages.send_for_other",
+            ]
+            for perm_name in npc_permissions:
+                permission = Permission.query.filter_by(name=perm_name).first()
+                if permission:
+                    role.add_permission(permission)
+        elif role_name == "downtime_team":
+            # Add downtime team permissions
+            from models.database.permissions import Permission
+
+            downtime_permissions = ["downtime.manage"]
+            for perm_name in downtime_permissions:
+                permission = Permission.query.filter_by(name=perm_name).first()
+                if permission:
+                    role.add_permission(permission)
+
+        user.role = role
+        db_session.commit()
 
 
 @pytest.fixture(scope="session")
@@ -109,14 +336,14 @@ def db_session(db):
 
 
 @pytest.fixture(scope="function")
-def test_client(app):
-    """A test client for the app."""
+def test_client(app, db):
+    """Test client for making requests."""
     return app.test_client()
 
 
 @pytest.fixture(scope="function")
-def new_user(db_session):
-    """Fixture for creating a new user and adding them to the database."""
+def new_user(db):
+    """Fixture for creating a new user."""
     unique_id = uuid.uuid4()
     user = User(
         email=f"test.user.{unique_id}@example.com",
@@ -125,8 +352,8 @@ def new_user(db_session):
         email_verified=True,
     )
     user.set_password("password")
-    db_session.add(user)
-    db_session.commit()
+    db.session.add(user)
+    db.session.commit()
     return user
 
 
@@ -140,11 +367,9 @@ def authenticated_user(test_client, new_user):
 
 
 @pytest.fixture(scope="function")
-def admin_user(db_session, authenticated_user):
+def admin_user(db, authenticated_user):
     """Fixture for an authenticated admin user."""
-    authenticated_user.add_role("admin")
-    db_session.add(authenticated_user)
-    db_session.commit()
+    assign_role_to_user(authenticated_user, "admin", db.session)
     return authenticated_user
 
 
@@ -259,9 +484,9 @@ def npc_user(db_session):
         email_verified=True,
     )
     user.set_password("password")
-    user.add_role("npc")
     db_session.add(user)
     db_session.commit()
+    assign_role_to_user(user, "npc", db_session)
     return user
 
 
@@ -354,8 +579,11 @@ def regular_user(db_session):
 
 
 @pytest.fixture(scope="function")
-def rules_team_user(db_session):
+def rules_team_user(db):
     """Fixture for creating a rules team user."""
+    # Initialize permissions first
+    initialize_test_permissions(db.session)
+
     unique_id = uuid.uuid4()
     user = User(
         email=f"rules.team.{unique_id}@example.com",
@@ -364,14 +592,54 @@ def rules_team_user(db_session):
         email_verified=True,
     )
     user.set_password("password")
-    user.add_role("rules_team")
-    db_session.add(user)
-    db_session.commit()
+    db.session.add(user)
+
+    # Create or get the rules_team role
+    role = RoleModel.query.filter_by(name="rules_team").first()
+    if not role:
+        role = RoleModel(name="rules_team", description="Test rules team role")
+        db.session.add(role)
+        db.session.commit()
+
+        # Assign permissions to rules_team role
+        from models.database.permissions import Permission
+
+        rules_permissions = [
+            "rules.conditions",
+            "rules.skills",
+            "rules.species",
+            "rules.cybernetics",
+            "rules.exotic_substances",
+            "rules.factions",
+            "rules.items",
+            "rules.medicaments",
+            "rules.mods",
+            "rules.item_types",
+            "rules.item_blueprints",
+            "rules.global_settings",
+            "rules.group_types",
+        ]
+        # Add sample permissions
+        sample_permissions = ["view_samples", "add_samples", "edit_samples", "delete_samples"]
+        # Add event permissions
+        event_permissions = ["event.create", "event.edit", "event.delete", "event.manage"]
+        # Add research permissions
+        research_permissions = ["research.create"]
+        all_permissions = (
+            rules_permissions + sample_permissions + event_permissions + research_permissions
+        )
+        for perm_name in all_permissions:
+            permission = Permission.query.filter_by(name=perm_name).first()
+            if permission:
+                role.add_permission(permission)
+
+    user.role = role
+    db.session.commit()
     return user
 
 
 @pytest.fixture(scope="function")
-def user_rules_team(db_session):
+def user_rules_team(db):
     """Fixture for creating a user with rules team role."""
     unique_id = uuid.uuid4()
     user = User(
@@ -381,9 +649,7 @@ def user_rules_team(db_session):
         email_verified=True,
     )
     user.set_password("password")
-    user.add_role("rules_team")
-    db_session.add(user)
-    db_session.commit()
+    assign_role_to_user(user, "rules_team", db.session)
     return user
 
 
@@ -398,9 +664,9 @@ def downtime_team_user(db_session):
         email_verified=True,
     )
     user.set_password("password")
-    user.add_role("downtime_team")
     db_session.add(user)
     db_session.commit()
+    assign_role_to_user(user, "downtime_team", db_session)
     return user
 
 
@@ -421,17 +687,17 @@ def other_user(db_session):
 
 
 @pytest.fixture(scope="function")
-def item_type(db_session):
+def item_type(db):
     """Fixture for creating a basic item type."""
     unique_id = uuid.uuid4().hex
     it = ItemType(name=f"Test Item Type {unique_id}", id_prefix="IT")
-    db_session.add(it)
-    db_session.commit()
+    db.session.add(it)
+    db.session.commit()
     return it
 
 
 @pytest.fixture(scope="function")
-def item_blueprint(db_session, item_type):
+def item_blueprint(db, item_type):
     """Fixture for creating a basic item blueprint."""
     unique_id = uuid.uuid4().hex
     ib = ItemBlueprint(
@@ -440,25 +706,25 @@ def item_blueprint(db_session, item_type):
         blueprint_id=1,
         base_cost=10,
     )
-    db_session.add(ib)
-    db_session.commit()
+    db.session.add(ib)
+    db.session.commit()
     return ib
 
 
 @pytest.fixture(scope="function")
-def item(db_session, item_blueprint):
+def item(db, item_blueprint):
     """Fixture for creating a basic item."""
     i = Item(
         blueprint_id=item_blueprint.id,
         item_id=1,
     )
-    db_session.add(i)
-    db_session.commit()
+    db.session.add(i)
+    db.session.commit()
     return i
 
 
 @pytest.fixture(scope="function")
-def exotic_substance(db_session):
+def exotic_substance(db):
     """Fixture for creating a basic exotic substance."""
     unique_id = uuid.uuid4().hex
     es = ExoticSubstance(
@@ -466,8 +732,8 @@ def exotic_substance(db_session):
         type=ScienceType.GENERIC.value,
         wiki_slug=f"test-substance-{unique_id}",
     )
-    db_session.add(es)
-    db_session.commit()
+    db.session.add(es)
+    db.session.commit()
     return es
 
 
@@ -530,7 +796,25 @@ def mod(db_session, item_type):
         name=f"Test Mod {unique_id}",
         wiki_slug=f"test-mod-{unique_id}",
     )
-    m.item_types.append(item_type)
+    # Use merge to handle session conflicts
+    item_type_merged = db_session.merge(item_type)
+    m.item_types.append(item_type_merged)
+    db_session.add(m)
+    db_session.commit()
+    return m
+
+
+@pytest.fixture(scope="function")
+def mod_obj(db_session, item_type):
+    """Fixture for creating a mod object."""
+    unique_id = uuid.uuid4().hex
+    m = Mod(
+        name=f"Test Mod Object {unique_id}",
+        wiki_slug=f"test-mod-{unique_id}",
+    )
+    # Use merge to handle session conflicts
+    item_type_merged = db_session.merge(item_type)
+    m.item_types.append(item_type_merged)
     db_session.add(m)
     db_session.commit()
     return m
@@ -647,9 +931,9 @@ def user_admin(db_session):
         email_verified=True,
     )
     user.set_password("password")
-    user.add_role("admin")
     db_session.add(user)
     db_session.commit()
+    assign_role_to_user(user, "admin", db_session)
     return user
 
 
@@ -792,26 +1076,20 @@ def item_blueprint_obj(db_session, item_type):
 
 
 @pytest.fixture(scope="function")
-def mod_obj(db_session, item_type):
-    """Fixture for creating a mod object."""
-    unique_id = uuid.uuid4().hex
-    m = Mod(
-        name=f"Test Mod Object {unique_id}",
-        wiki_slug=f"test-mod-{unique_id}",
-    )
-    m.item_types.append(item_type)
-    db_session.add(m)
-    db_session.commit()
-    return m
-
-
-@pytest.fixture(scope="function")
-def plot_team_user(db_session, new_user):
+def plot_team_user(db_session):
     """Fixture for creating a plot team user."""
-    new_user.add_role("plot_team")
-    db_session.add(new_user)
+    unique_id = uuid.uuid4()
+    user = User(
+        email=f"plot.team.{unique_id}@example.com",
+        first_name="Plot",
+        surname="Team",
+        email_verified=True,
+    )
+    user.set_password("password")
+    db_session.add(user)
     db_session.commit()
-    return new_user
+    assign_role_to_user(user, "plot_team", db_session)
+    return user
 
 
 @pytest.fixture(scope="function")
@@ -821,6 +1099,15 @@ def authenticated_plot_team_user(test_client, plot_team_user):
         session["_user_id"] = plot_team_user.id
         session["_fresh"] = True
     return plot_team_user
+
+
+@pytest.fixture(scope="function")
+def authenticated_rules_team_user(test_client, user_rules_team):
+    """Fixture for an authenticated rules team user."""
+    with test_client.session_transaction() as session:
+        session["_user_id"] = user_rules_team.id
+        session["_fresh"] = True
+    return user_rules_team
 
 
 @pytest.fixture(scope="function")

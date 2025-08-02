@@ -4,8 +4,11 @@ from models.database.group_type import GroupType
 
 
 class TestGroupTypeRoutes:
-    def test_list_group_types_authenticated(self, test_client, authenticated_user):
-        """Test that authenticated users can view group types list."""
+    def test_list_group_types_authenticated(self, test_client, rules_team_user):
+        """Test that authenticated users with proper permissions can view group types list."""
+        with test_client.session_transaction() as sess:
+            sess["_user_id"] = rules_team_user.id
+            sess["_fresh"] = True
         response = test_client.get("/db/group-types/")
         assert response.status_code == 200
         assert b"Group Types" in response.data
@@ -17,8 +20,11 @@ class TestGroupTypeRoutes:
 
     def test_create_group_type_rules_team_required(self, test_client, authenticated_user):
         """Test that non-rules-team users cannot access create page."""
+        with test_client.session_transaction() as sess:
+            sess["_user_id"] = authenticated_user.id
+            sess["_fresh"] = True
         response = test_client.get("/db/group-types/create")
-        assert response.status_code == 403  # Forbidden
+        assert response.status_code == 302  # Redirect to index (no permission)
 
     def test_create_group_type_rules_team_allowed(self, test_client, rules_team_user):
         """Test that rules team users can access create page."""
@@ -111,8 +117,11 @@ class TestGroupTypeRoutes:
         db.session.add(group_type)
         db.session.commit()
 
+        with test_client.session_transaction() as sess:
+            sess["_user_id"] = authenticated_user.id
+            sess["_fresh"] = True
         response = test_client.get(f"/db/group-types/{group_type.id}/edit")
-        assert response.status_code == 403  # Forbidden
+        assert response.status_code == 302  # Redirect to index (no permission)
 
     def test_edit_group_type_success(self, test_client, rules_team_user, db):
         """Test successful group type editing."""

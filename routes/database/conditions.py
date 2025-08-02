@@ -5,6 +5,7 @@ from models.database.conditions import Condition, ConditionStage
 from models.enums import Role
 from models.extensions import db
 from utils.decorators import email_verified_required
+from utils.permission_decorators import permission_required
 
 conditions_bp = Blueprint("conditions", __name__)
 
@@ -12,29 +13,25 @@ conditions_bp = Blueprint("conditions", __name__)
 @conditions_bp.route("/")
 def list():
     conditions = Condition.query.order_by(Condition.name).all()
-    can_edit = current_user.is_authenticated and current_user.has_role(Role.RULES_TEAM.value)
+    can_edit = current_user.is_authenticated and current_user.has_permission("rules.conditions")
     return render_template("rules/conditions/list.html", conditions=conditions, can_edit=can_edit)
 
 
 @conditions_bp.route("/new", methods=["GET"])
 @login_required
 @email_verified_required
+@permission_required(permissions=["rules.conditions"])
 def create():
-    if not current_user.has_role(Role.RULES_TEAM.value):
-        flash("You do not have permission to access this page", "error")
-        return redirect(url_for("index"))
     return render_template("rules/conditions/edit.html")
 
 
 @conditions_bp.route("/new", methods=["POST"])
 @login_required
 @email_verified_required
+@permission_required(permissions=["rules.conditions"])
 def create_post():
     name = request.form.get("name")
     stages_data = request.form.getlist("stages")
-    if not current_user.has_role(Role.RULES_TEAM.value):
-        flash("You do not have permission to access this page", "error")
-        return redirect(url_for("index"))
 
     if not name:
         flash("Name is required", "error")
@@ -69,11 +66,8 @@ def create_post():
 @conditions_bp.route("/<int:id>/edit", methods=["GET"])
 @login_required
 @email_verified_required
+@permission_required(permissions=["rules.conditions"])
 def edit(id):
-    if not current_user.has_role(Role.RULES_TEAM.value):
-        flash("You do not have permission to access this page", "error")
-        return redirect(url_for("index"))
-
     condition = Condition.query.get_or_404(id)
     return render_template("rules/conditions/edit.html", condition=condition)
 
@@ -81,11 +75,8 @@ def edit(id):
 @conditions_bp.route("/<int:id>/edit", methods=["POST"])
 @login_required
 @email_verified_required
+@permission_required(permissions=["rules.conditions"])
 def edit_post(id):
-    if not current_user.has_role(Role.RULES_TEAM.value):
-        flash("You do not have permission to access this page", "error")
-        return redirect(url_for("index"))
-
     condition = Condition.query.get_or_404(id)
     name = request.form.get("name")
     stages_data = request.form.getlist("stages")

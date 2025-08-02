@@ -16,7 +16,7 @@ class TestCharacterBackgroundsRoutes:
             sess["_fresh"] = True
 
         response = test_client.get("/tools/character-backgrounds/")
-        assert response.status_code == 403
+        assert response.status_code == 302  # Redirect due to permission denied
 
     def test_list_backgrounds_user_admin_access(self, test_client, user_admin, db_session):
         """Test that user_admin can access list backgrounds"""
@@ -75,7 +75,7 @@ class TestCharacterBackgroundsRoutes:
             sess["_fresh"] = True
 
         response = test_client.get("/tools/character-backgrounds/1/review")
-        assert response.status_code == 403
+        assert response.status_code == 302  # Redirect due to permission denied
 
     def test_review_background_not_found(self, test_client, user_admin, db_session):
         """Test review background with non-existent background"""

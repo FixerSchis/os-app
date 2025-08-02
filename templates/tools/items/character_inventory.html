@@ -78,7 +78,7 @@
                     <form method="POST" action="{{ url_for('tools_items.assign_item_to_character', character_id=character.id) }}">
                         <div class="mb-3">
                             <label for="item_id" class="form-label">Select Existing Item</label>
-                            <select class="form-select select2-single" id="item_id" name="item_id">
+                            <select class="form-select select2-single" id="item_id" name="item_id" title="Select existing item to assign">
                                 <option value="">Choose an existing item...</option>
                                 {% for item in available_items %}
                                 <option value="{{ item.id }}">
@@ -90,7 +90,7 @@
 
                         <div class="mb-3">
                             <label for="blueprint_id" class="form-label">Or Create New Item from Blueprint</label>
-                            <select class="form-select select2-single" id="blueprint_id" name="blueprint_id">
+                            <select class="form-select select2-single" id="blueprint_id" name="blueprint_id" title="Select blueprint for new item">
                                 <option value="">Choose a blueprint...</option>
                                 {% for blueprint in item_blueprints %}
                                 <option value="{{ blueprint.id }}">

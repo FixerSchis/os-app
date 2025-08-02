@@ -15,7 +15,7 @@
             <form action="{{ url_for('messages.send_message') }}" method="POST">
                 <div class="mb-3">
                     <label for="sender_id" class="form-label">From Character</label>
-                    <select class="form-select" id="sender_id" name="sender_id" required>
+                    <select class="form-select" id="sender_id" name="sender_id" required title="Select character to send message from">
                         <option value="">Select a character...</option>
                         {% for character in characters %}
                             <option value="{{ character.id }}">{{ character.name }}</option>

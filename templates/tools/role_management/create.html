@@ -1,0 +1,86 @@
+{% extends "_template.html" %}
+
+{% block title %}Create Role{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Create New Role</h1>
+        <a href="{{ url_for('role_management.role_list') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Back to Roles
+        </a>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">Role Details</h5>
+        </div>
+        <div class="card-body">
+            <form method="POST">
+                <div class="mb-3">
+                    <label for="name" class="form-label">Role Name *</label>
+                    <input type="text" class="form-control" id="name" name="name" required
+                           placeholder="Enter role name">
+                    <div class="form-text">Choose a descriptive name for this role.</div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="description" class="form-label">Description</label>
+                    <textarea class="form-control" id="description" name="description" rows="3"
+                              placeholder="Enter role description"></textarea>
+                    <div class="form-text">Optional description of what this role is for.</div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Permissions</label>
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i>
+                        Select the permissions that should be granted to users with this role.
+                    </div>
+
+                    {% set permissions_by_category = {} %}
+                    {% for permission in all_permissions %}
+                        {% if permission.category not in permissions_by_category %}
+                            {% set _ = permissions_by_category.update({permission.category: []}) %}
+                        {% endif %}
+                        {% set _ = permissions_by_category[permission.category].append(permission) %}
+                    {% endfor %}
+
+                    <div class="d-flex flex-wrap" style="gap: 1rem;">
+                        {% for category, permissions in permissions_by_category.items() %}
+                            <div class="card" style="flex: 1 1 300px; min-width: 300px; max-width: 400px;">
+                                <div class="card-header">
+                                    <h6 class="mb-0">{{ category|title }}</h6>
+                                </div>
+                                <div class="card-body">
+                                    {% for permission in permissions %}
+                                        {% if permission.name != "owner.promote" %}
+                                            <div class="form-check mb-2">
+                                                <input class="form-check-input" type="checkbox"
+                                                       name="permissions" value="{{ permission.id }}"
+                                                       id="perm_{{ permission.id }}">
+                                                <label class="form-check-label" for="perm_{{ permission.id }}">
+                                                    {{ permission.description or permission.name }}
+                                                </label>
+                                            </div>
+                                        {% endif %}
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-between">
+                    <a href="{{ url_for('role_management.role_list') }}" class="btn btn-secondary">
+                        Cancel
+                    </a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-plus-circle"></i> Create Role
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

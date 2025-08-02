@@ -9,6 +9,7 @@ from models.database.item_type import ItemType
 from models.database.mods import Mod
 from models.enums import Role
 from models.extensions import db
+from utils.permission_decorators import permission_required
 
 item_blueprints_bp = Blueprint("item_blueprints", __name__)
 
@@ -28,7 +29,9 @@ def list():
         )
 
     blueprints = sorted(blueprints, key=blueprint_sort_key)
-    can_edit = current_user.is_authenticated and current_user.has_role(Role.RULES_TEAM.value)
+    can_edit = current_user.is_authenticated and current_user.has_permission(
+        "rules.item_blueprints"
+    )
 
     # Fetch all mod instances for each blueprint
     mod_instances_by_blueprint = {}
@@ -50,10 +53,8 @@ def list():
 
 @item_blueprints_bp.route("/create", methods=["GET"])
 @login_required
+@permission_required(permissions=["rules.item_blueprints"])
 def create():
-    if not current_user.has_role(Role.RULES_TEAM.value):
-        flash("You do not have permission to access this page", "error")
-        return redirect(url_for("index"))
     item_types = ItemType.query.order_by(ItemType.name).all()
     mods = Mod.query.order_by(Mod.name).all()
     # Convert mods to dictionaries for JSON serialization
@@ -63,10 +64,8 @@ def create():
 
 @item_blueprints_bp.route("/create", methods=["POST"])
 @login_required
+@permission_required(permissions=["rules.item_blueprints"])
 def create_post():
-    if not current_user.has_role(Role.RULES_TEAM.value):
-        flash("You do not have permission to access this page", "error")
-        return redirect(url_for("index"))
     item_types = ItemType.query.order_by(ItemType.name).all()
     mods = Mod.query.order_by(Mod.name).all()
     mods_dict = [{"id": mod.id, "name": mod.name} for mod in mods]
@@ -132,10 +131,8 @@ def create_post():
 
 @item_blueprints_bp.route("/<int:id>/edit", methods=["GET"])
 @login_required
+@permission_required(permissions=["rules.item_blueprints"])
 def edit(id):
-    if not current_user.has_role(Role.RULES_TEAM.value):
-        flash("You do not have permission to access this page", "error")
-        return redirect(url_for("index"))
     blueprint = ItemBlueprint.query.get_or_404(id)
     item_types = ItemType.query.order_by(ItemType.name).all()
     mods = Mod.query.order_by(Mod.name).all()
@@ -160,10 +157,8 @@ def edit(id):
 
 @item_blueprints_bp.route("/<int:id>/edit", methods=["POST"])
 @login_required
+@permission_required(permissions=["rules.item_blueprints"])
 def edit_post(id):
-    if not current_user.has_role(Role.RULES_TEAM.value):
-        flash("You do not have permission to access this page", "error")
-        return redirect(url_for("index"))
     blueprint = ItemBlueprint.query.get_or_404(id)
     item_types = ItemType.query.order_by(ItemType.name).all()
     mods = Mod.query.order_by(Mod.name).all()
@@ -220,10 +215,8 @@ def edit_post(id):
 
 @item_blueprints_bp.route("/<int:id>/delete", methods=["POST"])
 @login_required
+@permission_required(permissions=["rules.item_blueprints"])
 def delete(id):
-    if not current_user.has_role(Role.RULES_TEAM.value):
-        flash("You do not have permission to access this page", "error")
-        return redirect(url_for("index"))
     blueprint = ItemBlueprint.query.get_or_404(id)
     try:
         db.session.delete(blueprint)

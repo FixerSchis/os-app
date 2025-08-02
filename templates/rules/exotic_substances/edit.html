@@ -17,7 +17,7 @@
 
             <div class="form-group">
                 <label for="type">Type</label>
-                <select class="form-control" id="type" name="type" required>
+                <select class="form-control" id="type" name="type" required title="Select exotic substance type">
                     <option value="">Select a type...</option>
                     {% for type in types %}
                     <option value="{{ type.value }}" {% if substance and type == substance.type %}selected{% endif %}>{{ ScienceType.descriptions()[type.value] }}</option>

@@ -96,7 +96,7 @@ def test_conditions_create_post_authorized(test_client, rules_team_user, db):
 
     print("Role.RULES_TEAM:", Role.RULES_TEAM)
     print("Role.RULES_TEAM.value:", getattr(Role.RULES_TEAM, "value", None))
-    print("User roles:", rules_team_user.roles)
+    print("User role:", rules_team_user.role)
     print("User email_verified:", rules_team_user.email_verified)
 
     with test_client.session_transaction() as session:

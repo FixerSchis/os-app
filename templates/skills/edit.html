@@ -24,7 +24,7 @@
                 {% for type in skill_types %}
                     {% set _ = type_names.append(type[0]) %}
                 {% endfor %}
-                <select class="form-control" id="skill_type" name="skill_type" required>
+                <select class="form-control" id="skill_type" name="skill_type" required title="Select skill type">
                     {% if skill and skill.skill_type and skill.skill_type not in type_names %}
                         <option value="{{ skill.skill_type }}" selected>{{ skill.skill_type }}</option>
                     {% endif %}
@@ -51,7 +51,7 @@
 
             <div class="form-group" id="science_type_group" {% if not skill or not skill.adds_science_downtime %}style="display:none;"{% endif %}>
                 <label for="science_type" class="form-label">Science Type</label>
-                <select class="form-control w-100" id="science_type" name="science_type">
+                <select class="form-control w-100" id="science_type" name="science_type" title="Select science type">
                     <option value="">None</option>
                     {% for type in science_types %}
                     <option value="{{ type }}" {% if skill and skill.science_type == type %}selected{% endif %}>{{ type|title }}</option>
@@ -61,7 +61,7 @@
 
             <div class="form-group">
                 <label for="adds_reputation_faction_id">Adds Reputation - Faction</label>
-                <select class="form-control select2-single" id="adds_reputation_faction_id" name="adds_reputation_faction_id">
+                <select class="form-control select2-single" id="adds_reputation_faction_id" name="adds_reputation_faction_id" title="Select faction for reputation bonus">
                     <option value="">None</option>
                     {% for faction in factions %}
                     <option value="{{ faction.id }}" {% if skill and skill.adds_reputation_faction_id == faction.id %}selected{% endif %}>
@@ -81,9 +81,9 @@
                 <input type="number" class="form-control" id="base_cost" name="base_cost" value="{{ skill.base_cost if skill else 0 }}" required min="0">
             </div>
 
-            <table style="width:100%; border: none; margin-bottom: 1.5rem;">
+            <table class="width-100" style="border: none; margin-bottom: 1.5rem;">
               <tr>
-                <td style="width: 1.5em; vertical-align: middle;">
+                <td class="width-1-5-em" style="vertical-align: middle;">
                   <input class="form-check-input" type="checkbox" id="can_purchase_multiple" name="can_purchase_multiple" {% if skill and skill.can_purchase_multiple %}checked{% endif %}>
                 </td>
                 <td>
@@ -91,7 +91,7 @@
                 </td>
               </tr>
               <tr>
-                <td style="width: 1.5em; vertical-align: middle;">
+                <td class="width-1-5-em" style="vertical-align: middle;">
                   <input class="form-check-input" type="checkbox" id="cost_increases" name="cost_increases" {% if skill and skill.cost_increases %}checked{% endif %}>
                 </td>
                 <td>
@@ -102,7 +102,7 @@
 
             <div class="form-group">
                 <label for="required_skill_id">Required Skill</label>
-                <select class="form-control" id="required_skill_id" name="required_skill_id">
+                <select class="form-control" id="required_skill_id" name="required_skill_id" title="Select required skill">
                     <option value="">None</option>
                     {% for s in skills_list %}
                     {% if not skill or s.id != skill.id %}
@@ -114,7 +114,7 @@
 
             <div class="form-group">
                 <label for="required_factions">Required Factions</label>
-                <select class="form-control select2-multiple" id="required_factions" name="required_factions" multiple>
+                <select class="form-control select2-multiple" id="required_factions" name="required_factions" multiple title="Select required factions">
                     {% for faction in factions %}
                         <option value="{{ faction.id }}" {% if skill and (faction.id|string) in skill.required_factions_list %}selected{% endif %}>
                             {{ faction.name }}
@@ -125,7 +125,7 @@
 
             <div class="form-group">
                 <label for="required_species">Required Species</label>
-                <select class="form-control select2-multiple" id="required_species" name="required_species" multiple>
+                <select class="form-control select2-multiple" id="required_species" name="required_species" multiple title="Select required species">
                     {% for s in species_list %}
                     <option value="{{ s.id }}" {% if skill and s.id|string in skill.required_species_list %}selected{% endif %}>
                         {{ s.name }}
@@ -136,7 +136,7 @@
 
             <div class="form-group">
                 <label for="required_tags">Required Tags</label>
-                <select class="form-control select2-multiple" id="required_tags" name="required_tags" multiple>
+                <select class="form-control select2-multiple" id="required_tags" name="required_tags" multiple title="Select required tags">
                     {% for tag in tags %}
                     <option value="{{ tag.id }}" {% if skill and tag.id|string in skill.required_tags_list %}selected{% endif %}>
                         {{ tag.name }}
@@ -152,16 +152,16 @@
                         {% for value in skill.character_sheet_values_list %}
                         <div class="character-sheet-value-row" style="display: flex; gap: 10px; margin-bottom: 10px; align-items: end;">
                             <div style="flex: 1;">
-                                <label>ID</label>
-                                <input type="text" class="form-control" name="character_sheet_values[{{ loop.index0 }}][id]" value="{{ value.id }}" placeholder="e.g., strength, agility">
+                                <label for="character_sheet_id_{{ loop.index0 }}">ID</label>
+                                <input type="text" class="form-control" id="character_sheet_id_{{ loop.index0 }}" name="character_sheet_values[{{ loop.index0 }}][id]" value="{{ value.id }}" placeholder="e.g., strength, agility">
                             </div>
                             <div style="flex: 2;">
-                                <label>Description</label>
-                                <input type="text" class="form-control" name="character_sheet_values[{{ loop.index0 }}][description]" value="{{ value.description }}" placeholder="e.g., Physical strength modifier">
+                                <label for="character_sheet_description_{{ loop.index0 }}">Description</label>
+                                <input type="text" class="form-control" id="character_sheet_description_{{ loop.index0 }}" name="character_sheet_values[{{ loop.index0 }}][description]" value="{{ value.description }}" placeholder="e.g., Physical strength modifier">
                             </div>
                             <div style="flex: 1;">
-                                <label>Value</label>
-                                <input type="number" class="form-control" name="character_sheet_values[{{ loop.index0 }}][value]" value="{{ value.value }}" placeholder="0">
+                                <label for="character_sheet_value_{{ loop.index0 }}">Value</label>
+                                <input type="number" class="form-control" id="character_sheet_value_{{ loop.index0 }}" name="character_sheet_values[{{ loop.index0 }}][value]" value="{{ value.value }}" placeholder="0">
                             </div>
                             <div style="display: flex; align-items: end;">
                                 <button type="button" class="btn btn-danger remove-character-sheet-value" style="margin-top: 24px;">Remove</button>
@@ -270,16 +270,16 @@ $(document).ready(function() {
         const newRow = $(`
             <div class="character-sheet-value-row" style="display: flex; gap: 10px; margin-bottom: 10px; align-items: end;">
                 <div style="flex: 1;">
-                    <label>ID</label>
-                    <input type="text" class="form-control" name="character_sheet_values[${characterSheetValueIndex}][id]" placeholder="e.g., strength, agility">
+                    <label for="character_sheet_id_${characterSheetValueIndex}">ID</label>
+                    <input type="text" class="form-control" id="character_sheet_id_${characterSheetValueIndex}" name="character_sheet_values[${characterSheetValueIndex}][id]" placeholder="e.g., strength, agility">
                 </div>
                 <div style="flex: 2;">
-                    <label>Description</label>
-                    <input type="text" class="form-control" name="character_sheet_values[${characterSheetValueIndex}][description]" placeholder="e.g., Physical strength modifier">
+                    <label for="character_sheet_description_${characterSheetValueIndex}">Description</label>
+                    <input type="text" class="form-control" id="character_sheet_description_${characterSheetValueIndex}" name="character_sheet_values[${characterSheetValueIndex}][description]" placeholder="e.g., Physical strength modifier">
                 </div>
                 <div style="flex: 1;">
-                    <label>Value</label>
-                    <input type="number" class="form-control" name="character_sheet_values[${characterSheetValueIndex}][value]" placeholder="0">
+                    <label for="character_sheet_value_${characterSheetValueIndex}">Value</label>
+                    <input type="number" class="form-control" id="character_sheet_value_${characterSheetValueIndex}" name="character_sheet_values[${characterSheetValueIndex}][value]" placeholder="0">
                 </div>
                 <div style="display: flex; align-items: end;">
                     <button type="button" class="btn btn-danger remove-character-sheet-value" style="margin-top: 24px;">Remove</button>

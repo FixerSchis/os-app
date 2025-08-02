@@ -49,7 +49,8 @@
                                            data-character-id="{{ data.character.id }}"
                                            data-character-item-id="{{ character_item.id }}"
                                            data-item-name="{{ character_item.item.blueprint.name }}"
-                                           data-item-code="{{ character_item.item.full_code }}">
+                                           data-item-code="{{ character_item.item.full_code }}"
+                                           title="Select item for transfer">
                                 </td>
                             </tr>
                             {% endfor %}
@@ -74,7 +75,7 @@
                     <div class="col-md-6">
                         <div class="mb-3">
                             <label for="requesting_character_id" class="form-label">From Character</label>
-                            <select class="form-select select2-single" id="requesting_character_id" name="requesting_character_id" required>
+                            <select class="form-select select2-single" id="requesting_character_id" name="requesting_character_id" required title="Select character to transfer items from">
                                 <option value="">Select character...</option>
                                 {% for character_id, data in character_inventories.items() %}
                                 <option value="{{ data.character.id }}">{{ data.character.name }}</option>
@@ -85,7 +86,7 @@
                     <div class="col-md-6">
                         <div class="mb-3">
                             <label for="target_character_id" class="form-label">To Character</label>
-                            <select class="form-select select2-single" id="target_character_id" name="target_character_id" required>
+                            <select class="form-select select2-single" id="target_character_id" name="target_character_id" required title="Select character to transfer items to">
                                 <option value="">Select character...</option>
                                 {% for character in all_characters %}
                                 <option value="{{ character.id }}">{{ character.name }} ({{ character.user.first_name }} {{ character.user.surname }})</option>

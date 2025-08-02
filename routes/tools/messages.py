@@ -1,12 +1,14 @@
-from flask import Blueprint, flash, redirect, render_template, request, url_for
+from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
+from models.database.faction import Faction
 from models.enums import CharacterStatus
 from models.extensions import db
 from models.tools.character import Character
 from models.tools.message import Message
-from utils.decorators import npc_required
+from models.tools.user import User
 from utils.email import send_notification_email
+from utils.permission_decorators import permission_required
 
 bp = Blueprint("messages", __name__)
 
@@ -14,7 +16,7 @@ bp = Blueprint("messages", __name__)
 @bp.route("/")
 @login_required
 def messages():
-    if current_user.has_role("npc"):
+    if current_user.has_permission("messages.view_all"):
         # For NPCs, show messages that either have no response OR are sent by their
         # active characters
         characters = Character.query.filter_by(status=CharacterStatus.ACTIVE.value).all()
@@ -45,10 +47,10 @@ def messages():
         return render_template("messages/user_messages.html", messages=messages)
 
 
-@bp.route("/messages/send", methods=["POST"])
+@bp.route("/send", methods=["POST"])
 @login_required
 def send_message():
-    if current_user.has_role("npc"):
+    if current_user.has_permission("messages.send_for_character"):
         sender_id = request.form.get("sender_id")
         paid_in_cash = request.form.get("paid_in_cash") == "true"
     else:
@@ -93,10 +95,15 @@ def send_message():
     return redirect(url_for("messages.messages"))
 
 
-@bp.route("/messages/<int:message_id>/respond", methods=["POST"])
-@npc_required
+@bp.route("/<int:message_id>/respond", methods=["POST"])
+@permission_required(permissions=["messages.respond"])
 def respond_to_message(message_id):
-    message = Message.query.get_or_404(message_id)
+    # Get the message, but don't use get_or_404 to avoid 404 for unauthorized users
+    message = db.session.get(Message, message_id)
+    if not message:
+        flash("Message not found.", "error")
+        return redirect(url_for("messages.messages"))
+
     response_text = request.form.get("response")
 
     if not response_text:

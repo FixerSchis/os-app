@@ -1,7 +1,8 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Downtime Pack Status Update</title>
     <style>
         body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
@@ -10,6 +11,10 @@
         .content { background-color: #f8f9fa; padding: 20px; }
         .footer { text-align: center; padding: 20px; color: #6c757d; font-size: 12px; }
         .btn { display: inline-block; padding: 10px 20px; background-color: #007bff; color: white; text-decoration: none; border-radius: 5px; }
+        .view-downtime-btn {
+            text-align: center;
+            margin: 30px 0;
+        }
     </style>
 </head>
 <body>
@@ -26,7 +31,7 @@
 
             <p>You can now enter your downtime activities for this pack. Please log into your account to manage your downtime.</p>
 
-            <p style="text-align: center; margin: 30px 0;">
+            <p class="view-downtime-btn">
                 <a href="{{ url_for('downtime.index', _external=True) }}" class="btn">View Downtime</a>
             </p>
 

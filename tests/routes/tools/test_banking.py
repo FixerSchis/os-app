@@ -87,7 +87,7 @@ class TestUpdateBalance:
                     "balance": "1000",
                 },
             )
-            assert response.status_code == 403  # Forbidden (access denied)
+            assert response.status_code == 302  # Redirect due to permission denied
 
     def test_update_balance_admin_character(self, test_client, user_admin, character_with_faction):
         """Test update balance for character as admin."""

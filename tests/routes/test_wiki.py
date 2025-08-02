@@ -762,10 +762,10 @@ def test_has_access_role_restricted_section(test_client, authenticated_user):
     # Should not be accessible to regular user
     assert has_access(section, authenticated_user) is False
 
-    # Should be accessible to admin user
+    # Should be accessible to admin user with appropriate permissions
     admin_user = MagicMock()
     admin_user.is_authenticated = True
-    admin_user.has_role.return_value = True
+    admin_user.has_permission.return_value = True
     assert has_access(section, admin_user) is True
 
 

@@ -26,7 +26,7 @@
 
                     <div class="form-group">
                         <label for="group_type_id">Group Type</label>
-                        <select class="form-control" id="group_type_id" name="group_type_id" required>
+                        <select class="form-control" id="group_type_id" name="group_type_id" required title="Select group type">
                             {% for group_type in group_types %}
                             <option value="{{ group_type.id }}" {% if group and group_type.id == group.group_type_id %}selected{% endif %}>
                                 {{ group_type.name }}
@@ -65,7 +65,7 @@
                     {% if not group %}
                     <div class="form-group">
                         <label for="character_id">Initial Member</label>
-                        <select class="form-control" id="character_id" name="character_id">
+                        <select class="form-control" id="character_id" name="character_id" title="Select initial group member">
                             <option value="">Select a character...</option>
                             {% for character in available_characters %}
                             <option value="{{ character.id }}">{{ character.name }} ({{ character.faction.name }})</option>
@@ -117,7 +117,7 @@
                     <h3>Add Member</h3>
                     <form method="POST" action="{{ url_for('groups.add_character_admin', group_id=group.id) }}" class="form-inline">
                         <div class="form-group mr-2">
-                            <select class="form-control" name="character_id" required>
+                            <select class="form-control" name="character_id" required title="Select character to add to group">
                                 <option value="">Select a character...</option>
                                 {% for character in available_characters %}
                                 <option value="{{ character.id }}">{{ character.name }} ({{ character.faction.name }})</option>

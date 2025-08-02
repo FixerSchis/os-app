@@ -28,7 +28,7 @@
 
             <div class="form-group">
                 <label for="body_hits_type">Body Hits Type *</label>
-                <select class="form-control" id="body_hits_type" name="body_hits_type" required>
+                <select class="form-control" id="body_hits_type" name="body_hits_type" required title="Select body hits type for species">
                     {% for hit_type in BodyHitsType %}
                     <option value="{{ hit_type.value }}" {% if species and species.body_hits_type == hit_type.value %}selected{% endif %}>
                         {{ BodyHitsType.descriptions()[hit_type.value] }}
@@ -49,7 +49,7 @@
 
             <div class="form-group">
                 <label for="keywords">Keywords</label>
-                <select name="keywords" class="form-control select2-multiple" id="keywords" multiple>
+                <select name="keywords" class="form-control select2-multiple" id="keywords" multiple title="Select species keywords">
                     {% if species and species.keywords_list %}
                         {% for keyword in species.keywords_list %}
                             <option value="{{ keyword }}" selected>{{ keyword }}</option>
@@ -60,7 +60,7 @@
 
             <div class="form-group">
                 <label for="permitted_factions">Permitted Factions *</label>
-                <select name="permitted_factions" class="form-control select2-multiple" id="permitted_factions" multiple>
+                <select name="permitted_factions" class="form-control select2-multiple" id="permitted_factions" multiple title="Select permitted factions for species">
                     {% for faction in factions %}
                         <option value="{{ faction.id }}" {% if species and faction.id in species.permitted_factions_list %}selected{% endif %}>
                             {{ faction.name }}
@@ -80,47 +80,47 @@
                 <div class="ability-block card mb-3 p-3">
                     <div class="form-row mb-2">
                         <div class="col-md-4 mb-2">
-                            <label>Name *</label>
-                            <input type="text" class="form-control" name="ability_name_{{ loop.index0 }}" value="{{ ability.name }}" required>
+                            <label for="ability_name_{{ loop.index0 }}">Name *</label>
+                            <input type="text" class="form-control" id="ability_name_{{ loop.index0 }}" name="ability_name_{{ loop.index0 }}" value="{{ ability.name }}" required>
                         </div>
                         <div class="col-md-4 mb-2">
-                            <label>Type *</label>
-                            <select class="form-control ability-type-select" name="ability_type_{{ loop.index0 }}" data-selected="{{ ability_type_value }}" required>
+                                                    <label for="ability_type_{{ loop.index0 }}">Type *</label>
+                        <select class="form-control ability-type-select" id="ability_type_{{ loop.index0 }}" name="ability_type_{{ loop.index0 }}" data-selected="{{ ability_type_value }}" required title="Select ability type">
                                 <!-- Options will be filled by JS -->
                             </select>
                         </div>
                     </div>
-                    <div class="form-group mb-2">
-                        <label>Additional Group Income (EC)</label>
-                        <input type="number" class="form-control" name="ability_additional_group_income_{{ loop.index0 }}"
-                               value="{{ ability.additional_group_income if ability.additional_group_income else 0 }}" min="0" placeholder="0">
-                    </div>
+                                            <div class="form-group mb-2">
+                            <label for="ability_additional_group_income_{{ loop.index0 }}">Additional Group Income (EC)</label>
+                            <input type="number" class="form-control" id="ability_additional_group_income_{{ loop.index0 }}" name="ability_additional_group_income_{{ loop.index0 }}"
+                                   value="{{ ability.additional_group_income if ability.additional_group_income else 0 }}" min="0" placeholder="0">
+                        </div>
                     <div class="form-group mb-2 ability-extra ability-starting-skills" {% if not is_starting_skills %}style="display:none;"{% endif %}>
-                        <label>Starting Skills</label>
-                        <select class="form-control select2-multiple" name="ability_starting_skills_{{ loop.index0 }}[]" multiple>
-                            {% for skill in skills_list %}
-                            <option value="{{ skill.id }}" {% if is_starting_skills and (skill.id|string) in ability.starting_skills_list %}selected{% endif %}>{{ skill.name }}</option>
-                            {% endfor %}
-                        </select>
+                                                <label for="ability_starting_skills_{{ loop.index0 }}">Starting Skills</label>
+                        <select class="form-control select2-multiple" id="ability_starting_skills_{{ loop.index0 }}" name="ability_starting_skills_{{ loop.index0 }}[]" multiple title="Select starting skills for ability">
+                                {% for skill in skills_list %}
+                                <option value="{{ skill.id }}" {% if is_starting_skills and (skill.id|string) in ability.starting_skills_list %}selected{% endif %}>{{ skill.name }}</option>
+                                {% endfor %}
+                            </select>
                     </div>
                     <div class="form-group mb-2 ability-extra ability-skill-discounts" {% if not is_skill_discounts %}style="display:none;"{% endif %}>
                         <label>Skill Discounts</label>
                         <div class="mb-2">
                             <label>Discounted Skills</label>
-                            <select class="form-control select2-multiple" name="ability_discount_skills_{{ loop.index0 }}[]" multiple>
+                            <select class="form-control select2-multiple" name="ability_discount_skills_{{ loop.index0 }}[]" multiple title="Select skills for discount">
                                 {% for skill in skills_list %}
                                 <option value="{{ skill.id }}" {% if is_skill_discounts and (skill.id|string) in ability.skill_discounts_dict.keys() %}selected{% endif %}>{{ skill.name }}</option>
                                 {% endfor %}
                             </select>
                         </div>
                         <div class="mb-2">
-                            <label>Discount Value</label>
-                            <input type="number" class="form-control" name="ability_discount_value_{{ loop.index0 }}" value="{% if is_skill_discounts and ability.skill_discounts_dict %}{{ ability.skill_discounts_dict.values()|list|first }}{% endif %}" placeholder="Discount">
+                            <label for="ability_discount_value_{{ loop.index0 }}">Discount Value</label>
+                            <input type="number" class="form-control" id="ability_discount_value_{{ loop.index0 }}" name="ability_discount_value_{{ loop.index0 }}" value="{% if is_skill_discounts and ability.skill_discounts_dict %}{{ ability.skill_discounts_dict.values()|list|first }}{% endif %}" placeholder="Discount">
                         </div>
                     </div>
                     <div class="form-group mb-2 ability-extra ability-starting-item" {% if not is_starting_item %}style="display:none;"{% endif %}>
                         <label>Starting Item Blueprint</label>
-                        <select class="form-control select2-single" name="ability_starting_item_blueprint_{{ loop.index0 }}" {% if is_starting_item %}required{% endif %}>
+                        <select class="form-control select2-single" name="ability_starting_item_blueprint_{{ loop.index0 }}" {% if is_starting_item %}required{% endif %} title="Select starting item blueprint">
                             <option value="">Select Item Blueprint</option>
                             {% for blueprint in item_blueprints %}
                             <option value="{{ blueprint.id }}" {% if is_starting_item and ability.starting_item_blueprint_id == blueprint.id %}selected{% endif %}>
@@ -131,7 +131,7 @@
                     </div>
                     <div class="form-group mb-2 ability-extra ability-starting-reputation" {% if not is_starting_reputation %}style="display:none;"{% endif %}>
                         <label>Starting Reputation - Faction</label>
-                        <select class="form-control select2-single" name="ability_starting_reputation_faction_{{ loop.index0 }}" {% if is_starting_reputation %}required{% endif %}>
+                        <select class="form-control select2-single" name="ability_starting_reputation_faction_{{ loop.index0 }}" {% if is_starting_reputation %}required{% endif %} title="Select starting reputation faction">
                             <option value="">Select Faction</option>
                             {% for faction in factions %}
                             <option value="{{ faction.id }}" {% if is_starting_reputation and ability.starting_reputation_faction_id == faction.id %}selected{% endif %}>
@@ -141,26 +141,26 @@
                         </select>
                     </div>
                     <div class="form-group mb-2 ability-extra ability-starting-reputation" {% if not is_starting_reputation %}style="display:none;"{% endif %}>
-                        <label>Starting Reputation - Value</label>
-                        <input type="number" class="form-control" name="ability_starting_reputation_value_{{ loop.index0 }}"
+                        <label for="ability_starting_reputation_value_{{ loop.index0 }}">Starting Reputation - Value</label>
+                        <input type="number" class="form-control" id="ability_starting_reputation_value_{{ loop.index0 }}" name="ability_starting_reputation_value_{{ loop.index0 }}"
                                value="{{ ability.starting_reputation_value if ability.starting_reputation_value else 0 }}"
                                {% if is_starting_reputation %}required{% endif %}
                                placeholder="0">
                     </div>
                     <div class="form-group mb-2">
-                        <label>Description *</label>
-                        <textarea class="form-control" name="ability_description_{{ loop.index0 }}" required>{{ ability.description }}</textarea>
+                        <label for="ability_description_{{ loop.index0 }}">Description *</label>
+                        <textarea class="form-control" id="ability_description_{{ loop.index0 }}" name="ability_description_{{ loop.index0 }}" required>{{ ability.description }}</textarea>
                         <div class="col-md-4 mb-2">
-                            <button type="button" class="btn btn-danger remove-ability">Remove</button>
+                            <button type="button" class="btn btn-danger remove-ability" aria-label="Remove ability">Remove</button>
                         </div>
                     </div>
                 </div>
                 {% endfor %}
             </div>
-            <button type="button" class="btn btn-primary mb-3" id="add-ability">Add Ability</button>
+            <button type="button" class="btn btn-primary mb-3" id="add-ability" aria-label="Add new ability">Add Ability</button>
 
             <div class="form-group">
-                <button type="submit" class="btn btn-primary">{{ 'Save Changes' if species else 'Create Species' }}</button>
+                <button type="submit" class="btn btn-primary" aria-label="Save species changes">{{ 'Save Changes' if species else 'Create Species' }}</button>
                 <a href="{{ url_for('species.species_list') }}" class="btn btn-secondary">Cancel</a>
             </div>
         </form>

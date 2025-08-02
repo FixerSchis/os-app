@@ -26,11 +26,8 @@ from models.tools.print_template import PrintTemplate
 from models.tools.research import CharacterResearch
 from models.tools.user import User
 from utils import generate_qr_code, generate_web_qr_code
-from utils.decorators import (
-    character_owner_or_user_admin_required,
-    email_verified_required,
-    user_admin_required,
-)
+from utils.decorators import email_verified_required
+from utils.permission_decorators import permission_required
 
 characters_bp = Blueprint("characters", __name__)
 
@@ -40,7 +37,7 @@ characters_bp = Blueprint("characters", __name__)
 @email_verified_required
 def character_list():
     characters = []
-    if current_user.has_role(Role.USER_ADMIN.value):
+    if current_user.has_permission("character.view_all"):
         characters = Character.query.all()
     else:
         characters = Character.query.filter_by(user_id=current_user.id).all()
@@ -105,7 +102,9 @@ def create_character_post():
         )
 
     # Only allow factions that allow player characters if user is not an NPC
-    if not faction.allow_player_characters and not current_user.has_role("npc"):
+    if not faction.allow_player_characters and not current_user.has_permission(
+        "character.edit_all"
+    ):
         flash("You do not have permission to select this faction.", "error")
         return render_template(
             "characters/edit.html",
@@ -116,7 +115,7 @@ def create_character_post():
         )
 
     # Validate species is permitted for faction
-    if not (current_user.has_role("user_admin") or current_user.has_role("npc")):
+    if not (current_user.has_permission("character.edit_all")):
         species = db.session.get(Species, species_id)
         if not species or faction.id not in species.permitted_factions_list:
             flash("Selected species is not permitted for the chosen faction.", "error")
@@ -129,7 +128,7 @@ def create_character_post():
             )
 
     # Set base character points based on NPC role
-    base_character_points = 30 if current_user.has_role("npc") else 10
+    base_character_points = 30 if current_user.has_permission("character.edit_all") else 10
 
     # Get background fields from form
     background = request.form.get("background", "").strip()
@@ -172,7 +171,7 @@ def create_character_post():
     )
     db.session.add(audit)
     db.session.commit()
-    if current_user.has_role("user_admin"):
+    if current_user.has_permission("character.edit_all"):
         selected_cyber_ids = request.form.getlist("cybernetic_ids[]")
         for cid in selected_cyber_ids:
             db.session.add(CharacterCybernetic(character_id=character.id, cybernetic_id=cid))
@@ -184,7 +183,7 @@ def create_character_post():
 @characters_bp.route("/<int:character_id>/edit", methods=["GET"])
 @login_required
 @email_verified_required
-@character_owner_or_user_admin_required
+@permission_required(permissions=["character.edit_all"])
 def edit(character_id):
     character = Character.query.get_or_404(character_id)
     admin_context = request.args.get("admin_context") == "1"
@@ -232,20 +231,20 @@ def edit(character_id):
 
     # Get all available items for assignment (admin only)
     available_items = []
-    if current_user.has_role(Role.USER_ADMIN.value):
+    if current_user.has_permission("character.edit_all"):
         all_items = Item.query.join(ItemBlueprint).order_by(ItemBlueprint.name).all()
         assigned_item_ids = {ci.item_id for ci in inventory_items}
         available_items = [item for item in all_items if item.id not in assigned_item_ids]
 
     # Get all item blueprints for creating new items (admin only)
     item_blueprints = []
-    if current_user.has_role(Role.USER_ADMIN.value):
+    if current_user.has_permission("character.edit_all"):
         item_blueprints = ItemBlueprint.query.order_by(ItemBlueprint.name).all()
 
     # Get character samples and available samples for assignment (admin only)
     character_samples = character.samples.order_by(Sample.name).all()
     available_samples = []
-    if current_user.has_role(Role.USER_ADMIN.value):
+    if current_user.has_permission("character.edit_all"):
         all_samples = Sample.query.order_by(Sample.name).all()
         assigned_sample_ids = {s.id for s in character_samples}
         available_samples = [
@@ -273,7 +272,7 @@ def edit(character_id):
 @characters_bp.route("/<int:character_id>/edit", methods=["POST"])
 @login_required
 @email_verified_required
-@character_owner_or_user_admin_required
+@permission_required(permissions=["character.edit_all"])
 def edit_post(character_id):
     character = Character.query.get_or_404(character_id)
     admin_context = request.form.get("admin_context") == "1"
@@ -308,7 +307,9 @@ def edit_post(character_id):
         )
 
     # Only allow factions that allow player characters if user is not an NPC
-    if not faction.allow_player_characters and not current_user.has_role("npc"):
+    if not faction.allow_player_characters and not current_user.has_permission(
+        "character.edit_all"
+    ):
         flash("You do not have permission to select this faction.", "error")
         return render_template(
             "characters/edit.html",
@@ -319,7 +320,7 @@ def edit_post(character_id):
         )
 
     # Validate species is permitted for faction
-    if not (current_user.has_role("user_admin") or current_user.has_role("npc")):
+    if not (current_user.has_permission("character.edit_all")):
         species = db.session.get(Species, species_id)
         if not species or faction.id not in species.permitted_factions_list:
             flash("Selected species is not permitted for the chosen faction.", "error")
@@ -397,7 +398,7 @@ def edit_post(character_id):
     cybernetic_changes = []  # Initialize cybernetic_changes outside the if block
     sample_changes = []  # Initialize sample_changes outside the if block
 
-    if current_user.has_role("user_admin"):
+    if current_user.has_permission("character.edit_all"):
         # Remove condition
         remove_condition_id = request.form.get("remove_condition")
         if remove_condition_id:
@@ -494,7 +495,7 @@ def edit_post(character_id):
             db.session.add(CharacterCybernetic(character_id=character.id, cybernetic_id=cid))
 
     # Update faction reputations if user is admin (handled by set_reputation method)
-    if current_user.has_role("user_admin"):
+    if current_user.has_permission("character.edit_all"):
         for faction in factions:
             reputation = request.form.get(f"reputation_{faction.id}")
             if reputation is not None:
@@ -627,7 +628,7 @@ def edit_post(character_id):
 @characters_bp.route("/<int:character_id>/retire", methods=["POST"])
 @login_required
 @email_verified_required
-@character_owner_or_user_admin_required
+@permission_required(permissions=["character.edit_all"])
 def retire_character(character_id):
     character = Character.query.get_or_404(character_id)
     admin_context = request.form.get("admin_context") == "1"
@@ -656,7 +657,7 @@ def retire_character(character_id):
 @characters_bp.route("/<int:character_id>/kill", methods=["POST"])
 @login_required
 @email_verified_required
-@user_admin_required
+@permission_required(permissions=["character.edit_all"])
 def kill_character(character_id):
     character = Character.query.get_or_404(character_id)
     admin_context = request.form.get("admin_context") == "1"
@@ -685,7 +686,7 @@ def kill_character(character_id):
 @characters_bp.route("/<int:character_id>/restore", methods=["POST"])
 @login_required
 @email_verified_required
-@user_admin_required
+@permission_required(permissions=["character.edit_all"])
 def restore_character(character_id):
     """Restores a retired character to active status."""
     character = Character.query.get_or_404(character_id)
@@ -702,7 +703,7 @@ def restore_character(character_id):
         flash("Could not find character owner.", "error")
         return redirect(url_for("characters.character_list"))
 
-    if user.has_active_character() and not user.has_role("npc"):
+    if user.has_active_character() and not current_user.has_permission("character.edit_all"):
         flash("This user already has an active character.", "danger")
         if request.referrer:
             return redirect(request.referrer)
@@ -729,12 +730,12 @@ def restore_character(character_id):
 @characters_bp.route("/<int:character_id>/delete", methods=["POST"])
 @login_required
 @email_verified_required
-@character_owner_or_user_admin_required
+@permission_required(permissions=["character.edit_all"])
 def delete_character(character_id):
     character = Character.query.get_or_404(character_id)
     admin_context = request.form.get("admin_context") == "1"
     if (
-        not current_user.has_role("user_admin")
+        not current_user.has_permission("character.edit_all")
         and character.status != CharacterStatus.DEVELOPING.value
     ):
         flash("Only developing characters can be deleted.", "error")
@@ -754,14 +755,23 @@ def delete_character(character_id):
 @characters_bp.route("/<int:character_id>/activate", methods=["POST"])
 @login_required
 @email_verified_required
-@character_owner_or_user_admin_required
 def activate_character(character_id):
     character = Character.query.get_or_404(character_id)
+
+    # Check if user can activate this character
+    if character.user_id != current_user.id and not current_user.has_permission(
+        "character.edit_all"
+    ):
+        flash("You can only activate your own characters.", "error")
+        return redirect(url_for("characters.character_list"))
+
     if character.status != CharacterStatus.DEVELOPING.value:
         flash("Only developing characters can be activated.", "error")
         return redirect(url_for("characters.character_list"))
 
-    if current_user.has_active_character() and not current_user.has_role("npc"):
+    if current_user.has_active_character() and not current_user.has_permission(
+        "character.edit_all"
+    ):
         if current_user.get_active_character().id != character.id:
             flash("You already have an active character.", "danger")
             return redirect(url_for("characters.character_list"))
@@ -882,7 +892,7 @@ def activate_character(character_id):
 @characters_bp.route("/new/<int:user_id>", methods=["GET"])
 @login_required
 @email_verified_required
-@user_admin_required
+@permission_required(permissions=["character.edit_all"])
 def create_for_player(user_id):
     user = User.query.get(user_id)
     if not user:
@@ -904,7 +914,7 @@ def create_for_player(user_id):
 @characters_bp.route("/new/<int:user_id>", methods=["POST"])
 @login_required
 @email_verified_required
-@user_admin_required
+@permission_required(permissions=["character.edit_all"])
 def create_for_player_post(user_id):
     user = User.query.get(user_id)
     if not user:
@@ -942,7 +952,9 @@ def create_for_player_post(user_id):
         )
 
     # Only allow factions that allow player characters if user is not an NPC
-    if not faction.allow_player_characters and not user.has_role("npc"):
+    if not faction.allow_player_characters and not current_user.has_permission(
+        "character.edit_all"
+    ):
         flash("You do not have permission to select this faction.", "error")
         return render_template(
             "characters/edit.html",
@@ -954,7 +966,7 @@ def create_for_player_post(user_id):
         )
 
     # Validate species is permitted for faction
-    if not (current_user.has_role("user_admin") or current_user.has_role("npc")):
+    if not (current_user.has_permission("character.edit_all")):
         species = db.session.get(Species, species_id)
         if not species or faction.id not in species.permitted_factions_list:
             flash("Selected species is not permitted for the chosen faction.", "error")
@@ -1007,7 +1019,7 @@ def create_for_player_post(user_id):
     )
     db.session.add(audit)
     db.session.commit()
-    if current_user.has_role("user_admin"):
+    if current_user.has_permission("character.edit_all"):
         selected_cyber_ids = request.form.getlist("cybernetic_ids[]")
         for cid in selected_cyber_ids:
             db.session.add(CharacterCybernetic(character_id=character.id, cybernetic_id=cid))
@@ -1019,7 +1031,7 @@ def create_for_player_post(user_id):
 @characters_bp.route("/<int:character_id>/audit-log")
 @login_required
 @email_verified_required
-@character_owner_or_user_admin_required
+@permission_required(permissions=["character.edit_all"])
 def audit_log(character_id):
     character = Character.query.get_or_404(character_id)
 
@@ -1062,7 +1074,7 @@ def validate_user_id_character_id():
 @characters_bp.route("/<int:character_id>/view")
 @login_required
 @email_verified_required
-@character_owner_or_user_admin_required
+@permission_required(permissions=["character.view_all"])
 def view(character_id):
     character = Character.query.get_or_404(character_id)
 
@@ -1089,7 +1101,7 @@ def view(character_id):
     # Determine edit URL based on permissions
     edit_url = None
     if current_user.is_authenticated and (
-        character.user_id == current_user.id or current_user.has_role("user_admin")
+        character.user_id == current_user.id or current_user.has_permission("character.edit_all")
     ):
         edit_url = url_for("characters.edit", character_id=character.id)
 

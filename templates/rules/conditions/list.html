@@ -47,7 +47,7 @@
                         {% endif %}
                     </div>
                 </div>
-                {% if can_edit or current_user.has_role('admin') %}
+                {% if can_edit or has_permission('user.roles') %}
                 <div class="card-footer">
                     <div class="btn-group">
                         {% if can_edit %}
@@ -55,7 +55,7 @@
                             <i class="fas fa-edit"></i> Edit
                         </a>
                         {% endif %}
-                        {% if current_user.has_role('admin') %}
+                        {% if has_permission('user.roles') %}
                         <button type="button" class="btn btn-sm btn-outline-secondary print-condition-btn" data-condition-id="{{ condition.id }}">
                             <i class="fas fa-print"></i> Print
                         </button>

@@ -1,40 +1,104 @@
+import uuid
+
 import pytest
 
+from models.database.permissions import Permission, Role
 from models.enums import CharacterStatus
 from models.tools.user import User
 
 
 def test_user_password_hashing(new_user):
-    """Test password setting and checking."""
-    assert new_user.password_hash is not None
+    """Test password hashing functionality."""
     assert new_user.check_password("password")
-    assert not new_user.check_password("wrong_password")
+    assert not new_user.check_password("wrongpassword")
 
 
-def test_user_roles(new_user):
-    """Test role management for a user."""
-    assert not new_user.has_role("admin")
-    new_user.add_role("admin")
-    assert new_user.has_role("admin")
-    new_user.remove_role("admin")
-    assert not new_user.has_role("admin")
+def test_user_permissions(db, new_user):
+    """Test basic permission functionality."""
+    # Create a test permission
+    test_permission = Permission(
+        name="test.permission", description="Test permission", category="test"
+    )
+    db.session.add(test_permission)
+
+    # Create a test role with the permission
+    test_role = Role(name="test_role", description="Test role")
+    test_role.add_permission(test_permission)
+    db.session.add(test_role)
+    db.session.commit()
+
+    # Assign role to user
+    new_user.role = test_role
+    db.session.commit()
+
+    # Test permission checking
+    assert new_user.has_permission("test.permission")
+    assert not new_user.has_permission("nonexistent.permission")
+    assert new_user.has_any_permission(["test.permission", "other.permission"])
+    assert new_user.has_all_permissions(["test.permission"])
 
 
-def test_owner_role_permissions(new_user):
+def test_owner_role_permissions(db, new_user):
     """Test that the owner role grants all permissions."""
-    new_user.add_role("owner")
-    assert new_user.has_role("owner")
-    assert new_user.has_role("admin")
-    assert new_user.has_role("user_admin")  # Should have any role
-    assert new_user.has_any_role(["plot_team", "rules_team"])
+    # Create all permissions
+    permissions_data = [
+        ("user.roles", "Manage user roles", "user"),
+        ("character.edit_all", "Edit any character", "character"),
+        ("database.backup", "Create database backups", "database"),
+    ]
+
+    permissions = {}
+    for name, description, category in permissions_data:
+        permission = Permission(name=name, description=description, category=category)
+        db.session.add(permission)
+        permissions[name] = permission
+
+    # Create owner role with all permissions
+    owner_role = Role(name="owner", description="System owner", is_system_role=True)
+    for permission in permissions.values():
+        owner_role.add_permission(permission)
+    db.session.add(owner_role)
+    db.session.commit()
+
+    new_user.role = owner_role
+    db.session.commit()
+
+    # Owner should have all permissions
+    assert new_user.has_permission("user.roles")
+    assert new_user.has_permission("character.edit_all")
+    assert new_user.has_permission("database.backup")
 
 
-def test_admin_role_permissions(new_user):
-    """Test that the admin role grants admin permissions but not owner."""
-    new_user.add_role("admin")
-    assert new_user.has_role("admin")
-    assert not new_user.has_role("owner")
-    assert new_user.has_role("downtime_team")  # Should have any role except owner
+def test_admin_role_permissions(db, new_user):
+    """Test that the admin role grants admin permissions but not user management."""
+    # Create permissions
+    permissions_data = [
+        ("character.edit_all", "Edit any character", "character"),
+        ("database.backup", "Create database backups", "database"),
+        ("user.roles", "Manage user roles", "user"),
+    ]
+
+    permissions = {}
+    for name, description, category in permissions_data:
+        permission = Permission(name=name, description=description, category=category)
+        db.session.add(permission)
+        permissions[name] = permission
+
+    # Create admin role with specific permissions
+    admin_role = Role(name="admin", description="Administrator", is_system_role=True)
+    admin_role.add_permission(permissions["character.edit_all"])
+    admin_role.add_permission(permissions["database.backup"])
+    # Note: admin role doesn't get user.roles permission
+    db.session.add(admin_role)
+    db.session.commit()
+
+    new_user.role = admin_role
+    db.session.commit()
+
+    # Admin should have most permissions but not user management
+    assert new_user.has_permission("character.edit_all")
+    assert new_user.has_permission("database.backup")
+    assert not new_user.has_permission("user.roles")  # Admin doesn't have user management
 
 
 def test_user_character_points(new_user):

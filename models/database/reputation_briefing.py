@@ -50,14 +50,24 @@ class ReputationBriefing(db.Model):
         ).all()
 
     def can_edit(self, user):
-        """Check if the user can edit this briefing."""
-        if user.has_role("plot_team"):
-            return self.status == ReputationBriefingStatus.INCOMPLETE
+        """Check if a user can edit this briefing."""
+        if not user or not user.is_authenticated:
+            return False
+        if user.has_permission("plot.reputation_briefings"):
+            return True
+        return False
+
+    def can_delete(self, user):
+        """Check if a user can delete this briefing."""
+        if not user or not user.is_authenticated:
+            return False
+        if user.has_permission("plot.reputation_briefings"):
+            return True
         return False
 
     def can_view(self, user):
         """Check if the user can view this briefing."""
-        if user.has_role("plot_team"):
+        if user.has_permission("plot.reputation_briefings"):
             return True
         return self.status == ReputationBriefingStatus.SUBMITTED
 

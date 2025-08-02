@@ -1,0 +1,171 @@
+{% extends "_template.html" %}
+
+{% block title %}View Role - {{ role.name }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Role Details: {{ role.name }}</h1>
+        <div>
+            {% if role.name != "owner" %}
+                <a href="{{ url_for('role_management.role_edit', role_id=role.id) }}" class="btn btn-warning">
+                    <i class="bi bi-pencil"></i> Edit Role
+                </a>
+            {% endif %}
+            <a href="{{ url_for('role_management.role_list') }}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Back to Roles
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Role Information</h5>
+                    {% if role.name == "owner" %}
+                        <span class="badge bg-danger">Owner</span>
+                    {% elif role.name == "default" %}
+                        <span class="badge bg-warning">Default</span>
+                    {% elif role.is_system_role %}
+                        <span class="badge bg-secondary">System</span>
+                    {% else %}
+                        <span class="badge bg-success">Custom</span>
+                    {% endif %}
+                </div>
+                <div class="card-body">
+                    <dl class="row">
+                        <dt class="col-sm-4">Name:</dt>
+                        <dd class="col-sm-8">{{ role.name }}</dd>
+
+                        <dt class="col-sm-4">Description:</dt>
+                        <dd class="col-sm-8">{{ role.description or 'No description provided' }}</dd>
+
+                        <dt class="col-sm-4">Permissions:</dt>
+                        <dd class="col-sm-8">
+                            <span class="badge bg-info">{{ role.permissions|length }} permissions</span>
+                            {% if role.name == "owner" %}
+                                <span class="badge bg-danger ms-1">All Permissions</span>
+                            {% endif %}
+                        </dd>
+
+                        <dt class="col-sm-4">Created:</dt>
+                        <dd class="col-sm-8">{{ role.created_at.strftime('%Y-%m-%d %H:%M') if role.created_at else 'Unknown' }}</dd>
+
+                        <dt class="col-sm-4">Updated:</dt>
+                        <dd class="col-sm-8">{{ role.updated_at.strftime('%Y-%m-%d %H:%M') if role.updated_at else 'Unknown' }}</dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        {% if role.name != "owner" %}
+                            <a href="{{ url_for('role_management.role_edit', role_id=role.id) }}" class="btn btn-warning">
+                                <i class="bi bi-pencil"></i> Edit Role
+                            </a>
+                        {% endif %}
+
+                        {% if role.name not in ["owner", "default"] %}
+                            <button type="button" class="btn btn-danger"
+                                    onclick="confirmDelete('{{ role.name }}', {{ role.id }})">
+                                <i class="bi bi-trash"></i> Delete Role
+                            </button>
+                        {% endif %}
+
+                        <a href="{{ url_for('role_management.role_list') }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-list"></i> View All Roles
+                        </a>
+
+                        <a href="{{ url_for('role_management.permission_list') }}" class="btn btn-outline-info">
+                            <i class="bi bi-list-check"></i> View All Permissions
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mt-4">
+        <div class="card-header">
+            <h5 class="mb-0">Assigned Permissions</h5>
+        </div>
+        <div class="card-body">
+            {% if role.permissions %}
+                {% set permissions_by_category = {} %}
+                {% for permission in role.permissions %}
+                    {% if permission.category not in permissions_by_category %}
+                        {% set _ = permissions_by_category.update({permission.category: []}) %}
+                    {% endif %}
+                    {% set _ = permissions_by_category[permission.category].append(permission) %}
+                {% endfor %}
+
+                <div class="d-flex flex-wrap" style="gap: 1rem;">
+                    {% for category, permissions in permissions_by_category.items() %}
+                        <div class="card" style="flex: 1 1 300px; min-width: 300px; max-width: 400px;">
+                            <div class="card-header">
+                                <h6 class="mb-0">{{ category|title }}</h6>
+                            </div>
+                            <div class="card-body">
+                                {% for permission in permissions %}
+                                    <div class="form-check mb-2">
+                                        <label for="permission_{{ permission.id }}" class="sr-only">Permission assigned</label>
+                                        <input class="form-check-input" type="checkbox" id="permission_{{ permission.id }}" checked disabled>
+                                        <label class="form-check-label">
+                                            {{ permission.description or permission.name }}
+                                            {% if permission.name == "owner.promote" %}
+                                                <span class="text-danger">(Owner-only)</span>
+                                            {% endif %}
+                                        </label>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="text-center text-muted py-4">
+                    <i class="bi bi-shield-x fs-1"></i>
+                    <p class="mt-2">No permissions assigned to this role.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm Delete</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete the role "<span id="roleName"></span>"?</p>
+                <p class="text-danger"><strong>This action cannot be undone.</strong></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="deleteForm" method="POST" style="display: inline;">
+                    <button type="submit" class="btn btn-danger">Delete Role</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function confirmDelete(roleName, roleId) {
+    document.getElementById('roleName').textContent = roleName;
+    document.getElementById('deleteForm').action = `/tools/roles/roles/${roleId}/delete`;
+    new bootstrap.Modal(document.getElementById('deleteModal')).show();
+}
+</script>
+{% endblock %}

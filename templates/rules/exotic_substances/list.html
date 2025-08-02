@@ -17,7 +17,7 @@
                 <tr>
                     <th>Name</th>
                     <th>Type</th>
-                    {% if can_edit or current_user.is_authenticated and current_user.has_role('admin') %}
+                    {% if can_edit or current_user.is_authenticated and has_permission('user.roles') %}
                     <th>Actions</th>
                     {% endif %}
                 </tr>
@@ -31,13 +31,13 @@
                         </a>
                     </td>
                     <td>{{ type_friendly_names[substance.type.value] if type_friendly_names and substance.type.value in type_friendly_names else substance.type.value }}</td>
-                    {% if can_edit or current_user.is_authenticated and current_user.has_role('admin') %}
+                    {% if can_edit or current_user.is_authenticated and has_permission('user.roles') %}
                     <td>
                         <div class="btn-group">
                             {% if can_edit %}
                             <a href="{{ url_for('exotic_substances.edit', id=substance.id) }}" class="btn btn-sm btn-outline-primary">Edit</a>
                             {% endif %}
-                            {% if current_user.has_role('admin') %}
+                            {% if has_permission('user.roles') %}
                             <button type="button" class="btn btn-sm btn-outline-secondary print-sheet-btn" data-exotic-id="{{ substance.id }}">
                                 <i class="fas fa-print"></i> Print Sheet
                             </button>
@@ -48,7 +48,7 @@
                 </tr>
                 {% else %}
                 <tr>
-                    <td colspan="{% if can_edit or current_user.is_authenticated and current_user.has_role('admin') %}3{% else %}2{% endif %}" class="text-center text-muted">No exotic substances found.</td>
+                    <td colspan="{% if can_edit or current_user.is_authenticated and has_permission('user.roles') %}3{% else %}2{% endif %}" class="text-center text-muted">No exotic substances found.</td>
                 </tr>
                 {% endfor %}
             </tbody>
