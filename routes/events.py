@@ -34,7 +34,7 @@ events_bp = Blueprint("events", __name__)
 def event_list():
     show_previous = request.args.get("show_previous", "false").lower() == "true"
 
-    if show_previous and current_user.has_permission("event.manage"):
+    if show_previous:
         events = (
             Event.query.filter(Event.end_date <= datetime.now())
             .order_by(Event.start_date.desc())
@@ -394,7 +394,7 @@ def assign_ticket(event_id):
     event = Event.query.get_or_404(event_id)
     users = User.query.order_by(User.first_name, User.surname).all()
     # Check if current user has admin role (not just user_admin)
-    is_admin = current_user.has_permission("event.manage")
+    is_admin = current_user.has_permission("user.view_email")
 
     return render_template(
         "events/assign.html",

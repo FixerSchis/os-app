@@ -21,6 +21,7 @@ def create_default_permissions():
         ("user.view", "View user list", "user"),
         ("user.edit", "Edit user details", "user"),
         ("user.roles", "Manage user roles", "user"),
+        ("user.view_email", "View user email addresses", "user"),
         ("owner.promote", "Promote users to owner", "owner"),
         # Character Management Permissions
         ("character.view_all", "View all characters", "character"),
