@@ -5,7 +5,7 @@ from flask import url_for
 
 from models.database.faction import Faction
 from models.database.reputation_briefing import ReputationBriefing, ReputationBriefingLevel
-from models.enums import ReputationBriefingStatus, Role
+from models.enums import ReputationBriefingStatus
 from models.event import Event
 from models.tools.character import Character, CharacterStatus
 from models.tools.event_ticket import EventTicket

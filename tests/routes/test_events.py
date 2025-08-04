@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
 
 from models.database.group_type import GroupType
-from models.enums import Role, TicketType
+from models.enums import TicketType
 from models.event import Event
 from models.tools.character import Character
 from models.tools.event_ticket import EventTicket

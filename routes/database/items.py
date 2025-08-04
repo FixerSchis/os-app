@@ -12,7 +12,7 @@ from models.database.item import Item, item_mods_applied
 from models.database.item_blueprint import ItemBlueprint, item_blueprint_mods
 from models.database.item_type import ItemType
 from models.database.mods import Mod
-from models.enums import PrintTemplateType, Role
+from models.enums import PrintTemplateType
 from models.extensions import db
 from models.tools.downtime import DowntimePack
 from models.tools.print_template import PrintTemplate

@@ -1,7 +1,7 @@
 import pytest
 
 from models.database.permissions import Role as NewRole
-from models.enums import CharacterStatus, Role
+from models.enums import CharacterStatus
 from models.tools.character import Character, CharacterTag
 from models.tools.user import User
 

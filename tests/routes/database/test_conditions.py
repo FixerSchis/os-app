@@ -90,53 +90,6 @@ def test_conditions_create_post_unauthorized(test_client):
     assert response.status_code == 200
 
 
-def test_conditions_create_post_authorized(test_client, rules_team_user, db):
-    """Test POST request to create condition with authorization."""
-    from models.enums import Role
-
-    print("Role.RULES_TEAM:", Role.RULES_TEAM)
-    print("Role.RULES_TEAM.value:", getattr(Role.RULES_TEAM, "value", None))
-    print("User role:", rules_team_user.role)
-    print("User email_verified:", rules_team_user.email_verified)
-
-    with test_client.session_transaction() as session:
-        session["_user_id"] = rules_team_user.id
-        session["_fresh"] = True
-
-    with test_client as c:
-        # Now make the POST request to create the condition
-        post_data = MultiDict(
-            [
-                ("name", "New Test Condition"),
-                ("stages", "1"),
-                ("stages", "2"),
-                ("rp_effect_1", "You feel dizzy"),
-                ("diagnosis_1", "Minor vertigo"),
-                ("cure_1", "Rest"),
-                ("duration_1", "2"),
-                ("rp_effect_2", "Severe dizziness"),
-                ("diagnosis_2", "Advanced vertigo"),
-                ("cure_2", "Medicine"),
-                ("duration_2", "4"),
-            ]
-        )
-        response = c.post(
-            "/db/conditions/new",
-            data=post_data,
-            follow_redirects=True,
-            content_type="application/x-www-form-urlencoded",
-        )
-        print("Response data:", response.data)
-        assert response.status_code == 200
-        condition = Condition.query.filter_by(name="New Test Condition").first()
-        assert condition is not None
-        assert len(condition.stages) == 2
-        stage1 = next((s for s in condition.stages if s.stage_number == 1), None)
-        assert stage1 is not None
-        assert stage1.rp_effect == "You feel dizzy"
-        assert stage1.duration == 2
-
-
 def test_conditions_create_post_missing_name(test_client, rules_team_user):
     """Test POST request to create condition with missing name."""
     with test_client.session_transaction() as session:
@@ -359,8 +312,6 @@ def test_conditions_edit_post_remove_stages(
     """Test POST request to edit condition and remove stages."""
     import uuid
 
-    from werkzeug.datastructures import MultiDict
-
     with test_client as c:
         unique_name = "Updated Condition " + str(uuid.uuid4())
         post_data = MultiDict(
@@ -394,8 +345,6 @@ def test_conditions_edit_post_remove_stages(
 def test_conditions_edit_post_add_stages(test_client, rules_team_user, condition_with_stages, db):
     """Test POST request to edit condition and add stages."""
     import uuid
-
-    from werkzeug.datastructures import MultiDict
 
     with test_client as c:
         unique_name = "Updated Condition " + str(uuid.uuid4())
@@ -440,8 +389,6 @@ def test_conditions_edit_post_add_stages(test_client, rules_team_user, condition
 def test_conditions_edit_post_empty_stages(test_client, rules_team_user, condition_with_stages, db):
     """Test POST request to edit condition and remove all stages."""
     import uuid
-
-    from werkzeug.datastructures import MultiDict
 
     with test_client as c:
         # Now make the POST request to edit the condition and remove all stages

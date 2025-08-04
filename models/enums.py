@@ -1,32 +1,6 @@
 from enum import Enum
 
 
-class Role(Enum):
-    OWNER = "owner"
-    ADMIN = "admin"
-    USER_ADMIN = "user_admin"
-    RULES_TEAM = "rules_team"
-    PLOT_TEAM = "plot_team"
-    DOWNTIME_TEAM = "downtime_team"
-    NPC = "npc"
-
-    @classmethod
-    def values(cls):
-        return [role.value for role in cls]
-
-    @classmethod
-    def descriptions(cls):
-        return {
-            cls.OWNER.value: "Owner",
-            cls.ADMIN.value: "Admin",
-            cls.USER_ADMIN.value: "User Admin",
-            cls.RULES_TEAM.value: "Rules Team",
-            cls.PLOT_TEAM.value: "Plot Team",
-            cls.DOWNTIME_TEAM.value: "Downtime Team",
-            cls.NPC.value: "NPC",
-        }
-
-
 class CharacterStatus(Enum):
     DEVELOPING = "developing"
     ACTIVE = "active"

@@ -8,7 +8,7 @@ from models.database.item import Item
 from models.database.item_blueprint import ItemBlueprint
 from models.database.item_type import ItemType
 from models.database.sample import SampleTag
-from models.enums import ResearchRequirementType, ResearchType, Role, ScienceType
+from models.enums import ResearchRequirementType, ResearchType, ScienceType
 from models.extensions import db
 from models.tools.character import Character
 from models.tools.research import (

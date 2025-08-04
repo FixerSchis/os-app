@@ -49,7 +49,9 @@
                         <a href="{{ url_for('factions.faction_list') }}">Factions</a>
                         <a href="{{ url_for('species.species_list') }}">Species</a>
                         <a href="{{ url_for('skills.skills_list') }}">Skills</a>
+                        {% if current_user.is_authenticated and has_permission('rules.group_types') %}
                         <a href="{{ url_for('group_types.list_group_types') }}">Group Types</a>
+                        {% endif %}
                         <hr>
                         {% if current_user.is_authenticated and has_permission('rules.item_types') %}
                             <a href="{{ url_for('item_types.list') }}">Item Types</a>
@@ -90,8 +92,8 @@
                         {% if has_permission('user.view') or has_active_character() %}
                         <a href="{{ url_for('groups.group_list') }}">Groups</a>
                         <a href="{{ url_for('banking.bank') }}">Bank</a>
-                        {% endif %}
                         <a href="{{ url_for('tools_items.items_list') }}">Inventory</a>
+                        {% endif %}
                         <a href="{{ url_for('tickets.list_tickets') }}">Tickets</a>
                         {% if has_permission('character.edit_all') or has_active_character() %}
                         <a href="{{ url_for('messages.messages') }}">SMS</a>

@@ -7,7 +7,6 @@ from sqlalchemy import text
 from models.database.item_blueprint import ItemBlueprint, item_blueprint_mods
 from models.database.item_type import ItemType
 from models.database.mods import Mod
-from models.enums import Role
 from models.extensions import db
 from utils.permission_decorators import permission_required
 

@@ -2,7 +2,7 @@ import pytest
 
 from models.database.faction import Faction
 from models.database.species import Species
-from models.enums import CharacterStatus, Role
+from models.enums import CharacterStatus
 from models.tools.character import Character
 from models.tools.user import User
 

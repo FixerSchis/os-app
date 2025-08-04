@@ -4,8 +4,7 @@ from sqlalchemy import and_, or_
 
 from models.database.item import Item
 from models.database.item_blueprint import ItemBlueprint
-from models.database.item_type import ItemType
-from models.enums import CharacterAuditAction, CharacterStatus, Role
+from models.enums import CharacterAuditAction, CharacterStatus
 from models.extensions import db
 from models.tools.character import Character, CharacterAuditLog
 from models.tools.character_inventory import (
