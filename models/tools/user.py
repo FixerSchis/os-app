@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 from flask_login import UserMixin
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from models.enums import CharacterStatus, Role
+from models.enums import CharacterStatus
 from models.extensions import db, login_manager
 
 

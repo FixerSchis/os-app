@@ -6,7 +6,7 @@ from flask_login import current_user, login_required
 from models.database.faction import Faction
 from models.database.skills import Skill
 from models.database.species import Species
-from models.enums import Role, ScienceType
+from models.enums import ScienceType
 from models.extensions import db
 from models.tools.character import CharacterTag
 from utils.decorators import email_verified_required

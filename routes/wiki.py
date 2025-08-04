@@ -8,9 +8,9 @@ from flask_login import current_user, login_required
 
 from models.database.cybernetic import Cybernetic
 from models.database.faction import Faction
+from models.database.permissions import Role
 from models.database.skills import Skill
 from models.database.species import Species
-from models.enums import Role
 from models.tools.character import CharacterTag
 from models.wiki import (
     SectionRestrictionType,
@@ -406,8 +406,13 @@ def wiki_edit(slug):
     page = db.session.get(WikiPage, slug)
     if not page:
         return render_template("errors/404.html"), 404
-    role_descriptions = Role.descriptions()
-    available_roles = [{"value": v, "label": role_descriptions[v]} for v in Role.values()]
+
+    # Get roles from database instead of enum
+    roles = Role.query.all()
+    available_roles = [
+        {"value": role.name, "label": role.description or role.name} for role in roles
+    ]
+
     version = get_latest_version(page)
     if not version:
         version = get_pending_version(page, current_user)
@@ -489,8 +494,11 @@ def wiki_edit_post(slug):
 @login_required
 @permission_required(permissions=["wiki.create"])
 def wiki_new():
-    role_descriptions = Role.descriptions()
-    available_roles = [{"value": v, "label": role_descriptions[v]} for v in Role.values()]
+    # Get roles from database instead of enum
+    roles = Role.query.all()
+    available_roles = [
+        {"value": role.name, "label": role.description or role.name} for role in roles
+    ]
 
     factions = [{"id": f.id, "name": f.name} for f in Faction.query.order_by(Faction.name).all()]
     species = [{"id": s.id, "name": s.name} for s in Species.query.order_by(Species.name).all()]
@@ -592,10 +600,15 @@ def wiki_upload_image():
 
 @wiki_bp.route("/image/<int:image_id>")
 def wiki_image(image_id):
-    image = WikiImage.query.get(image_id)
+    image = db.session.get(WikiImage, image_id)
     if not image:
-        return render_template("errors/404.html"), 404
-    return send_file(io.BytesIO(image.data), mimetype=image.mimetype, download_name=image.filename)
+        return "Image not found", 404
+    return send_file(
+        io.BytesIO(image.data),
+        mimetype=image.mimetype,
+        as_attachment=True,
+        download_name=image.filename,
+    )
 
 
 @wiki_bp.route("/changes/pending", methods=["GET"])

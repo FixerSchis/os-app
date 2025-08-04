@@ -18,13 +18,13 @@ from models.database.item_blueprint import ItemBlueprint
 from models.database.item_type import ItemType
 from models.database.medicaments import Medicament
 from models.database.mods import Mod
-from models.database.permissions import Role as RoleModel
+from models.database.permissions import Role as Role
 from models.database.sample import Sample, SampleTag
 from models.database.skills import Skill
 from models.database.species import Ability, Species
 from models.enums import CharacterStatus, DowntimeStatus, DowntimeTaskStatus
 from models.enums import GroupType as GroupTypeEnum
-from models.enums import Role, ScienceType, WikiPageVersionStatus
+from models.enums import ScienceType, WikiPageVersionStatus
 from models.event import Event
 from models.extensions import db as _db
 from models.tools.character import (
@@ -126,13 +126,13 @@ def assign_role_to_user(user, role_name, db_session):
     # Initialize permissions first
     initialize_test_permissions(db_session)
 
-    role = RoleModel.query.filter_by(name=role_name).first()
+    role = Role.query.filter_by(name=role_name).first()
     if role:
         user.role = role
         db_session.commit()
     else:
         # Create the role if it doesn't exist (for testing)
-        role = RoleModel(name=role_name, description=f"Test {role_name} role")
+        role = Role(name=role_name, description=f"Test {role_name} role")
         db_session.add(role)
         db_session.commit()
 
@@ -595,9 +595,9 @@ def rules_team_user(db):
     db.session.add(user)
 
     # Create or get the rules_team role
-    role = RoleModel.query.filter_by(name="rules_team").first()
+    role = Role.query.filter_by(name="rules_team").first()
     if not role:
-        role = RoleModel(name="rules_team", description="Test rules team role")
+        role = Role(name="rules_team", description="Test rules team role")
         db.session.add(role)
         db.session.commit()
 

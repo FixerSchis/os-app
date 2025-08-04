@@ -1,7 +1,7 @@
 import pytest
 from flask import url_for
 
-from models.enums import CharacterStatus, Role
+from models.enums import CharacterStatus
 from models.tools.character import Character, CharacterBackground
 from models.tools.user import User
 

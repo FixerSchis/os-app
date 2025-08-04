@@ -10,7 +10,7 @@ from models.database.item import Item
 from models.database.item_blueprint import ItemBlueprint
 from models.database.sample import Sample
 from models.database.species import Species
-from models.enums import AbilityType, CharacterAuditAction, PrintTemplateType, Role
+from models.enums import AbilityType, CharacterAuditAction, PrintTemplateType
 from models.extensions import db
 from models.tools.character import (
     Character,
@@ -28,6 +28,26 @@ from models.tools.user import User
 from utils import generate_qr_code, generate_web_qr_code
 from utils.decorators import email_verified_required
 from utils.permission_decorators import permission_required
+
+
+def can_edit_character(user, args, kwargs):
+    """Check if a user can edit a specific character."""
+    if not user or not user.is_authenticated:
+        return False
+
+    # Admin users can edit any character
+    if user.has_permission("character.edit_all"):
+        return True
+
+    # Regular users can only edit their own characters
+    character_id = kwargs.get("character_id")
+    if character_id:
+        character = Character.query.get(character_id)
+        if character and character.user_id == user.id:
+            return True
+
+    return False
+
 
 characters_bp = Blueprint("characters", __name__)
 
@@ -101,7 +121,6 @@ def create_character_post():
             all_cybernetics=all_cybernetics,
         )
 
-    # Only allow factions that allow player characters if user is not an NPC
     if not faction.allow_player_characters and not current_user.has_permission(
         "character.edit_all"
     ):
@@ -127,8 +146,7 @@ def create_character_post():
                 all_cybernetics=all_cybernetics,
             )
 
-    # Set base character points based on NPC role
-    base_character_points = 30 if current_user.has_permission("character.edit_all") else 10
+    base_character_points = 10
 
     # Get background fields from form
     background = request.form.get("background", "").strip()
@@ -183,9 +201,23 @@ def create_character_post():
 @characters_bp.route("/<int:character_id>/edit", methods=["GET"])
 @login_required
 @email_verified_required
-@permission_required(permissions=["character.edit_all"])
+@permission_required(
+    permissions=["character.edit_all"],
+    condition_func=can_edit_character,
+    on_declined={
+        "redirect_url": "characters.character_list",
+        "flash_message": "You don't have permission to edit this character.",
+        "flash_category": "error",
+    },
+)
 def edit(character_id):
     character = Character.query.get_or_404(character_id)
+
+    # Check if user can edit this character
+    if not character.can_edit(current_user):
+        flash("You don't have permission to edit this character.", "error")
+        return redirect(url_for("characters.character_list"))
+
     admin_context = request.args.get("admin_context") == "1"
     user_id = character.user_id if admin_context else None
     species_list = Species.query.all()
@@ -272,9 +304,23 @@ def edit(character_id):
 @characters_bp.route("/<int:character_id>/edit", methods=["POST"])
 @login_required
 @email_verified_required
-@permission_required(permissions=["character.edit_all"])
+@permission_required(
+    permissions=["character.edit_all"],
+    condition_func=can_edit_character,
+    on_declined={
+        "redirect_url": "characters.character_list",
+        "flash_message": "You don't have permission to edit this character.",
+        "flash_category": "error",
+    },
+)
 def edit_post(character_id):
     character = Character.query.get_or_404(character_id)
+
+    # Check if user can edit this character
+    if not character.can_edit(current_user):
+        flash("You don't have permission to edit this character.", "error")
+        return redirect(url_for("characters.character_list"))
+
     admin_context = request.form.get("admin_context") == "1"
 
     name = request.form.get("name")
@@ -306,7 +352,6 @@ def edit_post(character_id):
             species_list=species_list,
         )
 
-    # Only allow factions that allow player characters if user is not an NPC
     if not faction.allow_player_characters and not current_user.has_permission(
         "character.edit_all"
     ):
@@ -628,9 +673,25 @@ def edit_post(character_id):
 @characters_bp.route("/<int:character_id>/retire", methods=["POST"])
 @login_required
 @email_verified_required
-@permission_required(permissions=["character.edit_all"])
+@permission_required(
+    permissions=["character.edit_all"],
+    condition_func=can_edit_character,
+    on_declined={
+        "redirect_url": "characters.character_list",
+        "flash_message": "You can only retire your own characters.",
+        "flash_category": "error",
+    },
+)
 def retire_character(character_id):
     character = Character.query.get_or_404(character_id)
+
+    # Check if user can retire this character
+    if character.user_id != current_user.id and not current_user.has_permission(
+        "character.edit_all"
+    ):
+        flash("You can only retire your own characters.", "error")
+        return redirect(url_for("characters.character_list"))
+
     admin_context = request.form.get("admin_context") == "1"
     if character.status != CharacterStatus.ACTIVE.value:
         flash("Only active characters can be retired.", "error")
@@ -657,9 +718,25 @@ def retire_character(character_id):
 @characters_bp.route("/<int:character_id>/kill", methods=["POST"])
 @login_required
 @email_verified_required
-@permission_required(permissions=["character.edit_all"])
+@permission_required(
+    permissions=["character.edit_all"],
+    condition_func=can_edit_character,
+    on_declined={
+        "redirect_url": "characters.character_list",
+        "flash_message": "You can only kill your own characters.",
+        "flash_category": "error",
+    },
+)
 def kill_character(character_id):
     character = Character.query.get_or_404(character_id)
+
+    # Check if user can kill this character
+    if character.user_id != current_user.id and not current_user.has_permission(
+        "character.edit_all"
+    ):
+        flash("You can only kill your own characters.", "error")
+        return redirect(url_for("characters.character_list"))
+
     admin_context = request.form.get("admin_context") == "1"
     if character.status != CharacterStatus.ACTIVE.value:
         flash("Only active characters can be killed.", "error")
@@ -686,10 +763,25 @@ def kill_character(character_id):
 @characters_bp.route("/<int:character_id>/restore", methods=["POST"])
 @login_required
 @email_verified_required
-@permission_required(permissions=["character.edit_all"])
+@permission_required(
+    permissions=["character.edit_all"],
+    condition_func=can_edit_character,
+    on_declined={
+        "redirect_url": "characters.character_list",
+        "flash_message": "You can only restore your own characters.",
+        "flash_category": "error",
+    },
+)
 def restore_character(character_id):
     """Restores a retired character to active status."""
     character = Character.query.get_or_404(character_id)
+
+    # Check if user can restore this character
+    if character.user_id != current_user.id and not current_user.has_permission(
+        "character.edit_all"
+    ):
+        flash("You can only restore your own characters.", "error")
+        return redirect(url_for("characters.character_list"))
 
     if character.status not in [
         CharacterStatus.RETIRED.value,
@@ -723,25 +815,34 @@ def restore_character(character_id):
     )
     db.session.add(audit)
     db.session.commit()
-    flash("Character restored and set to active.", "success")
-    return redirect(url_for("characters.character_list"))
 
 
 @characters_bp.route("/<int:character_id>/delete", methods=["POST"])
 @login_required
 @email_verified_required
-@permission_required(permissions=["character.edit_all"])
+@permission_required(
+    permissions=["character.edit_all"],
+    condition_func=can_edit_character,
+    on_declined={
+        "redirect_url": "characters.character_list",
+        "flash_message": "You can only delete your own characters.",
+        "flash_category": "error",
+    },
+)
 def delete_character(character_id):
     character = Character.query.get_or_404(character_id)
-    admin_context = request.form.get("admin_context") == "1"
-    if (
-        not current_user.has_permission("character.edit_all")
-        and character.status != CharacterStatus.DEVELOPING.value
+
+    # Check if user can delete this character
+    if character.user_id != current_user.id and not current_user.has_permission(
+        "character.edit_all"
     ):
-        flash("Only developing characters can be deleted.", "error")
+        flash("You can only delete your own characters.", "error")
         return redirect(url_for("characters.character_list"))
-    for audit_log in CharacterAuditLog.query.filter_by(character_id=character.id).all():
-        db.session.delete(audit_log)
+
+    admin_context = request.form.get("admin_context") == "1"
+    if character.status == CharacterStatus.ACTIVE.value:
+        flash("Active characters cannot be deleted.", "error")
+        return redirect(url_for("characters.character_list"))
     db.session.delete(character)
     db.session.commit()
     flash("Character deleted.", "success")
@@ -951,7 +1052,6 @@ def create_for_player_post(user_id):
             all_cybernetics=all_cybernetics,
         )
 
-    # Only allow factions that allow player characters if user is not an NPC
     if not faction.allow_player_characters and not current_user.has_permission(
         "character.edit_all"
     ):
@@ -1031,9 +1131,24 @@ def create_for_player_post(user_id):
 @characters_bp.route("/<int:character_id>/audit-log")
 @login_required
 @email_verified_required
-@permission_required(permissions=["character.edit_all"])
+@permission_required(
+    permissions=["character.edit_all"],
+    condition_func=can_edit_character,
+    on_declined={
+        "redirect_url": "characters.character_list",
+        "flash_message": "You can only view audit logs for your own characters.",
+        "flash_category": "error",
+    },
+)
 def audit_log(character_id):
     character = Character.query.get_or_404(character_id)
+
+    # Check if user can view this character's audit log
+    if character.user_id != current_user.id and not current_user.has_permission(
+        "character.edit_all"
+    ):
+        flash("You can only view audit logs for your own characters.", "error")
+        return redirect(url_for("characters.character_list"))
 
     audit_logs = (
         CharacterAuditLog.query.filter_by(character_id=character_id)

@@ -2,7 +2,6 @@ from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from models.database.conditions import Condition, ConditionStage
-from models.enums import Role
 from models.extensions import db
 from utils.decorators import email_verified_required
 from utils.permission_decorators import permission_required

@@ -2,7 +2,6 @@ from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from models.database.faction import Faction
-from models.enums import Role
 from models.extensions import db
 from models.wiki import WikiPage, get_or_create_wiki_page
 from utils.decorators import email_verified_required

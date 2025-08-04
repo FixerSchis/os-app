@@ -15,15 +15,15 @@ class TestResearchAccess:
     def test_research_list_authorized(self, test_client, user_rules_team, db, app):
         """Test research list page for authorized users"""
         with app.app_context():
-            from models.database.permissions import Role as RoleModel
+            from models.database.permissions import Role as Role
             from models.extensions import db as flask_db
             from models.tools.user import User
 
             # Create a new role in the Flask app's session
-            role = RoleModel.query.filter_by(name="rules_team").first()
+            role = Role.query.filter_by(name="rules_team").first()
             if not role:
                 # Create the role if it doesn't exist
-                role = RoleModel(name="rules_team", description="Test rules_team role")
+                role = Role(name="rules_team", description="Test rules_team role")
                 flask_db.session.add(role)
                 flask_db.session.commit()
 
@@ -80,15 +80,15 @@ class TestResearchAccess:
     def test_research_create_authorized(self, test_client, user_rules_team, db, app):
         """Test research create page for authorized users"""
         with app.app_context():
-            from models.database.permissions import Role as RoleModel
+            from models.database.permissions import Role as Role
             from models.extensions import db as flask_db
             from models.tools.user import User
 
             # Create a new role in the Flask app's session
-            role = RoleModel.query.filter_by(name="rules_team").first()
+            role = Role.query.filter_by(name="rules_team").first()
             if not role:
                 # Create the role if it doesn't exist
-                role = RoleModel(name="rules_team", description="Test rules_team role")
+                role = Role(name="rules_team", description="Test rules_team role")
                 flask_db.session.add(role)
                 flask_db.session.commit()
 
@@ -128,15 +128,15 @@ class TestResearchCRUD:
         """Test creating a research project successfully"""
         with app.app_context():
             from models.database.item_type import ItemType
-            from models.database.permissions import Role as RoleModel
+            from models.database.permissions import Role as Role
             from models.extensions import db as flask_db
             from models.tools.user import User
 
             # Create a new role in the Flask app's session
-            role = RoleModel.query.filter_by(name="rules_team").first()
+            role = Role.query.filter_by(name="rules_team").first()
             if not role:
                 # Create the role if it doesn't exist
-                role = RoleModel(name="rules_team", description="Test rules_team role")
+                role = Role(name="rules_team", description="Test rules_team role")
                 flask_db.session.add(role)
                 flask_db.session.commit()
 
@@ -193,15 +193,15 @@ class TestResearchCRUD:
         """Test creating artefact research with new blueprint"""
         with app.app_context():
             from models.database.item_type import ItemType
-            from models.database.permissions import Role as RoleModel
+            from models.database.permissions import Role as Role
             from models.extensions import db as flask_db
             from models.tools.user import User
 
             # Create a new role in the Flask app's session
-            role = RoleModel.query.filter_by(name="rules_team").first()
+            role = Role.query.filter_by(name="rules_team").first()
             if not role:
                 # Create the role if it doesn't exist
-                role = RoleModel(name="rules_team", description="Test rules_team role")
+                role = Role(name="rules_team", description="Test rules_team role")
                 flask_db.session.add(role)
                 flask_db.session.commit()
 
@@ -260,15 +260,15 @@ class TestResearchCRUD:
             from models.database.item import Item
             from models.database.item_blueprint import ItemBlueprint
             from models.database.item_type import ItemType
-            from models.database.permissions import Role as RoleModel
+            from models.database.permissions import Role as Role
             from models.extensions import db as flask_db
             from models.tools.user import User
 
             # Create a new role in the Flask app's session
-            role = RoleModel.query.filter_by(name="rules_team").first()
+            role = Role.query.filter_by(name="rules_team").first()
             if not role:
                 # Create the role if it doesn't exist
-                role = RoleModel(name="rules_team", description="Test rules_team role")
+                role = Role(name="rules_team", description="Test rules_team role")
                 flask_db.session.add(role)
                 flask_db.session.commit()
 
@@ -342,16 +342,16 @@ class TestResearchCRUD:
     def test_edit_research_get(self, test_client, user_rules_team, db, app):
         """Test editing research project"""
         with app.app_context():
-            from models.database.permissions import Role as RoleModel
+            from models.database.permissions import Role as Role
             from models.extensions import db as flask_db
             from models.tools.research import Research
             from models.tools.user import User
 
             # Create a new role in the Flask app's session
-            role = RoleModel.query.filter_by(name="rules_team").first()
+            role = Role.query.filter_by(name="rules_team").first()
             if not role:
                 # Create the role if it doesn't exist
-                role = RoleModel(name="rules_team", description="Test rules_team role")
+                role = Role(name="rules_team", description="Test rules_team role")
                 flask_db.session.add(role)
                 flask_db.session.commit()
 
@@ -415,15 +415,15 @@ class TestResearchAPI:
     def test_api_blueprints(self, test_client, user_rules_team, db, app):
         """Test API for blueprints"""
         with app.app_context():
-            from models.database.permissions import Role as RoleModel
+            from models.database.permissions import Role as Role
             from models.extensions import db as flask_db
             from models.tools.user import User
 
             # Create a new role in the Flask app's session
-            role = RoleModel.query.filter_by(name="rules_team").first()
+            role = Role.query.filter_by(name="rules_team").first()
             if not role:
                 # Create the role if it doesn't exist
-                role = RoleModel(name="rules_team", description="Test rules_team role")
+                role = Role(name="rules_team", description="Test rules_team role")
                 flask_db.session.add(role)
                 flask_db.session.commit()
 
@@ -462,15 +462,15 @@ class TestResearchAPI:
     def test_api_exotics(self, test_client, user_rules_team, db, app):
         """Test API for exotics"""
         with app.app_context():
-            from models.database.permissions import Role as RoleModel
+            from models.database.permissions import Role as Role
             from models.extensions import db as flask_db
             from models.tools.user import User
 
             # Create a new role in the Flask app's session
-            role = RoleModel.query.filter_by(name="rules_team").first()
+            role = Role.query.filter_by(name="rules_team").first()
             if not role:
                 # Create the role if it doesn't exist
-                role = RoleModel(name="rules_team", description="Test rules_team role")
+                role = Role(name="rules_team", description="Test rules_team role")
                 flask_db.session.add(role)
                 flask_db.session.commit()
 
@@ -511,16 +511,16 @@ class TestResearchAssignees:
     def test_assignees_list(self, test_client, user_rules_team, db, app):
         """Test listing assignees for a research project"""
         with app.app_context():
-            from models.database.permissions import Role as RoleModel
+            from models.database.permissions import Role as Role
             from models.extensions import db as flask_db
             from models.tools.research import Research
             from models.tools.user import User
 
             # Create a new role in the Flask app's session
-            role = RoleModel.query.filter_by(name="rules_team").first()
+            role = Role.query.filter_by(name="rules_team").first()
             if not role:
                 # Create the role if it doesn't exist
-                role = RoleModel(name="rules_team", description="Test rules_team role")
+                role = Role(name="rules_team", description="Test rules_team role")
                 flask_db.session.add(role)
                 flask_db.session.commit()
 
@@ -587,7 +587,7 @@ class TestResearchAssignees:
         """Test removing an assignee from a research project"""
         with app.app_context():
             from models.database.faction import Faction
-            from models.database.permissions import Role as RoleModel
+            from models.database.permissions import Role as Role
             from models.database.species import Species
             from models.extensions import db as flask_db
             from models.tools.character import Character
@@ -595,10 +595,10 @@ class TestResearchAssignees:
             from models.tools.user import User
 
             # Create a new role in the Flask app's session
-            role = RoleModel.query.filter_by(name="rules_team").first()
+            role = Role.query.filter_by(name="rules_team").first()
             if not role:
                 # Create the role if it doesn't exist
-                role = RoleModel(name="rules_team", description="Test rules_team role")
+                role = Role(name="rules_team", description="Test rules_team role")
                 flask_db.session.add(role)
                 flask_db.session.commit()
 
@@ -700,7 +700,7 @@ class TestResearchAssignees:
         """Test editing progress for a research assignee"""
         with app.app_context():
             from models.database.faction import Faction
-            from models.database.permissions import Role as RoleModel
+            from models.database.permissions import Role as Role
             from models.database.species import Species
             from models.extensions import db as flask_db
             from models.tools.character import Character
@@ -708,10 +708,10 @@ class TestResearchAssignees:
             from models.tools.user import User
 
             # Create a new role in the Flask app's session
-            role = RoleModel.query.filter_by(name="rules_team").first()
+            role = Role.query.filter_by(name="rules_team").first()
             if not role:
                 # Create the role if it doesn't exist
-                role = RoleModel(name="rules_team", description="Test rules_team role")
+                role = Role(name="rules_team", description="Test rules_team role")
                 flask_db.session.add(role)
                 flask_db.session.commit()
 

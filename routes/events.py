@@ -14,7 +14,7 @@ from models.database.item import Item
 from models.database.item_blueprint import ItemBlueprint
 from models.database.medicaments import Medicament
 from models.database.sample import Sample
-from models.enums import CharacterStatus, EventType, Role, TicketType
+from models.enums import CharacterStatus, EventType, TicketType
 from models.event import Event
 from models.extensions import db
 from models.tools.character import Character
@@ -23,11 +23,7 @@ from models.tools.event_ticket import EventTicket
 from models.tools.group import Group
 from models.tools.pack import Pack
 from models.tools.user import User
-from utils.email import (
-    send_event_details_updated_notification,
-    send_event_ticket_assigned_notification_to_user,
-    send_new_event_notification_to_all,
-)
+from utils.email import send_event_details_updated_notification, send_new_event_notification_to_all
 from utils.mask_email import mask_email
 from utils.permission_decorators import permission_required
 

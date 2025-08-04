@@ -2,8 +2,7 @@ from flask import Blueprint, abort, flash, jsonify, redirect, render_template, r
 from flask_login import current_user, login_required
 
 from models.database.group_type import GroupType
-from models.database.sample import Sample
-from models.enums import CharacterAuditAction, CharacterStatus, GroupAuditAction, Role
+from models.enums import CharacterAuditAction, CharacterStatus, GroupAuditAction
 from models.extensions import db
 from models.tools.character import Character, CharacterAuditLog
 from models.tools.group import Group, GroupAuditLog, GroupBackground, GroupInvite, GroupJoinRequest

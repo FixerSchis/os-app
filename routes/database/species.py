@@ -7,7 +7,7 @@ from models.database.faction import Faction
 from models.database.item_blueprint import ItemBlueprint
 from models.database.skills import Skill
 from models.database.species import Ability, Species
-from models.enums import AbilityType, BodyHitsType, Role
+from models.enums import AbilityType, BodyHitsType
 from models.extensions import db
 from models.tools.character import Character
 from utils.decorators import email_verified_required

@@ -2,7 +2,7 @@ from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from models.database.cybernetic import Cybernetic
-from models.enums import Role, ScienceType
+from models.enums import ScienceType
 from models.extensions import db
 from models.wiki import WikiPage, get_or_create_wiki_page
 from utils.permission_decorators import permission_required

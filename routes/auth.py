@@ -3,17 +3,8 @@ from datetime import datetime, timezone
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required, login_user, logout_user
 
-from models.database.cybernetic import CharacterCybernetic, Cybernetic
-from models.database.faction import Faction
-from models.database.mods import Mod
-from models.database.permissions import Role as RoleModel
-from models.database.skills import Skill
-from models.database.species import Species
-from models.enums import CharacterStatus, Role, TicketType
-from models.event import Event
+from models.database.permissions import Role
 from models.extensions import db
-from models.tools.character import Character, CharacterSkill
-from models.tools.event_ticket import EventTicket
 from models.tools.user import User
 from utils.email import send_password_reset_email, send_verification_email
 
@@ -39,7 +30,7 @@ def register():
 
         if User.query.count() == 0:
             # First user gets owner role
-            owner_role = RoleModel.query.filter_by(name="owner").first()
+            owner_role = Role.query.filter_by(name="owner").first()
             if owner_role:
                 user.role = owner_role
             user.email_verified = True  # First user is automatically verified
@@ -47,7 +38,7 @@ def register():
 
         else:
             # Subsequent users get default role
-            default_role = RoleModel.query.filter_by(name="default").first()
+            default_role = Role.query.filter_by(name="default").first()
             if default_role:
                 user.role = default_role
             db.session.add(user)

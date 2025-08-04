@@ -4,7 +4,7 @@ from models.database.item import Item, ItemAuditLog
 from models.database.item_blueprint import ItemBlueprint
 from models.database.item_type import ItemType
 from models.database.mods import Mod
-from models.enums import ItemAuditAction, Role
+from models.enums import ItemAuditAction
 from models.tools.user import User
 
 
