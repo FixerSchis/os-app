@@ -9,7 +9,7 @@
         <div class="d-flex gap-2">
             <a href="{{ url_for('events.event_list') }}" class="btn btn-secondary">Back to Events</a>
             <a href="{{ url_for('events.assign_ticket', event_id=event.id) }}" class="btn btn-warning">Assign Tickets</a>
-            {% if has_permission('event.manage') %}
+            {% if has_permission('event.manage_attendees') %}
             <a href="{{ url_for('events.export_attendees', event_id=event.id) }}" class="btn btn-success">
                 <i class="fas fa-download"></i> Export CSV
             </a>

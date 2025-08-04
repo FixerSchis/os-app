@@ -7,16 +7,14 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h1>{% if show_previous %}Previous{% else %}Upcoming{% endif %} Events</h1>
-            {% if current_user.is_authenticated and has_permission('event.manage') %}
             <div class="form-check mt-2">
                 <input class="form-check-input" type="checkbox" id="show-previous" {% if show_previous %}checked{% endif %}>
                 <label class="form-check-label" for="show-previous">
                     Show previous events
                 </label>
             </div>
-            {% endif %}
         </div>
-        {% if current_user.is_authenticated and has_permission('event.manage') %}
+        {% if current_user.is_authenticated and has_permission('event.create') %}
         <a href="{{ url_for('events.create_event') }}" class="btn btn-primary">
             <i class="fas fa-plus"></i> Create Event
         </a>

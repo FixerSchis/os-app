@@ -622,7 +622,7 @@ def rules_team_user(db):
         # Add sample permissions
         sample_permissions = ["view_samples", "add_samples", "edit_samples", "delete_samples"]
         # Add event permissions
-        event_permissions = ["event.create", "event.edit", "event.delete", "event.manage"]
+        event_permissions = ["event.create", "event.edit", "event.delete"]
         # Add research permissions
         research_permissions = ["research.create"]
         all_permissions = (

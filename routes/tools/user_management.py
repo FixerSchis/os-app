@@ -20,7 +20,7 @@ user_management_bp = Blueprint("user_management", __name__)
 def user_management():
     users = User.query.all()
     # Check if current user has admin role (not just user_admin)
-    is_admin = current_user.has_permission("user.roles")
+    is_admin = current_user.has_permission("user.view_email")
 
     return render_template(
         "user_management/list.html",
