@@ -2,7 +2,6 @@ from datetime import datetime, timezone
 from enum import Enum
 
 from models.extensions import db
-from models.tools.character import Character
 
 
 class ItemTransferStatus(Enum):

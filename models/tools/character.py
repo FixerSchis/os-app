@@ -1,7 +1,5 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import JSON
-
 from models.database.mods import Mod
 from models.enums import AbilityType, CharacterAuditAction, CharacterStatus, ScienceType
 from models.extensions import db

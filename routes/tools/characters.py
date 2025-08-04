@@ -22,6 +22,7 @@ from models.tools.character import (
     assign_character_id,
 )
 from models.tools.character_inventory import CharacterItem
+from models.tools.group import GroupBackground
 from models.tools.print_template import PrintTemplate
 from models.tools.research import CharacterResearch
 from models.tools.user import User
@@ -839,17 +840,51 @@ def delete_character(character_id):
         flash("You can only delete your own characters.", "error")
         return redirect(url_for("characters.character_list"))
 
-    admin_context = request.form.get("admin_context") == "1"
-    if character.status == CharacterStatus.ACTIVE.value:
-        flash("Active characters cannot be deleted.", "error")
-        return redirect(url_for("characters.character_list"))
+    # Delete all related records before deleting the character
+    # Character audit logs
+    for audit_log in CharacterAuditLog.query.filter_by(character_id=character.id).all():
+        db.session.delete(audit_log)
+
+    # Character backgrounds
+    for background in CharacterBackground.query.filter_by(character_id=character.id).all():
+        db.session.delete(background)
+
+    # Character skills
+    for skill in character.skills:
+        db.session.delete(skill)
+
+    # Character reputations
+    for reputation in character.reputations:
+        db.session.delete(reputation)
+
+    # Character conditions
+    for condition in character.active_conditions:
+        db.session.delete(condition)
+
+    # Character cybernetics
+    for cybernetic in character.cybernetics_link:
+        db.session.delete(cybernetic)
+
+    # Downtime packs
+    for pack in character.downtime_packs:
+        db.session.delete(pack)
+
+    # Event tickets
+    for ticket in character.event_tickets:
+        db.session.delete(ticket)
+
+    # Character inventory items
+    for item in character.inventory_items:
+        db.session.delete(item)
+
+    # Character cybernetics (from database models)
+    for cybernetic in CharacterCybernetic.query.filter_by(character_id=character.id).all():
+        db.session.delete(cybernetic)
+
+    # Finally delete the character
     db.session.delete(character)
     db.session.commit()
     flash("Character deleted.", "success")
-    if admin_context:
-        user = User.query.filter_by(id=character.user_id).first()
-        if user:
-            return redirect(url_for("user_management.user_management_edit_user", user_id=user.id))
     return redirect(url_for("characters.character_list"))
 
 
