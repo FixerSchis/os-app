@@ -141,6 +141,17 @@ def edit_species_post(species_id):
 
     if not all([name, wiki_page, body_hits_type, body_hits, death_count, permitted_factions]):
         flash("All fields are required.", "error")
+        # Get item blueprints and convert to dictionaries for JSON serialization
+        item_blueprints = ItemBlueprint.query.order_by(ItemBlueprint.name).all()
+        item_blueprints_dict = [
+            {
+                "id": bp.id,
+                "name": bp.name,
+                "full_code": bp.full_code,
+                "item_type_name": bp.item_type.name if bp.item_type else "Unknown",
+            }
+            for bp in item_blueprints
+        ]
         return render_template(
             "species/edit.html",
             species=species,
@@ -155,7 +166,7 @@ def edit_species_post(species_id):
             ],
             AbilityType=AbilityType,
             skills_list=Skill.query.all(),
-            item_blueprints=ItemBlueprint.query.order_by(ItemBlueprint.name).all(),
+            item_blueprints=item_blueprints_dict,
         )
 
     try:
@@ -235,6 +246,17 @@ def new_species():
         for faction in factions
     ]
 
+    # Convert item blueprints to dictionaries for JSON serialization
+    item_blueprints_dict = [
+        {
+            "id": bp.id,
+            "name": bp.name,
+            "full_code": bp.full_code,
+            "item_type_name": bp.item_type.name if bp.item_type else "Unknown",
+        }
+        for bp in item_blueprints
+    ]
+
     return render_template(
         "species/edit.html",
         BodyHitsType=BodyHitsType,
@@ -242,7 +264,7 @@ def new_species():
         factions_dict=factions_dict,
         AbilityType=AbilityType,
         skills_list=skills_list,
-        item_blueprints=item_blueprints,
+        item_blueprints=item_blueprints_dict,
     )
 
 
@@ -353,13 +375,24 @@ def new_species_post():
         db.session.rollback()
         flash(f"Error creating species: {str(e)}", "error")
         skills_list = Skill.query.all()
+        # Get item blueprints and convert to dictionaries for JSON serialization
         item_blueprints = ItemBlueprint.query.order_by(ItemBlueprint.name).all()
+        item_blueprints_dict = [
+            {
+                "id": bp.id,
+                "name": bp.name,
+                "full_code": bp.full_code,
+                "item_type_name": bp.item_type.name if bp.item_type else "Unknown",
+            }
+            for bp in item_blueprints
+        ]
         return render_template(
             "species/edit.html",
             BodyHitsType=BodyHitsType,
             factions=Faction.query.all(),
             AbilityType=AbilityType,
             skills_list=skills_list,
+            item_blueprints=item_blueprints_dict,
         )
 
 
