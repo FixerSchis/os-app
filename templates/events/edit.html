@@ -5,15 +5,18 @@
 {% block content %}
 <div class="container mt-4">
     <h1>{% if event %}Edit Event {{ event.event_number }} - {{ event.name }}{% else %}New Event{% endif %}</h1>
+    {% if error_message %}
+    <div class="alert alert-danger">{{ error_message }}</div>
+    {% endif %}
     <form method="POST" class="mt-4">
         <div class="row">
             <div class="col-md-6 mb-3">
                 <label for="event_number" class="form-label">Event Number</label>
-                <input type="text" class="form-control" id="event_number" name="event_number" value="{{ event.event_number if event else '' }}" required>
+                <input type="text" class="form-control" id="event_number" name="event_number" value="{{ form_data.event_number if form_data else (event.event_number if event else '') }}" required>
             </div>
             <div class="col-md-6 mb-3">
                 <label for="name" class="form-label">Event Name</label>
-                <input type="text" class="form-control" id="name" name="name" value="{{ event.name if event else '' }}" required>
+                <input type="text" class="form-control" id="name" name="name" value="{{ form_data.name if form_data else (event.name if event else '') }}" required>
             </div>
         </div>
 
@@ -22,46 +25,46 @@
                 <label for="event_type" class="form-label">Event Type</label>
                 <select class="form-select" id="event_type" name="event_type" required title="Select event type">
                     {% for event_type in EventType.values() %}
-                    <option value="{{ event_type }}" {% if event and event.event_type == event_type %}selected{% endif %}>{{ EventType.descriptions()[event_type] }}</option>
+                    <option value="{{ event_type }}" {% if (form_data and form_data.event_type == event_type) or (event and event.event_type == event_type) %}selected{% endif %}>{{ EventType.descriptions()[event_type] }}</option>
                     {% endfor %}
                 </select>
             </div>
             <div class="col-md-6 mb-3">
                 <label for="description" class="form-label">Description</label>
-                <textarea class="form-control" id="description" name="description" rows="3" required>{{ event.description if event else '' }}</textarea>
+                <textarea class="form-control" id="description" name="description" rows="3" required>{{ form_data.description if form_data else (event.description if event else '') }}</textarea>
             </div>
         </div>
 
         <div class="row">
             <div class="col-md-4 mb-3">
                 <label for="early_booking_deadline" class="form-label">Early Booking Deadline</label>
-                <input type="date" class="form-control" id="early_booking_deadline" name="early_booking_deadline" value="{{ event.early_booking_deadline.strftime('%Y-%m-%d') if event else '' }}" required>
+                <input type="date" class="form-control" id="early_booking_deadline" name="early_booking_deadline" value="{{ form_data.early_booking_deadline if form_data else (event.early_booking_deadline.strftime('%Y-%m-%d') if event else '') }}" required>
             </div>
             <div class="col-md-4 mb-3">
                 <label for="booking_deadline" class="form-label">Booking Deadline</label>
-                <input type="date" class="form-control" id="booking_deadline" name="booking_deadline" value="{{ event.booking_deadline.strftime('%Y-%m-%d') if event and event.booking_deadline else '' }}" required>
+                <input type="date" class="form-control" id="booking_deadline" name="booking_deadline" value="{{ form_data.booking_deadline if form_data else (event.booking_deadline.strftime('%Y-%m-%d') if event and event.booking_deadline else '') }}" required>
             </div>
         </div>
 
         <div class="row">
             <div class="col-md-4 mb-3">
                 <label for="start_date" class="form-label">Start Date</label>
-                <input type="date" class="form-control" id="start_date" name="start_date" value="{{ event.start_date.strftime('%Y-%m-%d') if event else '' }}" required>
+                <input type="date" class="form-control" id="start_date" name="start_date" value="{{ form_data.start_date if form_data else (event.start_date.strftime('%Y-%m-%d') if event else '') }}" required>
             </div>
             <div class="col-md-4 mb-3">
                 <label for="end_date" class="form-label">End Date</label>
-                <input type="date" class="form-control" id="end_date" name="end_date" value="{{ event.end_date.strftime('%Y-%m-%d') if event else '' }}" required>
+                <input type="date" class="form-control" id="end_date" name="end_date" value="{{ form_data.end_date if form_data else (event.end_date.strftime('%Y-%m-%d') if event else '') }}" required>
             </div>
         </div>
 
         <div class="row" id="location_group">
             <div class="col-md-6 mb-3">
                 <label for="location" class="form-label">Location</label>
-                <input type="text" class="form-control" id="location" name="location" value="{{ event.location if event else '' }}">
+                <input type="text" class="form-control" id="location" name="location" value="{{ form_data.location if form_data else (event.location if event else '') }}">
             </div>
             <div class="col-md-6 mb-3">
                 <label for="google_maps_link" class="form-label">Google Maps Link</label>
-                <input type="url" class="form-control" id="google_maps_link" name="google_maps_link" value="{{ event.google_maps_link if event else '' }}">
+                <input type="url" class="form-control" id="google_maps_link" name="google_maps_link" value="{{ form_data.google_maps_link if form_data else (event.google_maps_link if event else '') }}">
             </div>
         </div>
 

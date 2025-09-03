@@ -90,6 +90,73 @@ def test_create_event_post(test_client, admin_user, db):
         mock_send_notification.assert_called_once_with(event)
 
 
+def test_create_event_duplicate_number(test_client, admin_user, db):
+    """Test creating event with duplicate event number fails validation."""
+    # First, create an event
+    event = Event(
+        event_number="DUPLICATE001",
+        name="First Event",
+        event_type="mainline",
+        description="First test event",
+        early_booking_deadline=datetime.now() + timedelta(days=30),
+        booking_deadline=datetime.now() + timedelta(days=40),
+        start_date=datetime.now() + timedelta(days=45),
+        end_date=datetime.now() + timedelta(days=47),
+        location="Test Location",
+        standard_ticket_price=50.00,
+        early_booking_ticket_price=45.00,
+        child_ticket_price_12_15=25.00,
+        child_ticket_price_7_11=15.00,
+        child_ticket_price_under_7=0.00,
+    )
+    db.session.add(event)
+    db.session.commit()
+
+    # Verify the event was created
+    existing_event = Event.query.filter_by(event_number="DUPLICATE001").first()
+    assert existing_event is not None, "First event should exist before duplicate test"
+
+    with test_client.session_transaction() as session:
+        session["_user_id"] = admin_user.id
+        session["_fresh"] = True
+
+    # Try to create another event with the same event number
+    response = test_client.post(
+        "/events/new",
+        data={
+            "event_number": "DUPLICATE001",  # Same as existing event
+            "name": "Second Event",
+            "event_type": "mainline",
+            "description": "Second test event",
+            "early_booking_deadline": "2025-07-01",
+            "booking_deadline": "2025-07-10",
+            "start_date": "2025-07-15",
+            "end_date": "2025-07-17",
+            "location": "Test Location",
+            "google_maps_link": "https://maps.google.com",
+            "meal_ticket_available": "1",
+            "meal_ticket_price": "15.00",
+            "bunks_available": "1",
+            "standard_ticket_price": "50.00",
+            "early_booking_ticket_price": "45.00",
+            "child_ticket_price_12_15": "25.00",
+            "child_ticket_price_7_11": "15.00",
+            "child_ticket_price_under_7": "0.00",
+        },
+        follow_redirects=True,
+    )
+
+    # Should return the form with error message, not redirect
+    assert response.status_code == 200
+    # Check for key parts of the error message
+    assert b"DUPLICATE001" in response.data
+    assert b"already exists" in response.data
+
+    # Verify only one event with that number exists
+    events = Event.query.filter_by(event_number="DUPLICATE001").all()
+    assert len(events) == 1
+
+
 def test_edit_event_get(test_client, admin_user, db):
     """Test GET request to edit event page."""
     # Create a test event

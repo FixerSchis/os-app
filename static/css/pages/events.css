@@ -1,0 +1,7 @@
+/* Events page specific styles */
+
+/* Ensure event titles don't overlap with badges */
+.event-title {
+    padding-right: 8rem !important;
+    margin-right: 0 !important;
+}

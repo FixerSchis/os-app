@@ -64,42 +64,59 @@ def create_event():
 @login_required
 @permission_required(permissions=["event.create"])
 def create_event_post():
-    event = Event(
-        event_number=request.form["event_number"],
-        name=request.form["name"],
-        event_type=request.form["event_type"],
-        description=request.form["description"],
-        early_booking_deadline=datetime.strptime(
-            request.form["early_booking_deadline"], "%Y-%m-%d"
-        ),
-        booking_deadline=datetime.strptime(request.form["booking_deadline"], "%Y-%m-%d"),
-        start_date=datetime.strptime(request.form["start_date"], "%Y-%m-%d"),
-        end_date=datetime.strptime(request.form["end_date"], "%Y-%m-%d"),
-        location=request.form["location"],
-        google_maps_link=(
-            request.form["google_maps_link"]
-            if request.form["event_type"]
-            in ["mainline", "sanctioned-continuity", "sanctioned-chronicle"]
-            else None
-        ),
-        meal_ticket_available=bool(request.form.get("meal_ticket_available")),
-        meal_ticket_price=(
-            float(request.form["meal_ticket_price"])
-            if request.form.get("meal_ticket_available")
-            else None
-        ),
-        bunks_available=bool(request.form.get("bunks_available")),
-        standard_ticket_price=float(request.form["standard_ticket_price"]),
-        early_booking_ticket_price=float(request.form["early_booking_ticket_price"]),
-        child_ticket_price_12_15=float(request.form["child_ticket_price_12_15"]),
-        child_ticket_price_7_11=float(request.form["child_ticket_price_7_11"]),
-        child_ticket_price_under_7=float(request.form["child_ticket_price_under_7"]),
-    )
-    db.session.add(event)
-    db.session.commit()
-    send_new_event_notification_to_all(event)
-    flash("Event created successfully!", "success")
-    return redirect(url_for("events.event_list"))
+    # Check if event number already exists
+    existing_event = Event.query.filter_by(event_number=request.form["event_number"]).first()
+    if existing_event:
+        error_msg = (
+            f"Event number '{request.form['event_number']}' already exists. "
+            "Please choose a different event number."
+        )
+        flash(error_msg, "error")
+        return render_template(
+            "events/edit.html", EventType=EventType, form_data=request.form, error_message=error_msg
+        )
+
+    try:
+        event = Event(
+            event_number=request.form["event_number"],
+            name=request.form["name"],
+            event_type=request.form["event_type"],
+            description=request.form["description"],
+            early_booking_deadline=datetime.strptime(
+                request.form["early_booking_deadline"], "%Y-%m-%d"
+            ),
+            booking_deadline=datetime.strptime(request.form["booking_deadline"], "%Y-%m-%d"),
+            start_date=datetime.strptime(request.form["start_date"], "%Y-%m-%d"),
+            end_date=datetime.strptime(request.form["end_date"], "%Y-%m-%d"),
+            location=request.form["location"],
+            google_maps_link=(
+                request.form["google_maps_link"]
+                if request.form["event_type"]
+                in ["mainline", "sanctioned-continuity", "sanctioned-chronicle"]
+                else None
+            ),
+            meal_ticket_available=bool(request.form.get("meal_ticket_available")),
+            meal_ticket_price=(
+                float(request.form["meal_ticket_price"])
+                if request.form.get("meal_ticket_available")
+                else None
+            ),
+            bunks_available=bool(request.form.get("bunks_available")),
+            standard_ticket_price=float(request.form["standard_ticket_price"]),
+            early_booking_ticket_price=float(request.form["early_booking_ticket_price"]),
+            child_ticket_price_12_15=float(request.form["child_ticket_price_12_15"]),
+            child_ticket_price_7_11=float(request.form["child_ticket_price_7_11"]),
+            child_ticket_price_under_7=float(request.form["child_ticket_price_under_7"]),
+        )
+        db.session.add(event)
+        db.session.commit()
+        send_new_event_notification_to_all(event)
+        flash("Event created successfully!", "success")
+        return redirect(url_for("events.event_list"))
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Error creating event: {str(e)}", "error")
+        return render_template("events/edit.html", EventType=EventType, form_data=request.form)
 
 
 @events_bp.route("/<int:event_id>/edit", methods=["GET"])
@@ -115,40 +132,62 @@ def edit_event(event_id):
 @permission_required(permissions=["event.edit"])
 def edit_event_post(event_id):
     event = Event.query.get_or_404(event_id)
-    event.event_number = request.form["event_number"]
-    event.name = request.form["name"]
-    event.event_type = request.form["event_type"]
-    event.description = request.form["description"]
-    event.early_booking_deadline = datetime.strptime(
-        request.form["early_booking_deadline"], "%Y-%m-%d"
-    )
-    event.booking_deadline = datetime.strptime(request.form["booking_deadline"], "%Y-%m-%d")
-    event.start_date = datetime.strptime(request.form["start_date"], "%Y-%m-%d")
-    event.end_date = datetime.strptime(request.form["end_date"], "%Y-%m-%d")
-    event.location = request.form["location"]
-    event.google_maps_link = (
-        request.form["google_maps_link"]
-        if request.form["event_type"]
-        in ["mainline", "sanctioned-continuity", "sanctioned-chronicle"]
-        else None
-    )
-    event.meal_ticket_available = bool(request.form.get("meal_ticket_available"))
-    event.meal_ticket_price = (
-        float(request.form["meal_ticket_price"])
-        if request.form.get("meal_ticket_available")
-        else None
-    )
-    event.bunks_available = bool(request.form.get("bunks_available"))
-    event.standard_ticket_price = float(request.form["standard_ticket_price"])
-    event.early_booking_ticket_price = float(request.form["early_booking_ticket_price"])
-    event.child_ticket_price_12_15 = float(request.form["child_ticket_price_12_15"])
-    event.child_ticket_price_7_11 = float(request.form["child_ticket_price_7_11"])
-    event.child_ticket_price_under_7 = float(request.form["child_ticket_price_under_7"])
-    db.session.commit()
-    for ticket in event.tickets:
-        send_event_details_updated_notification(ticket.character.user, event, ticket.character)
-    flash("Event updated successfully!", "success")
-    return redirect(url_for("events.event_list"))
+
+    # Check if event number already exists for a different event
+    new_event_number = request.form["event_number"]
+    if new_event_number != event.event_number:
+        existing_event = Event.query.filter_by(event_number=new_event_number).first()
+        if existing_event:
+            flash(
+                f"Event number '{new_event_number}' already exists. "
+                "Please choose a different event number.",
+                "error",
+            )
+            return render_template(
+                "events/edit.html", event=event, EventType=EventType, form_data=request.form
+            )
+
+    try:
+        event.event_number = new_event_number
+        event.name = request.form["name"]
+        event.event_type = request.form["event_type"]
+        event.description = request.form["description"]
+        event.early_booking_deadline = datetime.strptime(
+            request.form["early_booking_deadline"], "%Y-%m-%d"
+        )
+        event.booking_deadline = datetime.strptime(request.form["booking_deadline"], "%Y-%m-%d")
+        event.start_date = datetime.strptime(request.form["start_date"], "%Y-%m-%d")
+        event.end_date = datetime.strptime(request.form["end_date"], "%Y-%m-%d")
+        event.location = request.form["location"]
+        event.google_maps_link = (
+            request.form["google_maps_link"]
+            if request.form["event_type"]
+            in ["mainline", "sanctioned-continuity", "sanctioned-chronicle"]
+            else None
+        )
+        event.meal_ticket_available = bool(request.form.get("meal_ticket_available"))
+        event.meal_ticket_price = (
+            float(request.form["meal_ticket_price"])
+            if request.form.get("meal_ticket_available")
+            else None
+        )
+        event.bunks_available = bool(request.form.get("bunks_available"))
+        event.standard_ticket_price = float(request.form["standard_ticket_price"])
+        event.early_booking_ticket_price = float(request.form["early_booking_ticket_price"])
+        event.child_ticket_price_12_15 = float(request.form["child_ticket_price_12_15"])
+        event.child_ticket_price_7_11 = float(request.form["child_ticket_price_7_11"])
+        event.child_ticket_price_under_7 = float(request.form["child_ticket_price_under_7"])
+        db.session.commit()
+        for ticket in event.tickets:
+            send_event_details_updated_notification(ticket.character.user, event, ticket.character)
+        flash("Event updated successfully!", "success")
+        return redirect(url_for("events.event_list"))
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Error updating event: {str(e)}", "error")
+        return render_template(
+            "events/edit.html", event=event, EventType=EventType, form_data=request.form
+        )
 
 
 @events_bp.route("/<int:event_id>/purchase", methods=["GET"])
