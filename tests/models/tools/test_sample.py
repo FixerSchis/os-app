@@ -4,7 +4,7 @@ from models.enums import ScienceType
 from models.tools.group import Group
 
 
-def test_new_sample_with_group_and_tags(db):
+def test_new_sample_with_group_and_tags(db, faction):
     """Test creation of a new Sample with Group and SampleTag relationships."""
     # Create a group type first
     group_type = GroupType(
@@ -22,7 +22,9 @@ def test_new_sample_with_group_and_tags(db):
     db.session.commit()
 
     # Create a group
-    group = Group(name="Test Group", group_type_id=group_type.id, bank_account=500)
+    group = Group(
+        name="Test Group", group_type_id=group_type.id, bank_account=500, faction_id=faction.id
+    )
     db.session.add(group)
     db.session.commit()
 

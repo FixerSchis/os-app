@@ -409,7 +409,7 @@ def test_view_attendees_get(test_client, admin_user, db):
     assert response.status_code == 200
 
 
-def test_purchase_ticket_post_multiple_self_tickets(test_client, authenticated_user, db):
+def test_purchase_ticket_post_multiple_self_tickets(test_client, authenticated_user, db, faction):
     """Test that only one self-ticket (adult/crew) is allowed per purchase."""
     event = Event(
         event_number="TEST008",
@@ -436,6 +436,7 @@ def test_purchase_ticket_post_multiple_self_tickets(test_client, authenticated_u
         character_id=1,
         name="Test Character",
         status="active",
+        faction_id=faction.id,
     )
     db.session.add(character)
     db.session.commit()
@@ -528,7 +529,7 @@ def test_purchase_ticket_post_multiple_child_tickets(test_client, authenticated_
     assert tickets[1].child_name == "Bob Jones"
 
 
-def test_npc_cannot_buy_crew_ticket_for_others(test_client, db):
+def test_npc_cannot_buy_crew_ticket_for_others(test_client, db, faction):
     """Test that NPCs cannot buy crew tickets for others (crew tickets are only for self)."""
     event = Event(
         event_number="TEST010",
@@ -561,6 +562,7 @@ def test_npc_cannot_buy_crew_ticket_for_others(test_client, db):
         character_id=2,
         name="Other Character",
         status="active",
+        faction_id=faction.id,
     )
     db.session.add(other_character)
     db.session.commit()
@@ -641,7 +643,7 @@ def test_npc_can_buy_crew_ticket_for_self_without_character(test_client, db):
     assert ticket.character_id is None  # Crew tickets don't have characters
 
 
-def test_adult_crew_ticket_exclusivity(test_client, authenticated_user, db):
+def test_adult_crew_ticket_exclusivity(test_client, authenticated_user, db, faction):
     """Test that a user cannot have both an adult ticket and a crew ticket for the same event."""
     event = Event(
         event_number="TEST012",
@@ -672,7 +674,7 @@ def test_adult_crew_ticket_exclusivity(test_client, authenticated_user, db):
     db.session.add(group_type)
     db.session.flush()
 
-    group = Group(name="Test Group", group_type_id=group_type.id)
+    group = Group(name="Test Group", group_type_id=group_type.id, faction_id=faction.id)
     db.session.add(group)
     db.session.flush()
 
@@ -683,6 +685,7 @@ def test_adult_crew_ticket_exclusivity(test_client, authenticated_user, db):
         name="Test Character",
         status="active",
         group_id=group.id,
+        faction_id=faction.id,
     )
     db.session.add(character)
     db.session.commit()
@@ -734,7 +737,7 @@ def test_adult_crew_ticket_exclusivity(test_client, authenticated_user, db):
     assert crew_ticket is None
 
 
-def test_crew_adult_ticket_exclusivity(test_client, rules_team_user, db):
+def test_crew_adult_ticket_exclusivity(test_client, rules_team_user, db, faction):
     """Test that a user cannot have both a crew ticket and an adult ticket for the same event."""
     event = Event(
         event_number="TEST013",
@@ -761,6 +764,7 @@ def test_crew_adult_ticket_exclusivity(test_client, rules_team_user, db):
         character_id=1,
         name="Test Character",
         status="active",
+        faction_id=faction.id,
     )
     db.session.add(character)
     db.session.commit()
@@ -812,7 +816,7 @@ def test_crew_adult_ticket_exclusivity(test_client, rules_team_user, db):
     assert adult_ticket is None
 
 
-def test_child_tickets_with_adult_ticket(test_client, authenticated_user, db):
+def test_child_tickets_with_adult_ticket(test_client, authenticated_user, db, faction):
     """Test that child tickets can be purchased even when user has an adult ticket."""
     event = Event(
         event_number="TEST014",
@@ -843,7 +847,7 @@ def test_child_tickets_with_adult_ticket(test_client, authenticated_user, db):
     db.session.add(group_type)
     db.session.flush()
 
-    group = Group(name="Test Group", group_type_id=group_type.id)
+    group = Group(name="Test Group", group_type_id=group_type.id, faction_id=faction.id)
     db.session.add(group)
     db.session.flush()
 
@@ -854,6 +858,7 @@ def test_child_tickets_with_adult_ticket(test_client, authenticated_user, db):
         name="Test Character",
         status="active",
         group_id=group.id,
+        faction_id=faction.id,
     )
     db.session.add(character)
     db.session.commit()
@@ -907,7 +912,7 @@ def test_child_tickets_with_adult_ticket(test_client, authenticated_user, db):
     assert child_ticket.child_name == "Child Name"
 
 
-def test_user_ticket_status_api(test_client, authenticated_user, db):
+def test_user_ticket_status_api(test_client, authenticated_user, db, faction):
     """Test the user ticket status API endpoint."""
     event = Event(
         event_number="TEST015",
@@ -934,6 +939,7 @@ def test_user_ticket_status_api(test_client, authenticated_user, db):
         character_id=1,
         name="Test Character",
         status="active",
+        faction_id=faction.id,
     )
     db.session.add(character)
     db.session.commit()
@@ -1060,7 +1066,7 @@ def test_purchase_conflicting_adult_and_crew_tickets(
     assert user_tickets[0].ticket_type == TicketType.CREW
 
 
-def test_purchase_ticket_character_without_group(test_client, authenticated_user, db):
+def test_purchase_ticket_character_without_group(test_client, authenticated_user, db, faction):
     """Test that purchasing tickets for characters without groups fails."""
     # Create a test event
     event = Event(
@@ -1088,6 +1094,7 @@ def test_purchase_ticket_character_without_group(test_client, authenticated_user
         character_id=1,
         name="Test Character",
         status="active",
+        faction_id=faction.id,
     )
     db.session.add(character)
     db.session.commit()
@@ -1121,7 +1128,7 @@ def test_purchase_ticket_character_without_group(test_client, authenticated_user
     assert b"must be in a group" in response.data
 
 
-def test_assign_ticket_character_without_group(test_client, admin_user, db):
+def test_assign_ticket_character_without_group(test_client, admin_user, db, faction):
     """Test that assigning tickets to characters without groups fails."""
     # Create a test event
     event = Event(
@@ -1149,6 +1156,7 @@ def test_assign_ticket_character_without_group(test_client, admin_user, db):
         character_id=1,
         name="Test Character",
         status="active",
+        faction_id=faction.id,
     )
     db.session.add(character)
     db.session.commit()
@@ -1175,7 +1183,7 @@ def test_assign_ticket_character_without_group(test_client, admin_user, db):
     assert b"must be in a group" in response.data
 
 
-def test_character_group_status_api(test_client, authenticated_user, db):
+def test_character_group_status_api(test_client, authenticated_user, db, faction):
     """Test the character group status API endpoint."""
     # Create a character without a group
     character = Character(
@@ -1183,6 +1191,7 @@ def test_character_group_status_api(test_client, authenticated_user, db):
         character_id=1,
         name="Test Character",
         status="active",
+        faction_id=faction.id,
     )
     db.session.add(character)
     db.session.commit()
@@ -1213,7 +1222,7 @@ def test_character_group_status_api(test_client, authenticated_user, db):
     db.session.add(group_type)
     db.session.flush()
 
-    group = Group(name="Test Group", group_type_id=group_type.id)
+    group = Group(name="Test Group", group_type_id=group_type.id, faction_id=faction.id)
     db.session.add(group)
     db.session.flush()
 
@@ -1233,7 +1242,7 @@ def test_character_group_status_api(test_client, authenticated_user, db):
     assert data["group_name"] == "Test Group"
 
 
-def test_export_attendees_get(test_client, admin_user, db):
+def test_export_attendees_get(test_client, admin_user, db, faction):
     """Test GET request to export attendees CSV."""
     # Create a test event
     event = Event(
@@ -1271,6 +1280,7 @@ def test_export_attendees_get(test_client, admin_user, db):
         character_id=1,
         name="Test Character",
         status="active",
+        faction_id=faction.id,
     )
     db.session.add(character)
     db.session.commit()
@@ -1339,7 +1349,7 @@ def test_export_attendees_get(test_client, admin_user, db):
     assert data_row[6] == user.first_name  # User First Name
     assert data_row[7] == f"{character.user_id}.{character.character_id}"  # Character Reference
     assert data_row[8] == character.name  # Character Name
-    assert data_row[9] == ""  # Character Faction (empty in test)
+    assert data_row[9] == faction.name  # Character Faction
     assert data_row[10] == ""  # Group Name (empty in test)
 
 
@@ -1459,7 +1469,7 @@ def test_export_attendees_with_crew_ticket(test_client, admin_user, db):
     assert data_row[10] == ""  # Group Name (empty for crew)
 
 
-def test_assign_ticket_update_existing(test_client, admin_user, db):
+def test_assign_ticket_update_existing(test_client, admin_user, db, faction):
     """Test updating an existing ticket instead of creating a new one."""
     # Create a test event
     event = Event(
@@ -1496,6 +1506,7 @@ def test_assign_ticket_update_existing(test_client, admin_user, db):
         character_id=1,
         name="Test Character",
         status="active",
+        faction_id=faction.id,
     )
     db.session.add(character)
     db.session.commit()
@@ -1516,9 +1527,7 @@ def test_assign_ticket_update_existing(test_client, admin_user, db):
     db.session.commit()
 
     group = Group(
-        name="Test Group",
-        group_type_id=group_type.id,
-        bank_account=0,
+        name="Test Group", group_type_id=group_type.id, bank_account=0, faction_id=faction.id
     )
     db.session.add(group)
     db.session.commit()
@@ -1574,7 +1583,7 @@ def test_assign_ticket_update_existing(test_client, admin_user, db):
     assert updated_ticket.price_paid == 75.00
 
 
-def test_remove_ticket(test_client, admin_user, db):
+def test_remove_ticket(test_client, admin_user, db, faction):
     """Test removing an assigned ticket."""
     # Create a test event
     event = Event(
@@ -1611,6 +1620,7 @@ def test_remove_ticket(test_client, admin_user, db):
         character_id=1,
         name="Test Character",
         status="active",
+        faction_id=faction.id,
     )
     db.session.add(character)
     db.session.commit()
@@ -1912,7 +1922,7 @@ def test_get_user_ticket_api(test_client, authenticated_user, db):
         assert data["ticket"]["requires_bunk"] is False
 
 
-def test_group_pack_generation_energy_chits_calculation(test_client, admin_user, db):
+def test_group_pack_generation_energy_chits_calculation(test_client, admin_user, db, faction):
     """Test that group pack generation calculates energy chits correctly."""
     # Create a test event
     event = Event(
