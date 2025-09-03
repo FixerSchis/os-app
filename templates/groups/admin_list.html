@@ -38,6 +38,7 @@
                         <tr>
                             <th>Name</th>
                             <th>Type</th>
+                            <th>Faction</th>
                             <th>Bank Account</th>
                             <th>Members</th>
                             <th>Status</th>
@@ -49,6 +50,7 @@
                         <tr>
                             <td>{{ group.name }}</td>
                             <td>{{ group.group_type.name }}</td>
+                            <td>{{ group.faction.name }}</td>
                             <td>{{ group.bank_account }}</td>
                             <td>{{ group.characters|length }}</td>
                             <td>

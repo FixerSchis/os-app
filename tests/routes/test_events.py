@@ -1953,6 +1953,17 @@ def test_group_pack_generation_energy_chits_calculation(test_client, admin_user,
     db.session.add(user)
     db.session.commit()
 
+    # Create a faction first
+    from models.database.faction import Faction
+
+    faction = Faction(
+        name="Test Faction",
+        wiki_slug="test-faction",
+        allow_player_characters=True,
+    )
+    db.session.add(faction)
+    db.session.commit()
+
     # Create a species with group income ability
     from models.database.species import Ability, Species
     from models.enums import AbilityType
@@ -1984,6 +1995,7 @@ def test_group_pack_generation_energy_chits_calculation(test_client, admin_user,
         name="Test Character",
         status="active",
         species_id=species.id,
+        faction_id=faction.id,
     )
     db.session.add(character)
     db.session.commit()
@@ -2016,6 +2028,7 @@ def test_group_pack_generation_energy_chits_calculation(test_client, admin_user,
     group = Group(
         name="Test Group",
         group_type_id=group_type.id,
+        faction_id=faction.id,
         bank_account=0,
     )
     db.session.add(group)

@@ -8,6 +8,7 @@ class Group(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     group_type_id = db.Column(db.Integer, db.ForeignKey("group_types.id"), nullable=False)
+    faction_id = db.Column(db.Integer, db.ForeignKey("faction.id"), nullable=False)
     bank_account = db.Column(db.Integer, nullable=False, default=0)
     group_pack = db.Column(db.String, nullable=True)  # JSON string
     pack_complete = db.Column(db.Boolean, nullable=False, default=False)
@@ -24,6 +25,7 @@ class Group(db.Model):
 
     # Relationships
     group_type = db.relationship("GroupType", back_populates="groups")
+    faction = db.relationship("Faction")
     characters = db.relationship("Character", back_populates="group", lazy=True)
     invites = db.relationship("GroupInvite", back_populates="group", cascade="all, delete-orphan")
     samples = db.relationship("Sample", back_populates="group", lazy="dynamic")
