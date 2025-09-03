@@ -944,6 +944,9 @@ def generate_group_pack(event_id, group_id):
 
         ec_pool += character_ec
 
+    # Initialize remaining_ec to the full ec_pool as fallback
+    remaining_ec = ec_pool
+
     # Apply income distribution from group type
     if group.group_type and group.group_type.income_distribution_dict:
         distribution = group.group_type.income_distribution_dict
@@ -1028,8 +1031,8 @@ def generate_group_pack(event_id, group_id):
                         # Can't afford this medicament, stop adding medicaments
                         break
 
-        # Add remaining EC to the pack
-        remaining_ec = items_budget + exotics_budget + medicaments_budget + chits_budget
+        # Calculate remaining EC: chits budget plus any unused budget from other categories
+        remaining_ec = chits_budget + items_budget + exotics_budget + medicaments_budget
         group.pack.energy_chits = remaining_ec
 
     # Create a new pack object with all the modifications to ensure they're saved

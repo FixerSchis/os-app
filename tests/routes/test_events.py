@@ -1910,3 +1910,152 @@ def test_get_user_ticket_api(test_client, authenticated_user, db):
         assert data["ticket"]["ticket_type"] == "crew"
         assert data["ticket"]["meal_ticket"] is True
         assert data["ticket"]["requires_bunk"] is False
+
+
+def test_group_pack_generation_energy_chits_calculation(test_client, admin_user, db):
+    """Test that group pack generation calculates energy chits correctly."""
+    # Create a test event
+    event = Event(
+        event_number="TEST021",
+        name="Test Event",
+        event_type="mainline",
+        description="A test event",
+        early_booking_deadline=datetime.now() + timedelta(days=30),
+        booking_deadline=datetime.now() + timedelta(days=40),
+        start_date=datetime.now() + timedelta(days=45),
+        end_date=datetime.now() + timedelta(days=47),
+        location="Test Location",
+        standard_ticket_price=50.00,
+        early_booking_ticket_price=45.00,
+        child_ticket_price_12_15=25.00,
+        child_ticket_price_7_11=15.00,
+        child_ticket_price_under_7=0.00,
+    )
+    db.session.add(event)
+    db.session.commit()
+
+    # Create global settings
+    from models.database.global_settings import GlobalSettings
+
+    settings = GlobalSettings(
+        group_income_contribution=30,  # Base group income
+    )
+    db.session.add(settings)
+    db.session.commit()
+
+    # Create a test user and character
+    user = User(
+        email="test@example.com",
+        first_name="Test",
+        surname="User",
+    )
+    user.set_password("password")
+    db.session.add(user)
+    db.session.commit()
+
+    # Create a species with group income ability
+    from models.database.species import Ability, Species
+    from models.enums import AbilityType
+
+    species = Species(
+        name="Test Species",
+        wiki_page="test-species",
+        permitted_factions="[1]",
+        body_hits_type="global",
+        body_hits=10,
+        death_count=0,
+    )
+    db.session.add(species)
+    db.session.flush()
+
+    ability = Ability(
+        species_id=species.id,
+        name="Group Income",
+        description="Provides additional group income",
+        type=AbilityType.GROUP_INCOME,
+        additional_group_income=30,  # Additional 30 chits
+    )
+    db.session.add(ability)
+    db.session.commit()
+
+    character = Character(
+        user_id=user.id,
+        character_id=1,
+        name="Test Character",
+        status="active",
+        species_id=species.id,
+    )
+    db.session.add(character)
+    db.session.commit()
+
+    # Create a group type with income distribution
+    from models.database.group_type import GroupType
+
+    group_type = GroupType(
+        name="Test Group Type",
+        description="A test group type",
+        income_items_list=[],
+        income_items_discount=0.5,
+        income_substances=False,
+        income_substance_cost=0,
+        income_medicaments=False,
+        income_medicament_cost=0,
+        income_distribution_dict={
+            "items": 0,
+            "exotics": 0,
+            "medicaments": 0,
+            "chits": 100,
+        },  # All to chits
+    )
+    db.session.add(group_type)
+    db.session.commit()
+
+    # Create a group
+    from models.tools.group import Group
+
+    group = Group(
+        name="Test Group",
+        group_type_id=group_type.id,
+        bank_account=0,
+    )
+    db.session.add(group)
+    db.session.commit()
+
+    # Add character to group
+    character.group_id = group.id
+    db.session.commit()
+
+    # Create an event ticket for the character
+    ticket = EventTicket(
+        event_id=event.id,
+        character_id=character.id,
+        user_id=user.id,
+        ticket_type="adult",
+        meal_ticket=False,
+        requires_bunk=False,
+        price_paid=50.00,
+        assigned_by_id=admin_user.id,
+        assigned_at=datetime.now(),
+    )
+    db.session.add(ticket)
+    db.session.commit()
+
+    with test_client.session_transaction() as session:
+        session["_user_id"] = admin_user.id
+        session["_fresh"] = True
+
+    # Generate the group pack
+    response = test_client.post(f"/events/{event.id}/packs/group/{group.id}/generate")
+    assert response.status_code == 200
+
+    data = response.get_json()
+    assert data["success"] is True
+    assert "pack" in data
+
+    # Check that energy chits are calculated correctly
+    # Expected: 30 (base) + 30 (species ability) = 60 chits
+    # Since distribution is 100% to chits, all 60 should go to energy chits
+    pack_data = data["pack"]
+    assert (
+        pack_data["energy_chits"] == 60
+    ), f"Expected 60 energy chits, got {pack_data['energy_chits']}"
