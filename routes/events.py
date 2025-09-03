@@ -633,7 +633,7 @@ def remove_ticket(event_id, ticket_id):
 
 @events_bp.route("/<int:event_id>/attendees", methods=["GET"])
 @login_required
-@permission_required(permissions=["event.manage_attendees"])
+@permission_required(permissions=["event.view_attendees"])
 def view_attendees(event_id):
     event = Event.query.get_or_404(event_id)
     tickets = (
@@ -651,7 +651,7 @@ def view_attendees(event_id):
 
 @events_bp.route("/<int:event_id>/packs", methods=["GET"])
 @login_required
-@permission_required(permissions=["event.manage_attendees"])
+@permission_required(permissions=["event.view_packs"])
 def view_packs(event_id):
     """View packs for an event."""
     event = Event.query.get_or_404(event_id)
