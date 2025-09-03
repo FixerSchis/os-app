@@ -2,7 +2,7 @@ from models.database.group_type import GroupType
 from models.tools.group import Group, GroupInvite
 
 
-def test_new_group_with_invite(db, character):
+def test_new_group_with_invite(db, character, faction):
     """Test creation of a new Group with an invite."""
     # Create a group type first
     group_type = GroupType(
@@ -20,7 +20,9 @@ def test_new_group_with_invite(db, character):
     db.session.commit()
 
     group_name = "Test Group"
-    group = Group(name=group_name, group_type_id=group_type.id, bank_account=1000)
+    group = Group(
+        name=group_name, group_type_id=group_type.id, bank_account=1000, faction_id=faction.id
+    )
 
     db.session.add(group)
     db.session.commit()
@@ -48,7 +50,7 @@ def test_new_group_with_invite(db, character):
     assert retrieved_invite.group_id == group.id
 
 
-def test_group_activation_deactivation(db, character):
+def test_group_activation_deactivation(db, character, faction):
     """Test group activation and deactivation functionality."""
     # Create a group type first
     group_type = GroupType(
@@ -65,7 +67,9 @@ def test_group_activation_deactivation(db, character):
     db.session.add(group_type)
     db.session.commit()
 
-    group = Group(name="Test Group", group_type_id=group_type.id, bank_account=1000)
+    group = Group(
+        name="Test Group", group_type_id=group_type.id, bank_account=1000, faction_id=faction.id
+    )
     db.session.add(group)
     db.session.commit()
 

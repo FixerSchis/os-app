@@ -76,6 +76,9 @@ def initialize_test_permissions(db_session):
         ("event.create", "Create events", "event"),
         ("event.edit", "Edit events", "event"),
         ("event.delete", "Delete events", "event"),
+        ("event.manage", "Manage event assignments and attendees", "event"),
+        ("event.view_attendees", "View event attendees", "event"),
+        ("event.view_packs", "View event packs", "event"),
         ("event.assign_tickets", "Assign event tickets", "event"),
         ("event.manage_attendees", "Manage event attendees", "event"),
         ("user.view", "View user list", "user"),
@@ -197,6 +200,9 @@ def assign_role_to_user(user, role_name, db_session):
                 "event.create",
                 "event.edit",
                 "event.delete",
+                "event.manage",
+                "event.view_attendees",
+                "event.view_packs",
                 "event.assign_tickets",
                 "event.manage_attendees",
                 "user.view",
@@ -513,19 +519,21 @@ def npc_user_with_chars(db_session, npc_user, species, group):
 
 
 @pytest.fixture(scope="function")
-def npc_user_with_chars_no_groups(db_session, npc_user, species):
+def npc_user_with_chars_no_groups(db_session, npc_user, species, faction):
     """Fixture for creating an NPC user with multiple active characters without groups."""
     char1 = Character(
         name="NPC Char 1",
         user_id=npc_user.id,
         status=CharacterStatus.ACTIVE.value,
         species_id=species.id,
+        faction_id=faction.id,
     )
     char2 = Character(
         name="NPC Char 2",
         user_id=npc_user.id,
         status=CharacterStatus.ACTIVE.value,
         species_id=species.id,
+        faction_id=faction.id,
     )
     db_session.add_all([char1, char2])
     db_session.commit()
@@ -1015,13 +1023,57 @@ def group_type(db_session):
     return gt
 
 
+def create_test_group(
+    db_session, group_type, name=None, bank_account=0, is_active=True, faction=None
+):
+    """Helper function to create a test group with a faction."""
+    unique_id = uuid.uuid4().hex
+
+    if faction is None:
+        # Create a test faction
+        from models.database.faction import Faction
+
+        faction = Faction(
+            name=f"Test Faction {unique_id}",
+            wiki_slug=f"test-faction-{unique_id}",
+            allow_player_characters=True,
+        )
+        db_session.add(faction)
+        db_session.flush()  # Get the faction ID
+
+    group_name = name or f"Test Group {unique_id}"
+    g = Group(
+        name=group_name,
+        group_type_id=group_type.id,
+        faction_id=faction.id,
+        bank_account=bank_account,
+        is_active=is_active,
+    )
+    db_session.add(g)
+    db_session.flush()  # Get the group ID
+    return g
+
+
 @pytest.fixture(scope="function")
 def group(db_session, group_type):
     """Fixture for creating a basic group."""
     unique_id = uuid.uuid4().hex
+
+    # Create a test faction
+    from models.database.faction import Faction
+
+    faction = Faction(
+        name=f"Test Faction {unique_id}",
+        wiki_slug=f"test-faction-{unique_id}",
+        allow_player_characters=True,
+    )
+    db_session.add(faction)
+    db_session.flush()  # Get the faction ID
+
     g = Group(
         name=f"Test Group {unique_id}",
         group_type_id=group_type.id,
+        faction_id=faction.id,
         bank_account=500,
     )
     db_session.add(g)

@@ -1,6 +1,7 @@
 from flask import Blueprint, abort, flash, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
+from models.database.faction import Faction
 from models.database.group_type import GroupType
 from models.enums import CharacterAuditAction, CharacterStatus, GroupAuditAction
 from models.extensions import db
@@ -117,6 +118,7 @@ def create_group_post():
     group = Group(
         name=name,
         group_type_id=type,
+        faction_id=active_character.faction_id,  # Set faction to character's faction
         bank_account=0,
         background=background,
         objective=objective,
@@ -298,6 +300,19 @@ def invite_to_group(group_id):
             url_for("groups.group_list", admin_view=admin_view, character_id=redirect_character_id)
         )
 
+    # Check faction compatibility (only for regular users, not admins)
+    if not current_user.has_permission("group.edit"):
+        if character.faction_id != group.faction_id:
+            flash(
+                f"Character must be from the same faction as the group ({group.faction.name})",
+                "error",
+            )
+            return redirect(
+                url_for(
+                    "groups.group_list", admin_view=admin_view, character_id=redirect_character_id
+                )
+            )
+
     # Check if invite already exists
     existing_invite = GroupInvite.query.filter_by(
         group_id=group.id, character_id=character.id
@@ -344,6 +359,18 @@ def respond_to_invite_post(invite_id):
 
     action = request.form.get("action")
     if action == "accept":
+        # Check faction compatibility (only for regular users, not admins)
+        if not current_user.has_permission("group.edit"):
+            if character.faction_id != invite.group.faction_id:
+                flash(
+                    f"Character must be from the same faction as the group "
+                    f"({invite.group.faction.name})",
+                    "error",
+                )
+                return redirect(
+                    url_for("groups.group_list", admin_view=admin_view, character_id=character_id)
+                )
+
         character.group_id = invite.group_id
 
         # Create audit log for member joining (group audit)
@@ -540,24 +567,31 @@ def create_group_admin():
         return render_template(
             "groups/admin_edit.html",
             group_types=GroupType.query.all(),
+            factions=Faction.query.all(),
             available_characters=available_characters,
         )
 
     name = request.form.get("name")
     group_type_id = request.form.get("group_type_id")
+    faction_id = request.form.get("faction_id")
     bank_account = request.form.get("bank_account")
     background = request.form.get("background", "")
     objective = request.form.get("objective", "")
     goals = request.form.get("goals", "")
     character_id = request.form.get("character_id")
 
-    if not name or not group_type_id:
-        flash("Name and group type are required", "error")
+    if not name or not group_type_id or not faction_id:
+        flash("Name, group type, and faction are required", "error")
         return redirect(url_for("groups.create_group_admin"))
 
     group_type = GroupType.query.get(group_type_id)
     if not group_type:
         flash("Invalid group type", "error")
+        return redirect(url_for("groups.create_group_admin"))
+
+    faction = Faction.query.get(faction_id)
+    if not faction:
+        flash("Invalid faction", "error")
         return redirect(url_for("groups.create_group_admin"))
 
     try:
@@ -569,6 +603,7 @@ def create_group_admin():
     group = Group(
         name=name,
         group_type_id=group_type.id,
+        faction_id=faction.id,
         bank_account=bank_account_int,
         background=background,
         objective=objective,
@@ -623,6 +658,7 @@ def edit_group_admin(group_id):
         "groups/admin_edit.html",
         group=group,
         group_types=GroupType.query.all(),
+        factions=Faction.query.all(),
         available_characters=available_characters,
     )
 
@@ -636,6 +672,7 @@ def edit_group_admin_post(group_id):
 
     name = request.form.get("name")
     type = request.form.get("group_type_id")
+    faction_id = request.form.get("faction_id")
     bank_account = request.form.get("bank_account")
     background = request.form.get("background", "")
     objective = request.form.get("objective", "")
@@ -657,6 +694,14 @@ def edit_group_admin_post(group_id):
             url_for("groups.edit_group_admin", group_id=group.id, group_types=group_types)
         )
 
+    # Validate faction
+    faction = Faction.query.get(faction_id)
+    if not faction:
+        flash("Invalid faction", "error")
+        return redirect(
+            url_for("groups.edit_group_admin", group_id=group.id, group_types=group_types)
+        )
+
     try:
         bank_account_int = int(bank_account) if bank_account else 0
     except ValueError:
@@ -674,6 +719,15 @@ def edit_group_admin_post(group_id):
     if current_user.has_permission("group.edit") and type and group.group_type_id != int(type):
         changes.append(f"Type changed from '{group.group_type.name}' to '{group_type.name}'")
         group.group_type_id = int(type)
+
+    # Only allow faction changes for admins
+    if (
+        current_user.has_permission("group.edit")
+        and faction_id
+        and group.faction_id != int(faction_id)
+    ):
+        changes.append(f"Faction changed from '{group.faction.name}' to '{faction.name}'")
+        group.faction_id = int(faction_id)
 
     # Handle bank account changes using centralized methods
     if current_user.has_permission("group.edit"):
@@ -965,6 +1019,17 @@ def request_join_group(group_id):
             url_for("groups.group_list", admin_view=admin_view, character_id=character_id)
         )
 
+    # Check faction compatibility (only for regular users, not admins)
+    if not current_user.has_permission("group.edit"):
+        if character.faction_id != group.faction_id:
+            flash(
+                f"Character must be from the same faction as the group ({group.faction.name})",
+                "error",
+            )
+            return redirect(
+                url_for("groups.group_list", admin_view=admin_view, character_id=character_id)
+            )
+
     # Check if request already exists
     existing_request = GroupJoinRequest.query.filter_by(
         group_id=group_id, character_id=character_id
@@ -1052,6 +1117,15 @@ def respond_to_join_request(group_id, request_id):
         return redirect(url_for("groups.view_join_requests", group_id=group_id))
 
     if action == "approve":
+        # Check faction compatibility (only for regular users, not admins)
+        if not current_user.has_permission("group.edit"):
+            if join_request.character.faction_id != group.faction_id:
+                flash(
+                    f"Character must be from the same faction as the group ({group.faction.name})",
+                    "error",
+                )
+                return redirect(url_for("groups.view_join_requests", group_id=group_id))
+
         join_request.approve(current_user.id)
         flash("Join request approved", "success")
     else:

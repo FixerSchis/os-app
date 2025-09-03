@@ -8,7 +8,7 @@ from models.tools.pack import Pack
 class TestGroupPack:
     """Test the group pack property functionality."""
 
-    def test_group_pack_default(self, db):
+    def test_group_pack_default(self, db, faction):
         """Test group pack property with default (empty) pack."""
         # Create a group type first
         group_type = GroupType(
@@ -26,7 +26,9 @@ class TestGroupPack:
         db.session.commit()
 
         # Create a group
-        group = Group(name="Test Group", group_type_id=group_type.id, bank_account=500)
+        group = Group(
+            name="Test Group", group_type_id=group_type.id, bank_account=500, faction_id=faction.id
+        )
         db.session.add(group)
         db.session.commit()
 
@@ -41,7 +43,7 @@ class TestGroupPack:
         assert pack.completion == {}
         assert pack.is_generated is False
 
-    def test_group_pack_set_and_get(self, db):
+    def test_group_pack_set_and_get(self, db, faction):
         """Test setting and getting group pack."""
         # Create a group type first
         group_type = GroupType(
@@ -59,7 +61,9 @@ class TestGroupPack:
         db.session.commit()
 
         # Create a group
-        group = Group(name="Test Group", group_type_id=group_type.id, bank_account=500)
+        group = Group(
+            name="Test Group", group_type_id=group_type.id, bank_account=500, faction_id=faction.id
+        )
         db.session.add(group)
         db.session.commit()
 
@@ -88,7 +92,7 @@ class TestGroupPack:
         assert retrieved_pack.completion == {"item_1": True, "energy_chits": True}
         assert retrieved_pack.is_generated is True
 
-    def test_group_pack_json_serialization(self, db):
+    def test_group_pack_json_serialization(self, db, faction):
         """Test that pack is properly serialized to JSON in database."""
         # Create a group type first
         group_type = GroupType(
@@ -106,7 +110,9 @@ class TestGroupPack:
         db.session.commit()
 
         # Create a group
-        group = Group(name="Test Group", group_type_id=group_type.id, bank_account=500)
+        group = Group(
+            name="Test Group", group_type_id=group_type.id, bank_account=500, faction_id=faction.id
+        )
         db.session.add(group)
         db.session.commit()
 
@@ -130,7 +136,7 @@ class TestGroupPack:
         # Verify pack_complete is set correctly
         assert group.pack_complete == test_pack.is_complete()
 
-    def test_group_pack_from_json(self, db):
+    def test_group_pack_from_json(self, db, faction):
         """Test creating pack from JSON string."""
         # Create a group type first
         group_type = GroupType(
@@ -148,7 +154,9 @@ class TestGroupPack:
         db.session.commit()
 
         # Create a group
-        group = Group(name="Test Group", group_type_id=group_type.id, bank_account=500)
+        group = Group(
+            name="Test Group", group_type_id=group_type.id, bank_account=500, faction_id=faction.id
+        )
         db.session.add(group)
         db.session.commit()
 
@@ -170,7 +178,7 @@ class TestGroupPack:
         assert pack.completion == {"item_1": True}
         assert pack.is_generated is True
 
-    def test_group_pack_none_json(self, db):
+    def test_group_pack_none_json(self, db, faction):
         """Test handling of None JSON string."""
         # Create a group type first
         group_type = GroupType(
@@ -188,7 +196,9 @@ class TestGroupPack:
         db.session.commit()
 
         # Create a group
-        group = Group(name="Test Group", group_type_id=group_type.id, bank_account=500)
+        group = Group(
+            name="Test Group", group_type_id=group_type.id, bank_account=500, faction_id=faction.id
+        )
         db.session.add(group)
         db.session.commit()
 
@@ -205,7 +215,7 @@ class TestGroupPack:
         assert pack.completion == {}
         assert pack.is_generated is False
 
-    def test_group_pack_invalid_json(self, db):
+    def test_group_pack_invalid_json(self, db, faction):
         """Test handling of invalid JSON string."""
         # Create a group type first
         group_type = GroupType(
@@ -223,7 +233,9 @@ class TestGroupPack:
         db.session.commit()
 
         # Create a group
-        group = Group(name="Test Group", group_type_id=group_type.id, bank_account=500)
+        group = Group(
+            name="Test Group", group_type_id=group_type.id, bank_account=500, faction_id=faction.id
+        )
         db.session.add(group)
         db.session.commit()
 

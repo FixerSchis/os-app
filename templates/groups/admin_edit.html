@@ -35,6 +35,17 @@
                         </select>
                     </div>
 
+                    <div class="form-group">
+                        <label for="faction_id">Faction</label>
+                        <select class="form-control" id="faction_id" name="faction_id" required title="Select faction">
+                            {% for faction in factions %}
+                            <option value="{{ faction.id }}" {% if group and faction.id == group.faction_id %}selected{% endif %}>
+                                {{ faction.name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
                     <div class="form-group mb-3">
                         <label for="bank_account">Bank Account</label>
                         <input type="text" class="form-control" id="bank_account" name="bank_account" value="{{ group.bank_account if group else '0' }}">
