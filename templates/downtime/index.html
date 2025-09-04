@@ -61,18 +61,22 @@
                                 {% if status.value in packs_by_status %}
                                     {% for pack in packs_by_status[status.value] %}
                                         <tr class="status-row" data-status="{{ status.value }}" {% if status.value != default_status %}style="display: none;"{% endif %}>
-                                            <td>{{ pack.character.name }}</td>
+                                            <td>{{ pack.character.name if pack.character else 'Character not found' }}</td>
                                             <td>{{ DowntimeTaskStatus.descriptions()[status.value] }}</td>
                                             <td>
-                                                {% if status == DowntimeTaskStatus.ENTER_PACK %}
-                                                    <a href="{{ url_for('downtime.enter_pack_contents', period_id=active_period.id, character_id=pack.character.id) }}"
-                                                       class="btn btn-primary btn-sm">Edit Pack</a>
-                                                {% elif status == DowntimeTaskStatus.ENTER_DOWNTIME %}
-                                                    <a href="{{ url_for('downtime.enter_downtime', period_id=active_period.id, character_id=pack.character.id) }}"
-                                                       class="btn btn-primary btn-sm">Enter Downtime</a>
-                                                {% elif status == DowntimeTaskStatus.MANUAL_REVIEW %}
-                                                    <a href="{{ url_for('downtime.manual_review', period_id=active_period.id, character_id=pack.character.id) }}"
-                                                       class="btn btn-primary btn-sm">Review</a>
+                                                {% if pack.character %}
+                                                    {% if status == DowntimeTaskStatus.ENTER_PACK %}
+                                                        <a href="{{ url_for('downtime.enter_pack_contents', period_id=active_period.id, character_id=pack.character.id) }}"
+                                                           class="btn btn-primary btn-sm">Edit Pack</a>
+                                                    {% elif status == DowntimeTaskStatus.ENTER_DOWNTIME %}
+                                                        <a href="{{ url_for('downtime.enter_downtime', period_id=active_period.id, character_id=pack.character.id) }}"
+                                                           class="btn btn-primary btn-sm">Enter Downtime</a>
+                                                    {% elif status == DowntimeTaskStatus.MANUAL_REVIEW %}
+                                                        <a href="{{ url_for('downtime.manual_review', period_id=active_period.id, character_id=pack.character.id) }}"
+                                                           class="btn btn-primary btn-sm">Review</a>
+                                                    {% endif %}
+                                                {% else %}
+                                                    <span class="text-muted">Character not found</span>
                                                 {% endif %}
                                             </td>
                                         </tr>
@@ -101,11 +105,15 @@
                         <tbody>
                             {% for pack in user_packs %}
                                 <tr>
-                                    <td>{{ pack.character.name }}</td>
+                                    <td>{{ pack.character.name if pack.character else 'Character not found' }}</td>
                                     <td>{{ DowntimeTaskStatus.descriptions()[pack.status.value] }}</td>
                                     <td>
-                                        <a href="{{ url_for('downtime.enter_downtime', period_id=active_period.id, character_id=pack.character.id) }}"
-                                           class="btn btn-primary btn-sm">Enter Downtime</a>
+                                        {% if pack.character %}
+                                            <a href="{{ url_for('downtime.enter_downtime', period_id=active_period.id, character_id=pack.character.id) }}"
+                                               class="btn btn-primary btn-sm">Enter Downtime</a>
+                                        {% else %}
+                                            <span class="text-muted">Character not found</span>
+                                        {% endif %}
                                     </td>
                                 </tr>
                             {% endfor %}

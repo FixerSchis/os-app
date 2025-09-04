@@ -44,6 +44,7 @@ from routes.database.samples import samples_bp  # noqa: E402
 from routes.database.skills import skills_bp  # noqa: E402
 from routes.database.species import species_bp  # noqa: E402
 from routes.events import events_bp  # noqa: E402
+from routes.notifications import notifications_bp  # noqa: E402
 from routes.settings import settings_bp  # noqa: E402
 from routes.tools.banking import banking_bp  # noqa: E402
 from routes.tools.character_backgrounds import character_backgrounds_bp  # noqa: E402
@@ -216,6 +217,7 @@ def create_app(config_class=None):
     app.register_blueprint(database_management_bp, url_prefix="/tools")
     app.register_blueprint(tools_items_bp, url_prefix="/tools/items")
     app.register_blueprint(reputation_briefings_bp, url_prefix="/tools/reputation-briefings")
+    app.register_blueprint(notifications_bp, url_prefix="")
     app.register_blueprint(wiki_bp, url_prefix="/wiki")
 
     app.register_blueprint(characters_bp, url_prefix="/characters")
@@ -251,10 +253,22 @@ def create_app(config_class=None):
         def has_research_projects():
             return current_user.is_authenticated and current_user.has_permission("research.create")
 
+        def has_notifications():
+            from utils.notifications import has_notifications
+
+            return has_notifications()
+
+        def get_notifications():
+            from utils.notifications import get_user_notifications
+
+            return get_user_notifications()
+
         return dict(
             has_active_character=has_active_character,
             has_enter_downtime_packs=has_enter_downtime_packs,
             has_research_projects=has_research_projects,
+            has_notifications=has_notifications,
+            get_notifications=get_notifications,
             # Permission helpers
             has_permission=has_permission,
             has_any_permission=has_any_permission,
