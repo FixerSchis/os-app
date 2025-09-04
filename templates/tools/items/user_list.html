@@ -23,7 +23,6 @@
                                 <th>Type</th>
                                 <th>Expiry</th>
                                 <th>Assigned</th>
-                                <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -33,25 +32,17 @@
                                 <td><code>{{ character_item.item.full_code }}</code></td>
                                 <td>{{ character_item.item.blueprint.item_type.name }}</td>
                                 <td>
-                                                                                {% if character_item.item.expiry is not none %}
-                                                {% if character_item.item.is_expired() %}
-                                                    <span class="badge bg-danger">Expired (E{{ character_item.item.expiry }})</span>
-                                                {% else %}
-                                                    <span class="badge bg-success">E{{ character_item.item.expiry }}</span>
-                                                {% endif %}
-                                            {% else %}
-                                                <span class="text-muted">E#</span>
-                                            {% endif %}
+                                    {% if character_item.item.expiry is not none %}
+                                        {% if character_item.item.is_expired() %}
+                                            <span class="badge bg-danger">Expired (E{{ character_item.item.expiry }})</span>
+                                        {% else %}
+                                            <span class="badge bg-success">E{{ character_item.item.expiry }}</span>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="text-muted">E#</span>
+                                    {% endif %}
                                 </td>
                                 <td>{{ character_item.assigned_at.strftime('%Y-%m-%d %H:%M') }}</td>
-                                <td>
-                                    <input type="checkbox" class="form-check-input item-checkbox"
-                                           data-character-id="{{ data.character.id }}"
-                                           data-character-item-id="{{ character_item.id }}"
-                                           data-item-name="{{ character_item.item.blueprint.name }}"
-                                           data-item-code="{{ character_item.item.full_code }}"
-                                           title="Select item for transfer">
-                                </td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -65,6 +56,7 @@
     {% endfor %}
 
     <!-- Transfer Request Form -->
+    {% if active_character %}
     <div class="card">
         <div class="card-header">
             <h2>Transfer Items</h2>
@@ -74,13 +66,11 @@
                 <div class="row">
                     <div class="col-md-6">
                         <div class="mb-3">
-                            <label for="requesting_character_id" class="form-label">From Character</label>
-                            <select class="form-select select2-single" id="requesting_character_id" name="requesting_character_id" required title="Select character to transfer items from">
-                                <option value="">Select character...</option>
-                                {% for character_id, data in character_inventories.items() %}
-                                <option value="{{ data.character.id }}">{{ data.character.name }}</option>
-                                {% endfor %}
-                            </select>
+                            <label class="form-label">From Character</label>
+                            <div class="form-control-plaintext">
+                                <strong>{{ active_character.name }}</strong>
+                                <small class="text-muted d-block">Your active character</small>
+                            </div>
                         </div>
                     </div>
                     <div class="col-md-6">
@@ -97,10 +87,11 @@
                 </div>
 
                 <div class="mb-3">
-                    <label class="form-label">Selected Items</label>
-                    <div id="selected-items-display" class="border rounded p-3 bg-light">
-                        <p class="text-muted mb-0">No items selected</p>
-                    </div>
+                    <label for="item_ids" class="form-label">Items to Transfer</label>
+                    <select class="form-select select2-multiple" id="item_ids" name="item_ids[]" multiple required title="Select items to transfer">
+                        <!-- Items will be loaded via AJAX -->
+                    </select>
+                    <div class="form-text">Search and select items from {{ active_character.name }}'s inventory</div>
                 </div>
 
                 <div class="mb-3">
@@ -115,6 +106,17 @@
             </form>
         </div>
     </div>
+    {% else %}
+    <div class="card">
+        <div class="card-body">
+            <div class="alert alert-warning">
+                <h4>No Active Character</h4>
+                <p>You need to have an active character to transfer items. Please set an active character in your character list.</p>
+                <a href="{{ url_for('characters.character_list') }}" class="btn btn-primary">Go to Characters</a>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 
     <!-- My Transfer Requests -->
     {% if user_requests %}
@@ -126,14 +128,14 @@
             <div class="table-responsive">
                 <table class="table table-striped">
                     <thead>
-                                                    <tr>
-                                <th>From</th>
-                                <th>To</th>
-                                <th>Items</th>
-                                <th>Status</th>
-                                <th>Requested</th>
-                                <th>Notes</th>
-                            </tr>
+                        <tr>
+                            <th>From</th>
+                            <th>To</th>
+                            <th>Items</th>
+                            <th>Status</th>
+                            <th>Requested</th>
+                            <th>Notes</th>
+                        </tr>
                     </thead>
                     <tbody>
                         {% for request in user_requests %}
@@ -174,86 +176,70 @@
 {% endblock %}
 
 {% block scripts %}
-
-
 <script>
-// Initialize Select2 for character selection
 $(document).ready(function() {
-    $('.select2-single').select2({
-        placeholder: 'Select an option...',
+    // Initialize Select2 for character selection
+    $('#target_character_id').select2({
+        placeholder: 'Select character to transfer to...',
         allowClear: true,
         width: '100%'
     });
-});
 
-let selectedItems = [];
+    // Initialize Select2 for item selection
+    $('#item_ids').select2({
+        placeholder: 'Search and select items...',
+        allowClear: true,
+        width: '100%',
+        ajax: {
+            url: '{{ url_for("tools_items.api_active_character_items") }}',
+            dataType: 'json',
+            delay: 250,
+            data: function (params) {
+                return {
+                    q: params.term,
+                    page: params.page
+                };
+            },
+            processResults: function (data, params) {
+                params.page = params.page || 1;
+                return {
+                    results: data.results,
+                    pagination: {
+                        more: (params.page * 30) < data.total_count
+                    }
+                };
+            },
+            cache: true
+        },
+        minimumInputLength: 0
+    });
 
-function updateSelectedItems() {
-    const checkboxes = document.querySelectorAll('.item-checkbox:checked');
-    selectedItems = Array.from(checkboxes).map(cb => ({
-        id: cb.dataset.characterItemId,
-        name: cb.dataset.itemName,
-        code: cb.dataset.itemCode
-    }));
-
-    const display = document.getElementById('selected-items-display');
-    const submitBtn = document.getElementById('submit-transfer');
-
-    if (selectedItems.length > 0) {
-        display.innerHTML = selectedItems.map(item =>
-            `<span class="badge bg-primary me-2">${item.name} (${item.code})</span>`
-        ).join('');
-        submitBtn.disabled = false;
-    } else {
-        display.innerHTML = '<p class="text-muted mb-0">No items selected</p>';
-        submitBtn.disabled = true;
+    // Enable/disable submit button based on selections
+    function updateSubmitButton() {
+        const hasTarget = $('#target_character_id').val();
+        const hasItems = $('#item_ids').val() && $('#item_ids').val().length > 0;
+        $('#submit-transfer').prop('disabled', !(hasTarget && hasItems));
     }
-}
 
-function updateCharacterItems() {
-    const requestingCharacterId = document.getElementById('requesting_character_id').value;
-    const checkboxes = document.querySelectorAll('.item-checkbox');
+    // Update submit button when selections change
+    $('#target_character_id, #item_ids').on('change', updateSubmitButton);
 
-    checkboxes.forEach(cb => {
-        if (cb.dataset.characterId === requestingCharacterId) {
-            cb.disabled = false;
-            cb.parentElement.parentElement.style.opacity = '1';
-        } else {
-            cb.checked = false;
-            cb.disabled = true;
-            cb.parentElement.parentElement.style.opacity = '0.5';
+    // Form submission validation
+    $('form').on('submit', function(e) {
+        const targetCharacter = $('#target_character_id').val();
+        const selectedItems = $('#item_ids').val();
+
+        if (!targetCharacter) {
+            e.preventDefault();
+            alert('Please select a character to transfer items to.');
+            return;
         }
-    });
 
-    updateSelectedItems();
-}
-
-// Event listeners
-document.addEventListener('DOMContentLoaded', function() {
-    // Character selection change
-    document.getElementById('requesting_character_id').addEventListener('change', updateCharacterItems);
-
-    // Checkbox changes
-    document.querySelectorAll('.item-checkbox').forEach(cb => {
-        cb.addEventListener('change', updateSelectedItems);
-    });
-
-    // Form submission
-    document.querySelector('form').addEventListener('submit', function(e) {
-        if (selectedItems.length === 0) {
+        if (!selectedItems || selectedItems.length === 0) {
             e.preventDefault();
             alert('Please select at least one item to transfer.');
             return;
         }
-
-        // Add selected items to form
-        selectedItems.forEach(item => {
-            const input = document.createElement('input');
-            input.type = 'hidden';
-            input.name = 'item_ids[]';
-            input.value = item.id;
-            this.appendChild(input);
-        });
     });
 });
 </script>

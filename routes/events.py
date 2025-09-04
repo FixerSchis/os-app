@@ -1470,8 +1470,18 @@ def get_events():
         from models.tools.downtime import DowntimePeriod
 
         if has_downtime:
+            # Include events that have downtime periods
             query = query.filter(
                 Event.id.in_(
+                    db.session.query(DowntimePeriod.event_id).filter(
+                        DowntimePeriod.event_id.isnot(None)
+                    )
+                )
+            )
+        else:
+            # Exclude events that have downtime periods
+            query = query.filter(
+                ~Event.id.in_(
                     db.session.query(DowntimePeriod.event_id).filter(
                         DowntimePeriod.event_id.isnot(None)
                     )

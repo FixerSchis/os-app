@@ -479,6 +479,50 @@ class TestItemsRoutes:
         assert len(data["results"]) > 0
         assert "Test Character" in data["results"][0]["text"]
 
+    def test_api_active_character_items(self, test_client, regular_user, db_session):
+        """Test the API active character items endpoint."""
+        # Create a character for the user
+        character = Character(
+            user_id=regular_user.id,
+            character_id=1,
+            name="Test Character",
+            status=CharacterStatus.ACTIVE.value,
+        )
+        db_session.add(character)
+        db_session.flush()
+
+        # Set as active character
+        regular_user.active_character_id = character.id
+        db_session.commit()
+
+        with test_client.session_transaction() as sess:
+            sess["_user_id"] = regular_user.id
+            sess["_fresh"] = True
+
+        response = test_client.get("/tools/items/api/active-character-items")
+        assert response.status_code == 200
+        assert response.content_type == "application/json"
+
+        data = response.get_json()
+        assert "results" in data
+        assert isinstance(data["results"], list)
+
+    def test_api_active_character_items_no_active_character(
+        self, test_client, regular_user, db_session
+    ):
+        """Test the API active character items endpoint when user has no active character."""
+        with test_client.session_transaction() as sess:
+            sess["_user_id"] = regular_user.id
+            sess["_fresh"] = True
+
+        response = test_client.get("/tools/items/api/active-character-items")
+        assert response.status_code == 200
+        assert response.content_type == "application/json"
+
+        data = response.get_json()
+        assert "results" in data
+        assert data["results"] == []
+
 
 class TestCharacterBackgroundAuditLogging:
     """Test character background audit logging functionality."""

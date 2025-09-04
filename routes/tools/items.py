@@ -99,6 +99,9 @@ def _user_items_view():
         flash("You need an active character to access the items page.", "error")
         return redirect(url_for("characters.character_list"))
 
+    # Get the user's active character for transfer form
+    active_character = current_user.get_active_character()
+
     # Get inventory for each character
     character_inventories = {}
     for character in user_characters:
@@ -131,6 +134,7 @@ def _user_items_view():
         character_inventories=character_inventories,
         user_requests=user_requests,
         all_characters=all_characters,
+        active_character=active_character,
         ItemTransferStatus=ItemTransferStatus,
     )
 
@@ -346,22 +350,33 @@ def remove_item_from_character(character_id):
 def create_transfer_request():
     """Create a new item transfer request."""
 
-    requesting_character_id = request.form.get("requesting_character_id", type=int)
+    # For regular users, automatically use their active character
+    if current_user.has_permission("character.edit_all"):
+        # Admin users can still select requesting character
+        requesting_character_id = request.form.get("requesting_character_id", type=int)
+        if not requesting_character_id:
+            flash("Please select a requesting character.", "error")
+            return redirect(url_for("tools_items.items_list"))
+
+        # Verify the requesting character exists
+        requesting_character = Character.query.get(requesting_character_id)
+        if not requesting_character:
+            flash("Invalid requesting character.", "error")
+            return redirect(url_for("tools_items.items_list"))
+    else:
+        # Regular users can only transfer from their active character
+        requesting_character = current_user.get_active_character()
+        if not requesting_character:
+            flash("You need an active character to transfer items.", "error")
+            return redirect(url_for("tools_items.items_list"))
+        requesting_character_id = requesting_character.id
+
     target_character_id = request.form.get("target_character_id", type=int)
     item_ids = request.form.getlist("item_ids[]")
     notes = request.form.get("notes", "").strip()
 
-    if not requesting_character_id or not target_character_id or not item_ids:
+    if not target_character_id or not item_ids:
         flash("Please fill in all required fields.", "error")
-        return redirect(url_for("tools_items.items_list"))
-
-    # Verify the requesting character belongs to the current user
-    requesting_character = Character.query.filter_by(
-        id=requesting_character_id, user_id=current_user.id
-    ).first()
-
-    if not requesting_character:
-        flash("Invalid requesting character.", "error")
         return redirect(url_for("tools_items.items_list"))
 
     # Verify the target character exists and is active
@@ -503,5 +518,47 @@ def api_characters():
     for character in characters:
         player_ref = f"{character.user_id}.{character.character_id}"
         results.append({"id": character.id, "text": f"{character.name} ({player_ref})"})
+
+    return jsonify({"results": results})
+
+
+@items_bp.route("/api/active-character-items")
+@login_required
+@email_verified_required
+def api_active_character_items():
+    """API endpoint for getting active character's items (for Select2)."""
+
+    active_character = current_user.get_active_character()
+
+    if not active_character:
+        return jsonify({"results": []})
+
+    q = request.args.get("q", "").strip()
+
+    # Build query for character's items
+    query = (
+        CharacterItem.query.filter_by(character_id=active_character.id)
+        .join(Item)
+        .join(ItemBlueprint)
+    )
+
+    if q:
+        # Search by item name or full code
+        query = query.filter(
+            or_(ItemBlueprint.name.ilike(f"%{q}%"), Item.full_code.ilike(f"%{q}%"))
+        )
+
+    character_items = query.order_by(ItemBlueprint.name).limit(50).all()
+
+    results = []
+    for character_item in character_items:
+        results.append(
+            {
+                "id": character_item.id,
+                "text": f"{character_item.item.blueprint.name} ({character_item.item.full_code})",
+                "item_name": character_item.item.blueprint.name,
+                "item_code": character_item.item.full_code,
+            }
+        )
 
     return jsonify({"results": results})

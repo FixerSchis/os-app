@@ -127,7 +127,7 @@ def index():
 
     # For downtime team users
     if current_user.has_permission("downtime.manage"):
-        # Get all packs and group them by status
+        # Get all packs with character relationship loaded and group them by status
         packs_by_status = {}
         for pack in active_period.packs:
             if pack.status.value not in packs_by_status:
@@ -224,13 +224,15 @@ def start_downtime():
         pack.completion.clear()
         group.pack = pack
 
-    for character in EventTicket.query.filter_by(event_id=event_id).all():
-        pack = DowntimePack(
-            period_id=period.id,
-            character_id=character.id,
-            status=DowntimeTaskStatus.ENTER_PACK,
-        )
-        db.session.add(pack)
+    # Create downtime packs for all characters with tickets for this event
+    for ticket in EventTicket.query.filter_by(event_id=event_id).all():
+        if ticket.character_id:  # Only create packs for tickets with assigned characters
+            pack = DowntimePack(
+                period_id=period.id,
+                character_id=ticket.character_id,
+                status=DowntimeTaskStatus.ENTER_PACK,
+            )
+            db.session.add(pack)
 
     db.session.commit()
     flash("New downtime period started successfully.", "success")

@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/components/table.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/components/badges.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/components/cookie-consent.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/notifications.css') }}">
     <link href="{{ url_for('static', filename='external/css/select2.min.css') }}" rel="stylesheet" />
     <link href="{{ url_for('static', filename='external/css/select2-bootstrap-5-theme.min.css') }}" rel="stylesheet" />
     <link rel="stylesheet" href="{{ url_for('static', filename='external/css/font-awesome.min.css') }}">
@@ -118,6 +119,39 @@
                 <li><a href="{{ url_for('auth.login') }}">Login</a></li>
                 <li><a href="{{ url_for('auth.register') }}">Register</a></li>
                 {% endif %}
+                {% if current_user.is_authenticated %}
+                <li class="notification-bell">
+                    <button id="notification-bell" class="notification-bell-btn" title="Notifications">
+                        <i class="fas fa-bell"></i>
+                        {% if has_notifications() %}
+                        <span class="notification-badge"></span>
+                        {% endif %}
+                    </button>
+                    <div class="notification-dropdown" id="notification-dropdown">
+                        <div class="notification-header">
+                            <h4>Notifications</h4>
+                        </div>
+                        <div class="notification-list">
+                            {% for notification in get_notifications() %}
+                            <div class="notification-item" data-priority="{{ notification.priority }}">
+                                <div class="notification-content">
+                                    <div class="notification-title">{{ notification.title }}</div>
+                                    <div class="notification-message">{{ notification.message }}</div>
+                                </div>
+                                <div class="notification-action">
+                                    <a href="{{ notification.url }}" class="btn btn-sm btn-primary">View</a>
+                                </div>
+                            </div>
+                            {% endfor %}
+                            {% if not get_notifications() %}
+                            <div class="notification-empty">
+                                <p>No notifications</p>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </li>
+                {% endif %}
                 <li class="theme-toggle">
                     <button id="dark-mode-toggle" class="theme-toggle-btn" title="Toggle dark mode">
                         <i class="fas fa-moon"></i>
@@ -162,6 +196,7 @@
     <script src="{{ url_for('static', filename='js/components/wiki-page-select.js') }}"></script>
     <script src="{{ url_for('static', filename='js/components/dark-mode.js') }}"></script>
     <script src="{{ url_for('static', filename='js/components/mobile-nav.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/components/notifications.js') }}"></script>
     {% block scripts %}{% endblock %}
 </body>
 </html>

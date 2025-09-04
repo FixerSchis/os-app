@@ -59,9 +59,28 @@ characters_bp = Blueprint("characters", __name__)
 def character_list():
     characters = []
     if current_user.has_permission("character.view_all"):
-        characters = Character.query.all()
+        # Admin view: sort by user_id, then character_id
+        characters = (
+            Character.query.options(
+                db.joinedload(Character.group),
+                db.joinedload(Character.faction),
+                db.joinedload(Character.species),
+            )
+            .order_by(Character.user_id, Character.character_id)
+            .all()
+        )
     else:
-        characters = Character.query.filter_by(user_id=current_user.id).all()
+        # User view: sort by character_id for their own characters
+        characters = (
+            Character.query.options(
+                db.joinedload(Character.group),
+                db.joinedload(Character.faction),
+                db.joinedload(Character.species),
+            )
+            .filter_by(user_id=current_user.id)
+            .order_by(Character.character_id)
+            .all()
+        )
 
     return render_template(
         "characters/list.html",

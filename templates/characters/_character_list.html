@@ -15,6 +15,7 @@
                     <tr>
                         <th>Name</th>
                         <th>Faction - Species</th>
+                        <th>Group</th>
                         <th>Status</th>
                         <th>Actions</th>
                     </tr>
@@ -30,6 +31,7 @@
                             -
                             {{ character.species.name if character.species else '' }}
                         </td>
+                        <td>{{ character.group.name if character.group else '' }}</td>
                         <td>
                             <span class="status-badge status-{{ character.status }}">{{ CharacterStatus.descriptions()[character.status] }}</span>
                         </td>
@@ -62,6 +64,10 @@
                         <div class="info-row">
                             <span class="info-label">Species:</span>
                             <span class="info-value">{{ character.species.name if character.species else 'None' }}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Group:</span>
+                            <span class="info-value">{{ character.group.name if character.group else 'None' }}</span>
                         </div>
                     </div>
                     <div class="character-actions">
