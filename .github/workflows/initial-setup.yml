@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Setup Branch Protection
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             try {
@@ -46,7 +46,7 @@ jobs:
             }
 
       - name: Setup Repository Settings
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             try {
@@ -68,7 +68,7 @@ jobs:
             }
 
       - name: Create Issue Templates
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             try {
