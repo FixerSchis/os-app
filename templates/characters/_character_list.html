@@ -25,7 +25,7 @@
                     {% for character in characters %}
                     {% set user_is_owner = character.user_id == current_user.id %}
                     <tr>
-                        <td>{{ character.user_id }}.{{ character.character_id if character.character_id is not none else 0 }} - {{ character.name }}</td>
+                        <td>{% if character.character_id is none and character.status == 'developing' %}INACTIVE{% else %}{{ character.user_id }}.{{ character.character_id if character.character_id is not none else 0 }}{% endif %} - {{ character.name }}</td>
                         <td>
                             {{ character.faction.name if character.faction else 'No Faction' }}
                             -
@@ -52,7 +52,7 @@
             {% set user_is_owner = character.user_id == current_user.id %}
             <div class="character-card">
                 <div class="character-card-header">
-                    <h3 class="character-name">{{ character.user_id }}.{{ character.character_id if character.character_id is not none else 0 }} - {{ character.name }}</h3>
+                    <h3 class="character-name">{% if character.character_id is none and character.status == 'developing' %}INACTIVE{% else %}{{ character.user_id }}.{{ character.character_id if character.character_id is not none else 0 }}{% endif %} - {{ character.name }}</h3>
                     <span class="status-badge status-{{ character.status }}">{{ CharacterStatus.descriptions()[character.status] }}</span>
                 </div>
                 <div class="character-card-body">
