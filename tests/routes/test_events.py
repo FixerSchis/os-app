@@ -325,8 +325,8 @@ def test_purchase_ticket_post_blank_character_id(test_client, authenticated_user
     )
 
     assert response.status_code == 200
-    # Should show error message about no tickets being purchased
-    assert b"No tickets were purchased" in response.data
+    # Should show error message about invalid character ID format
+    assert b"Invalid character ID format" in response.data
 
     # Test with whitespace-only character ID
     cart_data = [
@@ -345,8 +345,56 @@ def test_purchase_ticket_post_blank_character_id(test_client, authenticated_user
     )
 
     assert response.status_code == 200
-    # Should show error message about no tickets being purchased
-    assert b"No tickets were purchased" in response.data
+    # Should show error message about invalid character ID format
+    assert b"Invalid character ID format" in response.data
+
+
+def test_purchase_ticket_post_nonexistent_character_id(test_client, authenticated_user, db):
+    """Test that purchasing tickets with non-existent character ID shows appropriate error."""
+    # Create a test event
+    event = Event(
+        event_number="TEST008",
+        name="Test Event",
+        event_type="mainline",
+        description="A test event",
+        early_booking_deadline=datetime.now() + timedelta(days=30),
+        booking_deadline=datetime.now() + timedelta(days=40),
+        start_date=datetime.now() + timedelta(days=45),
+        end_date=datetime.now() + timedelta(days=47),
+        location="Test Location",
+        standard_ticket_price=50.00,
+        early_booking_ticket_price=45.00,
+        child_ticket_price_12_15=25.00,
+        child_ticket_price_7_11=15.00,
+        child_ticket_price_under_7=0.00,
+    )
+    db.session.add(event)
+    db.session.commit()
+
+    with test_client.session_transaction() as session:
+        session["_user_id"] = authenticated_user.id
+        session["_fresh"] = True
+
+    # Test with non-existent character ID
+    cart_data = [
+        {
+            "ticketType": "adult",
+            "mealTicket": False,
+            "requiresBunk": False,
+            "ticketFor": "other",
+            "characterId": "999.999",  # Non-existent character ID
+            "price": 50.00,
+        }
+    ]
+
+    response = test_client.post(
+        f"/events/{event.id}/purchase", data={"cart": json.dumps(cart_data)}, follow_redirects=True
+    )
+
+    assert response.status_code == 200
+    # Should show error message about character not found
+    # The message will be HTML-encoded, so we need to look for the encoded version
+    assert b"Character with ID &#39;999.999&#39; not found" in response.data
 
 
 def test_assign_ticket_get(test_client, admin_user, db):

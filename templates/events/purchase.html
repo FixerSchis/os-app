@@ -67,7 +67,14 @@
                         </div>
                         {% else %}
                         <div class="alert alert-info">
-                            <i class="fas fa-info-circle"></i> You can purchase crew tickets for yourself or enter a character ID to purchase adult tickets for others.
+                            <i class="fas fa-info-circle"></i>
+                            <strong>No Active Character</strong><br>
+                            You don't have an active character. You can:
+                            <ul class="mb-0 mt-2">
+                                <li>Purchase crew tickets for yourself (no character required)</li>
+                                <li>Purchase adult tickets for other people if you know their character ID</li>
+                                <li><a href="{{ url_for('characters.character_list') }}" class="alert-link">Create and activate a new character</a></li>
+                            </ul>
                         </div>
                         <input type="hidden" name="ticket_for" value="other">
                         {% endif %}

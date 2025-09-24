@@ -261,6 +261,7 @@ def purchase_ticket_post(event_id):
         # --- Adult Ticket ---
         if ticket_type == "adult":
             character_to_check = None
+            char_id_str = None  # Initialize for error messages
             if ticket_for == "self":
                 self_char_id = item.get("selfCharacterId")
                 if self_char_id:
@@ -272,17 +273,36 @@ def purchase_ticket_post(event_id):
             else:  # ticket_for == 'other'
                 char_id_str = item.get("characterId")
                 if not char_id_str or "." not in char_id_str or not char_id_str.strip():
-                    continue
+                    flash(
+                        "Invalid character ID format. Please use the format: user_id.character_id",
+                        "error",
+                    )
+                    return redirect(url_for("events.purchase_ticket", event_id=event_id))
                 u_id, c_id = char_id_str.split(".")
                 try:
                     character_to_check = Character.query.filter_by(
                         user_id=int(u_id), character_id=int(c_id)
                     ).first()
                 except ValueError:
-                    continue
+                    flash(
+                        "Invalid character ID format. Please use the format: user_id.character_id",
+                        "error",
+                    )
+                    return redirect(url_for("events.purchase_ticket", event_id=event_id))
 
             if not character_to_check:
-                continue
+                if char_id_str:
+                    flash(
+                        f"Character with ID '{char_id_str}' not found. "
+                        "Please check the character ID and try again.",
+                        "error",
+                    )
+                else:
+                    flash(
+                        "No active character found. Please select a character or create one.",
+                        "error",
+                    )
+                return redirect(url_for("events.purchase_ticket", event_id=event_id))
 
             # Rule: Character must be in a group to purchase tickets
             if not character_to_check.group_id:
