@@ -131,7 +131,11 @@
                             <select class="form-control" name="character_id" required title="Select character to add to group">
                                 <option value="">Select a character...</option>
                                 {% for character in available_characters %}
-                                <option value="{{ character.id }}">{{ character.name }} ({{ character.faction.name }})</option>
+                                    {% if character.group_id %}
+                                        <option value="{{ character.id }}" disabled style="color: #999; font-style: italic;">{{ character.name }} ({{ character.faction.name }}) - Already in {{ character.group.name }}</option>
+                                    {% else %}
+                                        <option value="{{ character.id }}">{{ character.name }} ({{ character.faction.name }})</option>
+                                    {% endif %}
                                 {% endfor %}
                             </select>
                         </div>

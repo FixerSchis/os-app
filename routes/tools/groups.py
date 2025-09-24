@@ -558,9 +558,9 @@ def remove_character(group_id, character_id):
 @permission_required(permissions=["group.edit"])
 def create_group_admin():
     if request.method == "GET":
-        # Get active characters that are not in any group
+        # Get all active characters (we'll show disabled ones in the template)
         available_characters = (
-            Character.query.filter_by(group_id=None, status=CharacterStatus.ACTIVE.value)
+            Character.query.filter_by(status=CharacterStatus.ACTIVE.value)
             .order_by(Character.name)
             .all()
         )
@@ -648,9 +648,9 @@ def create_group_admin():
 @permission_required(permissions=["group.edit"])
 def edit_group_admin(group_id):
     group = Group.query.get_or_404(group_id)
-    # Get active characters that are not in any group (available to add)
+    # Get all active characters (we'll show disabled ones in the template)
     available_characters = (
-        Character.query.filter_by(group_id=None, status=CharacterStatus.ACTIVE.value)
+        Character.query.filter_by(status=CharacterStatus.ACTIVE.value)
         .order_by(Character.name)
         .all()
     )
@@ -945,8 +945,7 @@ def api_characters_search():
     # Build the query
     characters_query = Character.query.filter_by(status=CharacterStatus.ACTIVE.value)
 
-    # Filter out characters already in groups
-    characters_query = characters_query.filter(Character.group_id.is_(None))
+    # Don't filter out characters already in groups - we'll show them as disabled
 
     # Check if query looks like user_id.character_id format
     if "." in query:
@@ -977,13 +976,22 @@ def api_characters_search():
     for character in characters:
         # Include user info in the text for better identification
         user_info = f"{character.user.first_name} {character.user.surname or ''}"
+
+        # Check if character is already in a group
+        is_in_group = character.group_id is not None
+        group_info = ""
+        if is_in_group:
+            group_info = f" (Already in {character.group.name})"
+
         items.append(
             {
                 "id": character.id,
-                "text": f"{character.name} ({character.faction.name}) - {user_info}",
+                "text": f"{character.name} ({character.faction.name}) - {user_info}{group_info}",
                 "name": character.name,
                 "faction": character.faction.name,
                 "user_info": user_info,
+                "disabled": is_in_group,
+                "group_name": character.group.name if is_in_group else None,
             }
         )
 

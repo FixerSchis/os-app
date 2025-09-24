@@ -333,6 +333,12 @@ document.addEventListener('DOMContentLoaded', function() {
             width: '100%',
             placeholder: 'Search for a character to invite...',
             minimumInputLength: 2,
+            templateResult: function(item) {
+                if (item.disabled) {
+                    return $('<span style="color: #999; font-style: italic;">' + item.text + '</span>');
+                }
+                return item.text;
+            },
             ajax: {
                 url: '{{ url_for("groups.api_characters_search") }}',
                 dataType: 'json',
@@ -344,16 +350,33 @@ document.addEventListener('DOMContentLoaded', function() {
                     };
                 },
                 processResults: function(data) {
+                    // Sort items: available characters first, then disabled ones
+                    const sortedItems = data.items.sort(function(a, b) {
+                        if (a.disabled && !b.disabled) return 1;
+                        if (!a.disabled && b.disabled) return -1;
+                        return 0;
+                    });
+
                     return {
-                        results: data.items.map(function(item) {
+                        results: sortedItems.map(function(item) {
                             return {
                                 id: item.id,
-                                text: item.text
+                                text: item.text,
+                                disabled: item.disabled
                             };
                         })
                     };
                 },
                 cache: true
+            }
+        }).on('select2:select', function(e) {
+            // Prevent selection of disabled options
+            const data = e.params.data;
+            if (data.disabled) {
+                e.preventDefault();
+                $(this).val('').trigger('change');
+                alert('This character is already in a group and cannot be invited.');
+                return false;
             }
         }).on('select2:open', function() {
             // Apply dark mode styling if dark mode is active
