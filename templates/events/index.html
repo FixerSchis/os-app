@@ -36,7 +36,7 @@
                         <div><span class="badge bg-success">Bunks Available</span></div>
                         {% endif %}
                         {% if current_user.is_authenticated and user_has_tickets.get(event.id, False) %}
-                        <div><span class="badge bg-warning text-dark">You've purchased a ticket for this event</span></div>
+                        <div><span class="badge bg-warning text-dark">Ticket Purchased</span></div>
                         {% endif %}
                     </div>
                     <h5 class="card-title event-title">Event {{ event.event_number }} - {{ event.name }}</h5>

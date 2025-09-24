@@ -30,7 +30,7 @@
                                 {% for item in items %}
                                 <option value="{{ item.id }}"
                                     {% if item.id|string in pack.items %}selected{% endif %}>
-                                    {{ item.blueprint.name }} ({{ item.full_code }})
+                                    {{ item.blueprint.display_name }} ({{ item.full_code }})
                                 </option>
                                 {% endfor %}
                             </select>

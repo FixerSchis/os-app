@@ -525,7 +525,7 @@ def enter_downtime(period_id, character_id):
     pack_items = [
         {
             "id": item.id,
-            "name": item.blueprint.name,
+            "name": item.blueprint.display_name,
             "type": item.blueprint.item_type.id,
             "full_code": item.full_code,
         }
@@ -534,7 +534,7 @@ def enter_downtime(period_id, character_id):
     group_items = [
         {
             "id": item.id,
-            "name": item.blueprint.name,
+            "name": item.blueprint.display_name,
             "type": item.blueprint.item_type.id,
             "full_code": item.full_code,
         }
@@ -880,7 +880,7 @@ def process_downtime(period_id):
             blueprint = db.session.get(ItemBlueprint, purchase["blueprint_id"])
             if pack.character.can_afford(blueprint.base_cost):
                 pack.character.remove_funds(
-                    blueprint.base_cost, current_user.id, f"Purchase: {blueprint.name}"
+                    blueprint.base_cost, current_user.id, f"Purchase: {blueprint.display_name}"
                 )
                 # Create the item
                 # Find the next available item_id for this blueprint
@@ -909,7 +909,7 @@ def process_downtime(period_id):
 
                 pack.items.append(new_item.id)
                 pack.character.pack.add_downtime_result(
-                    str(pack.id), f"Purchased: {blueprint.name}"
+                    str(pack.id), f"Purchased: {blueprint.display_name}"
                 )
                 for engineering in pack.engineering:
                     if (
@@ -921,7 +921,8 @@ def process_downtime(period_id):
                         break
             else:
                 pack.character.pack.add_downtime_result(
-                    str(pack.id), f"Could not purchase {blueprint.name} - insufficient funds"
+                    str(pack.id),
+                    f"Could not purchase {blueprint.display_name} - insufficient funds",
                 )
 
     # Process engineering maintenance
@@ -1253,7 +1254,7 @@ def process_downtime(period_id):
                                                     break
                                             pack.character.pack.add_downtime_result(
                                                 str(pack.id),
-                                                f"Contributed {item.blueprint.name} to "
+                                                f"Contributed {item.blueprint.display_name} to "
                                                 f"{target_research.research.project_name} "
                                                 f"for {research_character.name}",
                                             )

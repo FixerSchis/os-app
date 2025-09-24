@@ -71,7 +71,9 @@ def create_post():
     name = request.form.get("name")
     item_type_id = request.form.get("item_type_id")
     base_cost = request.form.get("base_cost")
-    mods_applied_ids = request.form.getlist("mods_applied[]")
+    subtype = request.form.get("subtype")
+    ability = request.form.get("ability")
+    mods_applied_ids = [mid for mid in request.form.getlist("mods_applied[]") if mid.strip()]
     if not name or not item_type_id or not base_cost:
         flash("All fields are required", "error")
         return render_template(
@@ -103,6 +105,8 @@ def create_post():
             item_type_id=item_type_id,
             blueprint_id=blueprint_id,
             base_cost=int(base_cost),
+            subtype=subtype if subtype else None,
+            ability=ability if ability else None,
         )
         db.session.add(blueprint)
         db.session.flush()
@@ -164,10 +168,11 @@ def edit_post(id):
     mods_dict = [{"id": mod.id, "name": mod.name} for mod in mods]
     name = request.form.get("name")
     item_type_id = request.form.get("item_type_id")
-    blueprint_id = request.form.get("blueprint_id")
     base_cost = request.form.get("base_cost")
-    mods_applied_ids = request.form.getlist("mods_applied[]")
-    if not name or not item_type_id or not blueprint_id or not base_cost:
+    subtype = request.form.get("subtype")
+    ability = request.form.get("ability")
+    mods_applied_ids = [mid for mid in request.form.getlist("mods_applied[]") if mid.strip()]
+    if not name or not item_type_id or not base_cost:
         flash("All fields are required", "error")
         return render_template(
             "rules/item_blueprints/edit.html",
@@ -178,8 +183,9 @@ def edit_post(id):
     try:
         blueprint.name = name
         blueprint.item_type_id = item_type_id
-        blueprint.blueprint_id = int(blueprint_id)
         blueprint.base_cost = int(base_cost)
+        blueprint.subtype = subtype if subtype else None
+        blueprint.ability = ability if ability else None
         db.session.flush()
         # Remove all current mods_applied using ORM delete
         db.session.execute(

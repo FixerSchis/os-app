@@ -12,6 +12,11 @@
                 <input type="text" class="form-control" id="name" name="name" value="{{ blueprint.name if blueprint else '' }}" required>
             </div>
             <div class="form-group mb-3">
+                <label for="subtype">Subtype (Optional)</label>
+                <input type="text" class="form-control" id="subtype" name="subtype" value="{{ blueprint.subtype if blueprint and blueprint.subtype else '' }}" placeholder="e.g., Engineering Tool, Medical Tool, Crystal Tech">
+                <small class="form-text text-muted">This will display as "Subtype (Name)" wherever the item name is shown.</small>
+            </div>
+            <div class="form-group mb-3">
                 <label for="item_type_id">Item Type</label>
                 <select class="form-select" id="item_type_id" name="item_type_id" required title="Select item type">
                     <option value="" disabled {% if not blueprint %}selected{% endif %}>Select Item Type</option>
@@ -24,21 +29,16 @@
                 <label for="base_cost">Base Cost</label>
                 <input type="number" class="form-control" id="base_cost" name="base_cost" value="{{ blueprint.base_cost if blueprint else '' }}" min="0" required>
             </div>
+            <div class="form-group mb-3">
+                <label for="ability">Ability (Optional)</label>
+                <textarea class="form-control" id="ability" name="ability" rows="4" placeholder="Describe any special abilities or powers this item has...">{{ blueprint.ability if blueprint and blueprint.ability else '' }}</textarea>
+                <small class="form-text text-muted">Describe any special abilities, triggered effects, or unique powers this item possesses.</small>
+            </div>
             <div class="form-group mb-4">
                 <label>Default Mods</label>
                 <div id="mods-applied-list">
                     {% set initial_mods = initial_mods if initial_mods is defined else (blueprint.mods_applied|map(attribute='id')|list if blueprint and blueprint.mods_applied else []) %}
-                    {% if initial_mods|length == 0 %}
-                        <div class="input-group d-flex align-items-center mb-2 mod-row">
-                            <select class="form-select mod-select flex-grow-1" name="mods_applied[]" title="Select mod to apply">
-                                <option value="" disabled selected>Select mod...</option>
-                                {% for mod in mods %}
-                                <option value="{{ mod.id }}">{{ mod.name }}</option>
-                                {% endfor %}
-                            </select>
-                            <button type="button" class="btn btn-outline-danger remove-mod flex-shrink-0" tabindex="-1" style="margin-left: 0.5rem; display:none;">&times;</button>
-                        </div>
-                    {% else %}
+                    {% if initial_mods|length > 0 %}
                         {% for mod_id in initial_mods %}
                         <div class="input-group d-flex align-items-center mb-2 mod-row">
                             <select class="form-select mod-select flex-grow-1" name="mods_applied[]" title="Select mod to apply">
@@ -50,10 +50,13 @@
                             <button type="button" class="btn btn-outline-danger remove-mod flex-shrink-0" tabindex="-1" style="margin-left: 0.5rem;">&times;</button>
                         </div>
                         {% endfor %}
+                    {% else %}
+                        <!-- Hidden input to ensure mods_applied[] field exists even when no mods are selected -->
+                        <input type="hidden" name="mods_applied[]" value="">
                     {% endif %}
                 </div>
                 <button type="button" class="btn btn-outline-primary" id="add-mod">Add Mod</button>
-                <small class="form-text text-muted">You can add the same mod multiple times.</small>
+                <small class="form-text text-muted">You can add the same mod multiple times. Leave empty if no default mods are needed.</small>
             </div>
             <div class="form-group">
                 <button type="submit" class="btn btn-primary">{% if blueprint %}Save Changes{% else %}Create{% endif %}</button>

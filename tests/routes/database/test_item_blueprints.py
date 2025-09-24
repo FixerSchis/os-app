@@ -121,12 +121,11 @@ def test_item_blueprints_edit_post_authorized(
         session["_user_id"] = rules_team_user.id
         session["_fresh"] = True
     new_name = f"Updated Blueprint {uuid.uuid4()}"
-    new_blueprint_id = item_blueprint_obj.blueprint_id + 1000  # ensure uniqueness
+    original_blueprint_id = item_blueprint_obj.blueprint_id
     post_data = MultiDict(
         [
             ("name", new_name),
             ("item_type_id", str(item_type.id)),
-            ("blueprint_id", new_blueprint_id),
             ("base_cost", "200"),
             ("mods_applied[]", str(mod_obj.id)),
         ]
@@ -145,7 +144,7 @@ def test_item_blueprints_edit_post_authorized(
     updated = db.session.get(ItemBlueprint, item_blueprint_obj.id)
     assert updated.name == new_name
     assert updated.base_cost == 200
-    assert updated.blueprint_id == new_blueprint_id
+    assert updated.blueprint_id == original_blueprint_id
 
 
 def test_item_blueprints_edit_missing_fields(
@@ -158,7 +157,6 @@ def test_item_blueprints_edit_missing_fields(
         [
             ("name", ""),
             ("item_type_id", ""),
-            ("blueprint_id", ""),
             ("base_cost", ""),
         ]
     )

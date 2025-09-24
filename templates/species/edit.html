@@ -124,7 +124,7 @@
                             <option value="">Select Item Blueprint</option>
                             {% for blueprint in item_blueprints %}
                             <option value="{{ blueprint.id }}" {% if is_starting_item and ability.starting_item_blueprint_id == blueprint.id %}selected{% endif %}>
-                                {{ blueprint.name }} ({{ blueprint.item_type_name }})
+                                {{ blueprint.display_name }} ({{ blueprint.item_type_name }})
                             </option>
                             {% endfor %}
                         </select>
