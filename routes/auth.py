@@ -182,7 +182,16 @@ def reset_password(token):
 
     # Find user by reset token
     user = User.query.filter_by(reset_token=token).first()
-    if not user or user.reset_token_expires < datetime.now(timezone.utc):
+    if not user or not user.reset_token_expires:
+        flash("The password reset link is invalid or has expired.", "error")
+        return redirect(url_for("auth.login"))
+
+    # Ensure both datetimes are timezone-aware for comparison
+    expires = user.reset_token_expires
+    if expires.tzinfo is None:
+        expires = expires.replace(tzinfo=timezone.utc)
+
+    if expires < datetime.now(timezone.utc):
         flash("The password reset link is invalid or has expired.", "error")
         return redirect(url_for("auth.login"))
 
