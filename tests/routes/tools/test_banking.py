@@ -430,3 +430,60 @@ def test_transfer_between_own_characters(test_client, db, npc_user_with_chars):
 
     assert char1.bank_account == 850
     assert char2.bank_account == 650
+
+
+def test_transfer_insufficient_funds(test_client, db, npc_user_with_chars):
+    """
+    GIVEN a logged-in user trying to transfer more money than they have
+    WHEN they submit the transfer form
+    THEN they should get an error message instead of a 404
+    """
+    user, char1, char2 = npc_user_with_chars
+    char1.bank_account = 100  # Only 100 credits available
+    char2.bank_account = 500
+    db.session.commit()
+
+    with test_client.session_transaction() as session:
+        session["_user_id"] = user.id
+        session["_fresh"] = True
+
+    # Try to transfer 99999 credits (more than available)
+    transfer_data = {
+        "source_type_hidden": "character",
+        "source_id_hidden": char1.id,
+        "target_type_hidden": "character",
+        "target_id_hidden": char2.id,
+        "amount": "99999",
+    }
+    response = test_client.post("/banking/transfer", data=transfer_data, follow_redirects=True)
+    assert response.status_code == 200  # Should redirect back to banking page, not 404
+
+    # Check that balances are unchanged
+    db.session.refresh(char1)
+    db.session.refresh(char2)
+    assert char1.bank_account == 100  # Should be unchanged
+    assert char2.bank_account == 500  # Should be unchanged
+
+
+def test_transfer_missing_form_data(test_client, db, npc_user_with_chars):
+    """
+    GIVEN a logged-in user submitting incomplete form data
+    WHEN they submit the transfer form
+    THEN they should get an error message instead of a 404
+    """
+    user, char1, char2 = npc_user_with_chars
+
+    with test_client.session_transaction() as session:
+        session["_user_id"] = user.id
+        session["_fresh"] = True
+
+    # Submit form with missing target data
+    transfer_data = {
+        "source_type_hidden": "character",
+        "source_id_hidden": char1.id,
+        "target_type_hidden": "",  # Missing target type
+        "target_id_hidden": "",  # Missing target id
+        "amount": "100",
+    }
+    response = test_client.post("/banking/transfer", data=transfer_data, follow_redirects=True)
+    assert response.status_code == 200  # Should redirect back to banking page, not 404
