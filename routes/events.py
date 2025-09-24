@@ -45,11 +45,29 @@ def event_list():
             Event.query.filter(Event.end_date > datetime.now()).order_by(Event.start_date).all()
         )
 
+    # Check if current user has purchased tickets for each event
+    user_has_tickets = {}
+    if current_user.is_authenticated:
+        for event in events:
+            # Check if user has any tickets for this event (either as user or for their characters)
+            character_ids = [char.id for char in current_user.characters]
+            has_ticket = (
+                EventTicket.query.filter_by(event_id=event.id)
+                .filter(
+                    (EventTicket.user_id == current_user.id)
+                    | (EventTicket.character_id.in_(character_ids))
+                )
+                .first()
+                is not None
+            )
+            user_has_tickets[event.id] = has_ticket
+
     return render_template(
         "events/index.html",
         events=events,
         EventType=EventType,
         show_previous=show_previous,
+        user_has_tickets=user_has_tickets,
     )
 
 

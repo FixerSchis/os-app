@@ -27,6 +27,50 @@ def test_event_list_show_previous(test_client, admin_user):
     assert response.status_code == 200
 
 
+def test_event_list_with_ticket_purchase_indicator(test_client, authenticated_user, db):
+    """Test event list shows ticket purchase indicator when user has tickets."""
+    # Create a test event
+    event = Event(
+        event_number="TEST001",
+        name="Test Event",
+        event_type="mainline",
+        description="A test event",
+        early_booking_deadline=datetime.now(timezone.utc) + timedelta(days=30),
+        booking_deadline=datetime.now(timezone.utc) + timedelta(days=15),
+        start_date=datetime.now(timezone.utc) + timedelta(days=20),
+        end_date=datetime.now(timezone.utc) + timedelta(days=22),
+        location="Test Location",
+        standard_ticket_price=50.0,
+        early_booking_ticket_price=40.0,
+        child_ticket_price_12_15=25.0,
+        child_ticket_price_7_11=15.0,
+        child_ticket_price_under_7=0.0,
+    )
+    db.session.add(event)
+    db.session.commit()
+
+    # Create a ticket for the user
+    ticket = EventTicket(
+        event_id=event.id,
+        user_id=authenticated_user.id,
+        ticket_type="crew",
+        price_paid=0.0,
+        assigned_by_id=authenticated_user.id,
+    )
+    db.session.add(ticket)
+    db.session.commit()
+
+    # Test with authenticated user
+    with test_client.session_transaction() as session:
+        session["_user_id"] = authenticated_user.id
+        session["_fresh"] = True
+
+    response = test_client.get("/events/")
+    assert response.status_code == 200
+    # Check that the ticket purchase indicator is present in the response
+    assert b"You've purchased a ticket for this event" in response.data
+
+
 def test_create_event_get(test_client, admin_user):
     """Test GET request to create event page."""
     with test_client.session_transaction() as session:
