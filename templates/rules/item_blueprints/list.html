@@ -32,6 +32,11 @@
                     <td>{{ blueprint.item_type.name }}</td>
                     <td>{{ blueprint.base_cost }}</td>
                     <td>
+                        {% if blueprint.ability %}
+                            <div class="mb-2">
+                                <small class="text-muted">{{ blueprint.ability }}</small>
+                            </div>
+                        {% endif %}
                         {% set mod_counts = mod_instances_by_blueprint[blueprint.id] %}
                         {% if mod_counts %}
                             {% for mod, count in mod_counts %}
