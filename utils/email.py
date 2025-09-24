@@ -8,6 +8,13 @@ from jinja2 import Environment, FileSystemLoader
 mail = Mail()
 
 
+def build_url(path):
+    """Build a URL by properly joining BASE_URL with a path, avoiding double slashes."""
+    base_url = current_app.config["BASE_URL"].rstrip("/")
+    path = path.lstrip("/")
+    return f"{base_url}/{path}"
+
+
 def send_async_email(app, msg):
     with app.app_context():
         mail.send(msg)
@@ -47,7 +54,7 @@ def render_email_template(template_name, **kwargs):
 def send_verification_email(user):
     """Send a verification email to the user."""
     token = user.generate_verification_token()
-    verification_url = f"{current_app.config['BASE_URL']}/auth/verify/{token}"
+    verification_url = build_url(f"auth/verify/{token}")
 
     subject = "Orion Sphere LRP - Verify Your Email"
     text_body, html_body = render_email_template(
@@ -59,7 +66,7 @@ def send_verification_email(user):
 
 def send_email_change_verification(user, token, new_email):
     """Send a verification email for email address change."""
-    verification_url = f"{current_app.config['BASE_URL']}/settings/change-email/{token}"
+    verification_url = build_url(f"settings/change-email/{token}")
 
     subject = "Orion Sphere LRP - Confirm Email Change"
     text_body, html_body = render_email_template(
@@ -76,7 +83,7 @@ def send_email_change_verification(user, token, new_email):
 def send_password_reset_email(user):
     """Send a password reset email to the user."""
     token = user.generate_reset_token()
-    reset_url = f"{current_app.config['BASE_URL']}/auth/reset-password/{token}"
+    reset_url = build_url(f"auth/reset-password/{token}")
 
     subject = "Orion Sphere LRP - Password Reset"
     text_body, html_body = render_email_template(
