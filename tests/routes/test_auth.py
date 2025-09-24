@@ -401,7 +401,11 @@ def test_reset_password_get_valid_token(test_client, db):
 
     # Mock the datetime comparison to avoid timezone issues
     with patch("routes.auth.datetime") as mock_datetime:
-        mock_datetime.now.return_value = user.reset_token_expires - timedelta(hours=1)
+        mock_now = user.reset_token_expires - timedelta(hours=1)
+        # Ensure the mock datetime is timezone-aware
+        if mock_now.tzinfo is None:
+            mock_now = mock_now.replace(tzinfo=timezone.utc)
+        mock_datetime.now.return_value = mock_now
         response = test_client.get(f"/auth/reset-password/{user.reset_token}")
         assert response.status_code == 200
 
@@ -423,7 +427,11 @@ def test_reset_password_success(test_client, db):
 
     with patch.object(user, "reset_password", return_value=True) as mock_reset:
         with patch("routes.auth.datetime") as mock_datetime:
-            mock_datetime.now.return_value = user.reset_token_expires - timedelta(hours=1)
+            mock_now = user.reset_token_expires - timedelta(hours=1)
+            # Ensure the mock datetime is timezone-aware
+            if mock_now.tzinfo is None:
+                mock_now = mock_now.replace(tzinfo=timezone.utc)
+            mock_datetime.now.return_value = mock_now
             response = test_client.post(
                 f"/auth/reset-password/{user.reset_token}",
                 data={
@@ -433,8 +441,8 @@ def test_reset_password_success(test_client, db):
                 follow_redirects=True,
             )
 
-            assert response.status_code == 200
-            mock_reset.assert_called_once_with(user.reset_token, "newpassword123")
+        assert response.status_code == 200
+        mock_reset.assert_called_once_with(user.reset_token, "newpassword123")
 
 
 def test_reset_password_passwords_dont_match(test_client, db):
@@ -446,7 +454,11 @@ def test_reset_password_passwords_dont_match(test_client, db):
     db.session.commit()
 
     with patch("routes.auth.datetime") as mock_datetime:
-        mock_datetime.now.return_value = user.reset_token_expires - timedelta(hours=1)
+        mock_now = user.reset_token_expires - timedelta(hours=1)
+        # Ensure the mock datetime is timezone-aware
+        if mock_now.tzinfo is None:
+            mock_now = mock_now.replace(tzinfo=timezone.utc)
+        mock_datetime.now.return_value = mock_now
         response = test_client.post(
             f"/auth/reset-password/{user.reset_token}",
             data={
@@ -456,7 +468,7 @@ def test_reset_password_passwords_dont_match(test_client, db):
             follow_redirects=True,
         )
 
-        assert response.status_code == 200
+    assert response.status_code == 200
 
 
 def test_reset_password_missing_fields(test_client, db):
@@ -468,11 +480,15 @@ def test_reset_password_missing_fields(test_client, db):
     db.session.commit()
 
     with patch("routes.auth.datetime") as mock_datetime:
-        mock_datetime.now.return_value = user.reset_token_expires - timedelta(hours=1)
+        mock_now = user.reset_token_expires - timedelta(hours=1)
+        # Ensure the mock datetime is timezone-aware
+        if mock_now.tzinfo is None:
+            mock_now = mock_now.replace(tzinfo=timezone.utc)
+        mock_datetime.now.return_value = mock_now
         response = test_client.post(
             f"/auth/reset-password/{user.reset_token}", data={}, follow_redirects=True
         )
-        assert response.status_code == 200
+    assert response.status_code == 200
 
 
 def test_reset_password_authenticated(test_client, authenticated_user, db, wiki_index_page):
