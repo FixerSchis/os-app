@@ -160,6 +160,11 @@ def transfer():
         source_type = request.form.get("source_type")
         source_id = request.form.get("source_id")
 
+    # Validate required form data
+    if not source_type or not source_id or not target_type or not target_id:
+        flash("Please select both source and target accounts", "error")
+        return redirect(url_for("banking.bank"))
+
     try:
         amount = int(amount)
     except (ValueError, TypeError):
@@ -172,13 +177,19 @@ def transfer():
 
     # Get source account
     if source_type == "character":
-        source = Character.query.get_or_404(source_id)
+        source = Character.query.get(source_id)
+        if not source:
+            flash("Source character not found", "error")
+            return redirect(url_for("banking.bank"))
         if not current_user.has_permission("banking.manage") and source.user_id != current_user.id:
             flash("You do not have access to this account", "error")
             return redirect(url_for("banking.bank"))
         source_name = source.name
     else:
-        source = Group.query.get_or_404(source_id)
+        source = Group.query.get(source_id)
+        if not source:
+            flash("Source group not found", "error")
+            return redirect(url_for("banking.bank"))
         if not current_user.has_permission("banking.manage"):
             active_character = Character.query.filter_by(
                 user_id=current_user.id, status=CharacterStatus.ACTIVE.value
@@ -195,10 +206,16 @@ def transfer():
 
     # Get target account
     if target_type == "character":
-        target = Character.query.get_or_404(target_id)
+        target = Character.query.get(target_id)
+        if not target:
+            flash("Target character not found", "error")
+            return redirect(url_for("banking.bank"))
         target_name = target.name
     else:
-        target = Group.query.get_or_404(target_id)
+        target = Group.query.get(target_id)
+        if not target:
+            flash("Target group not found", "error")
+            return redirect(url_for("banking.bank"))
         target_name = target.name
 
     # Perform transfer using centralized methods

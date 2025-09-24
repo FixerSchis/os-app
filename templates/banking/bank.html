@@ -110,7 +110,7 @@
                             <select class="form-control select2" id="source_account" name="source_account" required title="Select source account for transfer">
                                 <option value="">Select source account...</option>
                                 {% for account in source_accounts %}
-                                <option value="{{ account.type }}_{{ account.id }}">
+                                <option value="{{ account.type }}_{{ account.id }}" data-balance="{{ account.balance }}">
                                     {{ account.name }} (Balance: {{ account.balance }})
                                 </option>
                                 {% endfor %}

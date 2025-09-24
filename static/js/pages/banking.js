@@ -56,24 +56,40 @@ $(document).ready(function() {
 
     // --- The rest of the banking logic (transfers, etc) can remain as needed ---
     // Handle source account selection
-    $('#source_type').change(function() {
+    $('#source_account').change(function() {
         var option = $(this).find('option:selected');
-        $('#source_id').val(option.data('id'));
+        var value = option.val();
+        if (value) {
+            var parts = value.split('_');
+            $('#source_type_hidden').val(parts[0]);
+            $('#source_id_hidden').val(parts[1]);
+        } else {
+            $('#source_type_hidden').val('');
+            $('#source_id_hidden').val('');
+        }
     });
 
     // Handle target account selection
-    $('#target_type').change(function() {
+    $('#target_account').change(function() {
         var option = $(this).find('option:selected');
-        $('#target_id').val(option.data('id'));
+        var value = option.val();
+        if (value) {
+            var parts = value.split('_');
+            $('#target_type_hidden').val(parts[0]);
+            $('#target_id_hidden').val(parts[1]);
+        } else {
+            $('#target_type_hidden').val('');
+            $('#target_id_hidden').val('');
+        }
     });
 
     // Validate amount against source balance
     $('form').submit(function(e) {
-        var sourceOption = $('#source_type option:selected');
+        var sourceOption = $('#source_account option:selected');
         var sourceBalance = parseFloat(sourceOption.data('balance'));
         var amount = parseFloat($('#amount').val());
 
-        if (amount > sourceBalance) {
+        if (sourceBalance && amount > sourceBalance) {
             e.preventDefault();
             alert('Insufficient funds in source account');
         }
