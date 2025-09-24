@@ -24,13 +24,31 @@ document.addEventListener('DOMContentLoaded', function() {
         rows.forEach(function(row, idx) {
             var btn = row.querySelector('.remove-mod');
             btn.style.display = '';
-            btn.onclick = function() { row.remove(); updateRemoveButtons(); };
+            btn.onclick = function() {
+                row.remove();
+                updateRemoveButtons();
+                // If no mod rows remain, add back the hidden input
+                var remainingRows = document.querySelectorAll('.mod-row');
+                if (remainingRows.length === 0) {
+                    var hiddenInput = document.createElement('input');
+                    hiddenInput.type = 'hidden';
+                    hiddenInput.name = 'mods_applied[]';
+                    hiddenInput.value = '';
+                    document.getElementById('mods-applied-list').appendChild(hiddenInput);
+                }
+            };
         });
     }
     updateRemoveButtons();
 
     // Add mod button
     document.getElementById('add-mod').addEventListener('click', function() {
+        // Remove any hidden input for empty mods
+        var hiddenInput = document.querySelector('input[name="mods_applied[]"][type="hidden"]');
+        if (hiddenInput) {
+            hiddenInput.remove();
+        }
+
         var mods = getModsData();
         var row = document.createElement('div');
         row.className = 'input-group d-flex align-items-center mb-2 mod-row';
@@ -58,6 +76,15 @@ document.addEventListener('DOMContentLoaded', function() {
         removeBtn.addEventListener('click', function() {
             row.remove();
             updateRemoveButtons();
+            // If no mod rows remain, add back the hidden input
+            var remainingRows = document.querySelectorAll('.mod-row');
+            if (remainingRows.length === 0) {
+                var hiddenInput = document.createElement('input');
+                hiddenInput.type = 'hidden';
+                hiddenInput.name = 'mods_applied[]';
+                hiddenInput.value = '';
+                document.getElementById('mods-applied-list').appendChild(hiddenInput);
+            }
         });
         row.appendChild(select);
         row.appendChild(removeBtn);

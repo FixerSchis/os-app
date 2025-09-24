@@ -110,7 +110,7 @@
                                 <div class="mb-2">
                                     <small class="text-muted">Recent items:</small><br>
                                     {% for item in data.inventory_items[:3] %}
-                                        <span class="badge bg-secondary me-1">{{ item.item.blueprint.name }}</span>
+                                        <span class="badge bg-secondary me-1">{{ item.item.blueprint.display_name }}</span>
                                     {% endfor %}
                                     {% if data.inventory_count > 3 %}
                                         <small class="text-muted">+{{ data.inventory_count - 3 }} more</small>

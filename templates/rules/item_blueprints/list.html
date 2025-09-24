@@ -27,7 +27,7 @@
                 {% for blueprint in blueprints %}
                 <tr>
                     <td>
-                        {{ blueprint.name }}
+                        {{ blueprint.display_name }}
                     </td>
                     <td>{{ blueprint.item_type.name }}</td>
                     <td>{{ blueprint.base_cost }}</td>
@@ -51,7 +51,7 @@
                         <a href="{{ url_for('item_blueprints.edit', id=blueprint.id) }}" class="btn btn-sm btn-outline-primary">Edit</a>
                         <button type="button" class="btn btn-sm btn-outline-danger delete-btn"
                                 data-delete-url="{{ url_for('item_blueprints.delete', id=blueprint.id) }}"
-                                data-blueprint-name="{{ blueprint.name }}">
+                                data-blueprint-name="{{ blueprint.display_name }}">
                             Delete
                         </button>
                     </td>

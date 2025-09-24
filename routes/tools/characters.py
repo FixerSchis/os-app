@@ -988,7 +988,7 @@ def activate_character(character_id):
                         character_id=character.id,
                         editor_user_id=current_user.id,
                         action=CharacterAuditAction.STATUS_CHANGE.value,
-                        changes=f"Starting item added: {blueprint.name} ({item.full_code})",
+                        changes=f"Starting item added: {blueprint.display_name} ({item.full_code})",
                     )
                     db.session.add(item_audit)
 

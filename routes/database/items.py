@@ -386,7 +386,7 @@ def find_by_code():
         ).all()
         if not packs_with_item:
             return jsonify({"error": "Item not found in any pack"}), 404
-    return jsonify({"id": item.id, "name": blueprint.name, "full_code": item.full_code})
+    return jsonify({"id": item.id, "name": blueprint.display_name, "full_code": item.full_code})
 
 
 @items_bp.route("/engineering_cost", methods=["POST"])

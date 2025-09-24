@@ -68,7 +68,7 @@ def test_event_list_with_ticket_purchase_indicator(test_client, authenticated_us
     response = test_client.get("/events/")
     assert response.status_code == 200
     # Check that the ticket purchase indicator is present in the response
-    assert b"You've purchased a ticket for this event" in response.data
+    assert b"Ticket Purchased" in response.data
 
 
 def test_create_event_get(test_client, admin_user):

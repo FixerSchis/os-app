@@ -241,14 +241,16 @@ def assign_item_to_character(character_id):
         db.session.flush()  # Flush to get the new item ID
 
         item_id = new_item.id
-        item_description = f"Item created from blueprint: {blueprint.name} ({new_item.full_code})"
+        item_description = (
+            f"Item created from blueprint: {blueprint.display_name} ({new_item.full_code})"
+        )
     else:
         # Use existing item
         item = Item.query.get(item_id)
         if not item:
             flash("Invalid item selected.", "error")
             return redirect(url_for("tools_items.character_inventory", character_id=character_id))
-        item_description = f"Item assigned: {item.blueprint.name} ({item.full_code})"
+        item_description = f"Item assigned: {item.blueprint.display_name} ({item.full_code})"
 
     # Check if item is already assigned to this character
     existing_assignment = CharacterItem.query.filter_by(
@@ -322,7 +324,7 @@ def remove_item_from_character(character_id):
         editor_user_id=current_user.id,
         action=CharacterAuditAction.STATUS_CHANGE.value,
         changes=(
-            f"Item removed: {character_item.item.blueprint.name} "
+            f"Item removed: {character_item.item.blueprint.display_name} "
             f"({character_item.item.full_code})"
         ),
     )
@@ -449,7 +451,8 @@ def process_transfer_request(request_id):
                 action=CharacterAuditAction.STATUS_CHANGE.value,
                 changes=(
                     f"Item transferred to {transfer_request.target_character.name}: "
-                    f"{character_item.item.blueprint.name} ({character_item.item.full_code})"
+                    f"{character_item.item.blueprint.display_name} "
+                    f"({character_item.item.full_code})"
                 ),
             )
             db.session.add(requesting_audit)
@@ -461,7 +464,8 @@ def process_transfer_request(request_id):
                 action=CharacterAuditAction.STATUS_CHANGE.value,
                 changes=(
                     f"Item received from {transfer_request.requesting_character.name}: "
-                    f"{character_item.item.blueprint.name} ({character_item.item.full_code})"
+                    f"{character_item.item.blueprint.display_name} "
+                    f"({character_item.item.full_code})"
                 ),
             )
             db.session.add(target_audit)
@@ -555,8 +559,11 @@ def api_active_character_items():
         results.append(
             {
                 "id": character_item.id,
-                "text": f"{character_item.item.blueprint.name} ({character_item.item.full_code})",
-                "item_name": character_item.item.blueprint.name,
+                "text": (
+                    f"{character_item.item.blueprint.display_name} "
+                    f"({character_item.item.full_code})"
+                ),
+                "item_name": character_item.item.blueprint.display_name,
                 "item_code": character_item.item.full_code,
             }
         )

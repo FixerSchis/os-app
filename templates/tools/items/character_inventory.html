@@ -33,7 +33,7 @@
                                 <tbody>
                                     {% for character_item in inventory_items %}
                                     <tr>
-                                        <td>{{ character_item.item.blueprint.name }}</td>
+                                        <td>{{ character_item.item.blueprint.display_name }}</td>
                                         <td><code>{{ character_item.item.full_code }}</code></td>
                                         <td>{{ character_item.item.blueprint.item_type.name }}</td>
                                         <td>
@@ -82,7 +82,7 @@
                                 <option value="">Choose an existing item...</option>
                                 {% for item in available_items %}
                                 <option value="{{ item.id }}">
-                                    {{ item.blueprint.name }} ({{ item.full_code }})
+                                    {{ item.blueprint.display_name }} ({{ item.full_code }})
                                 </option>
                                 {% endfor %}
                             </select>
@@ -94,7 +94,7 @@
                                 <option value="">Choose a blueprint...</option>
                                 {% for blueprint in item_blueprints %}
                                 <option value="{{ blueprint.id }}">
-                                    {{ blueprint.name }} ({{ blueprint.full_code }})
+                                    {{ blueprint.display_name }} ({{ blueprint.full_code }})
                                 </option>
                                 {% endfor %}
                             </select>

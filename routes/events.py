@@ -841,7 +841,7 @@ def view_packs(event_id):
     items = {}
     for item in Item.query.all():
         items[item.id] = {
-            "blueprint_name": item.blueprint.name if item.blueprint else "Unknown",
+            "blueprint_name": item.blueprint.display_name if item.blueprint else "Unknown",
             "full_code": item.full_code,
         }
 

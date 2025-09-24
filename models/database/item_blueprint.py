@@ -27,6 +27,8 @@ class ItemBlueprint(db.Model):
     blueprint_id = db.Column(db.Integer, nullable=False)
     base_cost = db.Column(db.Integer, nullable=False)
     purchaseable = db.Column(db.Boolean, nullable=False, default=True)
+    subtype = db.Column(db.String(100), nullable=True)
+    ability = db.Column(db.Text, nullable=True)
 
     item_type = db.relationship("ItemType", backref=db.backref("blueprints", lazy=True))
     mods_applied = db.relationship(
@@ -43,6 +45,13 @@ class ItemBlueprint(db.Model):
     @property
     def full_code(self):
         return f"{self.item_type.id_prefix}{self.blueprint_id:04d}"
+
+    @property
+    def display_name(self):
+        """Returns the name with subtype in parentheses if subtype exists."""
+        if self.subtype:
+            return f"{self.subtype} ({self.name})"
+        return self.name
 
     @validates("blueprint_id")
     def validate_blueprint_id(self, key, blueprint_id):

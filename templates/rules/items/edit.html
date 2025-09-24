@@ -21,7 +21,7 @@
                 <select class="form-select" id="blueprint_id" name="blueprint_id" required title="Select item blueprint">
                     <option value="" disabled {% if not item %}selected{% endif %}>Select Blueprint</option>
                     {% for bp in blueprints %}
-                    <option value="{{ bp.id }}" {% if item and item.blueprint_id == bp.id %}selected{% endif %}>{{ bp.name }}</option>
+                    <option value="{{ bp.id }}" {% if item and item.blueprint_id == bp.id %}selected{% endif %}>{{ bp.display_name }}</option>
                     {% endfor %}
                 </select>
             </div>
