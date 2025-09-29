@@ -1,7 +1,7 @@
 # Development and testing dependencies
 autoflake==2.2.1
 bandit==1.7.5
-beautifulsoup4==4.13.4
+beautifulsoup4==4.14.2
 black==24.4.2
 coverage==7.6.1
 distlib==0.3.9
