@@ -211,7 +211,7 @@ jobs:
           ls -t | tail -n +6 | xargs -r sudo rm -f
 
     - name: Upload deployment artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       if: always()
       with:
         name: deployment-package
