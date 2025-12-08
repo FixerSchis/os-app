@@ -879,7 +879,7 @@ def manual_review(period_id, character_id):
         summary_data["modifications"] = []
         for mod in pack.modifications:
             mod_id = mod.get("mod_id")
-            mod_obj = db.session.get(Mod, mod_id) if mod_id else None
+            mod_obj = db.session.get(Mod, int(mod_id)) if mod_id else None
             summary_data["modifications"].append(
                 {
                     "type": mod.get("type", "unknown"),
@@ -896,6 +896,7 @@ def manual_review(period_id, character_id):
             if eng.get("item_id"):
                 item = db.session.get(Item, int(eng["item_id"]))
                 if item:
+                    eng_data["item_id"] = item.id
                     eng_data["item_name"] = item.blueprint.display_name
                     eng_data["item_full_code"] = item.full_code
             elif eng.get("full_code"):
@@ -944,6 +945,50 @@ def manual_review(period_id, character_id):
             res_data["research_for"] = res.get("research_for", "self")
             if res.get("research_for_id"):
                 res_data["research_for_id"] = res.get("research_for_id")
+
+            # Add contributed items information
+            contributed_items = []
+            if res.get("contributed_items"):
+                for item_id in res.get("contributed_items"):
+                    item = db.session.get(Item, int(item_id)) if item_id else None
+                    if item:
+                        contributed_items.append(
+                            {
+                                "id": item.id,
+                                "name": item.blueprint.display_name,
+                                "full_code": item.full_code,
+                            }
+                        )
+
+            contributed_exotics = []
+            if res.get("contributed_exotics"):
+                for exotic_data in res.get("contributed_exotics"):
+                    exotic_id = (
+                        exotic_data.get("id") if isinstance(exotic_data, dict) else exotic_data
+                    )
+                    quantity = (
+                        exotic_data.get("quantity", 1) if isinstance(exotic_data, dict) else 1
+                    )
+                    exotic = db.session.get(ExoticSubstance, int(exotic_id)) if exotic_id else None
+                    if exotic:
+                        contributed_exotics.append(
+                            {"id": exotic.id, "name": exotic.name, "quantity": quantity}
+                        )
+
+            contributed_samples = []
+            if res.get("contributed_samples"):
+                for sample_id in res.get("contributed_samples"):
+                    sample = db.session.get(Sample, int(sample_id)) if sample_id else None
+                    if sample:
+                        contributed_samples.append({"id": sample.id, "name": sample.name})
+
+            if contributed_items:
+                res_data["contributed_items"] = contributed_items
+            if contributed_exotics:
+                res_data["contributed_exotics"] = contributed_exotics
+            if contributed_samples:
+                res_data["contributed_samples"] = contributed_samples
+
             summary_data["research"].append(res_data)
         has_data = True
 
