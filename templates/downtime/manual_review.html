@@ -110,7 +110,15 @@
                         <strong>Modifications:</strong>
                         <ul class="mb-0">
                             {% for mod_data in summary_data.get('modifications', []) %}
-                            <li>{{ mod_data.mod_name }} ({{ mod_data.type }})</li>
+                            <li>
+                                {% if mod_data.type == 'learning' %}
+                                    Learned {{ mod_data.mod_name }}
+                                {% elif mod_data.type == 'forgetting' %}
+                                    Forgot {{ mod_data.mod_name }}
+                                {% else %}
+                                    {{ mod_data.mod_name }} ({{ mod_data.type }})
+                                {% endif %}
+                            </li>
                             {% endfor %}
                         </ul>
                     </div>
@@ -122,16 +130,15 @@
                             {% for eng in summary_data.get('engineering', []) %}
                             <li>
                                 {{ eng.action|title }}
-                                {% if eng.get('item_name') %}
-                                    - {{ eng.item_name }}{% if eng.get('item_full_code') %} ({{ eng.item_full_code }}){% endif %}
-                                {% elif eng.get('item_full_code') %}
-                                    - {{ eng.item_full_code }}
-                                {% endif %}
                                 {% if eng.get('mod_name') %}
                                     - Mod: {{ eng.mod_name }}
                                 {% endif %}
-                                {% if eng.get('source') %}
-                                    ({{ eng.source }})
+                                {% if eng.get('item_id') and eng.get('item_name') %}
+                                    - Item #{{ eng.item_id }}: {{ eng.item_name }}{% if eng.get('item_full_code') %} ({{ eng.item_full_code }}){% endif %}
+                                {% elif eng.get('item_name') %}
+                                    - {{ eng.item_name }}{% if eng.get('item_full_code') %} ({{ eng.item_full_code }}){% endif %}
+                                {% elif eng.get('item_full_code') %}
+                                    - {{ eng.item_full_code }}
                                 {% endif %}
                             </li>
                             {% endfor %}
@@ -181,6 +188,34 @@
                                     Project: {{ res.project_id }}
                                 {% endif %}
                                 ({{ res.research_for }}{% if res.get('research_for_id') %}: {{ res.research_for_id }}{% endif %})
+                                {% if res.get('contributed_items') or res.get('contributed_exotics') or res.get('contributed_samples') %}
+                                    <ul class="mb-0 mt-1">
+                                        {% if res.get('contributed_items') %}
+                                        <li>
+                                            <strong>Items:</strong>
+                                            {% for item in res.contributed_items %}
+                                                Item #{{ item.id }}: {{ item.name }}{% if item.full_code %} ({{ item.full_code }}){% endif %}{% if not loop.last %}, {% endif %}
+                                            {% endfor %}
+                                        </li>
+                                        {% endif %}
+                                        {% if res.get('contributed_exotics') %}
+                                        <li>
+                                            <strong>Exotics:</strong>
+                                            {% for exotic in res.contributed_exotics %}
+                                                {{ exotic.name }} (x{{ exotic.quantity }}){% if not loop.last %}, {% endif %}
+                                            {% endfor %}
+                                        </li>
+                                        {% endif %}
+                                        {% if res.get('contributed_samples') %}
+                                        <li>
+                                            <strong>Samples:</strong>
+                                            {% for sample in res.contributed_samples %}
+                                                {{ sample.name }}{% if not loop.last %}, {% endif %}
+                                            {% endfor %}
+                                        </li>
+                                        {% endif %}
+                                    </ul>
+                                {% endif %}
                             </li>
                             {% endfor %}
                         </ul>
