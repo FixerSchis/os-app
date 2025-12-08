@@ -47,8 +47,7 @@ def test_enter_pack_contents_get(
 
 
 @pytest.mark.parametrize(
-    "items,exotics,samples,cybernetics,conditions,research_teams,energy_chits,"
-    "other,confirm_complete",
+    "items,exotics,samples,cybernetics,conditions,research_teams,credits," "other,confirm_complete",
     [
         # All empty
         ([], [], [], [], [], [], 0, "", False),
@@ -69,8 +68,8 @@ def test_enter_pack_contents_get(
         # All fields together
         ([1], [1], [1], [1], [1], [1], 3, "Complete pack with other", True),
         # Edge cases
-        ([], [1], [], [], [], [], -5, "", False),  # negative chits
-        ([], [1], [], [], [], [], 999999, "", True),  # large chits
+        ([], [1], [], [], [], [], -5, "", False),  # negative credits
+        ([], [1], [], [], [], [], 999999, "", True),  # large credits
         ([1], [1], [1], [1], [1], [1], 0, "Edge case with other", True),
         ([1], [], [], [], [], [], 0, "", True),
         ([], [], [], [], [], [], 0, "", True),
@@ -91,20 +90,20 @@ def test_enter_pack_contents_post(
     cybernetics,
     conditions,
     research_teams,
-    energy_chits,
+    credits,
     other,
     confirm_complete,
 ):
     login_user(test_client, downtime_team_user)
 
     data = {
-        "items[]": [str(item.id)] * len(items) if items else [],
-        "exotics[]": [str(exotic_substance.id)] * len(exotics) if exotics else [],
+        "item_ids[]": [str(item.id)] * len(items) if items else [],
+        "exotic_ids[]": [str(exotic_substance.id)] * len(exotics) if exotics else [],
         "samples[]": [str(sample.id)] * len(samples) if samples else [],
         "cybernetics[]": [str(cybernetic.id)] * len(cybernetics) if cybernetics else [],
-        "conditions[]": [str(condition.id)] * len(conditions) if conditions else [],
+        "condition_ids[]": [str(condition.id)] * len(conditions) if conditions else [],
         "research_teams[]": ["1"] * len(research_teams) if research_teams else [],
-        "energy_chits": str(energy_chits),
+        "credits": str(credits),
         "other": other,
         "confirm_complete": "on" if confirm_complete else "",
     }
@@ -122,6 +121,94 @@ def test_enter_pack_contents_post(
         assert downtime_pack.status == DowntimeTaskStatus.ENTER_DOWNTIME
     else:
         assert response.status_code == 200
+
+
+def test_enter_pack_contents_credits_added(test_client, downtime_team_user, downtime_pack, db):
+    """Test that credits are added to bank account when pack contents are confirmed."""
+    from models.tools.character import Character
+
+    login_user(test_client, downtime_team_user)
+
+    # Set pack status to ENTER_PACK for this test
+    downtime_pack.status = DowntimeTaskStatus.ENTER_PACK
+    db.session.commit()
+
+    character = downtime_pack.character
+    initial_balance = character.bank_account
+
+    # Enter pack contents with credits
+    data = {
+        "item_ids[]": [],
+        "exotic_ids[]": [],
+        "samples[]": [],
+        "cybernetics[]": [],
+        "condition_ids[]": [],
+        "research_teams[]": [],
+        "credits": "100",
+        "other": "",
+        "confirm_complete": "on",
+    }
+
+    response = test_client.post(
+        f"/downtime/enter-pack-contents/{downtime_pack.period_id}/" f"{downtime_pack.character_id}",
+        data=data,
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+
+    # Check that credits were stored in pack
+    db.session.refresh(downtime_pack)
+    assert downtime_pack.credits_added == 100
+
+    # Check that credits were added to bank account
+    db.session.refresh(character)
+    assert character.bank_account == initial_balance + 100
+
+
+def test_enter_pack_contents_credits_saved_without_confirm(
+    test_client, downtime_team_user, downtime_pack, db
+):
+    """Test that credits are saved but not added to bank account when pack is not confirmed."""
+    from models.tools.character import Character
+
+    login_user(test_client, downtime_team_user)
+
+    # Set pack status to ENTER_PACK for this test
+    downtime_pack.status = DowntimeTaskStatus.ENTER_PACK
+    db.session.commit()
+
+    character = downtime_pack.character
+    initial_balance = character.bank_account
+
+    # Enter pack contents with credits but don't confirm
+    data = {
+        "item_ids[]": [],
+        "exotic_ids[]": [],
+        "samples[]": [],
+        "cybernetics[]": [],
+        "condition_ids[]": [],
+        "research_teams[]": [],
+        "credits": "50",
+        "other": "",
+        # No confirm_complete
+    }
+
+    response = test_client.post(
+        f"/downtime/enter-pack-contents/{downtime_pack.period_id}/" f"{downtime_pack.character_id}",
+        data=data,
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+
+    # Check that credits were stored in pack
+    db.session.refresh(downtime_pack)
+    assert downtime_pack.credits_added == 50
+
+    # Check that credits were NOT added to bank account (not confirmed)
+    db.session.refresh(character)
+    assert character.bank_account == initial_balance
 
 
 @pytest.mark.parametrize(
@@ -1016,9 +1103,9 @@ def test_full_downtime_process(
         "exotics[]": [],
         "samples[]": [],
         "cybernetics[]": [],
-        "conditions[]": [],
+        "condition_ids[]": [],
         "research_teams[]": [],
-        "energy_chits": "0",
+        "credits": "0",
         "confirm_complete": "on",
     }
     response = test_client.post(
@@ -1384,7 +1471,7 @@ def test_manual_review_summary_display(
 
     # Set up pack with various contents and activities
     downtime_pack_enter_downtime.items = [item.id]
-    downtime_pack_enter_downtime.energy_credits = 50
+    downtime_pack_enter_downtime.credits_added = 50
     downtime_pack_enter_downtime.exotic_substances = [{"id": exotic_substance.id, "amount": 3}]
     downtime_pack_enter_downtime.conditions = [{"id": condition.id, "duration": 5}]
     downtime_pack_enter_downtime.samples = [sample.id]
@@ -1413,7 +1500,7 @@ def test_manual_review_summary_display(
 
     # Check that pack contents are displayed
     assert "Pack Contents" in html
-    assert str(downtime_pack_enter_downtime.energy_credits) in html
+    assert str(downtime_pack_enter_downtime.credits_added) in html
     assert item_blueprint.display_name in html or "Test Blueprint" in html
     assert exotic_substance.name in html
     assert "x3" in html  # Exotic amount
@@ -1446,7 +1533,7 @@ def test_manual_review_summary_empty_pack(
 
     # Ensure pack is empty
     downtime_pack_enter_downtime.items = []
-    downtime_pack_enter_downtime.energy_credits = 0
+    downtime_pack_enter_downtime.credits_added = 0
     downtime_pack_enter_downtime.exotic_substances = []
     downtime_pack_enter_downtime.conditions = []
     downtime_pack_enter_downtime.samples = []
@@ -1522,7 +1609,7 @@ def test_enter_downtime_overview_tab(
 
     # Set up pack with contents
     downtime_pack_enter_downtime.items = [item.id]
-    downtime_pack_enter_downtime.energy_credits = 50
+    downtime_pack_enter_downtime.credits_added = 50
     downtime_pack_enter_downtime.exotic_substances = [{"id": exotic_substance.id, "amount": 2}]
     downtime_pack_enter_downtime.samples = [sample.id]
     downtime_pack_enter_downtime.conditions = [{"id": condition.id, "duration": 3}]
@@ -1560,9 +1647,8 @@ def test_enter_downtime_overview_tab(
     assert "Samples:" in html
     assert "Exotic Substances:" in html
 
-    # Check that added items are shown
-    assert "Added this downtime" in html
-    assert str(downtime_pack_enter_downtime.energy_credits) in html
+    # Check that credits are shown
+    assert str(downtime_pack_enter_downtime.credits_added) in html
 
     # Check that conditions are displayed
     assert "Active Conditions" in html

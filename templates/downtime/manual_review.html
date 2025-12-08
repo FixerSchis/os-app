@@ -20,12 +20,12 @@
             </div>
             <div class="card-body">
                 <!-- Pack Contents -->
-                {% if summary_data.get('energy_credits') or summary_data.get('items') or summary_data.get('exotic_substances') or summary_data.get('conditions') or summary_data.get('samples') or summary_data.get('cybernetics') or summary_data.get('research_teams') %}
+                {% if summary_data.get('credits_added') or summary_data.get('items') or summary_data.get('exotic_substances') or summary_data.get('conditions') or summary_data.get('samples') or summary_data.get('cybernetics') or summary_data.get('research_teams') %}
                 <div class="mb-4">
                     <h3 class="h6 mb-3">Pack Contents</h3>
-                    {% if summary_data.get('energy_credits') %}
+                    {% if summary_data.get('credits_added') %}
                     <div class="mb-2">
-                        <strong>Energy Credits:</strong> {{ summary_data.energy_credits }}
+                        <strong>Credits Added to Bank Account:</strong> {{ summary_data.credits_added }}
                     </div>
                     {% endif %}
                     {% if summary_data.get('items') %}

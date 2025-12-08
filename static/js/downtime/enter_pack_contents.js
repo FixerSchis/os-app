@@ -94,25 +94,45 @@ $(document).ready(function() {
     $('#saveNewSample').on('click', function() {
         const name = $('#sample_name').val();
         const type = $('#sample_type').val();
-        const description = $('#sample_description').val();
-        const tags = $('#sample_tags').val() || [];
+        const description = $('#sample_description').val() || '';
+        const tagIds = $('#sample_tags').val() || [];
+
+        // Convert tag IDs to tag names (select2 stores IDs but route expects names)
+        // For select2 with tags:true, new tags have their text as both id and text
+        const tagNames = [];
+        const $select = $('#sample_tags');
+        tagIds.forEach(function(tagId) {
+            const $option = $select.find('option[value="' + tagId + '"]');
+            if ($option.length) {
+                // Get the text of the option (which is the tag name)
+                tagNames.push($option.text());
+            } else {
+                // If it's a new tag (typed in select2 with tags:true), the ID is the name
+                tagNames.push(tagId);
+            }
+        });
 
         if (!name || !type) {
             alert('Name and type are required');
             return;
         }
 
+        // Build form data
+        const formData = new FormData();
+        formData.append('name', name);
+        formData.append('type', type);
+        formData.append('description', description);
+        tagNames.forEach(function(tagName) {
+            formData.append('tags[]', tagName);
+        });
+
         // Create new sample via AJAX
         $.ajax({
-            url: '/samples/create',
+            url: '/db/samples/create',
             method: 'POST',
-            contentType: 'application/json',
-            data: JSON.stringify({
-                name: name,
-                type: type,
-                description: description,
-                tags: tags
-            }),
+            data: formData,
+            processData: false,
+            contentType: false,
             success: function(response) {
                 // Add new sample to select
                 const option = new Option(response.name, response.id, true, true);
@@ -120,10 +140,12 @@ $(document).ready(function() {
                 $('#newSampleModal').modal('hide');
                 $('#newSampleForm')[0].reset();
                 $('#sample_tags').val(null).trigger('change');
+                $('#sample_description').val('');
             },
             error: function(xhr) {
                 console.error('Failed to create sample:', xhr.responseText);
-                alert('Failed to create new sample: ' + (xhr.responseJSON?.error || 'Unknown error'));
+                const errorMsg = xhr.responseJSON?.error || 'Unknown error';
+                alert('Failed to create new sample: ' + errorMsg);
             }
         });
     });

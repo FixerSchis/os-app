@@ -210,7 +210,6 @@ def start_downtime():
         pack.items.clear()
         pack.samples.clear()
         pack.exotics.clear()
-        pack.energy_chits = 0
         pack.completion.clear()
         character.pack = pack
 
@@ -220,7 +219,6 @@ def start_downtime():
         pack.items.clear()
         pack.samples.clear()
         pack.exotics.clear()
-        pack.energy_chits = 0
         pack.completion.clear()
         group.pack = pack
 
@@ -318,14 +316,26 @@ def enter_pack_contents_post(period_id, character_id):
     # Get research teams
     pack.research_teams = request.form.getlist("research_teams[]")
 
-    # Get energy chits
-    pack.energy_credits = int(request.form.get("energy_chits", 0))
+    # Get credits to add to bank account
+    credits_str = request.form.get("credits", "0") or "0"
+    try:
+        credits_amount = int(credits_str) if credits_str else 0
+    except (ValueError, TypeError):
+        credits_amount = 0
+    pack.credits_added = credits_amount
 
     # Get other information
     pack.other = request.form.get("other", "")
 
     # On confirm, add samples to group inventory and conditions to player
     if request.form.get("confirm_complete"):
+        # Add credits to bank account immediately
+        if pack.credits_added > 0:
+            pack.character.add_funds(
+                pack.credits_added,
+                current_user.id,
+                f"Credits from downtime pack contents (pack {pack.id})",
+            )
         # Add samples to character inventory
         if pack.samples:
             for sample_id in pack.samples:
@@ -422,10 +432,6 @@ def enter_pack_contents_post(period_id, character_id):
                             )
                         )
         pack.status = DowntimeTaskStatus.ENTER_DOWNTIME
-        if pack.energy_credits > 0:
-            pack.character.add_funds(
-                pack.energy_credits, current_user.id, f"Energy credits from downtime pack {pack.id}"
-            )
         send_downtime_pack_enter_notification(pack.character.user, pack.character, pack)
     db.session.commit()
     flash("Pack contents entered successfully.", "success")
@@ -545,6 +551,7 @@ def enter_downtime(period_id, character_id):
             "id": sample.id,
             "name": sample.name,
             "type": sample.type.value,
+            "description": sample.description or "",
             "tags": [tag.name for tag in sample.tags],
             "is_researched": sample.is_researched,
         }
@@ -846,8 +853,8 @@ def manual_review(period_id, character_id):
         ]
         has_data = True
 
-    if pack.energy_credits:
-        summary_data["energy_credits"] = pack.energy_credits
+    if pack.credits_added:
+        summary_data["credits_added"] = pack.credits_added
         has_data = True
 
     # Activities summary

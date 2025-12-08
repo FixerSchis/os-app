@@ -47,6 +47,7 @@ class DowntimePack(db.Model):
 
     # Pack contents
     energy_credits = Column(Integer, default=0)
+    credits_added = Column(Integer, default=0)  # Credits added to bank account
     items = Column(JSON, default=list)
     exotic_substances = Column(JSON, default=list)
     conditions = Column(JSON, default=list)
@@ -75,6 +76,7 @@ class DowntimePack(db.Model):
             "character_id": self.character_id,
             "status": self.status.value,
             "energy_credits": self.energy_credits,
+            "credits_added": self.credits_added,
             "items": self.items,
             "exotic_substances": self.exotic_substances,
             "conditions": self.conditions,

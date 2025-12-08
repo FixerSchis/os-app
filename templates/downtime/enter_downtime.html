@@ -15,7 +15,7 @@
         <div class="col">
             <div class="card">
                 <div class="card-header">
-                    <h5 class="card-title mb-0">Available Slots</h5>
+                    <h5 class="card-title mb-0">Available Activities</h5>
                 </div>
                 <div class="card-body">
                     <div class="row">
@@ -118,17 +118,14 @@
                                         {% endif %}
                                     </li>
                                     {% endfor %}
-                                    {% if pack.items %}
-                                    <li class="text-success">
-                                        <strong>Added this downtime:</strong>
-                                        {% for item_id in pack.items %}
-                                        {% set added_item = pack_items|selectattr('id', 'equalto', item_id|string)|first %}
-                                        {% if added_item %}
+                                    {% for item_id in pack.items %}
+                                    {% set added_item = pack_items|selectattr('id', 'equalto', item_id|string)|first %}
+                                    {% if added_item %}
+                                    <li>
                                         {{ added_item.name }} ({{ added_item.full_code }})
-                                        {% endif %}
-                                        {% endfor %}
                                     </li>
                                     {% endif %}
+                                    {% endfor %}
                                 </ul>
                             </div>
                             {% endif %}
@@ -139,19 +136,38 @@
                                 <strong>Samples:</strong>
                                 <ul class="mb-0">
                                     {% for sample in character_pack_samples %}
-                                    <li>{{ sample.name }}</li>
-                                    {% endfor %}
-                                    {% if pack.samples %}
-                                    <li class="text-success">
-                                        <strong>Added this downtime:</strong>
-                                        {% for sample_id in pack.samples %}
-                                        {% set added_sample = available_samples|selectattr('id', 'equalto', sample_id|string)|first %}
-                                        {% if added_sample %}
-                                        {{ added_sample.name }}{% if not loop.last %}, {% endif %}
+                                    <li>
+                                        <strong>{{ sample.name }}</strong>
+                                        {% if sample.description %}
+                                            - {{ sample.description }}
                                         {% endif %}
-                                        {% endfor %}
+                                        {% if sample.tags %}
+                                            <span class="badge bg-secondary ms-1">
+                                                {% for tag in sample.tags %}
+                                                    {{ tag.name }}{% if not loop.last %}, {% endif %}
+                                                {% endfor %}
+                                            </span>
+                                        {% endif %}
+                                    </li>
+                                    {% endfor %}
+                                    {% for sample_id in pack.samples %}
+                                    {% set added_sample = available_samples|selectattr('id', 'equalto', sample_id|string)|first %}
+                                    {% if added_sample %}
+                                    <li>
+                                        <strong>{{ added_sample.name }}</strong>
+                                        {% if added_sample.description %}
+                                            - {{ added_sample.description }}
+                                        {% endif %}
+                                        {% if added_sample.tags and added_sample.tags|length > 0 %}
+                                            <span class="badge bg-secondary ms-1">
+                                                {% for tag in added_sample.tags %}
+                                                    {{ tag }}{% if not loop.last %}, {% endif %}
+                                                {% endfor %}
+                                            </span>
+                                        {% endif %}
                                     </li>
                                     {% endif %}
+                                    {% endfor %}
                                 </ul>
                             </div>
                             {% endif %}
@@ -164,32 +180,29 @@
                                     {% for exotic in character_pack_exotics %}
                                     <li>{{ exotic.name }} (x{{ exotic.amount }})</li>
                                     {% endfor %}
-                                    {% if pack.exotic_substances %}
-                                    <li class="text-success">
-                                        <strong>Added this downtime:</strong>
-                                        {% for exotic_data in pack.exotic_substances %}
-                                        {% if exotic_data is mapping %}
-                                        {{ exotic_data.name }} (x{{ exotic_data.amount }}){% if not loop.last %}, {% endif %}
-                                        {% else %}
-                                        {% set exotic_obj = pack_exotics|selectattr('id', 'equalto', exotic_data|string)|first %}
-                                        {% if exotic_obj %}
-                                        {{ exotic_obj.name }} (x{{ exotic_obj.amount }}){% if not loop.last %}, {% endif %}
-                                        {% endif %}
-                                        {% endif %}
-                                        {% endfor %}
+                                    {% for exotic_data in pack.exotic_substances %}
+                                    {% set exotic_obj = pack_exotics|selectattr('id', 'equalto', exotic_data.id|string)|first if exotic_data.id else pack_exotics|selectattr('id', 'equalto', exotic_data|string)|first %}
+                                    {% if exotic_obj %}
+                                    <li>
+                                        {{ exotic_obj.name }} (x{{ exotic_obj.amount }})
+                                    </li>
+                                    {% elif exotic_data.name %}
+                                    <li>
+                                        {{ exotic_data.name }} (x{{ exotic_data.amount }})
                                     </li>
                                     {% endif %}
+                                    {% endfor %}
                                 </ul>
                             </div>
                             {% endif %}
                         </div>
 
                         <!-- Credits Added -->
-                        {% if pack.energy_credits %}
+                        {% if pack.credits_added %}
                         <div class="mb-4">
                             <h6>Credits Added</h6>
-                            <p class="text-success mb-0">
-                                <strong>{{ pack.energy_credits }} Energy Credits</strong> were added to your account during pack contents entry.
+                            <p class="mb-0">
+                                <span><strong>{{ pack.credits_added }} EC</strong></span>
                             </p>
                         </div>
                         {% endif %}

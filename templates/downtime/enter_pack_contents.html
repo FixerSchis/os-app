@@ -18,6 +18,20 @@
         <div class="row">
             <!-- Left Column -->
             <div class="col-md-6">
+                <!-- Credits -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">Credits</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label for="credits">Credits</label>
+                            <input type="number" class="form-control" id="credits" name="credits"
+                                   min="0" step="1" value="{{ pack.credits_added or 0 }}">
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Items -->
                 <div class="card mb-4">
                     <div class="card-header">
@@ -217,6 +231,10 @@
                             <option value="{{ type.value }}">{{ type.value }}</option>
                             {% endfor %}
                         </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="sample_description">Description</label>
+                        <textarea class="form-control" id="sample_description" rows="3" placeholder="Enter sample description"></textarea>
                     </div>
                     <div class="form-group">
                         <label for="sample_tags">Sample Tags</label>
