@@ -339,7 +339,7 @@ def enter_pack_contents_post(period_id, character_id):
         # Add samples to character inventory
         if pack.samples:
             for sample_id in pack.samples:
-                sample = db.session.get(Sample, sample_id)
+                sample = db.session.get(Sample, int(sample_id))
                 if sample and sample not in pack.character.samples:
                     # Remove sample from any other characters first
                     for other_character in Character.query.all():
@@ -404,7 +404,7 @@ def enter_pack_contents_post(period_id, character_id):
             from models.tools.character import CharacterAuditLog
 
             for cybernetic_id in pack.cybernetics:
-                cybernetic = db.session.get(Cybernetic, cybernetic_id)
+                cybernetic = db.session.get(Cybernetic, int(cybernetic_id))
                 if cybernetic:
                     # Check if cybernetic already exists for this character
                     existing_cybernetic = next(
@@ -467,7 +467,7 @@ def enter_downtime(period_id, character_id):
     all_mods = known_mods + available_mods
 
     # Items from own and group downtime packs
-    pack_items = [db.session.get(Item, item_id) for item_id in pack.items]
+    pack_items = [db.session.get(Item, int(item_id)) for item_id in pack.items if item_id]
     group_items = []
     if character.group:
         group_packs = DowntimePack.query.filter(
@@ -560,7 +560,7 @@ def enter_downtime(period_id, character_id):
     pack_exotics = [
         {
             "id": exotic["id"],
-            "name": db.session.get(ExoticSubstance, exotic["id"]).name,
+            "name": db.session.get(ExoticSubstance, int(exotic["id"])).name,
             "amount": exotic["amount"],
         }
         for exotic in pack.exotic_substances
@@ -592,7 +592,7 @@ def enter_downtime(period_id, character_id):
     character_pack_items = []
     if character_pack.items:
         character_pack_items = [
-            db.session.get(Item, item_id) for item_id in character_pack.items if item_id
+            db.session.get(Item, int(item_id)) for item_id in character_pack.items if item_id
         ]
         character_pack_items = [
             item
@@ -608,7 +608,7 @@ def enter_downtime(period_id, character_id):
         for exotic_id in character_pack.exotics:
             exotic_counts[exotic_id] = exotic_counts.get(exotic_id, 0) + 1
         for exotic_id, count in exotic_counts.items():
-            exotic = db.session.get(ExoticSubstance, exotic_id)
+            exotic = db.session.get(ExoticSubstance, int(exotic_id))
             if exotic:
                 character_pack_exotics.append(
                     {"id": exotic_id, "name": exotic.name, "amount": count}
@@ -727,7 +727,8 @@ def manual_review(period_id, character_id):
     # Add faction names to reputation questions
     reputation_questions = []
     for question in pack.reputation or []:
-        faction = db.session.get(Faction, question.get("faction_id"))
+        faction_id = question.get("faction_id")
+        faction = db.session.get(Faction, int(faction_id)) if faction_id else None
         if faction:
             question["faction"] = faction
             reputation_questions.append(question)
@@ -767,13 +768,13 @@ def manual_review(period_id, character_id):
             {
                 "id": item_id,
                 "name": (
-                    db.session.get(Item, item_id).blueprint.display_name
-                    if db.session.get(Item, item_id)
+                    db.session.get(Item, int(item_id)).blueprint.display_name
+                    if db.session.get(Item, int(item_id))
                     else f"Item {item_id}"
                 ),
                 "full_code": (
-                    db.session.get(Item, item_id).full_code
-                    if db.session.get(Item, item_id)
+                    db.session.get(Item, int(item_id)).full_code
+                    if db.session.get(Item, int(item_id))
                     else None
                 ),
             }
@@ -786,8 +787,8 @@ def manual_review(period_id, character_id):
             {
                 "id": exotic["id"],
                 "name": (
-                    db.session.get(ExoticSubstance, exotic["id"]).name
-                    if db.session.get(ExoticSubstance, exotic["id"])
+                    db.session.get(ExoticSubstance, int(exotic["id"])).name
+                    if db.session.get(ExoticSubstance, int(exotic["id"]))
                     else f"Exotic {exotic['id']}"
                 ),
                 "amount": exotic.get("amount", 1),
@@ -801,8 +802,8 @@ def manual_review(period_id, character_id):
             {
                 "id": condition["id"],
                 "name": (
-                    db.session.get(Condition, condition["id"]).name
-                    if db.session.get(Condition, condition["id"])
+                    db.session.get(Condition, int(condition["id"])).name
+                    if db.session.get(Condition, int(condition["id"]))
                     else f"Condition {condition['id']}"
                 ),
                 "duration": condition.get("duration", 0),
@@ -816,8 +817,8 @@ def manual_review(period_id, character_id):
             {
                 "id": sample_id,
                 "name": (
-                    db.session.get(Sample, sample_id).name
-                    if db.session.get(Sample, sample_id)
+                    db.session.get(Sample, int(sample_id)).name
+                    if db.session.get(Sample, int(sample_id))
                     else f"Sample {sample_id}"
                 ),
             }
@@ -830,8 +831,8 @@ def manual_review(period_id, character_id):
             {
                 "id": cybernetic_id,
                 "name": (
-                    db.session.get(Cybernetic, cybernetic_id).name
-                    if db.session.get(Cybernetic, cybernetic_id)
+                    db.session.get(Cybernetic, int(cybernetic_id)).name
+                    if db.session.get(Cybernetic, int(cybernetic_id))
                     else f"Cybernetic {cybernetic_id}"
                 ),
             }
@@ -844,8 +845,8 @@ def manual_review(period_id, character_id):
             {
                 "id": faction_id,
                 "name": (
-                    db.session.get(Faction, faction_id).name
-                    if db.session.get(Faction, faction_id)
+                    db.session.get(Faction, int(faction_id)).name
+                    if db.session.get(Faction, int(faction_id))
                     else f"Faction {faction_id}"
                 ),
             }
@@ -893,14 +894,14 @@ def manual_review(period_id, character_id):
         for eng in pack.engineering:
             eng_data = {"action": eng.get("action", "unknown")}
             if eng.get("item_id"):
-                item = db.session.get(Item, eng["item_id"])
+                item = db.session.get(Item, int(eng["item_id"]))
                 if item:
                     eng_data["item_name"] = item.blueprint.display_name
                     eng_data["item_full_code"] = item.full_code
             elif eng.get("full_code"):
                 eng_data["item_full_code"] = eng["full_code"]
             if eng.get("mod_id"):
-                mod = db.session.get(Mod, eng["mod_id"])
+                mod = db.session.get(Mod, int(eng["mod_id"]))
                 if mod:
                     eng_data["mod_name"] = mod.name
             if eng.get("source"):
@@ -919,7 +920,7 @@ def manual_review(period_id, character_id):
                 sci_data["theorise_name"] = sci.get("theorise_name", "")
                 sci_data["theorise_desc"] = sci.get("theorise_desc", "")
             elif sci.get("action") == "research_sample" and sci.get("sample_id"):
-                sample = db.session.get(Sample, sci["sample_id"])
+                sample = db.session.get(Sample, int(sci["sample_id"]))
                 if sample:
                     sci_data["sample_name"] = sample.name
             elif sci.get("action") == "research_project" and sci.get("project_id"):
@@ -1105,14 +1106,14 @@ def process_downtime(period_id):
     for pack in packs:
         for modification in pack.modifications:
             if modification["type"] == "learning":
-                mod = db.session.get(Mod, modification["mod_id"])
+                mod = db.session.get(Mod, int(modification["mod_id"]))
                 if mod:
                     pack.character.known_modifications.append(modification["mod_id"])
                     pack.character.pack.add_downtime_result(
                         str(pack.id), f"Learned mod: {mod.name}"
                     )
             elif modification["type"] == "forgetting":
-                mod = db.session.get(Mod, modification["mod_id"])
+                mod = db.session.get(Mod, int(modification["mod_id"]))
                 if mod:
                     pack.character.known_modifications.remove(modification["mod_id"])
                     pack.character.pack.add_downtime_result(
@@ -1122,7 +1123,7 @@ def process_downtime(period_id):
     # Process purchases
     for pack in packs:
         for purchase in pack.purchases:
-            blueprint = db.session.get(ItemBlueprint, purchase["blueprint_id"])
+            blueprint = db.session.get(ItemBlueprint, int(purchase["blueprint_id"]))
             if pack.character.can_afford(blueprint.base_cost):
                 pack.character.remove_funds(
                     blueprint.base_cost, current_user.id, f"Purchase: {blueprint.display_name}"
@@ -1174,7 +1175,11 @@ def process_downtime(period_id):
     for pack in packs:
         for engineering in pack.engineering:
             if engineering.get("action") == "maintain":
-                item = db.session.get(Item, engineering.get("item_id"))
+                item = (
+                    db.session.get(Item, int(engineering.get("item_id")))
+                    if engineering.get("item_id")
+                    else None
+                )
                 if item and pack.character.can_afford(item.get_maintenance_cost()):
                     pack.character.remove_funds(
                         item.get_maintenance_cost(), current_user.id, f"Maintenance: {item.name}"
@@ -1199,8 +1204,16 @@ def process_downtime(period_id):
                 )
                 continue
             if engineering.get("action") == "modify":
-                item = db.session.get(Item, engineering.get("item_id"))
-                mod = db.session.get(Mod, engineering.get("mod_id"))
+                item = (
+                    db.session.get(Item, int(engineering.get("item_id")))
+                    if engineering.get("item_id")
+                    else None
+                )
+                mod = (
+                    db.session.get(Mod, int(engineering.get("mod_id")))
+                    if engineering.get("mod_id")
+                    else None
+                )
                 if (
                     item
                     and mod
@@ -1279,7 +1292,7 @@ def process_downtime(period_id):
             elif science.get("action") == "research_sample":
                 sample_id = science.get("sample_id")
                 if sample_id:
-                    sample = db.session.get(Sample, sample_id)
+                    sample = db.session.get(Sample, int(sample_id))
                     if sample and not sample.is_researched:
                         sample.is_researched = True
                         pack.character.pack.add_downtime_result(
@@ -1447,7 +1460,7 @@ def process_downtime(period_id):
                                 exotic_id = exotic.get("id")
                                 quantity = exotic.get("quantity", 0)
                                 if exotic_id and quantity > 0:
-                                    substance = db.session.get(ExoticSubstance, exotic_id)
+                                    substance = db.session.get(ExoticSubstance, int(exotic_id))
                                     # Find matching requirement
                                     for req_progress in current_stage.requirement_progress:
                                         if (
@@ -1479,7 +1492,7 @@ def process_downtime(period_id):
                         if research.get("contributed_items"):
                             for item_id in research.get("contributed_items"):
                                 if item_id:
-                                    item = db.session.get(Item, item_id)
+                                    item = db.session.get(Item, int(item_id))
                                     # Find matching requirement
                                     for req_progress in current_stage.requirement_progress:
                                         if (
@@ -1509,7 +1522,7 @@ def process_downtime(period_id):
                         if research.get("contributed_samples"):
                             for sample_id in research.get("contributed_samples"):
                                 if sample_id:
-                                    sample = db.session.get(Sample, sample_id)
+                                    sample = db.session.get(Sample, int(sample_id))
                                     # Find matching requirement
                                     for req_progress in current_stage.requirement_progress:
                                         if (
