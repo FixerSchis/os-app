@@ -1365,6 +1365,148 @@ def test_manual_review_with_both_other_fields(
     assert downtime_pack_enter_downtime.status == DowntimeTaskStatus.COMPLETED
 
 
+def test_manual_review_summary_display(
+    test_client,
+    downtime_pack_enter_downtime,
+    downtime_team_user,
+    db,
+    item,
+    exotic_substance,
+    sample,
+    cybernetic,
+    condition,
+    faction,
+    item_blueprint,
+    mod,
+):
+    """Test that the pack summary is displayed correctly in manual review."""
+    make_pack_manual_review(db, downtime_pack_enter_downtime)
+
+    # Set up pack with various contents and activities
+    downtime_pack_enter_downtime.items = [item.id]
+    downtime_pack_enter_downtime.energy_credits = 50
+    downtime_pack_enter_downtime.exotic_substances = [{"id": exotic_substance.id, "amount": 3}]
+    downtime_pack_enter_downtime.conditions = [{"id": condition.id, "duration": 5}]
+    downtime_pack_enter_downtime.samples = [sample.id]
+    downtime_pack_enter_downtime.cybernetics = [cybernetic.id]
+    downtime_pack_enter_downtime.research_teams = [faction.id]
+    downtime_pack_enter_downtime.purchases = [{"blueprint_id": item_blueprint.id, "quantity": 2}]
+    downtime_pack_enter_downtime.modifications = [{"type": "learning", "mod_id": mod.id}]
+    downtime_pack_enter_downtime.engineering = [
+        {"action": "maintain", "source": "own", "item_id": item.id}
+    ]
+    downtime_pack_enter_downtime.science = [{"action": "synthesize", "science_type": "generic"}]
+    db.session.commit()
+
+    login_user(test_client, downtime_team_user)
+    response = test_client.get(
+        "/downtime/manual-review/"
+        f"{downtime_pack_enter_downtime.period_id}/"
+        f"{downtime_pack_enter_downtime.character_id}"
+    )
+
+    assert response.status_code == 200
+    html = response.data.decode("utf-8")
+
+    # Check that Pack Summary section exists
+    assert "Pack Summary" in html
+
+    # Check that pack contents are displayed
+    assert "Pack Contents" in html
+    assert str(downtime_pack_enter_downtime.energy_credits) in html
+    assert item_blueprint.display_name in html or "Test Blueprint" in html
+    assert exotic_substance.name in html
+    assert "x3" in html  # Exotic amount
+    assert condition.name in html
+    assert "Duration: 5" in html
+    assert sample.name in html
+    assert cybernetic.name in html
+    assert faction.name in html
+
+    # Check that activities are displayed
+    assert "Activities" in html
+    assert "Purchases" in html
+    assert "Modifications" in html
+    assert "Engineering" in html
+    assert "Science" in html
+
+    # Verify summary appears before "Update Reputations"
+    summary_index = html.find("Pack Summary")
+    reputations_index = html.find("Update Reputations")
+    assert summary_index != -1
+    assert reputations_index != -1
+    assert summary_index < reputations_index
+
+
+def test_manual_review_summary_empty_pack(
+    test_client, downtime_pack_enter_downtime, downtime_team_user, db
+):
+    """Test that summary section doesn't appear for empty packs."""
+    make_pack_manual_review(db, downtime_pack_enter_downtime)
+
+    # Ensure pack is empty
+    downtime_pack_enter_downtime.items = []
+    downtime_pack_enter_downtime.energy_credits = 0
+    downtime_pack_enter_downtime.exotic_substances = []
+    downtime_pack_enter_downtime.conditions = []
+    downtime_pack_enter_downtime.samples = []
+    downtime_pack_enter_downtime.cybernetics = []
+    downtime_pack_enter_downtime.research_teams = []
+    downtime_pack_enter_downtime.purchases = []
+    downtime_pack_enter_downtime.modifications = []
+    downtime_pack_enter_downtime.engineering = []
+    downtime_pack_enter_downtime.science = []
+    downtime_pack_enter_downtime.research = []
+    db.session.commit()
+
+    login_user(test_client, downtime_team_user)
+    response = test_client.get(
+        "/downtime/manual-review/"
+        f"{downtime_pack_enter_downtime.period_id}/"
+        f"{downtime_pack_enter_downtime.character_id}"
+    )
+
+    assert response.status_code == 200
+    html = response.data.decode("utf-8")
+
+    # Summary should not appear for empty pack (check for the card header, not just the comment)
+    assert '<h2 class="h5 mb-0">Pack Summary</h2>' not in html
+    # But Update Reputations should still be there
+    assert "Update Reputations" in html
+
+
+def test_manual_review_summary_with_research(
+    test_client,
+    downtime_pack_enter_downtime,
+    downtime_team_user,
+    db,
+    research_project_with_stage,
+):
+    """Test that research activities are displayed in the summary."""
+    make_pack_manual_review(db, downtime_pack_enter_downtime)
+
+    # Set up pack with research activity
+    downtime_pack_enter_downtime.research = [
+        {"project_id": research_project_with_stage.public_id, "research_for": "self"}
+    ]
+    db.session.commit()
+
+    login_user(test_client, downtime_team_user)
+    response = test_client.get(
+        "/downtime/manual-review/"
+        f"{downtime_pack_enter_downtime.period_id}/"
+        f"{downtime_pack_enter_downtime.character_id}"
+    )
+
+    assert response.status_code == 200
+    html = response.data.decode("utf-8")
+
+    # Check that research is displayed
+    assert "Pack Summary" in html
+    assert "Research" in html
+    assert research_project_with_stage.project_name in html
+
+
 def test_process_downtime_character_points_crew_tickets(
     test_client, downtime_team_user, downtime_period, downtime_pack, db
 ):

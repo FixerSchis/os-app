@@ -12,6 +12,186 @@
     <h1>Manual Review - {{ character.name }}</h1>
 
     <form method="POST" id="manual-review-form">
+        <!-- Pack Summary -->
+        {% if summary_data %}
+        <div class="card mb-4">
+            <div class="card-header">
+                <h2 class="h5 mb-0">Pack Summary</h2>
+            </div>
+            <div class="card-body">
+                <!-- Pack Contents -->
+                {% if summary_data.get('energy_credits') or summary_data.get('items') or summary_data.get('exotic_substances') or summary_data.get('conditions') or summary_data.get('samples') or summary_data.get('cybernetics') or summary_data.get('research_teams') %}
+                <div class="mb-4">
+                    <h3 class="h6 mb-3">Pack Contents</h3>
+                    {% if summary_data.get('energy_credits') %}
+                    <div class="mb-2">
+                        <strong>Energy Credits:</strong> {{ summary_data.energy_credits }}
+                    </div>
+                    {% endif %}
+                    {% if summary_data.get('items') %}
+                    <div class="mb-2">
+                        <strong>Items:</strong>
+                        <ul class="mb-0">
+                            {% for item_data in summary_data.get('items', []) %}
+                            <li>{{ item_data.name }}{% if item_data.full_code %} ({{ item_data.full_code }}){% endif %}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endif %}
+                    {% if summary_data.get('exotic_substances') %}
+                    <div class="mb-2">
+                        <strong>Exotic Substances:</strong>
+                        <ul class="mb-0">
+                            {% for exotic in summary_data.get('exotic_substances', []) %}
+                            <li>{{ exotic.name }} (x{{ exotic.amount }})</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endif %}
+                    {% if summary_data.get('conditions') %}
+                    <div class="mb-2">
+                        <strong>Conditions:</strong>
+                        <ul class="mb-0">
+                            {% for condition_data in summary_data.get('conditions', []) %}
+                            <li>{{ condition_data.name }} (Duration: {{ condition_data.duration }})</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endif %}
+                    {% if summary_data.get('samples') %}
+                    <div class="mb-2">
+                        <strong>Samples:</strong>
+                        <ul class="mb-0">
+                            {% for sample_data in summary_data.get('samples', []) %}
+                            <li>{{ sample_data.name }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endif %}
+                    {% if summary_data.get('cybernetics') %}
+                    <div class="mb-2">
+                        <strong>Cybernetics:</strong>
+                        <ul class="mb-0">
+                            {% for cybernetic_data in summary_data.get('cybernetics', []) %}
+                            <li>{{ cybernetic_data.name }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endif %}
+                    {% if summary_data.get('research_teams') %}
+                    <div class="mb-2">
+                        <strong>Research Teams:</strong>
+                        <ul class="mb-0">
+                            {% for team in summary_data.get('research_teams', []) %}
+                            <li>{{ team.name }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                <!-- Activities -->
+                {% if summary_data.get('purchases') or summary_data.get('modifications') or summary_data.get('engineering') or summary_data.get('science') or summary_data.get('research') %}
+                <div class="mb-4">
+                    <h3 class="h6 mb-3">Activities</h3>
+                    {% if summary_data.get('purchases') %}
+                    <div class="mb-3">
+                        <strong>Purchases:</strong>
+                        <ul class="mb-0">
+                            {% for purchase in summary_data.get('purchases', []) %}
+                            <li>{{ purchase.blueprint_name }} (x{{ purchase.quantity }})</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endif %}
+                    {% if summary_data.get('modifications') %}
+                    <div class="mb-3">
+                        <strong>Modifications:</strong>
+                        <ul class="mb-0">
+                            {% for mod_data in summary_data.get('modifications', []) %}
+                            <li>{{ mod_data.mod_name }} ({{ mod_data.type }})</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endif %}
+                    {% if summary_data.get('engineering') %}
+                    <div class="mb-3">
+                        <strong>Engineering:</strong>
+                        <ul class="mb-0">
+                            {% for eng in summary_data.get('engineering', []) %}
+                            <li>
+                                {{ eng.action|title }}
+                                {% if eng.get('item_name') %}
+                                    - {{ eng.item_name }}{% if eng.get('item_full_code') %} ({{ eng.item_full_code }}){% endif %}
+                                {% elif eng.get('item_full_code') %}
+                                    - {{ eng.item_full_code }}
+                                {% endif %}
+                                {% if eng.get('mod_name') %}
+                                    - Mod: {{ eng.mod_name }}
+                                {% endif %}
+                                {% if eng.get('source') %}
+                                    ({{ eng.source }})
+                                {% endif %}
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endif %}
+                    {% if summary_data.get('science') %}
+                    <div class="mb-3">
+                        <strong>Science:</strong>
+                        <ul class="mb-0">
+                            {% for sci in summary_data.get('science', []) %}
+                            <li>
+                                {% if sci.action == 'theorise' %}
+                                    Theorise: {{ sci.theorise_name }}
+                                    {% if sci.theorise_desc %}
+                                        - {{ sci.theorise_desc }}
+                                    {% endif %}
+                                {% elif sci.action == 'research_sample' %}
+                                    Research Sample: {{ sci.sample_name }}
+                                {% elif sci.action == 'research_project' %}
+                                    Research Project: {{ sci.project_name }}
+                                {% elif sci.action == 'synthesize' %}
+                                    Synthesize
+                                    {% if sci.science_type %}
+                                        ({{ ScienceType.descriptions().get(sci.science_type, sci.science_type|title) }})
+                                    {% endif %}
+                                {% else %}
+                                    {{ sci.action|title }}
+                                    {% if sci.science_type %}
+                                        ({{ ScienceType.descriptions().get(sci.science_type, sci.science_type|title) }})
+                                    {% endif %}
+                                {% endif %}
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endif %}
+                    {% if summary_data.get('research') %}
+                    <div class="mb-3">
+                        <strong>Research:</strong>
+                        <ul class="mb-0">
+                            {% for res in summary_data.get('research', []) %}
+                            <li>
+                                {% if res.project_name %}
+                                    {{ res.project_name }}
+                                {% else %}
+                                    Project: {{ res.project_id }}
+                                {% endif %}
+                                ({{ res.research_for }}{% if res.get('research_for_id') %}: {{ res.research_for_id }}{% endif %})
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
         <!-- Update Reputations -->
         <div class="card mb-4">
             <div class="card-header">

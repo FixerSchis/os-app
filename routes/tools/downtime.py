@@ -706,6 +706,199 @@ def manual_review(period_id, character_id):
             ]
         )
 
+    # Prepare summary data for display
+    summary_data = {}
+    has_data = False
+
+    # Pack contents summary
+    if pack.items:
+        summary_data["items"] = [
+            {
+                "id": item_id,
+                "name": (
+                    db.session.get(Item, item_id).blueprint.display_name
+                    if db.session.get(Item, item_id)
+                    else f"Item {item_id}"
+                ),
+                "full_code": (
+                    db.session.get(Item, item_id).full_code
+                    if db.session.get(Item, item_id)
+                    else None
+                ),
+            }
+            for item_id in pack.items
+        ]
+        has_data = True
+
+    if pack.exotic_substances:
+        summary_data["exotic_substances"] = [
+            {
+                "id": exotic["id"],
+                "name": (
+                    db.session.get(ExoticSubstance, exotic["id"]).name
+                    if db.session.get(ExoticSubstance, exotic["id"])
+                    else f"Exotic {exotic['id']}"
+                ),
+                "amount": exotic.get("amount", 1),
+            }
+            for exotic in pack.exotic_substances
+        ]
+        has_data = True
+
+    if pack.conditions:
+        summary_data["conditions"] = [
+            {
+                "id": condition["id"],
+                "name": (
+                    db.session.get(Condition, condition["id"]).name
+                    if db.session.get(Condition, condition["id"])
+                    else f"Condition {condition['id']}"
+                ),
+                "duration": condition.get("duration", 0),
+            }
+            for condition in pack.conditions
+        ]
+        has_data = True
+
+    if pack.samples:
+        summary_data["samples"] = [
+            {
+                "id": sample_id,
+                "name": (
+                    db.session.get(Sample, sample_id).name
+                    if db.session.get(Sample, sample_id)
+                    else f"Sample {sample_id}"
+                ),
+            }
+            for sample_id in pack.samples
+        ]
+        has_data = True
+
+    if pack.cybernetics:
+        summary_data["cybernetics"] = [
+            {
+                "id": cybernetic_id,
+                "name": (
+                    db.session.get(Cybernetic, cybernetic_id).name
+                    if db.session.get(Cybernetic, cybernetic_id)
+                    else f"Cybernetic {cybernetic_id}"
+                ),
+            }
+            for cybernetic_id in pack.cybernetics
+        ]
+        has_data = True
+
+    if pack.research_teams:
+        summary_data["research_teams"] = [
+            {
+                "id": faction_id,
+                "name": (
+                    db.session.get(Faction, faction_id).name
+                    if db.session.get(Faction, faction_id)
+                    else f"Faction {faction_id}"
+                ),
+            }
+            for faction_id in pack.research_teams
+        ]
+        has_data = True
+
+    if pack.energy_credits:
+        summary_data["energy_credits"] = pack.energy_credits
+        has_data = True
+
+    # Activities summary
+    if pack.purchases:
+        summary_data["purchases"] = []
+        for purchase in pack.purchases:
+            blueprint_id = purchase.get("blueprint_id")
+            blueprint = db.session.get(ItemBlueprint, blueprint_id) if blueprint_id else None
+            summary_data["purchases"].append(
+                {
+                    "blueprint_id": blueprint_id,
+                    "blueprint_name": (
+                        blueprint.display_name if blueprint else f"Blueprint {blueprint_id}"
+                    ),
+                    "quantity": purchase.get("quantity", 1),
+                }
+            )
+        has_data = True
+
+    if pack.modifications:
+        summary_data["modifications"] = []
+        for mod in pack.modifications:
+            mod_id = mod.get("mod_id")
+            mod_obj = db.session.get(Mod, mod_id) if mod_id else None
+            summary_data["modifications"].append(
+                {
+                    "type": mod.get("type", "unknown"),
+                    "mod_id": mod_id,
+                    "mod_name": mod_obj.name if mod_obj else f"Mod {mod_id}",
+                }
+            )
+        has_data = True
+
+    if pack.engineering:
+        summary_data["engineering"] = []
+        for eng in pack.engineering:
+            eng_data = {"action": eng.get("action", "unknown")}
+            if eng.get("item_id"):
+                item = db.session.get(Item, eng["item_id"])
+                if item:
+                    eng_data["item_name"] = item.blueprint.display_name
+                    eng_data["item_full_code"] = item.full_code
+            elif eng.get("full_code"):
+                eng_data["item_full_code"] = eng["full_code"]
+            if eng.get("mod_id"):
+                mod = db.session.get(Mod, eng["mod_id"])
+                if mod:
+                    eng_data["mod_name"] = mod.name
+            if eng.get("source"):
+                eng_data["source"] = eng["source"]
+            summary_data["engineering"].append(eng_data)
+        has_data = True
+
+    if pack.science:
+        summary_data["science"] = []
+        for sci in pack.science:
+            sci_data = {
+                "action": sci.get("action", "unknown"),
+                "science_type": sci.get("science_type"),
+            }
+            if sci.get("action") == "theorise":
+                sci_data["theorise_name"] = sci.get("theorise_name", "")
+                sci_data["theorise_desc"] = sci.get("theorise_desc", "")
+            elif sci.get("action") == "research_sample" and sci.get("sample_id"):
+                sample = db.session.get(Sample, sci["sample_id"])
+                if sample:
+                    sci_data["sample_name"] = sample.name
+            elif sci.get("action") == "research_project" and sci.get("project_id"):
+                research = Research.query.filter_by(public_id=sci["project_id"]).first()
+                if research:
+                    sci_data["project_name"] = research.project_name
+            summary_data["science"].append(sci_data)
+        has_data = True
+
+    if pack.research:
+        summary_data["research"] = []
+        for res in pack.research:
+            res_data = {"project_id": res.get("project_id")}
+            research = (
+                Research.query.filter_by(public_id=res.get("project_id")).first()
+                if res.get("project_id")
+                else None
+            )
+            if research:
+                res_data["project_name"] = research.project_name
+            res_data["research_for"] = res.get("research_for", "self")
+            if res.get("research_for_id"):
+                res_data["research_for_id"] = res.get("research_for_id")
+            summary_data["research"].append(res_data)
+        has_data = True
+
+    # Only pass summary_data if there's actual data
+    if not has_data:
+        summary_data = None
+
     # Add review data to the template context
     return render_template(
         "downtime/manual_review.html",
@@ -719,6 +912,7 @@ def manual_review(period_id, character_id):
         item_types=item_types,
         exotics=exotics,
         sample_tags=sample_tags,
+        summary_data=summary_data,
         DowntimeTaskStatus=DowntimeTaskStatus,
         ResearchRequirementType=ResearchRequirementType,
         ScienceType=ScienceType,
