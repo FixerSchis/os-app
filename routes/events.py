@@ -14,11 +14,12 @@ from models.database.item import Item
 from models.database.item_blueprint import ItemBlueprint
 from models.database.medicaments import Medicament
 from models.database.sample import Sample
-from models.enums import CharacterStatus, EventType, TicketType
+from models.enums import CharacterStatus, DowntimeStatus, DowntimeTaskStatus, EventType, TicketType
 from models.event import Event
 from models.extensions import db
 from models.tools.character import Character
 from models.tools.character_inventory import CharacterItem
+from models.tools.downtime import DowntimePack, DowntimePeriod
 from models.tools.event_ticket import EventTicket
 from models.tools.group import Group
 from models.tools.pack import Pack
@@ -548,7 +549,7 @@ def assign_ticket_post(event_id):
         if child_name:
             existing_ticket.child_name = child_name
 
-        # Reset group pack if character has a group
+        # Reset group pack and create downtime pack if character has a group
         if character_id:
             character = db.session.get(Character, character_id)
             if character and character.group:
@@ -571,6 +572,24 @@ def assign_ticket_post(event_id):
                     downtime_results=character.group.pack.downtime_results,
                 )
                 character.group.pack = new_pack
+
+            # Check if there's an active downtime period for this event and create pack if needed
+            active_period = DowntimePeriod.query.filter_by(
+                event_id=event_id, status=DowntimeStatus.PENDING
+            ).first()
+            if active_period:
+                # Check if character already has a downtime pack for this period
+                existing_pack = DowntimePack.query.filter_by(
+                    period_id=active_period.id, character_id=character_id
+                ).first()
+                if not existing_pack:
+                    # Create downtime pack in ENTER_PACK state
+                    downtime_pack = DowntimePack(
+                        period_id=active_period.id,
+                        character_id=character_id,
+                        status=DowntimeTaskStatus.ENTER_PACK,
+                    )
+                    db.session.add(downtime_pack)
 
         db.session.commit()
         flash("Ticket updated successfully!", "success")
@@ -590,7 +609,7 @@ def assign_ticket_post(event_id):
         )
         db.session.add(ticket)
 
-        # Reset group pack if character has a group
+        # Reset group pack and create downtime pack if character has a group
         if character_id:
             character = db.session.get(Character, character_id)
             if character and character.group:
@@ -613,6 +632,24 @@ def assign_ticket_post(event_id):
                     downtime_results=character.group.pack.downtime_results,
                 )
                 character.group.pack = new_pack
+
+            # Check if there's an active downtime period for this event and create pack if needed
+            active_period = DowntimePeriod.query.filter_by(
+                event_id=event_id, status=DowntimeStatus.PENDING
+            ).first()
+            if active_period:
+                # Check if character already has a downtime pack for this period
+                existing_pack = DowntimePack.query.filter_by(
+                    period_id=active_period.id, character_id=character_id
+                ).first()
+                if not existing_pack:
+                    # Create downtime pack in ENTER_PACK state
+                    downtime_pack = DowntimePack(
+                        period_id=active_period.id,
+                        character_id=character_id,
+                        status=DowntimeTaskStatus.ENTER_PACK,
+                    )
+                    db.session.add(downtime_pack)
 
         db.session.commit()
         flash("Ticket assigned successfully!", "success")

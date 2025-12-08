@@ -3,9 +3,10 @@ from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
 
 from models.database.group_type import GroupType
-from models.enums import TicketType
+from models.enums import DowntimeStatus, DowntimeTaskStatus, TicketType
 from models.event import Event
 from models.tools.character import Character
+from models.tools.downtime import DowntimePack, DowntimePeriod
 from models.tools.event_ticket import EventTicket
 from models.tools.group import Group
 from models.tools.user import User
@@ -1673,6 +1674,436 @@ def test_assign_ticket_update_existing(test_client, admin_user, db, faction):
     assert updated_ticket.meal_ticket is True
     assert updated_ticket.requires_bunk is True
     assert updated_ticket.price_paid == 75.00
+
+
+def test_assign_ticket_creates_downtime_pack(test_client, admin_user, db, faction):
+    """Test assigning ticket creates downtime pack if downtime is active."""
+    # Create a test event
+    event = Event(
+        event_number="TEST022",
+        name="Test Event",
+        event_type="mainline",
+        description="A test event",
+        early_booking_deadline=datetime.now() + timedelta(days=30),
+        booking_deadline=datetime.now() + timedelta(days=40),
+        start_date=datetime.now() + timedelta(days=45),
+        end_date=datetime.now() + timedelta(days=47),
+        location="Test Location",
+        standard_ticket_price=50.00,
+        early_booking_ticket_price=45.00,
+        child_ticket_price_12_15=25.00,
+        child_ticket_price_7_11=15.00,
+        child_ticket_price_under_7=0.00,
+    )
+    db.session.add(event)
+    db.session.commit()
+
+    # Create a test user and character
+    user = User(
+        email="test@example.com",
+        first_name="Test",
+        surname="User",
+    )
+    user.set_password("password")
+    db.session.add(user)
+    db.session.commit()
+
+    character = Character(
+        user_id=user.id,
+        character_id=1,
+        name="Test Character",
+        status="active",
+        faction_id=faction.id,
+    )
+    db.session.add(character)
+    db.session.commit()
+
+    # Create a group for the character
+    group_type = GroupType(
+        name="Test Group Type",
+        description="A test group type",
+        income_items_list=[],
+        income_items_discount=0.5,
+        income_substances=False,
+        income_substance_cost=0,
+        income_medicaments=False,
+        income_medicament_cost=0,
+        income_distribution_dict={},
+    )
+    db.session.add(group_type)
+    db.session.commit()
+
+    group = Group(
+        name="Test Group", group_type_id=group_type.id, bank_account=0, faction_id=faction.id
+    )
+    db.session.add(group)
+    db.session.commit()
+
+    # Add character to group
+    character.group_id = group.id
+    db.session.commit()
+
+    # Create an active downtime period for this event
+    downtime_period = DowntimePeriod(
+        event_id=event.id,
+        status=DowntimeStatus.PENDING,
+    )
+    db.session.add(downtime_period)
+    db.session.commit()
+
+    with test_client.session_transaction() as session:
+        session["_user_id"] = admin_user.id
+        session["_fresh"] = True
+
+    # Assign a ticket to the character
+    response = test_client.post(
+        f"/events/{event.id}/assign",
+        data={
+            "ticket_type": "adult",
+            "character": f"{character.user_id}.{character.character_id}",
+            "meal_ticket": False,
+            "requires_bunk": False,
+            "price_paid": 50.0,
+        },
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    assert b"Ticket assigned successfully!" in response.data
+
+    # Verify a downtime pack was created
+    downtime_pack = DowntimePack.query.filter_by(
+        period_id=downtime_period.id, character_id=character.id
+    ).first()
+    assert downtime_pack is not None
+    assert downtime_pack.status == DowntimeTaskStatus.ENTER_PACK
+
+
+def test_assign_ticket_no_downtime_pack_when_no_active_downtime(
+    test_client, admin_user, db, faction
+):
+    """Test that assigning a ticket does not create a downtime pack if downtime is not active."""
+    # Create a test event
+    event = Event(
+        event_number="TEST023",
+        name="Test Event",
+        event_type="mainline",
+        description="A test event",
+        early_booking_deadline=datetime.now() + timedelta(days=30),
+        booking_deadline=datetime.now() + timedelta(days=40),
+        start_date=datetime.now() + timedelta(days=45),
+        end_date=datetime.now() + timedelta(days=47),
+        location="Test Location",
+        standard_ticket_price=50.00,
+        early_booking_ticket_price=45.00,
+        child_ticket_price_12_15=25.00,
+        child_ticket_price_7_11=15.00,
+        child_ticket_price_under_7=0.00,
+    )
+    db.session.add(event)
+    db.session.commit()
+
+    # Create a test user and character
+    user = User(
+        email="test@example.com",
+        first_name="Test",
+        surname="User",
+    )
+    user.set_password("password")
+    db.session.add(user)
+    db.session.commit()
+
+    character = Character(
+        user_id=user.id,
+        character_id=1,
+        name="Test Character",
+        status="active",
+        faction_id=faction.id,
+    )
+    db.session.add(character)
+    db.session.commit()
+
+    # Create a group for the character
+    group_type = GroupType(
+        name="Test Group Type",
+        description="A test group type",
+        income_items_list=[],
+        income_items_discount=0.5,
+        income_substances=False,
+        income_substance_cost=0,
+        income_medicaments=False,
+        income_medicament_cost=0,
+        income_distribution_dict={},
+    )
+    db.session.add(group_type)
+    db.session.commit()
+
+    group = Group(
+        name="Test Group", group_type_id=group_type.id, bank_account=0, faction_id=faction.id
+    )
+    db.session.add(group)
+    db.session.commit()
+
+    # Add character to group
+    character.group_id = group.id
+    db.session.commit()
+
+    # No active downtime period
+
+    with test_client.session_transaction() as session:
+        session["_user_id"] = admin_user.id
+        session["_fresh"] = True
+
+    # Assign a ticket to the character
+    response = test_client.post(
+        f"/events/{event.id}/assign",
+        data={
+            "ticket_type": "adult",
+            "character": f"{character.user_id}.{character.character_id}",
+            "meal_ticket": False,
+            "requires_bunk": False,
+            "price_paid": 50.0,
+        },
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    assert b"Ticket assigned successfully!" in response.data
+
+    # Verify no downtime packs exist
+    downtime_packs = DowntimePack.query.filter_by(character_id=character.id).all()
+    assert len(downtime_packs) == 0
+
+
+def test_assign_ticket_no_duplicate_downtime_pack(test_client, admin_user, db, faction):
+    """Test assigning ticket doesn't create duplicate downtime pack if one exists."""
+    # Create a test event
+    event = Event(
+        event_number="TEST024",
+        name="Test Event",
+        event_type="mainline",
+        description="A test event",
+        early_booking_deadline=datetime.now() + timedelta(days=30),
+        booking_deadline=datetime.now() + timedelta(days=40),
+        start_date=datetime.now() + timedelta(days=45),
+        end_date=datetime.now() + timedelta(days=47),
+        location="Test Location",
+        standard_ticket_price=50.00,
+        early_booking_ticket_price=45.00,
+        child_ticket_price_12_15=25.00,
+        child_ticket_price_7_11=15.00,
+        child_ticket_price_under_7=0.00,
+    )
+    db.session.add(event)
+    db.session.commit()
+
+    # Create a test user and character
+    user = User(
+        email="test@example.com",
+        first_name="Test",
+        surname="User",
+    )
+    user.set_password("password")
+    db.session.add(user)
+    db.session.commit()
+
+    character = Character(
+        user_id=user.id,
+        character_id=1,
+        name="Test Character",
+        status="active",
+        faction_id=faction.id,
+    )
+    db.session.add(character)
+    db.session.commit()
+
+    # Create a group for the character
+    group_type = GroupType(
+        name="Test Group Type",
+        description="A test group type",
+        income_items_list=[],
+        income_items_discount=0.5,
+        income_substances=False,
+        income_substance_cost=0,
+        income_medicaments=False,
+        income_medicament_cost=0,
+        income_distribution_dict={},
+    )
+    db.session.add(group_type)
+    db.session.commit()
+
+    group = Group(
+        name="Test Group", group_type_id=group_type.id, bank_account=0, faction_id=faction.id
+    )
+    db.session.add(group)
+    db.session.commit()
+
+    # Add character to group
+    character.group_id = group.id
+    db.session.commit()
+
+    # Create an active downtime period for this event
+    downtime_period = DowntimePeriod(
+        event_id=event.id,
+        status=DowntimeStatus.PENDING,
+    )
+    db.session.add(downtime_period)
+    db.session.commit()
+
+    # Create an existing downtime pack for this character
+    existing_pack = DowntimePack(
+        period_id=downtime_period.id,
+        character_id=character.id,
+        status=DowntimeTaskStatus.ENTER_DOWNTIME,
+    )
+    db.session.add(existing_pack)
+    db.session.commit()
+
+    with test_client.session_transaction() as session:
+        session["_user_id"] = admin_user.id
+        session["_fresh"] = True
+
+    # Assign a ticket to the character
+    response = test_client.post(
+        f"/events/{event.id}/assign",
+        data={
+            "ticket_type": "adult",
+            "character": f"{character.user_id}.{character.character_id}",
+            "meal_ticket": False,
+            "requires_bunk": False,
+            "price_paid": 50.0,
+        },
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    assert b"Ticket assigned successfully!" in response.data
+
+    # Verify only one downtime pack exists (the existing one)
+    downtime_packs = DowntimePack.query.filter_by(
+        period_id=downtime_period.id, character_id=character.id
+    ).all()
+    assert len(downtime_packs) == 1
+    assert downtime_packs[0].id == existing_pack.id
+    assert downtime_packs[0].status == DowntimeTaskStatus.ENTER_DOWNTIME
+
+
+def test_update_ticket_creates_downtime_pack(test_client, admin_user, db, faction):
+    """Test updating ticket creates downtime pack if downtime active and pack missing."""
+    # Create a test event
+    event = Event(
+        event_number="TEST025",
+        name="Test Event",
+        event_type="mainline",
+        description="A test event",
+        early_booking_deadline=datetime.now() + timedelta(days=30),
+        booking_deadline=datetime.now() + timedelta(days=40),
+        start_date=datetime.now() + timedelta(days=45),
+        end_date=datetime.now() + timedelta(days=47),
+        location="Test Location",
+        standard_ticket_price=50.00,
+        early_booking_ticket_price=45.00,
+        child_ticket_price_12_15=25.00,
+        child_ticket_price_7_11=15.00,
+        child_ticket_price_under_7=0.00,
+    )
+    db.session.add(event)
+    db.session.commit()
+
+    # Create a test user and character
+    user = User(
+        email="test@example.com",
+        first_name="Test",
+        surname="User",
+    )
+    user.set_password("password")
+    db.session.add(user)
+    db.session.commit()
+
+    character = Character(
+        user_id=user.id,
+        character_id=1,
+        name="Test Character",
+        status="active",
+        faction_id=faction.id,
+    )
+    db.session.add(character)
+    db.session.commit()
+
+    # Create a group for the character
+    group_type = GroupType(
+        name="Test Group Type",
+        description="A test group type",
+        income_items_list=[],
+        income_items_discount=0.5,
+        income_substances=False,
+        income_substance_cost=0,
+        income_medicaments=False,
+        income_medicament_cost=0,
+        income_distribution_dict={},
+    )
+    db.session.add(group_type)
+    db.session.commit()
+
+    group = Group(
+        name="Test Group", group_type_id=group_type.id, bank_account=0, faction_id=faction.id
+    )
+    db.session.add(group)
+    db.session.commit()
+
+    # Add character to group
+    character.group_id = group.id
+    db.session.commit()
+
+    # Create an existing ticket (assigned before downtime started)
+    existing_ticket = EventTicket(
+        event_id=event.id,
+        character_id=character.id,
+        user_id=user.id,
+        ticket_type="adult",
+        meal_ticket=False,
+        requires_bunk=False,
+        price_paid=50.00,
+        assigned_by_id=admin_user.id,
+        assigned_at=datetime.now(),
+    )
+    db.session.add(existing_ticket)
+    db.session.commit()
+
+    # Create an active downtime period for this event (started after ticket was assigned)
+    downtime_period = DowntimePeriod(
+        event_id=event.id,
+        status=DowntimeStatus.PENDING,
+    )
+    db.session.add(downtime_period)
+    db.session.commit()
+
+    with test_client.session_transaction() as session:
+        session["_user_id"] = admin_user.id
+        session["_fresh"] = True
+
+    # Update the ticket
+    response = test_client.post(
+        f"/events/{event.id}/assign",
+        data={
+            "ticket_type": "adult",
+            "character": f"{character.user_id}.{character.character_id}",
+            "meal_ticket": "on",
+            "requires_bunk": "on",
+            "price_paid": "75.00",
+        },
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    assert b"Ticket updated successfully!" in response.data
+
+    # Verify a downtime pack was created
+    downtime_pack = DowntimePack.query.filter_by(
+        period_id=downtime_period.id, character_id=character.id
+    ).first()
+    assert downtime_pack is not None
+    assert downtime_pack.status == DowntimeTaskStatus.ENTER_PACK
 
 
 def test_remove_ticket(test_client, admin_user, db, faction):

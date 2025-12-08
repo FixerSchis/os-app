@@ -15,7 +15,7 @@
         <div class="col">
             <div class="card">
                 <div class="card-header">
-                    <h5 class="card-title mb-0">Available Slots</h5>
+                    <h5 class="card-title mb-0">Available Activities</h5>
                 </div>
                 <div class="card-body">
                     <div class="row">
@@ -55,6 +55,7 @@
         </div>
         <div class="flex-grow-1 d-flex justify-content-center">
             <ul class="nav nav-pills" id="downtime-steps-list">
+                <li class="nav-item"><a class="nav-link active" data-step="overview" href="#">Overview <span class="step-status-icon"></span></a></li>
                 <li class="nav-item"><a class="nav-link" data-step="purchase" href="#">Purchases <span class="step-status-icon"></span></a></li>
                 <li class="nav-item"><a class="nav-link" data-step="modifications" href="#" data-has-slots="{{ character.get_available_engineering_mod_slots() > 0 }}">Modifications <span class="step-status-icon"></span></a></li>
                 <li class="nav-item"><a class="nav-link" data-step="engineering" href="#" data-has-slots="{{ character.get_available_engineering_slots() > 0 }}">Engineering <span class="step-status-icon"></span></a></li>
@@ -85,8 +86,164 @@
           data-pack-research='{{ pack_research|tojson|safe }}'
           data-pack-reputation='{{ pack_reputation|tojson|safe }}'>
         <div id="downtime-steps-container">
+            <!-- Overview Step -->
+            <div class="downtime-step" data-step="overview">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Character Overview</h5>
+                    </div>
+                    <div class="card-body">
+                        <!-- Inventory & Pack Contents -->
+                        <div class="mb-4">
+                            <h6>Inventory & Pack Contents</h6>
+
+                            <!-- Items -->
+                            {% if character_inventory_items or character_pack_items or pack.items %}
+                            <div class="mb-3">
+                                <strong>Items:</strong>
+                                <ul class="mb-0">
+                                    {% for ci in character_inventory_items %}
+                                    <li>
+                                        {{ ci.item.blueprint.display_name }} ({{ ci.item.full_code }})
+                                        {% if ci.item.expiry %}
+                                            <span class="badge bg-info">Expires: Event {{ ci.item.expiry }}</span>
+                                        {% endif %}
+                                    </li>
+                                    {% endfor %}
+                                    {% for item in character_pack_items %}
+                                    <li>
+                                        {{ item.blueprint.display_name }} ({{ item.full_code }})
+                                        {% if item.expiry %}
+                                            <span class="badge bg-info">Expires: Event {{ item.expiry }}</span>
+                                        {% endif %}
+                                    </li>
+                                    {% endfor %}
+                                    {% for item_id in pack.items %}
+                                    {% set added_item = pack_items|selectattr('id', 'equalto', item_id|string)|first %}
+                                    {% if added_item %}
+                                    <li>
+                                        {{ added_item.name }} ({{ added_item.full_code }})
+                                    </li>
+                                    {% endif %}
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                            {% endif %}
+
+                            <!-- Samples -->
+                            {% if character_pack_samples or pack.samples %}
+                            <div class="mb-3">
+                                <strong>Samples:</strong>
+                                <ul class="mb-0">
+                                    {% for sample in character_pack_samples %}
+                                    <li>
+                                        <strong>{{ sample.name }}</strong>
+                                        {% if sample.description %}
+                                            - {{ sample.description }}
+                                        {% endif %}
+                                        {% if sample.tags %}
+                                            <span class="badge bg-secondary ms-1">
+                                                {% for tag in sample.tags %}
+                                                    {{ tag.name }}{% if not loop.last %}, {% endif %}
+                                                {% endfor %}
+                                            </span>
+                                        {% endif %}
+                                    </li>
+                                    {% endfor %}
+                                    {% for sample_id in pack.samples %}
+                                    {% set added_sample = available_samples|selectattr('id', 'equalto', sample_id|string)|first %}
+                                    {% if added_sample %}
+                                    <li>
+                                        <strong>{{ added_sample.name }}</strong>
+                                        {% if added_sample.description %}
+                                            - {{ added_sample.description }}
+                                        {% endif %}
+                                        {% if added_sample.tags and added_sample.tags|length > 0 %}
+                                            <span class="badge bg-secondary ms-1">
+                                                {% for tag in added_sample.tags %}
+                                                    {{ tag }}{% if not loop.last %}, {% endif %}
+                                                {% endfor %}
+                                            </span>
+                                        {% endif %}
+                                    </li>
+                                    {% endif %}
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                            {% endif %}
+
+                            <!-- Exotic Substances -->
+                            {% if character_pack_exotics or pack.exotic_substances %}
+                            <div class="mb-3">
+                                <strong>Exotic Substances:</strong>
+                                <ul class="mb-0">
+                                    {% for exotic in character_pack_exotics %}
+                                    <li>{{ exotic.name }} (x{{ exotic.amount }})</li>
+                                    {% endfor %}
+                                    {% for exotic_data in pack.exotic_substances %}
+                                    {% set exotic_obj = pack_exotics|selectattr('id', 'equalto', exotic_data.id|string)|first if exotic_data.id else pack_exotics|selectattr('id', 'equalto', exotic_data|string)|first %}
+                                    {% if exotic_obj %}
+                                    <li>
+                                        {{ exotic_obj.name }} (x{{ exotic_obj.amount }})
+                                    </li>
+                                    {% elif exotic_data.name %}
+                                    <li>
+                                        {{ exotic_data.name }} (x{{ exotic_data.amount }})
+                                    </li>
+                                    {% endif %}
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Credits Added -->
+                        {% if pack.credits_added %}
+                        <div class="mb-4">
+                            <h6>Credits Added</h6>
+                            <p class="mb-0">
+                                <span><strong>{{ pack.credits_added }} EC</strong></span>
+                            </p>
+                        </div>
+                        {% endif %}
+
+                        <!-- Active Conditions -->
+                        {% if character_conditions %}
+                        <div class="mb-4">
+                            <h6>Active Conditions</h6>
+                            <div class="table-responsive">
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Condition</th>
+                                            <th>Stage</th>
+                                            <th>Events Remaining</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for condition in character_conditions %}
+                                        <tr>
+                                            <td>{{ condition.condition.name }}</td>
+                                            <td>
+                                                {% if condition.current_stage %}
+                                                    Stage {{ condition.current_stage }}
+                                                {% else %}
+                                                    Completed
+                                                {% endif %}
+                                            </td>
+                                            <td>{{ condition.current_duration }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
             <!-- Purchase Blueprints Step -->
-            <div class="downtime-step" data-step="purchase">
+            <div class="downtime-step" data-step="purchase" style="display:none;">
                 <div class="card mb-4">
                     <div class="card-header">
                         <h5 class="card-title mb-0">Purchase Items</h5>
