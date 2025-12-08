@@ -1,11 +1,11 @@
 const bankBalance = getNumeric($('#downtime-form').data('bank-balance'));
 const groupBankBalance = getNumeric($('#downtime-form').data('group-bank-balance'));
 
-const steps = ['purchase', 'modifications', 'engineering', 'science', 'research', 'reputation', 'other'];
+const steps = ['overview', 'purchase', 'modifications', 'engineering', 'science', 'research', 'reputation', 'other'];
 let currentStep = 0;
-let stepErrors = {'purchase': false, 'modifications': false, 'engineering': false, 'science': false, 'research': false, 'reputation': false, 'other': false};
-let visitedSteps = {'purchase': false, 'modifications': false, 'engineering': false, 'science': false, 'research': false, 'reputation': false, 'other': false};
-let dirtySteps = {'purchase': false, 'modifications': false, 'engineering': false, 'science': false, 'research': false, 'reputation': false, 'other': false};
+let stepErrors = {'overview': false, 'purchase': false, 'modifications': false, 'engineering': false, 'science': false, 'research': false, 'reputation': false, 'other': false};
+let visitedSteps = {'overview': false, 'purchase': false, 'modifications': false, 'engineering': false, 'science': false, 'research': false, 'reputation': false, 'other': false};
+let dirtySteps = {'overview': false, 'purchase': false, 'modifications': false, 'engineering': false, 'science': false, 'research': false, 'reputation': false, 'other': false};
 
 // Helper: set .is-invalid on select and its Select2 container
 function setSelect2Invalid($select, isInvalid) {

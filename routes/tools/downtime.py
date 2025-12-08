@@ -571,6 +571,45 @@ def enter_downtime(period_id, character_id):
     science_slots = get_available_science_slots_with_sources(character)
     engineering_slots = get_available_engineering_slots_with_sources(character)
 
+    # Get character's inventory items (assigned items)
+    character_inventory_items = (
+        CharacterItem.query.filter_by(character_id=character.id)
+        .join(Item)
+        .join(ItemBlueprint)
+        .order_by(ItemBlueprint.name)
+        .all()
+    )
+
+    # Get character's pack contents (items, samples, exotics from character.pack)
+    character_pack = character.pack
+    character_pack_items = []
+    if character_pack.items:
+        character_pack_items = [
+            db.session.get(Item, item_id) for item_id in character_pack.items if item_id
+        ]
+        character_pack_items = [
+            item
+            for item in character_pack_items
+            if item and item.id not in [ci.item_id for ci in character_inventory_items]
+        ]
+
+    character_pack_samples = character.samples.order_by(Sample.name).all()
+    character_pack_exotics = []
+    if character_pack.exotics:
+        # Count occurrences of each exotic
+        exotic_counts = {}
+        for exotic_id in character_pack.exotics:
+            exotic_counts[exotic_id] = exotic_counts.get(exotic_id, 0) + 1
+        for exotic_id, count in exotic_counts.items():
+            exotic = db.session.get(ExoticSubstance, exotic_id)
+            if exotic:
+                character_pack_exotics.append(
+                    {"id": exotic_id, "name": exotic.name, "amount": count}
+                )
+
+    # Get character's active conditions
+    character_conditions = character.active_conditions
+
     return render_template(
         "downtime/enter_downtime.html",
         character=character,
@@ -594,6 +633,11 @@ def enter_downtime(period_id, character_id):
         pack_exotics=pack_exotics,
         science_slots=science_slots,
         engineering_slots=engineering_slots,
+        character_inventory_items=character_inventory_items,
+        character_pack_items=character_pack_items,
+        character_pack_samples=character_pack_samples,
+        character_pack_exotics=character_pack_exotics,
+        character_conditions=character_conditions,
         DowntimeTaskStatus=DowntimeTaskStatus,
         ResearchRequirementType=ResearchRequirementType,
         ScienceType=ScienceType,

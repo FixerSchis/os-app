@@ -1507,6 +1507,70 @@ def test_manual_review_summary_with_research(
     assert research_project_with_stage.project_name in html
 
 
+def test_enter_downtime_overview_tab(
+    test_client,
+    downtime_pack_enter_downtime,
+    regular_user,
+    db,
+    item,
+    exotic_substance,
+    sample,
+    condition,
+):
+    """Test that the overview tab displays character inventory and pack contents."""
+    login_user(test_client, regular_user)
+
+    # Set up pack with contents
+    downtime_pack_enter_downtime.items = [item.id]
+    downtime_pack_enter_downtime.energy_credits = 50
+    downtime_pack_enter_downtime.exotic_substances = [{"id": exotic_substance.id, "amount": 2}]
+    downtime_pack_enter_downtime.samples = [sample.id]
+    downtime_pack_enter_downtime.conditions = [{"id": condition.id, "duration": 3}]
+    db.session.commit()
+
+    # Add condition to character
+    from models.tools.character import CharacterCondition
+
+    char_condition = CharacterCondition(
+        character_id=downtime_pack_enter_downtime.character_id,
+        condition_id=condition.id,
+        current_stage=1,
+        current_duration=2,
+    )
+    db.session.add(char_condition)
+    db.session.commit()
+
+    response = test_client.get(
+        "/downtime/enter-downtime/"
+        f"{downtime_pack_enter_downtime.period_id}/"
+        f"{downtime_pack_enter_downtime.character_id}"
+    )
+
+    assert response.status_code == 200
+    html = response.data.decode("utf-8")
+
+    # Check that overview tab exists and is first
+    assert "Overview" in html
+    assert 'data-step="overview"' in html
+
+    # Check that pack contents are displayed
+    assert "Character Overview" in html
+    assert "Inventory & Pack Contents" in html
+    assert "Items:" in html
+    assert "Samples:" in html
+    assert "Exotic Substances:" in html
+
+    # Check that added items are shown
+    assert "Added this downtime" in html
+    assert str(downtime_pack_enter_downtime.energy_credits) in html
+
+    # Check that conditions are displayed
+    assert "Active Conditions" in html
+    assert condition.name in html
+    assert "Stage 1" in html
+    assert "2" in html  # Events remaining
+
+
 def test_process_downtime_character_points_crew_tickets(
     test_client, downtime_team_user, downtime_period, downtime_pack, db
 ):
