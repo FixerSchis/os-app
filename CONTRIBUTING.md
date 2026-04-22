@@ -14,7 +14,7 @@ Thank you for your interest in contributing to OS App! This document provides gu
 1. Fork the repository
 2. Clone your fork:
    ```bash
-   git clone https://github.com/your-username/os-app.git
+   git clone https://github.com/FixerSchis/os-app.git
    cd os-app
    ```
 

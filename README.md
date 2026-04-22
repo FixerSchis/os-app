@@ -23,7 +23,7 @@ A Flask-based web application for managing LARP (Live Action Role-Playing) game 
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/your-username/os-app.git
+   git clone https://github.com/FixerSchis/os-app.git
    cd os-app
    ```
 
