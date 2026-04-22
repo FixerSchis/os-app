@@ -1,28 +1,28 @@
 # Global owners
-* @your-username
+* @FixerSchis
 
 # Backend and API
-/app.py @your-username
-/models/ @your-username
-/routes/ @your-username
-/utils/ @your-username
+/app.py @FixerSchis
+/models/ @FixerSchis
+/routes/ @FixerSchis
+/utils/ @FixerSchis
 
 # Database and migrations
-/migrations/ @your-username
-/db/ @your-username
+/migrations/ @FixerSchis
+/db/ @FixerSchis
 
 # Frontend templates
-/templates/ @your-username
-/static/ @your-username
+/templates/ @FixerSchis
+/static/ @FixerSchis
 
 # Tests
-/tests/ @your-username
+/tests/ @FixerSchis
 
 # Configuration files
-*.toml @your-username
-*.ini @your-username
-*.cfg @your-username
-requirements*.txt @your-username
+*.toml @FixerSchis
+*.ini @FixerSchis
+*.cfg @FixerSchis
+requirements*.txt @FixerSchis
 
 # Documentation
-*.md @your-username
+*.md @FixerSchis
