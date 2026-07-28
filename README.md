@@ -21,40 +21,66 @@ A Flask-based web application for managing LARP (Live Action Role-Playing) game 
 
 ### Installation
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/FixerSchis/os-app.git
-   cd os-app
-   ```
+#### 1. Clone the repository
 
-2. Create a virtual environment:
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   ```
+```bash
+git clone https://github.com/FixerSchis/os-app.git
+cd os-app
+```
 
-3. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
+#### 2. Create and activate a virtual environment
 
-4. Set up environment variables:
-   ```bash
-   cp env.example .env
-   # Edit .env with your configuration
-   ```
+**Linux / macOS**
 
-5. Initialize the database:
-   ```bash
-   flask db upgrade
-   ```
+```bash
+python3 -m venv venv
+source venv/bin/activate
+```
 
-6. Run the application:
-   ```bash
-   python app.py
-   ```
+**Windows (PowerShell / cmd)**
 
-The application will be available at the URL and port specified in your environment variables (default: `http://localhost:5000`)
+```powershell
+python -m venv venv
+venv\Scripts\activate
+```
+
+#### 3. Install dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+#### 4. Set up environment variables
+
+**Linux / macOS**
+
+```bash
+cp env.example .env
+```
+
+**Windows (PowerShell / cmd)**
+
+```powershell
+copy env.example .env
+```
+
+Then edit `.env` with your configuration (at minimum `SECRET_KEY`, `MAIL_USERNAME`, and `MAIL_PASSWORD`).
+
+#### 5. Initialize the database
+
+```bash
+flask db upgrade
+```
+
+#### 6. Run the application
+
+With the virtual environment activated:
+
+```bash
+python app.py
+```
+
+With the default `.env` values (`FLASK_RUN_PORT=5000`, `SSL_ENABLED=false`), the app is available at `http://localhost:5000`.
 
 ## Configuration
 
