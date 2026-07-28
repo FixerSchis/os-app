@@ -18,6 +18,7 @@ A Flask-based web application for managing LARP (Live Action Role-Playing) game 
 - Python 3.10 or higher
 - pip
 - Git
+- System libraries for [WeasyPrint](https://doc.courtbouillon.org/weasyprint/stable/first_steps.html) (required for PDF generation — see below)
 
 ### Installation
 
@@ -81,6 +82,43 @@ python app.py
 ```
 
 With the default `.env` values (`FLASK_RUN_PORT=5000`, `SSL_ENABLED=false`), the app is available at `http://localhost:5000`.
+
+### WeasyPrint system dependencies
+
+`pip install -r requirements.txt` installs the WeasyPrint Python package, but PDF generation also needs native libraries (Pango and related). Without them you may see errors like "WeasyPrint could not import some external libraries".
+
+**Linux (Debian / Ubuntu)**
+
+```bash
+sudo apt install libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz0b libharfbuzz-subset0
+```
+
+**Windows**
+
+1. Install [MSYS2](https://www.msys2.org/) (default options).
+2. In the MSYS2 shell, install Pango:
+
+```bash
+pacman -S mingw-w64-x86_64-pango
+```
+
+3. Point WeasyPrint at the MSYS2 DLLs. In PowerShell (current session):
+
+```powershell
+$env:WEASYPRINT_DLL_DIRECTORIES = "C:\msys64\mingw64\bin"
+```
+
+Or set `WEASYPRINT_DLL_DIRECTORIES` permanently as a user environment variable to the same path (adjust if your MSYS2 install is elsewhere).
+
+**Verify**
+
+With the virtual environment activated:
+
+```bash
+python -m weasyprint --info
+```
+
+For other platforms and troubleshooting, see the [WeasyPrint installation guide](https://doc.courtbouillon.org/weasyprint/stable/first_steps.html).
 
 ## Configuration
 
