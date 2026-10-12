@@ -17,6 +17,7 @@ from models.extensions import db
 from models.tools.downtime import DowntimePack
 from models.tools.print_template import PrintTemplate
 from utils import generate_qr_code, generate_web_qr_code
+from utils.decorators import email_verified_required
 from utils.permission_decorators import permission_required
 
 items_bp = Blueprint("items", __name__)
@@ -24,6 +25,7 @@ items_bp = Blueprint("items", __name__)
 
 @items_bp.route("/")
 @login_required
+@email_verified_required
 @permission_required(permissions=["rules.items"])
 def list():
     # Get query parameters
@@ -127,6 +129,7 @@ def list():
 
 @items_bp.route("/create", methods=["GET"])
 @login_required
+@email_verified_required
 @permission_required(permissions=["rules.items"])
 def create():
     blueprints = ItemBlueprint.query.order_by(ItemBlueprint.name).all()
@@ -137,6 +140,7 @@ def create():
 
 @items_bp.route("/create", methods=["POST"])
 @login_required
+@email_verified_required
 @permission_required(permissions=["rules.items"])
 def create_post():
     blueprints = ItemBlueprint.query.order_by(ItemBlueprint.name).all()
@@ -195,6 +199,7 @@ def create_post():
 
 @items_bp.route("/<int:id>/edit", methods=["GET"])
 @login_required
+@email_verified_required
 @permission_required(permissions=["rules.items"])
 def edit(id):
     item = Item.query.get_or_404(id)
@@ -226,6 +231,7 @@ def edit(id):
 
 @items_bp.route("/<int:id>/edit", methods=["POST"])
 @login_required
+@email_verified_required
 @permission_required(permissions=["rules.items"])
 def edit_post(id):
     item = Item.query.get_or_404(id)
@@ -335,6 +341,7 @@ def edit_post(id):
 
 @items_bp.route("/<int:id>/delete", methods=["POST"])
 @login_required
+@email_verified_required
 @permission_required(permissions=["rules.items"])
 def delete(id):
     item = Item.query.get_or_404(id)
@@ -505,6 +512,7 @@ def view(id, version):
 
 @items_bp.route("/print_unprinted")
 @login_required
+@email_verified_required
 @permission_required(permissions=["rules.items"])
 def print_unprinted_items():
     """Print all unprinted items and mark them as printed."""
@@ -554,6 +562,7 @@ def print_unprinted_items():
 
 @items_bp.route("/<int:id>/mark_unprinted", methods=["POST"])
 @login_required
+@email_verified_required
 @permission_required(permissions=["rules.items"])
 def mark_item_unprinted(id):
     """Mark a specific item as unprinted so it will be included in the next batch."""
@@ -586,6 +595,7 @@ def mark_item_unprinted(id):
 
 @items_bp.route("/<int:id>/mark_printed", methods=["POST"])
 @login_required
+@email_verified_required
 @permission_required(permissions=["rules.items"])
 def mark_item_printed(id):
     """Mark a specific item as printed."""

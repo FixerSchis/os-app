@@ -8,6 +8,7 @@ from models.database.item_blueprint import ItemBlueprint, item_blueprint_mods
 from models.database.item_type import ItemType
 from models.database.mods import Mod
 from models.extensions import db
+from utils.decorators import email_verified_required
 from utils.permission_decorators import permission_required
 
 item_blueprints_bp = Blueprint("item_blueprints", __name__)
@@ -52,6 +53,7 @@ def list():
 
 @item_blueprints_bp.route("/create", methods=["GET"])
 @login_required
+@email_verified_required
 @permission_required(permissions=["rules.item_blueprints"])
 def create():
     item_types = ItemType.query.order_by(ItemType.name).all()
@@ -63,6 +65,7 @@ def create():
 
 @item_blueprints_bp.route("/create", methods=["POST"])
 @login_required
+@email_verified_required
 @permission_required(permissions=["rules.item_blueprints"])
 def create_post():
     item_types = ItemType.query.order_by(ItemType.name).all()
@@ -134,6 +137,7 @@ def create_post():
 
 @item_blueprints_bp.route("/<int:id>/edit", methods=["GET"])
 @login_required
+@email_verified_required
 @permission_required(permissions=["rules.item_blueprints"])
 def edit(id):
     blueprint = ItemBlueprint.query.get_or_404(id)
@@ -160,6 +164,7 @@ def edit(id):
 
 @item_blueprints_bp.route("/<int:id>/edit", methods=["POST"])
 @login_required
+@email_verified_required
 @permission_required(permissions=["rules.item_blueprints"])
 def edit_post(id):
     blueprint = ItemBlueprint.query.get_or_404(id)
@@ -220,6 +225,7 @@ def edit_post(id):
 
 @item_blueprints_bp.route("/<int:id>/delete", methods=["POST"])
 @login_required
+@email_verified_required
 @permission_required(permissions=["rules.item_blueprints"])
 def delete(id):
     blueprint = ItemBlueprint.query.get_or_404(id)

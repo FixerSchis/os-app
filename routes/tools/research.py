@@ -452,6 +452,7 @@ def research_edit_post(research_id):
 
 @research_bp.route("/api/blueprints")
 @login_required
+@email_verified_required
 @permission_required(permissions=["research.create"])
 def api_blueprints():
     q = request.args.get("q", "").strip().lower()
@@ -471,6 +472,7 @@ def api_blueprints():
 
 @research_bp.route("/api/exotics")
 @login_required
+@email_verified_required
 @permission_required(permissions=["research.create"])
 def api_exotics():
     q = request.args.get("q", "").strip().lower()
@@ -484,6 +486,7 @@ def api_exotics():
 
 @research_bp.route("/<int:research_id>/assignees")
 @login_required
+@email_verified_required
 @permission_required(permissions=["research.assign"])
 def assignees(research_id):
     research = Research.query.get_or_404(research_id)
@@ -514,6 +517,7 @@ def assignees(research_id):
 
 @research_bp.route("/<int:research_id>/assignees/add", methods=["POST"])
 @login_required
+@email_verified_required
 @permission_required(permissions=["research.assign"])
 def add_assignee(research_id):
     research = Research.query.get_or_404(research_id)
@@ -551,6 +555,7 @@ def add_assignee(research_id):
 
 @research_bp.route("/<int:research_id>/assignees/<int:character_id>/remove", methods=["POST"])
 @login_required
+@email_verified_required
 @permission_required(permissions=["research.assign"])
 def remove_assignee(research_id, character_id):
     character_research = CharacterResearch.query.filter_by(
@@ -566,6 +571,7 @@ def remove_assignee(research_id, character_id):
 
 @research_bp.route("/<int:research_id>/assignees/<int:character_id>/progress", methods=["GET"])
 @login_required
+@email_verified_required
 @permission_required(permissions=["research.assign"])
 def edit_progress(research_id, character_id):
     character_research = CharacterResearch.query.filter_by(
@@ -592,6 +598,7 @@ def edit_progress(research_id, character_id):
 
 @research_bp.route("/<int:research_id>/assignees/<int:character_id>/progress", methods=["POST"])
 @login_required
+@email_verified_required
 @permission_required(permissions=["research.assign"])
 def edit_progress_post(research_id, character_id):
     character_research = CharacterResearch.query.filter_by(
@@ -639,6 +646,7 @@ def edit_progress_post(research_id, character_id):
 
 @research_bp.route("/project_info", methods=["GET"])
 @login_required
+@email_verified_required
 def project_info():
     public_id = request.args.get("project_id", type=str)
     target_id = request.args.get("character_id", type=str)
@@ -715,6 +723,7 @@ def project_info():
 
 @research_bp.route("/can_teach_character", methods=["GET"])
 @login_required
+@email_verified_required
 def can_teach_character():
     """Check if a character can be taught a project by another character"""
     project_id = request.args.get("project_id")
@@ -1012,6 +1021,7 @@ def can_teach_character():
 
 @research_bp.route("/view")
 @login_required
+@email_verified_required
 def view_research_list():
     """Display a view-only list of research projects for the user's characters."""
     # Get all research projects assigned to the user's characters
@@ -1031,6 +1041,7 @@ def view_research_list():
 
 @research_bp.route("/view/<int:research_id>")
 @login_required
+@email_verified_required
 def view_research_project(research_id):
     """Display a view-only page for a specific research project."""
     # Get the research project

@@ -7,6 +7,7 @@ from models.extensions import db
 from models.tools.character import Character
 from models.tools.message import Message
 from models.tools.user import User
+from utils.decorators import email_verified_required
 from utils.email import send_notification_email
 from utils.permission_decorators import permission_required
 
@@ -15,6 +16,7 @@ bp = Blueprint("messages", __name__)
 
 @bp.route("/")
 @login_required
+@email_verified_required
 def messages():
     if current_user.has_permission("messages.view_all"):
         # For NPCs, show messages that either have no response OR are sent by their
@@ -49,6 +51,7 @@ def messages():
 
 @bp.route("/send", methods=["POST"])
 @login_required
+@email_verified_required
 def send_message():
     if current_user.has_permission("messages.send_for_character"):
         sender_id = request.form.get("sender_id")
@@ -96,6 +99,7 @@ def send_message():
 
 
 @bp.route("/<int:message_id>/respond", methods=["POST"])
+@email_verified_required
 @permission_required(permissions=["messages.respond"])
 def respond_to_message(message_id):
     # Get the message, but don't use get_or_404 to avoid 404 for unauthorized users

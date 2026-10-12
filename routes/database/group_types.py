@@ -3,6 +3,7 @@ from flask_login import current_user, login_required
 
 from models.database.group_type import GroupType
 from models.extensions import db
+from utils.decorators import email_verified_required
 from utils.permission_decorators import permission_required
 
 group_types_bp = Blueprint("group_types", __name__)
@@ -10,6 +11,7 @@ group_types_bp = Blueprint("group_types", __name__)
 
 @group_types_bp.route("/")
 @login_required
+@email_verified_required
 @permission_required(permissions=["rules.group_types"])
 def list_group_types():
     """List all group types - accessible to everyone."""
@@ -19,6 +21,7 @@ def list_group_types():
 
 @group_types_bp.route("/create", methods=["GET"])
 @login_required
+@email_verified_required
 @permission_required(permissions=["rules.group_types"])
 def create_group_type():
     """Create a new group type - rules team only."""
@@ -27,6 +30,7 @@ def create_group_type():
 
 @group_types_bp.route("/create", methods=["POST"])
 @login_required
+@email_verified_required
 @permission_required(permissions=["rules.group_types"])
 def create_group_type_post():
     """Handle group type creation - rules team only."""
@@ -85,6 +89,7 @@ def create_group_type_post():
 
 @group_types_bp.route("/<int:group_type_id>/edit", methods=["GET"])
 @login_required
+@email_verified_required
 @permission_required(permissions=["rules.group_types"])
 def edit_group_type(group_type_id):
     """Edit a group type - rules team only."""
@@ -94,6 +99,7 @@ def edit_group_type(group_type_id):
 
 @group_types_bp.route("/<int:group_type_id>/edit", methods=["POST"])
 @login_required
+@email_verified_required
 @permission_required(permissions=["rules.group_types"])
 def edit_group_type_post(group_type_id):
     """Handle group type editing - rules team only."""

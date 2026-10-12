@@ -3,6 +3,7 @@ from flask_login import current_user, login_required
 
 from models.database.global_settings import GlobalSettings
 from models.extensions import db
+from utils.decorators import email_verified_required
 from utils.permission_decorators import permission_required
 
 global_settings_bp = Blueprint("global_settings", __name__)
@@ -10,6 +11,7 @@ global_settings_bp = Blueprint("global_settings", __name__)
 
 @global_settings_bp.route("/")
 @login_required
+@email_verified_required
 @permission_required(permissions=["rules.global_settings"])
 def list_global_settings():
     """List global settings - accessible to everyone."""
@@ -19,6 +21,7 @@ def list_global_settings():
 
 @global_settings_bp.route("/edit", methods=["GET"])
 @login_required
+@email_verified_required
 @permission_required(permissions=["rules.global_settings"])
 def edit_global_settings():
     """Edit global settings - rules team only."""
@@ -34,6 +37,7 @@ def edit_global_settings():
 
 @global_settings_bp.route("/edit", methods=["POST"])
 @login_required
+@email_verified_required
 @permission_required(permissions=["rules.global_settings"])
 def edit_global_settings_post():
     """Handle global settings editing - rules team only."""

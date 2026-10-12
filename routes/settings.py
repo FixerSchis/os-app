@@ -3,6 +3,7 @@ from flask_login import current_user, login_required
 
 from models.extensions import db
 from models.tools.user import User
+from utils.decorators import email_verified_required
 from utils.email import send_email_change_verification
 
 settings_bp = Blueprint("settings", __name__)
@@ -10,6 +11,7 @@ settings_bp = Blueprint("settings", __name__)
 
 @settings_bp.route("/", methods=["GET", "POST"])
 @login_required
+@email_verified_required
 def settings():
     if request.method == "POST":
         form_type = request.form.get("form_type")
@@ -43,6 +45,7 @@ def settings():
 
 @settings_bp.route("/change-email", methods=["GET", "POST"])
 @login_required
+@email_verified_required
 def change_email():
     if request.method == "POST":
         new_email = request.form.get("new_email")
@@ -84,6 +87,7 @@ def change_email():
 
 @settings_bp.route("/change-email/<token>")
 @login_required
+@email_verified_required
 def confirm_email_change(token):
     success, old_email = current_user.confirm_email_change(token)
 
@@ -102,6 +106,7 @@ def confirm_email_change(token):
 
 @settings_bp.route("/toggle-dark-mode", methods=["POST"])
 @login_required
+@email_verified_required
 def toggle_dark_mode():
     """Toggle dark mode preference for the current user."""
     try:

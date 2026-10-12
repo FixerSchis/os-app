@@ -3,6 +3,7 @@ from flask_login import current_user, login_required
 
 from models.database.item_type import ItemType
 from models.extensions import db
+from utils.decorators import email_verified_required
 from utils.permission_decorators import permission_required
 
 item_types_bp = Blueprint("item_types", __name__)
@@ -18,6 +19,7 @@ def list():
 
 @item_types_bp.route("/create", methods=["GET"])
 @login_required
+@email_verified_required
 @permission_required(permissions=["rules.item_types"])
 def create():
     return render_template("rules/item_types/edit.html")
@@ -25,6 +27,7 @@ def create():
 
 @item_types_bp.route("/create", methods=["POST"])
 @login_required
+@email_verified_required
 @permission_required(permissions=["rules.item_types"])
 def create_post():
     name = request.form.get("name")
@@ -51,6 +54,7 @@ def create_post():
 
 @item_types_bp.route("/<int:id>/edit", methods=["GET"])
 @login_required
+@email_verified_required
 @permission_required(permissions=["rules.item_types"])
 def edit(id):
     item_type = ItemType.query.get_or_404(id)
@@ -59,6 +63,7 @@ def edit(id):
 
 @item_types_bp.route("/<int:id>/edit", methods=["POST"])
 @login_required
+@email_verified_required
 @permission_required(permissions=["rules.item_types"])
 def edit_post(id):
     item_type = ItemType.query.get_or_404(id)
@@ -86,6 +91,7 @@ def edit_post(id):
 
 @item_types_bp.route("/<int:id>/delete", methods=["POST"])
 @login_required
+@email_verified_required
 @permission_required(permissions=["rules.item_types"])
 def delete(id):
     item_type = ItemType.query.get_or_404(id)
