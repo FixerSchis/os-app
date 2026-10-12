@@ -122,7 +122,7 @@
                             <input type="hidden" name="redirect_character_id" value="{{ character.id }}">
                             <div class="input-group">
                                 <select class="form-control character-select2" name="character_id" required title="Select character to invite to group">
-                                    <option value="">Search for a character to invite...</option>
+                                    <option value="">Search by character name, user name, or ID...</option>
                                 </select>
                                 <button type="submit" class="btn btn-primary">Send Invite</button>
                             </div>
@@ -331,7 +331,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (characterSelect) {
         $(characterSelect).select2({
             width: '100%',
-            placeholder: 'Search for a character to invite...',
+            placeholder: 'Search by character name, user name, or ID...',
             minimumInputLength: 2,
             templateResult: function(item) {
                 if (item.disabled) {

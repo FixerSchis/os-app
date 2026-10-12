@@ -1217,6 +1217,38 @@ def audit_log(character_id):
     )
 
 
+@characters_bp.route("/api/search")
+@login_required
+def api_character_search():
+    """Search active characters by name, user name, or user_id.character_id."""
+    query = request.args.get("q", "").strip()
+    if len(query) < 2:
+        return jsonify({"items": []})
+
+    characters_query = Character.query.filter(
+        Character.status == CharacterStatus.ACTIVE.value,
+        Character.character_id.isnot(None),
+    )
+    characters = (
+        Character.filter_by_search(query, characters_query).order_by(Character.name).limit(20).all()
+    )
+
+    items = []
+    for character in characters:
+        faction_name = character.faction.name if character.faction else "No faction"
+        surname = character.user.surname or ""
+        user_info = f"{character.user.first_name} {surname}".strip()
+        player_reference = f"{character.user_id}.{character.character_id}"
+        items.append(
+            {
+                "id": character.id,
+                "player_reference": player_reference,
+                "text": (f"{character.name} ({faction_name}) - {user_info} ({player_reference})"),
+            }
+        )
+    return jsonify({"items": items})
+
+
 @characters_bp.route("/api/validate_user_id_character_id")
 @login_required
 def validate_user_id_character_id():

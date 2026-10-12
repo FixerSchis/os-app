@@ -77,9 +77,9 @@
                     <div class="form-group">
                         <label for="character_id">Initial Member</label>
                         <select class="form-control" id="character_id" name="character_id" title="Select initial group member">
-                            <option value="">Select a character...</option>
+                            <option value="">Search by character name, user name, or ID...</option>
                             {% for character in available_characters %}
-                            <option value="{{ character.id }}">{{ character.name }} ({{ character.faction.name }})</option>
+                            <option value="{{ character.id }}">{{ character.name }} ({{ character.faction.name }}) - {{ character.user.first_name }} {{ character.user.surname or '' }}{% if character.character_id %} ({{ character.user_id }}.{{ character.character_id }}){% endif %}</option>
                             {% endfor %}
                         </select>
                     </div>
@@ -128,13 +128,13 @@
                     <h3>Add Member</h3>
                     <form method="POST" action="{{ url_for('groups.add_character_admin', group_id=group.id) }}" class="form-inline">
                         <div class="form-group mr-2">
-                            <select class="form-control" name="character_id" required title="Select character to add to group">
-                                <option value="">Select a character...</option>
+                            <select class="form-control" id="add_character_id" name="character_id" required title="Search by character name, user name, or character ID">
+                                <option value="">Search by character name, user name, or ID...</option>
                                 {% for character in available_characters %}
                                     {% if character.group_id %}
-                                        <option value="{{ character.id }}" disabled style="color: #999; font-style: italic;">{{ character.name }} ({{ character.faction.name }}) - Already in {{ character.group.name }}</option>
+                                        <option value="{{ character.id }}" disabled style="color: #999; font-style: italic;">{{ character.name }} ({{ character.faction.name }}) - {{ character.user.first_name }} {{ character.user.surname or '' }}{% if character.character_id %} ({{ character.user_id }}.{{ character.character_id }}){% endif %} - Already in {{ character.group.name }}</option>
                                     {% else %}
-                                        <option value="{{ character.id }}">{{ character.name }} ({{ character.faction.name }})</option>
+                                        <option value="{{ character.id }}">{{ character.name }} ({{ character.faction.name }}) - {{ character.user.first_name }} {{ character.user.surname or '' }}{% if character.character_id %} ({{ character.user_id }}.{{ character.character_id }}){% endif %}</option>
                                     {% endif %}
                                 {% endfor %}
                             </select>

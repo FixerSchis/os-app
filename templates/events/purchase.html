@@ -72,25 +72,34 @@
                             You don't have an active character. You can:
                             <ul class="mb-0 mt-2">
                                 <li>Purchase crew tickets for yourself (no character required)</li>
-                                <li>Purchase adult tickets for other people if you know their character ID</li>
+                                <li>Purchase adult tickets for other people by searching their character or user name</li>
                                 <li><a href="{{ url_for('characters.character_list') }}" class="alert-link">Create and activate a new character</a></li>
                             </ul>
                         </div>
                         <input type="hidden" name="ticket_for" value="other">
                         {% endif %}
 
-                        <!-- Character ID Input (shown if "Someone Else" selected or no active character) -->
-                        <div id="character_id_section" class="mt-3" {% if has_active_character() %}style="display: none;"{% endif %}>
+                        <!-- Character search (shown if "Someone Else" selected or no active character) -->
+                        <div id="character_id_section" class="mt-3" data-character-search-section {% if has_active_character() %}style="display: none;"{% endif %}>
+                            <label for="character_search" class="form-label">Find character</label>
+                            <select id="character_search" class="form-select" data-character-search
+                                    data-search-url="{{ url_for('characters.api_character_search') }}"
+                                    data-target-input="#character_id"
+                                    data-placeholder="Search by character name, user name, or ID"
+                                    title="Search by character name, user name, or character ID">
+                                <option value=""></option>
+                            </select>
+                            <div class="form-text mb-2">Search by character name, user name, or character ID.</div>
+                            <label for="character_id" class="form-label">Character ID</label>
                             <div class="input-group">
-                                <label for="character_id" class="sr-only">Character ID</label>
                                 <input type="text" class="form-control" id="character_id" name="character_id"
-                                       placeholder="Enter character ID (e.g., 1.1)" pattern="^\d+\.\d+$" {% if not has_active_character() %}required{% endif %}>
+                                       placeholder="e.g. 1.1" pattern="^\d+\.\d+$" {% if not has_active_character() %}required{% endif %}>
                                 <span class="input-group-text" id="character_id_status">
                                     <i class="fas fa-question text-muted"></i>
                                 </span>
                             </div>
                             <div id="character_name" class="mt-1 text-success" style="display: none;"></div>
-                            <div class="form-text">Enter the character ID in the format: user_id.character_id</div>
+                            <div class="form-text">Filled in when you pick a character above, or enter user_id.character_id directly.</div>
                         </div>
 
                         <!-- Character selection for self-purchase (if multiple characters) -->
@@ -194,6 +203,7 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="{{ url_for('static', filename='js/components/character-search.js') }}"></script>
 <script src="{{ url_for('static', filename='js/pages/events-purchase.js') }}"></script>
 <script>
 // Initialize the purchase page with configuration data
