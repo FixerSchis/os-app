@@ -60,7 +60,13 @@
                                         <sup>{{ indicators | join('') }}</sup>
                                     {% endif %}
                                 </strong></div>
-                                <div class="text-muted small">{{ skill.description }}</div>
+                                <div class="text-muted small">
+                                    {% if character_skill and character_skill.times_purchased %}
+                                        {{ character_skill.format_description() }}
+                                    {% else %}
+                                        {{ skill.format_unapplied() }}
+                                    {% endif %}
+                                </div>
                             </td>
                             <td class="text-center">
                                 {{ cost }} CP

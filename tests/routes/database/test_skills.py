@@ -41,6 +41,13 @@ class TestSkillsList:
         assert response.status_code == 200
         assert skill.name.encode() in response.data
 
+    def test_skills_list_shows_unpurchased_rank_maths(self, test_client, skill, db):
+        skill.description = "Engineering action takes {rank * 30} seconds."
+        db.session.commit()
+        response = test_client.get("/db/skills/")
+        assert response.status_code == 200
+        assert b"Engineering action takes (30/rank) seconds." in response.data
+
 
 class TestEditSkill:
     """Test the edit skill endpoints."""

@@ -15,7 +15,12 @@
 
             <div class="form-group">
                 <label for="description">Description *</label>
-                <textarea class="form-control" id="description" name="description" rows="3" required>{{ skill.description if skill else '' }}</textarea>
+                <textarea class="form-control" id="description" name="description" rows="3" required placeholder="e.g., Stabilise a casualty in {70 - rank * 10} seconds.">{{ skill.description if skill else '' }}</textarea>
+                <small class="form-text text-muted">
+                    Use {rank} for how many times the skill has been purchased. {num} means the same thing.
+                    Maths such as {rank * 30}, {rank + 5}, and {70 - rank * 10} is calculated at that rank.
+                    A simple {rank * 30} is shown as (30/rank) before the skill is purchased.
+                </small>
             </div>
 
             <div class="form-group">
