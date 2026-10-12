@@ -5,7 +5,17 @@ import logging
 import random
 from datetime import datetime, timezone
 
-from flask import Blueprint, Response, flash, jsonify, redirect, render_template, request, url_for
+from flask import (
+    Blueprint,
+    Response,
+    flash,
+    jsonify,
+    redirect,
+    render_template,
+    request,
+    session,
+    url_for,
+)
 from flask_login import current_user, login_required
 
 from models.database.exotic_substances import ExoticSubstance
@@ -214,23 +224,290 @@ def edit_event_post(event_id):
         )
 
 
+CHECKOUT_SESSION_KEY = "simulated_ticket_payment"
+
+
+def _booking_closed_redirect(event):
+    if event.is_booking_available():
+        return None
+    if event.booking_deadline:
+        deadline_msg = f"The booking deadline was {event.booking_deadline.strftime('%d %b %Y')}"
+    else:
+        deadline_msg = "The event has already started"
+    flash(
+        f"Booking for this event has closed. {deadline_msg}.",
+        "error",
+    )
+    return redirect(url_for("events.event_list"))
+
+
+def _cart_without_client_prices(cart):
+    sanitized = []
+    for item in cart:
+        if not isinstance(item, dict):
+            continue
+        sanitized.append(
+            {
+                "ticketType": item.get("ticketType"),
+                "mealTicket": bool(item.get("mealTicket")),
+                "requiresBunk": bool(item.get("requiresBunk")),
+                "ticketFor": item.get("ticketFor"),
+                "characterId": item.get("characterId"),
+                "selfCharacterId": item.get("selfCharacterId"),
+                "childName": item.get("childName"),
+            }
+        )
+    return sanitized
+
+
+def _checkout_lines(event, cart):
+    """Resolve a cart into priced lines. Client prices are ignored."""
+    lines = []
+    self_ticket_added = False
+    for item in cart:
+        if not isinstance(item, dict):
+            continue
+        ticket_type = item.get("ticketType")
+        meal_ticket = bool(item.get("mealTicket")) and bool(event.meal_ticket_available)
+        requires_bunk = bool(item.get("requiresBunk"))
+        ticket_for = item.get("ticketFor")
+        character_id = None
+        user_id = None
+        child_name = None
+        detail = ""
+
+        if ticket_type == "adult":
+            character_to_check = None
+            char_id_str = None
+            if ticket_for == "self":
+                self_char_id = item.get("selfCharacterId")
+                if self_char_id:
+                    character_to_check = Character.query.get(self_char_id)
+                    if not character_to_check or character_to_check.user_id != current_user.id:
+                        continue
+                else:
+                    character_to_check = current_user.get_active_character()
+            else:
+                char_id_str = item.get("characterId")
+                if not char_id_str or "." not in char_id_str or not str(char_id_str).strip():
+                    flash(
+                        "Invalid character ID format. Please use the format: user_id.character_id",
+                        "error",
+                    )
+                    return None, redirect(url_for("events.purchase_ticket", event_id=event.id))
+                u_id, c_id = str(char_id_str).split(".")
+                try:
+                    character_to_check = Character.query.filter_by(
+                        user_id=int(u_id), character_id=int(c_id)
+                    ).first()
+                except ValueError:
+                    flash(
+                        "Invalid character ID format. Please use the format: user_id.character_id",
+                        "error",
+                    )
+                    return None, redirect(url_for("events.purchase_ticket", event_id=event.id))
+
+            if not character_to_check:
+                if char_id_str:
+                    flash(
+                        f"Character with ID '{char_id_str}' not found. "
+                        "Please check the character ID and try again.",
+                        "error",
+                    )
+                else:
+                    flash(
+                        "No active character found. Please select a character or create one.",
+                        "error",
+                    )
+                return None, redirect(url_for("events.purchase_ticket", event_id=event.id))
+
+            if not character_to_check.group_id:
+                flash(
+                    f"Character '{character_to_check.name}' must be in a group "
+                    "before purchasing tickets.",
+                    "error",
+                )
+                return None, redirect(url_for("events.purchase_ticket", event_id=event.id))
+
+            target_user = User.query.get(character_to_check.user_id)
+            if not target_user:
+                continue
+
+            existing_crew = EventTicket.query.filter_by(
+                event_id=event.id, user_id=target_user.id, ticket_type="crew"
+            ).first()
+            if existing_crew:
+                continue
+
+            user_character_ids = [c.id for c in target_user.characters]
+            if user_character_ids:
+                existing_adult = EventTicket.query.filter(
+                    EventTicket.event_id == event.id,
+                    EventTicket.character_id.in_(user_character_ids),
+                    EventTicket.ticket_type == "adult",
+                ).first()
+                if existing_adult:
+                    continue
+
+            if any(
+                line["user_id"] == target_user.id and line["ticket_type"] in ("adult", "crew")
+                for line in lines
+            ):
+                continue
+
+            character_id = character_to_check.id
+            user_id = target_user.id
+            detail = character_to_check.name
+
+        elif ticket_type == "crew":
+            if ticket_for == "self":
+                if self_ticket_added:
+                    continue
+                self_ticket_added = True
+                user_id = current_user.id
+                character_id = None
+                user_characters = Character.query.filter_by(user_id=current_user.id).all()
+                character_ids = [char.id for char in user_characters]
+                if character_ids:
+                    existing_adult = EventTicket.query.filter(
+                        EventTicket.event_id == event.id,
+                        EventTicket.character_id.in_(character_ids),
+                        EventTicket.ticket_type == "adult",
+                    ).first()
+                    if existing_adult:
+                        continue
+                if any(
+                    line["user_id"] == current_user.id and line["ticket_type"] == "adult"
+                    for line in lines
+                ):
+                    continue
+            else:
+                continue
+            detail = "Yourself"
+
+        elif ticket_type in ["child_12_15", "child_7_11", "child_under_7"]:
+            user_id = current_user.id
+            character_id = None
+            child_name = (item.get("childName") or "").strip()
+            if not child_name:
+                continue
+            detail = child_name
+        else:
+            continue
+
+        lines.append(
+            {
+                "ticket_type": ticket_type,
+                "meal_ticket": meal_ticket,
+                "requires_bunk": requires_bunk,
+                "character_id": character_id,
+                "user_id": user_id,
+                "child_name": child_name,
+                "price": event.checkout_price(ticket_type, meal_ticket),
+                "label": TicketType.descriptions().get(ticket_type, ticket_type),
+                "detail": detail,
+            }
+        )
+    return lines, None
+
+
+def _reset_group_pack(character_id):
+    if not character_id:
+        return
+    character = db.session.get(Character, character_id)
+    if not character or not character.group:
+        return
+    if not character.group.pack:
+        character.group.pack = Pack()
+    character.group.pack = Pack(
+        items=character.group.pack.items,
+        samples=character.group.pack.samples,
+        exotics=character.group.pack.exotics,
+        medicaments=character.group.pack.medicaments,
+        energy_chits=character.group.pack.energy_chits,
+        completion={},
+        is_generated=False,
+        pack_type=character.group.pack.pack_type,
+        downtime_results=character.group.pack.downtime_results,
+    )
+
+
+def _save_checkout_lines(event, lines):
+    for line in lines:
+        ticket_type = line["ticket_type"]
+        character_id = line["character_id"]
+        user_id = line["user_id"]
+        existing_ticket = None
+        if ticket_type == "crew":
+            existing_ticket = EventTicket.query.filter_by(
+                event_id=event.id, user_id=user_id, ticket_type="crew"
+            ).first()
+        elif ticket_type == "adult":
+            existing_ticket = EventTicket.query.filter_by(
+                event_id=event.id, character_id=character_id, ticket_type="adult"
+            ).first()
+
+        if existing_ticket:
+            existing_ticket.meal_ticket = line["meal_ticket"]
+            existing_ticket.requires_bunk = line["requires_bunk"]
+            existing_ticket.price_paid = line["price"]
+            existing_ticket.payment_simulated = True
+            existing_ticket.assigned_by_id = current_user.id
+            existing_ticket.assigned_at = datetime.now(timezone.utc)
+            if line["child_name"]:
+                existing_ticket.child_name = line["child_name"]
+        else:
+            db.session.add(
+                EventTicket(
+                    event_id=event.id,
+                    character_id=character_id,
+                    user_id=user_id,
+                    ticket_type=ticket_type,
+                    meal_ticket=line["meal_ticket"],
+                    requires_bunk=line["requires_bunk"],
+                    price_paid=line["price"],
+                    payment_simulated=True,
+                    assigned_by_id=current_user.id,
+                    assigned_at=datetime.now(timezone.utc),
+                    child_name=line["child_name"],
+                )
+            )
+        _reset_group_pack(character_id)
+    db.session.commit()
+
+
+def _render_test_payment(event, lines):
+    return render_template(
+        "events/test_payment.html",
+        event=event,
+        lines=lines,
+        total=sum(line["price"] for line in lines),
+    )
+
+
+def _load_pending_checkout(event):
+    pending = session.get(CHECKOUT_SESSION_KEY)
+    if (
+        not pending
+        or pending.get("event_id") != event.id
+        or pending.get("user_id") != current_user.id
+    ):
+        return None
+    cart = pending.get("cart")
+    if not isinstance(cart, list):
+        return None
+    return cart
+
+
 @events_bp.route("/<int:event_id>/purchase", methods=["GET"])
 @login_required
 @email_verified_required
 def purchase_ticket(event_id):
     event = Event.query.get_or_404(event_id)
 
-    # Check if booking is still available
-    if not event.is_booking_available():
-        if event.booking_deadline:
-            deadline_msg = f"The booking deadline was {event.booking_deadline.strftime('%d %b %Y')}"
-        else:
-            deadline_msg = "The event has already started"
-        flash(
-            f"Booking for this event has closed. {deadline_msg}.",
-            "error",
-        )
-        return redirect(url_for("events.event_list"))
+    closed = _booking_closed_redirect(event)
+    if closed:
+        return closed
 
     user_characters = Character.query.filter_by(
         user_id=current_user.id, status=CharacterStatus.ACTIVE.value
@@ -245,23 +522,35 @@ def purchase_ticket(event_id):
     )
 
 
+def _quote_checkout(event, cart):
+    if not isinstance(cart, list):
+        flash("Invalid cart data.", "error")
+        return redirect(url_for("events.purchase_ticket", event_id=event.id))
+
+    lines, error = _checkout_lines(event, cart)
+    if error:
+        return error
+    if not lines:
+        flash("No tickets were purchased.", "error")
+        return redirect(url_for("events.purchase_ticket", event_id=event.id))
+
+    session[CHECKOUT_SESSION_KEY] = {
+        "event_id": event.id,
+        "user_id": current_user.id,
+        "cart": _cart_without_client_prices(cart),
+    }
+    return _render_test_payment(event, lines)
+
+
 @events_bp.route("/<int:event_id>/purchase", methods=["POST"])
 @login_required
 @email_verified_required
 def purchase_ticket_post(event_id):
     event = Event.query.get_or_404(event_id)
 
-    # Check if booking is still available
-    if not event.is_booking_available():
-        if event.booking_deadline:
-            deadline_msg = f"The booking deadline was {event.booking_deadline.strftime('%d %b %Y')}"
-        else:
-            deadline_msg = "The event has already started"
-        flash(
-            f"Booking for this event has closed. {deadline_msg}.",
-            "error",
-        )
-        return redirect(url_for("events.event_list"))
+    closed = _booking_closed_redirect(event)
+    if closed:
+        return closed
 
     cart_data = request.form.get("cart")
     if not cart_data:
@@ -274,202 +563,40 @@ def purchase_ticket_post(event_id):
         flash("Invalid cart data.", "error")
         return redirect(url_for("events.purchase_ticket", event_id=event_id))
 
-    tickets_created = 0
-    self_ticket_added = False
-    for item in cart:
-        ticket_type = item.get("ticketType")
-        meal_ticket = bool(item.get("mealTicket"))
-        requires_bunk = bool(item.get("requiresBunk"))
-        ticket_for = item.get("ticketFor")  # 'self' or 'other'
-        character_id = None
-        user_id = None
-        child_name = None
-        # --- Adult Ticket ---
-        if ticket_type == "adult":
-            character_to_check = None
-            char_id_str = None  # Initialize for error messages
-            if ticket_for == "self":
-                self_char_id = item.get("selfCharacterId")
-                if self_char_id:
-                    character_to_check = Character.query.get(self_char_id)
-                    if not character_to_check or character_to_check.user_id != current_user.id:
-                        continue
-                else:
-                    character_to_check = current_user.get_active_character()
-            else:  # ticket_for == 'other'
-                char_id_str = item.get("characterId")
-                if not char_id_str or "." not in char_id_str or not char_id_str.strip():
-                    flash(
-                        "Invalid character ID format. Please use the format: user_id.character_id",
-                        "error",
-                    )
-                    return redirect(url_for("events.purchase_ticket", event_id=event_id))
-                u_id, c_id = char_id_str.split(".")
-                try:
-                    character_to_check = Character.query.filter_by(
-                        user_id=int(u_id), character_id=int(c_id)
-                    ).first()
-                except ValueError:
-                    flash(
-                        "Invalid character ID format. Please use the format: user_id.character_id",
-                        "error",
-                    )
-                    return redirect(url_for("events.purchase_ticket", event_id=event_id))
+    return _quote_checkout(event, cart)
 
-            if not character_to_check:
-                if char_id_str:
-                    flash(
-                        f"Character with ID '{char_id_str}' not found. "
-                        "Please check the character ID and try again.",
-                        "error",
-                    )
-                else:
-                    flash(
-                        "No active character found. Please select a character or create one.",
-                        "error",
-                    )
-                return redirect(url_for("events.purchase_ticket", event_id=event_id))
 
-            # Rule: Character must be in a group to purchase tickets
-            if not character_to_check.group_id:
-                flash(
-                    f"Character '{character_to_check.name}' must be in a group "
-                    "before purchasing tickets.",
-                    "error",
-                )
-                return redirect(url_for("events.purchase_ticket", event_id=event_id))
+@events_bp.route("/<int:event_id>/purchase/confirm", methods=["POST"])
+@login_required
+@email_verified_required
+def confirm_simulated_payment(event_id):
+    event = Event.query.get_or_404(event_id)
 
-            target_user = User.query.get(character_to_check.user_id)
-            if not target_user:
-                continue
+    closed = _booking_closed_redirect(event)
+    if closed:
+        return closed
 
-            # Rule: User can't have a Crew ticket for this event
-            existing_crew = EventTicket.query.filter_by(
-                event_id=event_id, user_id=target_user.id, ticket_type="crew"
-            ).first()
-            if existing_crew:
-                continue
+    cart = _load_pending_checkout(event)
+    if cart is None:
+        flash("Checkout expired. Review your cart and try again.", "error")
+        return redirect(url_for("events.purchase_ticket", event_id=event.id))
 
-            # Rule: User can't have more than one Adult ticket for this event
-            # (across all their characters)
-            user_character_ids = [c.id for c in target_user.characters]
-            if user_character_ids:
-                existing_adult = EventTicket.query.filter(
-                    EventTicket.event_id == event_id,
-                    EventTicket.character_id.in_(user_character_ids),
-                    EventTicket.ticket_type == "adult",
-                ).first()
-                if existing_adult:
-                    continue
-
-            character_id = character_to_check.id
-            user_id = target_user.id
-
-        # --- Crew Ticket ---
-        elif ticket_type == "crew":
-            if ticket_for == "self":
-                if self_ticket_added:
-                    continue
-                self_ticket_added = True
-                user_id = current_user.id
-                character_id = None  # Crew tickets never require a character
-                # Check for any adult ticket for this user (any character) for this event
-                user_characters = Character.query.filter_by(user_id=current_user.id).all()
-                character_ids = [char.id for char in user_characters]
-                if character_ids:
-                    existing_adult = EventTicket.query.filter(
-                        EventTicket.event_id == event_id,
-                        EventTicket.character_id.in_(character_ids),
-                        EventTicket.ticket_type == "adult",
-                    ).first()
-                    if existing_adult:
-                        continue
-            else:
-                # Assigning crew to another user is not allowed in purchase flow
-                continue
-            # Check for existing crew ticket (handled in ticket creation logic below)
-        # --- Child Tickets ---
-        elif ticket_type in ["child_12_15", "child_7_11", "child_under_7"]:
-            user_id = current_user.id
-            character_id = None
-            child_name = item.get("childName", "").strip()
-            if not child_name:
-                continue
-            # Allow multiple child tickets per user/event/child_name
-        else:
-            continue  # Unknown ticket type
-
-        price_paid = float(item.get("price", 0))
-
-        # Check if we're updating an existing ticket
-        existing_ticket = None
-        if ticket_type == "crew":
-            existing_ticket = EventTicket.query.filter_by(
-                event_id=event_id, user_id=user_id, ticket_type="crew"
-            ).first()
-        elif ticket_type == "adult":
-            existing_ticket = EventTicket.query.filter_by(
-                event_id=event_id, character_id=character_id, ticket_type="adult"
-            ).first()
-
-        if existing_ticket:
-            # Update existing ticket
-            existing_ticket.meal_ticket = meal_ticket
-            existing_ticket.requires_bunk = requires_bunk
-            existing_ticket.price_paid = price_paid
-            existing_ticket.assigned_by_id = current_user.id
-            existing_ticket.assigned_at = datetime.now(timezone.utc)
-            if child_name:
-                existing_ticket.child_name = child_name
-        else:
-            # Create new ticket
-            ticket = EventTicket(
-                event_id=event_id,
-                character_id=character_id,
-                user_id=user_id,
-                ticket_type=ticket_type,
-                meal_ticket=meal_ticket,
-                requires_bunk=requires_bunk,
-                price_paid=price_paid,
-                assigned_by_id=current_user.id,
-                assigned_at=datetime.now(timezone.utc),
-                child_name=child_name,
-            )
-            db.session.add(ticket)
-
-        # Reset group pack if character has a group
-        if character_id:
-            character = db.session.get(Character, character_id)
-            if character and character.group:
-                # Reset the group pack - unmark as generated and clear contents except items
-                if not character.group.pack:
-                    character.group.pack = Pack()
-
-                # Create a new pack object with is_generated=False to ensure it's saved
-                from models.tools.pack import Pack
-
-                new_pack = Pack(
-                    items=character.group.pack.items,
-                    samples=character.group.pack.samples,
-                    exotics=character.group.pack.exotics,
-                    medicaments=character.group.pack.medicaments,
-                    energy_chits=character.group.pack.energy_chits,
-                    completion={},  # Reset completion when regenerating
-                    is_generated=False,  # Reset to False
-                    pack_type=character.group.pack.pack_type,
-                    downtime_results=character.group.pack.downtime_results,
-                )
-                character.group.pack = new_pack
-
-        tickets_created += 1
-
-    db.session.commit()
-    if tickets_created:
-        flash(f"{tickets_created} ticket(s) updated successfully!", "success")
-        return redirect(url_for("events.event_list"))
-    else:
+    lines, error = _checkout_lines(event, cart)
+    if error:
+        return error
+    if not lines:
+        session.pop(CHECKOUT_SESSION_KEY, None)
         flash("No tickets were purchased.", "error")
-        return redirect(url_for("events.purchase_ticket", event_id=event_id))
+        return redirect(url_for("events.purchase_ticket", event_id=event.id))
+
+    if request.form.get("confirm_simulated_payment") != "yes":
+        flash("Confirm the test payment before tickets are created.", "error")
+        return _render_test_payment(event, lines)
+
+    _save_checkout_lines(event, lines)
+    session.pop(CHECKOUT_SESSION_KEY, None)
+    flash(f"{len(lines)} ticket(s) updated successfully!", "success")
+    return redirect(url_for("events.event_list"))
 
 
 @events_bp.route("/<int:event_id>/assign", methods=["GET"])

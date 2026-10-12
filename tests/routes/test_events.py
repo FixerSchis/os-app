@@ -12,6 +12,24 @@ from models.tools.group import Group
 from models.tools.user import User
 
 
+def submit_ticket_purchase(test_client, event_id, cart_data, follow_redirects=True):
+    """Post a cart, then confirm the simulated payment when checkout reaches that step."""
+    if not isinstance(cart_data, str):
+        cart_data = json.dumps(cart_data)
+    response = test_client.post(
+        f"/events/{event_id}/purchase",
+        data={"cart": cart_data},
+        follow_redirects=True,
+    )
+    if b"Confirm test payment" not in response.data:
+        return response
+    return test_client.post(
+        f"/events/{event_id}/purchase/confirm",
+        data={"confirm_simulated_payment": "yes"},
+        follow_redirects=follow_redirects,
+    )
+
+
 def test_event_list_get(test_client, db):
     """Test GET request to event list page."""
     response = test_client.get("/events/")
@@ -367,9 +385,7 @@ def test_purchase_ticket_post_blank_character_id(test_client, authenticated_user
         }
     ]
 
-    response = test_client.post(
-        f"/events/{event.id}/purchase", data={"cart": json.dumps(cart_data)}, follow_redirects=True
-    )
+    response = submit_ticket_purchase(test_client, event.id, cart_data)
 
     assert response.status_code == 200
     # Should show error message about invalid character ID format
@@ -387,9 +403,7 @@ def test_purchase_ticket_post_blank_character_id(test_client, authenticated_user
         }
     ]
 
-    response = test_client.post(
-        f"/events/{event.id}/purchase", data={"cart": json.dumps(cart_data)}, follow_redirects=True
-    )
+    response = submit_ticket_purchase(test_client, event.id, cart_data)
 
     assert response.status_code == 200
     # Should show error message about invalid character ID format
@@ -434,9 +448,7 @@ def test_purchase_ticket_post_nonexistent_character_id(test_client, authenticate
         }
     ]
 
-    response = test_client.post(
-        f"/events/{event.id}/purchase", data={"cart": json.dumps(cart_data)}, follow_redirects=True
-    )
+    response = submit_ticket_purchase(test_client, event.id, cart_data)
 
     assert response.status_code == 200
     # Should show error message about character not found
@@ -561,9 +573,7 @@ def test_purchase_ticket_post_multiple_self_tickets(test_client, authenticated_u
             "price": 50.00,
         },
     ]
-    response = test_client.post(
-        f"/events/{event.id}/purchase", data={"cart": json.dumps(cart_data)}, follow_redirects=True
-    )
+    response = submit_ticket_purchase(test_client, event.id, cart_data)
     assert response.status_code == 200
     # Only one ticket should be created
 
@@ -612,9 +622,7 @@ def test_purchase_ticket_post_multiple_child_tickets(test_client, authenticated_
             "price": 25.00,
         },
     ]
-    response = test_client.post(
-        f"/events/{event.id}/purchase", data={"cart": json.dumps(cart_data)}, follow_redirects=True
-    )
+    response = submit_ticket_purchase(test_client, event.id, cart_data)
     assert response.status_code == 200
 
     # Check that both child tickets were created
@@ -678,9 +686,7 @@ def test_npc_cannot_buy_crew_ticket_for_others(test_client, db, faction):
             "price": 0.00,
         }
     ]
-    response = test_client.post(
-        f"/events/{event.id}/purchase", data={"cart": json.dumps(cart_data)}, follow_redirects=True
-    )
+    response = submit_ticket_purchase(test_client, event.id, cart_data)
     assert response.status_code == 200
     # Should not create a ticket since crew tickets for others are not allowed
     ticket = EventTicket.query.filter_by(event_id=event.id, character_id=other_character.id).first()
@@ -727,9 +733,7 @@ def test_npc_can_buy_crew_ticket_for_self_without_character(test_client, db):
             "price": 0.00,
         }
     ]
-    response = test_client.post(
-        f"/events/{event.id}/purchase", data={"cart": json.dumps(cart_data)}, follow_redirects=True
-    )
+    response = submit_ticket_purchase(test_client, event.id, cart_data)
     assert response.status_code == 200
 
     # Should succeed and create a crew ticket for the user
@@ -803,9 +807,7 @@ def test_adult_crew_ticket_exclusivity(test_client, authenticated_user, db, fact
             "price": 50.00,
         }
     ]
-    response = test_client.post(
-        f"/events/{event.id}/purchase", data={"cart": json.dumps(cart_data)}, follow_redirects=True
-    )
+    response = submit_ticket_purchase(test_client, event.id, cart_data)
     assert response.status_code == 200
 
     # Now try to add a crew ticket - should be blocked
@@ -818,9 +820,7 @@ def test_adult_crew_ticket_exclusivity(test_client, authenticated_user, db, fact
             "price": 0.00,
         }
     ]
-    response = test_client.post(
-        f"/events/{event.id}/purchase", data={"cart": json.dumps(cart_data)}, follow_redirects=True
-    )
+    response = submit_ticket_purchase(test_client, event.id, cart_data)
     assert response.status_code == 200
 
     # Check that only the adult ticket exists, no crew ticket
@@ -882,9 +882,7 @@ def test_crew_adult_ticket_exclusivity(test_client, rules_team_user, db, faction
             "price": 0.00,
         }
     ]
-    response = test_client.post(
-        f"/events/{event.id}/purchase", data={"cart": json.dumps(cart_data)}, follow_redirects=True
-    )
+    response = submit_ticket_purchase(test_client, event.id, cart_data)
     assert response.status_code == 200
 
     # Now try to add an adult ticket - should be blocked
@@ -897,9 +895,7 @@ def test_crew_adult_ticket_exclusivity(test_client, rules_team_user, db, faction
             "price": 50.00,
         }
     ]
-    response = test_client.post(
-        f"/events/{event.id}/purchase", data={"cart": json.dumps(cart_data)}, follow_redirects=True
-    )
+    response = submit_ticket_purchase(test_client, event.id, cart_data)
     assert response.status_code == 200
 
     # Check that only the crew ticket exists, no adult ticket
@@ -976,9 +972,7 @@ def test_child_tickets_with_adult_ticket(test_client, authenticated_user, db, fa
             "price": 50.00,
         }
     ]
-    response = test_client.post(
-        f"/events/{event.id}/purchase", data={"cart": json.dumps(cart_data)}, follow_redirects=True
-    )
+    response = submit_ticket_purchase(test_client, event.id, cart_data)
     assert response.status_code == 200
 
     # Now add a child ticket - should work
@@ -992,9 +986,7 @@ def test_child_tickets_with_adult_ticket(test_client, authenticated_user, db, fa
             "price": 25.00,
         }
     ]
-    response = test_client.post(
-        f"/events/{event.id}/purchase", data={"cart": json.dumps(cart_data)}, follow_redirects=True
-    )
+    response = submit_ticket_purchase(test_client, event.id, cart_data)
     assert response.status_code == 200
 
     # Check that both tickets exist
@@ -1120,13 +1112,13 @@ def test_purchase_multiple_adult_tickets_for_same_user(
     cart_data1 = [
         {"ticketType": "adult", "ticketFor": "self", "selfCharacterId": char1.id, "price": 50.00}
     ]
-    test_client.post(f"/events/{event.id}/purchase", data={"cart": json.dumps(cart_data1)})
+    submit_ticket_purchase(test_client, event.id, cart_data1)
 
     # Try to purchase ticket for second character
     cart_data2 = [
         {"ticketType": "adult", "ticketFor": "self", "selfCharacterId": char2.id, "price": 50.00}
     ]
-    test_client.post(f"/events/{event.id}/purchase", data={"cart": json.dumps(cart_data2)})
+    submit_ticket_purchase(test_client, event.id, cart_data2)
 
     # Verify only the first ticket exists
     user_tickets = EventTicket.query.filter_by(user_id=user.id, event_id=event.id).all()
@@ -1149,13 +1141,13 @@ def test_purchase_conflicting_adult_and_crew_tickets(
 
     # Purchase a crew ticket first
     cart_data_crew = [{"ticketType": "crew", "ticketFor": "self", "price": 0}]
-    test_client.post(f"/events/{event.id}/purchase", data={"cart": json.dumps(cart_data_crew)})
+    submit_ticket_purchase(test_client, event.id, cart_data_crew)
 
     # Try to purchase adult ticket
     cart_data_adult = [
         {"ticketType": "adult", "ticketFor": "self", "selfCharacterId": char1.id, "price": 50.00}
     ]
-    test_client.post(f"/events/{event.id}/purchase", data={"cart": json.dumps(cart_data_adult)})
+    submit_ticket_purchase(test_client, event.id, cart_data_adult)
 
     # Verify only the crew ticket exists
     user_tickets = EventTicket.query.filter_by(user_id=user.id, event_id=event.id).all()
@@ -1214,11 +1206,7 @@ def test_purchase_ticket_character_without_group(test_client, authenticated_user
         ]
     )
 
-    response = test_client.post(
-        f"/events/{event.id}/purchase",
-        data={"cart": cart_data},
-        follow_redirects=True,
-    )
+    response = submit_ticket_purchase(test_client, event.id, cart_data)
 
     assert response.status_code == 200
     # Should redirect back to purchase page with error message
@@ -2270,9 +2258,7 @@ def test_regular_user_can_buy_crew_ticket(test_client, authenticated_user, db):
             "price": 0.00,
         }
     ]
-    response = test_client.post(
-        f"/events/{event.id}/purchase", data={"cart": json.dumps(cart_data)}, follow_redirects=True
-    )
+    response = submit_ticket_purchase(test_client, event.id, cart_data)
     assert response.status_code == 200
 
     # Verify the crew ticket was created
@@ -2322,9 +2308,7 @@ def test_user_without_active_character_can_buy_crew_ticket(test_client, authenti
             "price": 0.00,
         }
     ]
-    response = test_client.post(
-        f"/events/{event.id}/purchase", data={"cart": json.dumps(cart_data)}, follow_redirects=True
-    )
+    response = submit_ticket_purchase(test_client, event.id, cart_data)
     assert response.status_code == 200
 
     # Verify the crew ticket was created
@@ -2376,9 +2360,7 @@ def test_user_without_active_character_cannot_buy_adult_ticket_for_self(
             "price": 50.00,
         }
     ]
-    response = test_client.post(
-        f"/events/{event.id}/purchase", data={"cart": json.dumps(cart_data)}, follow_redirects=True
-    )
+    response = submit_ticket_purchase(test_client, event.id, cart_data)
     assert response.status_code == 200
 
     # Verify no adult ticket was created (should be blocked)
@@ -2609,3 +2591,248 @@ def test_group_pack_generation_energy_chits_calculation(test_client, admin_user,
     assert (
         pack_data["energy_chits"] == 60
     ), f"Expected 60 energy chits, got {pack_data['energy_chits']}"
+
+
+def _bookable_event(**overrides):
+    fields = dict(
+        event_number="PAY001",
+        name="Payment Test Event",
+        event_type="mainline",
+        description="A test event",
+        early_booking_deadline=datetime.now() + timedelta(days=30),
+        booking_deadline=datetime.now() + timedelta(days=40),
+        start_date=datetime.now() + timedelta(days=45),
+        end_date=datetime.now() + timedelta(days=47),
+        location="Test Location",
+        standard_ticket_price=80.00,
+        early_booking_ticket_price=45.00,
+        child_ticket_price_12_15=25.00,
+        child_ticket_price_7_11=15.00,
+        child_ticket_price_under_7=0.00,
+        meal_ticket_available=True,
+        meal_ticket_price=8.00,
+    )
+    fields.update(overrides)
+    return Event(**fields)
+
+
+def test_simulated_payment_records_server_prices_only_after_confirm(
+    test_client, authenticated_user, db, faction
+):
+    """A cart price from the browser is ignored until the tester confirms."""
+    event = _bookable_event()
+    db.session.add(event)
+    db.session.commit()
+
+    group_type = GroupType(name="Pay Type", description="Pay", income_distribution="{}")
+    db.session.add(group_type)
+    db.session.flush()
+    group = Group(name="Pay Group", group_type_id=group_type.id, faction_id=faction.id)
+    db.session.add(group)
+    db.session.flush()
+    character = Character(
+        user_id=authenticated_user.id,
+        character_id=1,
+        name="Payer",
+        status="active",
+        group_id=group.id,
+        faction_id=faction.id,
+    )
+    db.session.add(character)
+    db.session.commit()
+    authenticated_user.active_character_id = character.id
+    db.session.commit()
+
+    with test_client.session_transaction() as session:
+        session["_user_id"] = authenticated_user.id
+        session["_fresh"] = True
+
+    cart_data = [
+        {
+            "ticketType": "adult",
+            "mealTicket": True,
+            "requiresBunk": False,
+            "ticketFor": "self",
+            "price": 1.00,
+        },
+        {
+            "ticketType": "child_12_15",
+            "mealTicket": False,
+            "ticketFor": "self",
+            "childName": "Alice",
+            "price": 999.00,
+        },
+        {
+            "ticketType": "child_7_11",
+            "mealTicket": False,
+            "ticketFor": "self",
+            "childName": "Bob",
+            "price": 2.00,
+        },
+        {
+            "ticketType": "child_under_7",
+            "mealTicket": False,
+            "ticketFor": "self",
+            "childName": "Cara",
+            "price": 50.00,
+        },
+    ]
+    quoted = test_client.post(
+        f"/events/{event.id}/purchase",
+        data={"cart": json.dumps(cart_data)},
+        follow_redirects=True,
+    )
+    assert quoted.status_code == 200
+    assert b"Confirm test payment" in quoted.data
+    assert b"93.00" in quoted.data
+    assert EventTicket.query.filter_by(event_id=event.id).count() == 0
+
+    declined = test_client.post(
+        f"/events/{event.id}/purchase/confirm",
+        data={"price": "1.00"},
+        follow_redirects=True,
+    )
+    assert b"Confirm the test payment" in declined.data
+    assert EventTicket.query.filter_by(event_id=event.id).count() == 0
+
+    confirmed = test_client.post(
+        f"/events/{event.id}/purchase/confirm",
+        data={"confirm_simulated_payment": "yes", "price": "1.00"},
+        follow_redirects=True,
+    )
+    assert confirmed.status_code == 200
+
+    tickets = EventTicket.query.filter_by(event_id=event.id, user_id=authenticated_user.id).all()
+    by_type = {ticket.ticket_type: ticket for ticket in tickets}
+    assert set(by_type) == {
+        TicketType.ADULT,
+        TicketType.CHILD_12_15,
+        TicketType.CHILD_7_11,
+        TicketType.CHILD_UNDER_7,
+    }
+    assert by_type[TicketType.ADULT].price_paid == 53.00
+    assert by_type[TicketType.ADULT].meal_ticket is True
+    assert by_type[TicketType.CHILD_12_15].price_paid == 25.00
+    assert by_type[TicketType.CHILD_7_11].price_paid == 15.00
+    assert by_type[TicketType.CHILD_UNDER_7].price_paid == 0.00
+    assert all(ticket.payment_simulated is True for ticket in tickets)
+
+    again = test_client.post(
+        f"/events/{event.id}/purchase/confirm",
+        data={"confirm_simulated_payment": "yes"},
+        follow_redirects=True,
+    )
+    assert b"Checkout expired" in again.data
+    assert EventTicket.query.filter_by(event_id=event.id).count() == 4
+
+
+def test_simulated_payment_uses_standard_price_after_early_booking(
+    test_client, authenticated_user, db, faction
+):
+    event = _bookable_event(
+        event_number="PAY002",
+        early_booking_deadline=datetime.now() - timedelta(days=1),
+        standard_ticket_price=100.00,
+        meal_ticket_available=False,
+        meal_ticket_price=20.00,
+    )
+    db.session.add(event)
+    db.session.commit()
+
+    group_type = GroupType(name="Pay Type 2", description="Pay", income_distribution="{}")
+    db.session.add(group_type)
+    db.session.flush()
+    group = Group(name="Pay Group 2", group_type_id=group_type.id, faction_id=faction.id)
+    db.session.add(group)
+    db.session.flush()
+    character = Character(
+        user_id=authenticated_user.id,
+        character_id=1,
+        name="Late Payer",
+        status="active",
+        group_id=group.id,
+        faction_id=faction.id,
+    )
+    db.session.add(character)
+    db.session.commit()
+    authenticated_user.active_character_id = character.id
+    db.session.commit()
+
+    with test_client.session_transaction() as session:
+        session["_user_id"] = authenticated_user.id
+        session["_fresh"] = True
+
+    response = submit_ticket_purchase(
+        test_client,
+        event.id,
+        [
+            {
+                "ticketType": "adult",
+                "mealTicket": True,
+                "ticketFor": "self",
+                "price": 1.00,
+            }
+        ],
+    )
+    assert response.status_code == 200
+    ticket = EventTicket.query.filter_by(event_id=event.id, ticket_type="adult").one()
+    assert ticket.price_paid == 100.00
+    assert ticket.meal_ticket is False
+    assert ticket.payment_simulated is True
+
+
+def test_crew_checkout_price_stays_zero(test_client, authenticated_user, db):
+    event = _bookable_event(event_number="PAY003")
+    db.session.add(event)
+    db.session.commit()
+
+    with test_client.session_transaction() as session:
+        session["_user_id"] = authenticated_user.id
+        session["_fresh"] = True
+
+    quoted = test_client.post(
+        f"/events/{event.id}/purchase",
+        data={
+            "cart": json.dumps(
+                [
+                    {
+                        "ticketType": "crew",
+                        "mealTicket": False,
+                        "ticketFor": "self",
+                        "price": 40.00,
+                    }
+                ]
+            )
+        },
+        follow_redirects=True,
+    )
+    assert b"0.00" in quoted.data
+    assert EventTicket.query.filter_by(event_id=event.id).count() == 0
+
+    test_client.post(
+        f"/events/{event.id}/purchase/confirm",
+        data={"confirm_simulated_payment": "yes", "price": "40.00"},
+        follow_redirects=True,
+    )
+    ticket = EventTicket.query.filter_by(event_id=event.id, ticket_type="crew").one()
+    assert ticket.price_paid == 0.00
+    assert ticket.payment_simulated is True
+    assert ticket.character_id is None
+
+
+def test_confirm_without_checkout_does_not_create_tickets(test_client, authenticated_user, db):
+    event = _bookable_event(event_number="PAY004", meal_ticket_available=False)
+    db.session.add(event)
+    db.session.commit()
+
+    with test_client.session_transaction() as session:
+        session["_user_id"] = authenticated_user.id
+        session["_fresh"] = True
+
+    response = test_client.post(
+        f"/events/{event.id}/purchase/confirm",
+        data={"confirm_simulated_payment": "yes", "price": "1.00"},
+        follow_redirects=True,
+    )
+    assert b"Checkout expired" in response.data
+    assert EventTicket.query.filter_by(event_id=event.id).count() == 0

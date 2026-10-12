@@ -83,3 +83,13 @@ def test_new_event_with_methods(db):
 
     assert past_event.is_early_booking_available() is False
     assert past_event.get_adult_ticket_price() == 100.0  # Should return standard price
+
+    assert retrieved_event.checkout_price("adult") == 80.0
+    assert retrieved_event.checkout_price("adult", meal_ticket=True) == 95.0
+    assert retrieved_event.checkout_price("child_12_15") == 50.0
+    assert retrieved_event.checkout_price("child_7_11") == 25.0
+    assert retrieved_event.checkout_price("child_under_7") == 0.0
+    assert retrieved_event.checkout_price("crew") == 0.0
+    assert retrieved_event.checkout_price("crew", meal_ticket=True) == 15.0
+    assert past_event.checkout_price("adult") == 100.0
+    assert past_event.checkout_price("adult", meal_ticket=True) == 100.0

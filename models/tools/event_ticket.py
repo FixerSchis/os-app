@@ -22,6 +22,7 @@ class EventTicket(db.Model):
     meal_ticket = db.Column(db.Boolean, default=False)
     requires_bunk = db.Column(db.Boolean, default=False)
     price_paid = db.Column(db.Float, nullable=False)
+    payment_simulated = db.Column(db.Boolean, nullable=False, default=False, server_default="0")
     assigned_by_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
     assigned_at = db.Column(db.DateTime, default=datetime.now(timezone.utc))
     child_name = db.Column(db.String(255), nullable=True)
