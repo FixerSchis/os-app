@@ -1,10 +1,12 @@
 {% extends "wiki/_wiki_template.html" %}
+{% from "macros/csrf.html" import csrf_field %}
 {% block title %}Pending Wiki Changes - Orion Sphere LRP{% endblock %}
 {% block wiki_content %}
 <div class="container">
     <h1>Pending Wiki Changes</h1>
     {% if pending_pages %}
     <form method="POST">
+        {{ csrf_field() }}
         <div class="form-group">
             <label for="changelog"><strong>Change Log (required):</strong></label>
             <textarea id="changelog" name="changelog" class="form-control richtext" rows="4"></textarea>

@@ -215,10 +215,16 @@ def test_login_unverified_email(test_client, db):
 
 
 def test_logout(test_client, authenticated_user, db, wiki_index_page):
-    """Test logout functionality."""
-    response = test_client.get("/auth/logout", follow_redirects=False)
+    """Logout accepts POST and ends the session."""
+    response = test_client.post("/auth/logout", follow_redirects=False)
     assert response.status_code == 302
     assert response.location == "/"
+
+
+def test_logout_get_is_rejected(test_client, authenticated_user, db):
+    """Logout is not available as a GET link."""
+    response = test_client.get("/auth/logout", follow_redirects=False)
+    assert response.status_code == 405
 
 
 def test_verify_email_authenticated_success(test_client, authenticated_user, db, wiki_index_page):
@@ -496,3 +502,236 @@ def test_reset_password_authenticated(test_client, authenticated_user, db, wiki_
     response = test_client.get("/auth/reset-password/token", follow_redirects=False)
     assert response.status_code == 302
     assert response.location == "/"
+
+
+def test_password_policy_error():
+    """Empty and very short passwords are rejected before hashing."""
+    from routes.auth import password_policy_error
+
+    assert password_policy_error("") == "Password is required."
+    assert password_policy_error(None) == "Password is required."
+    assert password_policy_error("short") == "Password must be at least 8 characters."
+    assert password_policy_error("password") is None
+
+
+def test_register_rejects_short_password(test_client, db):
+    """Registration does not store a password shorter than 8 characters."""
+    response = test_client.post(
+        "/auth/register",
+        data={
+            "email": "short.password@example.com",
+            "password": "short",
+            "first_name": "Test",
+            "surname": "User",
+        },
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    assert b"at least 8 characters" in response.data
+    assert User.query.filter_by(email="short.password@example.com").first() is None
+
+
+def test_register_rejects_empty_password(test_client, db):
+    """Registration does not store an empty password."""
+    response = test_client.post(
+        "/auth/register",
+        data={
+            "email": "empty.password@example.com",
+            "password": "",
+            "first_name": "Test",
+            "surname": "User",
+        },
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    assert b"Password is required" in response.data
+    assert User.query.filter_by(email="empty.password@example.com").first() is None
+
+
+def test_reset_password_rejects_short_password(test_client, db):
+    """Password reset does not accept a short replacement password."""
+    user = User(email="reset_short@example.com", first_name="Test", surname="User")
+    user.set_password("oldpassword")
+    user.generate_reset_token()
+    db.session.add(user)
+    db.session.commit()
+
+    with patch("routes.auth.datetime") as mock_datetime:
+        mock_now = user.reset_token_expires - timedelta(hours=1)
+        if mock_now.tzinfo is None:
+            mock_now = mock_now.replace(tzinfo=timezone.utc)
+        mock_datetime.now.return_value = mock_now
+        response = test_client.post(
+            f"/auth/reset-password/{user.reset_token}",
+            data={"password": "short", "confirm_password": "short"},
+            follow_redirects=True,
+        )
+
+    assert response.status_code == 200
+    assert b"at least 8 characters" in response.data
+    db.session.refresh(user)
+    assert user.check_password("oldpassword")
+
+
+def test_register_hides_mail_errors(test_client, db, new_user):
+    """Registration does not show the SMTP exception to the user."""
+    owner_role = Role(name="owner", description="System owner", is_system_role=True)
+    default_role = Role(name="default", description="Default user role", is_system_role=True)
+    db.session.add_all([owner_role, default_role])
+    db.session.commit()
+
+    with patch(
+        "routes.auth.send_verification_email",
+        side_effect=Exception("smtp auth failed: secret-token"),
+    ):
+        response = test_client.post(
+            "/auth/register",
+            data={
+                "email": "mail.fail@example.com",
+                "password": "password123",
+                "first_name": "Test",
+                "surname": "User",
+            },
+            follow_redirects=True,
+        )
+
+    assert response.status_code == 200
+    assert b"secret-token" not in response.data
+    assert b"Failed to send verification email. Please try again later." in response.data
+
+
+def test_resend_verification_hides_mail_errors(test_client, db):
+    """Resend verification does not show the SMTP exception to the user."""
+    user = User(
+        email="resend.fail@example.com",
+        first_name="Test",
+        surname="User",
+        email_verified=False,
+    )
+    user.set_password("password123")
+    db.session.add(user)
+    db.session.commit()
+
+    with test_client.session_transaction() as session:
+        session["_user_id"] = user.id
+        session["_fresh"] = True
+
+    with patch(
+        "routes.auth.send_verification_email",
+        side_effect=Exception("smtp auth failed: secret-token"),
+    ):
+        with patch("routes.auth.current_user", user):
+            response = test_client.get("/auth/resend-verification", follow_redirects=True)
+
+    assert response.status_code == 200
+    assert b"secret-token" not in response.data
+    assert b"Failed to send verification email. Please try again later." in response.data
+
+
+def test_forgot_password_hides_mail_errors(test_client, new_user, db):
+    """Password reset requests do not show the SMTP exception to the user."""
+    with patch(
+        "routes.auth.send_password_reset_email",
+        side_effect=Exception("smtp auth failed: secret-token"),
+    ):
+        response = test_client.post(
+            "/auth/forgot-password",
+            data={"email": new_user.email},
+            follow_redirects=True,
+        )
+
+    assert response.status_code == 200
+    assert b"secret-token" not in response.data
+    assert b"Failed to send password reset email. Please try again later." in response.data
+
+
+def test_login_rate_limit(test_client, db):
+    """Repeated login posts are limited."""
+    from utils.rate_limit import rate_limiter
+
+    app = test_client.application
+    previous_enabled = app.config["RATELIMIT_ENABLED"]
+    previous_limit = app.config["AUTH_LOGIN_LIMIT"]
+    app.config["RATELIMIT_ENABLED"] = True
+    app.config["AUTH_LOGIN_LIMIT"] = 2
+    rate_limiter.reset()
+    try:
+        for _ in range(2):
+            allowed = test_client.post(
+                "/auth/login",
+                data={"email": "limited@example.com", "password": "password123"},
+            )
+            assert allowed.status_code == 200
+        blocked = test_client.post(
+            "/auth/login",
+            data={"email": "limited@example.com", "password": "password123"},
+        )
+        assert blocked.status_code == 429
+        assert b"Too many login attempts" in blocked.data
+    finally:
+        app.config["RATELIMIT_ENABLED"] = previous_enabled
+        app.config["AUTH_LOGIN_LIMIT"] = previous_limit
+        rate_limiter.reset()
+
+
+def test_forgot_password_rate_limit(test_client, db):
+    """Repeated password reset posts are limited."""
+    from utils.rate_limit import rate_limiter
+
+    app = test_client.application
+    previous_enabled = app.config["RATELIMIT_ENABLED"]
+    previous_limit = app.config["AUTH_FORGOT_PASSWORD_LIMIT"]
+    app.config["RATELIMIT_ENABLED"] = True
+    app.config["AUTH_FORGOT_PASSWORD_LIMIT"] = 2
+    rate_limiter.reset()
+    try:
+        for _ in range(2):
+            allowed = test_client.post(
+                "/auth/forgot-password",
+                data={"email": "nobody@example.com"},
+            )
+            assert allowed.status_code == 302
+        blocked = test_client.post(
+            "/auth/forgot-password",
+            data={"email": "nobody@example.com"},
+        )
+        assert blocked.status_code == 429
+        assert b"Too many password reset attempts" in blocked.data
+    finally:
+        app.config["RATELIMIT_ENABLED"] = previous_enabled
+        app.config["AUTH_FORGOT_PASSWORD_LIMIT"] = previous_limit
+        rate_limiter.reset()
+
+
+def test_csrf_protects_auth_and_leaves_other_posts_alone():
+    """Non-test apps require a CSRF token on auth posts."""
+    from app import create_app
+    from config import Config, TestConfig
+
+    assert Config.WTF_CSRF_ENABLED is True
+    assert TestConfig.WTF_CSRF_ENABLED is False
+
+    class CsrfCheckConfig(TestConfig):
+        TESTING = False
+        DEBUG = True
+        WTF_CSRF_ENABLED = True
+        RATELIMIT_ENABLED = False
+
+    with patch("app.initialize_database"):
+        csrf_app = create_app(CsrfCheckConfig)
+
+    client = csrf_app.test_client()
+    login_page = client.get("/auth/login")
+    assert login_page.status_code == 200
+    assert b'name="csrf_token"' in login_page.data
+
+    rejected = client.post(
+        "/auth/login",
+        data={"email": "nobody@example.com", "password": "password123"},
+    )
+    assert rejected.status_code == 400
+
+    theme = client.post("/toggle-theme", json={"theme": "light"})
+    assert theme.status_code == 200

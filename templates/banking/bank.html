@@ -1,4 +1,5 @@
 {% extends "_template.html" %}
+{% from "macros/csrf.html" import csrf_field %}
 
 {% block title %}Banking - Orion Sphere LRP{% endblock %}
 
@@ -29,6 +30,7 @@
                             {% if has_permission('banking.manage') %}
                             <div class="mt-3">
                                 <form method="POST" action="{{ url_for('banking.update_balance') }}" class="d-inline">
+                                    {{ csrf_field() }}
                                     <input type="hidden" name="account_type" value="character">
                                     <input type="hidden" name="account_id" id="character_account_id">
                                     <div class="input-group">
@@ -69,6 +71,7 @@
                             {% if has_permission('banking.manage') %}
                             <div class="mt-3">
                                 <form method="POST" action="{{ url_for('banking.update_balance') }}" class="d-inline">
+                                    {{ csrf_field() }}
                                     <input type="hidden" name="account_type" value="group">
                                     <input type="hidden" name="account_id" id="group_account_id">
                                     <div class="input-group">
@@ -98,6 +101,7 @@
         </div>
         <div class="card-body">
             <form method="POST" action="{{ url_for('banking.transfer') }}" id="transfer-form">
+                {{ csrf_field() }}
                 <div class="row">
                     <div class="col-md-4">
                         <label for="source_account">From</label>

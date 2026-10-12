@@ -1,4 +1,5 @@
 {% extends "wiki/_wiki_template.html" %}
+{% from "macros/csrf.html" import csrf_field %}
 {% block title %}Review Wiki Change - Orion Sphere LRP{% endblock %}
 {% block wiki_content %}
 <div class="container">
@@ -9,6 +10,7 @@
     <div class="alert alert-danger">This page is marked as <strong>deleted</strong>. No content changes to review.</div>
     {% else %}
     <form method="POST">
+        {{ csrf_field() }}
         <h2>Section Changes</h2>
         {% for d in diffs %}
         <div class="wiki-section-review" style="margin-bottom: 30px;">

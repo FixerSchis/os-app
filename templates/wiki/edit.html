@@ -1,4 +1,5 @@
 {% extends "wiki/_wiki_template.html" %}
+{% from "macros/csrf.html" import csrf_field %}
 
 {% block title %}Edit {{ page.title }} - Orion Sphere LRP{% endblock %}
 
@@ -12,6 +13,7 @@
         {% endif %}
 
         <form method="POST" id="wiki-edit-form">
+            {{ csrf_field() }}
             {% if not page %}
             <div class="form-group">
                 <label for="title">Title</label>

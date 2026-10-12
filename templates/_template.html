@@ -1,8 +1,12 @@
+{% from "macros/csrf.html" import csrf_field %}
 <!DOCTYPE html>
 <html lang="en" data-theme="{% if current_user.is_authenticated %}{% if current_user.dark_mode_preference %}dark{% else %}light{% endif %}{% else %}dark{% endif %}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    {% if csrf_token %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {% endif %}
     <title>{% block title %}{% endblock %} - Orion Sphere LRP</title>
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='images/favicon.ico') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
@@ -114,7 +118,12 @@
                 <li><a href="{{ url_for('templates.template_list') }}">Templates</a></li>
                 {% endif %}
                 <li><a href="{{ url_for('settings.settings') }}">Settings</a></li>
-                <li><a href="{{ url_for('auth.logout') }}">Logout</a></li>
+                <li>
+                    <form method="POST" action="{{ url_for('auth.logout') }}" class="logout-form">
+                        {{ csrf_field() }}
+                        <button type="submit">Logout</button>
+                    </form>
+                </li>
                 {% else %}
                 <li><a href="{{ url_for('auth.login') }}">Login</a></li>
                 <li><a href="{{ url_for('auth.register') }}">Register</a></li>
@@ -190,6 +199,7 @@
     </footer>
 
     <script src="{{ url_for('static', filename='external/js/jquery-3.6.0.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/components/csrf.js') }}"></script>
     <script src="{{ url_for('static', filename='external/js/select2.min.js') }}"></script>
     <script src="{{ url_for('static', filename='external/js/bootstrap.bundle.min.js') }}"></script>
     <script src="{{ url_for('static', filename='js/components/cookie-consent.js') }}"></script>

@@ -1,14 +1,47 @@
 from datetime import datetime, timezone
 
-from flask import Blueprint, flash, redirect, render_template, request, url_for
+from flask import Blueprint, current_app, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required, login_user, logout_user
 
 from models.database.permissions import Role
 from models.extensions import db
 from models.tools.user import User
 from utils.email import send_password_reset_email, send_verification_email
+from utils.rate_limit import rate_limiter
 
 auth_bp = Blueprint("auth", __name__)
+
+MIN_PASSWORD_LENGTH = 8
+
+
+def password_policy_error(password):
+    """Return an error message when a password is empty or too short."""
+    if not password:
+        return "Password is required."
+    if len(password) < MIN_PASSWORD_LENGTH:
+        return f"Password must be at least {MIN_PASSWORD_LENGTH} characters."
+    return None
+
+
+def _client_is_limited(scope):
+    """Return True when this address has exceeded the limit for a POST."""
+    if not current_app.config.get("RATELIMIT_ENABLED", True):
+        return False
+
+    limits = {
+        "login": ("AUTH_LOGIN_LIMIT", "AUTH_LOGIN_WINDOW_SECONDS", 10, 60),
+        "forgot_password": (
+            "AUTH_FORGOT_PASSWORD_LIMIT",
+            "AUTH_FORGOT_PASSWORD_WINDOW_SECONDS",
+            5,
+            3600,
+        ),
+    }
+    limit_key, window_key, default_limit, default_window = limits[scope]
+    limit = current_app.config.get(limit_key, default_limit)
+    window = current_app.config.get(window_key, default_window)
+    address = request.remote_addr or "unknown"
+    return not rate_limiter.allow(f"{scope}:{address}", limit, window)
 
 
 @auth_bp.route("/register", methods=["GET", "POST"])
@@ -21,6 +54,10 @@ def register():
         if User.query.filter_by(email=email).first():
             flash("Email already registered")
             return redirect(url_for("auth.register"))
+        password_error = password_policy_error(password)
+        if password_error:
+            flash(password_error)
+            return render_template("auth/register.html")
         user = User(
             email=email,
             first_name=first_name,
@@ -49,8 +86,9 @@ def register():
                     "A verification email has been sent to your email address. "
                     "Please check your inbox."
                 )
-            except Exception as e:
-                flash(f"Failed to send verification email: {str(e)}")
+            except Exception:
+                current_app.logger.exception("Failed to send verification email")
+                flash("Failed to send verification email. Please try again later.")
 
         db.session.commit()
         login_user(user)
@@ -67,6 +105,9 @@ def register():
 @auth_bp.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
+        if _client_is_limited("login"):
+            flash("Too many login attempts. Please try again later.")
+            return render_template("auth/login.html"), 429
         email = request.form.get("email")
         password = request.form.get("password")
         user = User.query.filter_by(email=email).first()
@@ -79,7 +120,7 @@ def login():
     return render_template("auth/login.html")
 
 
-@auth_bp.route("/logout")
+@auth_bp.route("/logout", methods=["POST"])
 @login_required
 def logout():
     logout_user()
@@ -135,8 +176,9 @@ def resend_verification():
         send_verification_email(current_user)
         db.session.commit()
         flash("A new verification email has been sent. Please check your inbox.")
-    except Exception as e:
-        flash(f"Failed to send verification email: {str(e)}")
+    except Exception:
+        current_app.logger.exception("Failed to send verification email")
+        flash("Failed to send verification email. Please try again later.")
 
     return redirect(url_for("auth.verification_required"))
 
@@ -147,6 +189,9 @@ def forgot_password():
         return redirect(url_for("index"))
 
     if request.method == "POST":
+        if _client_is_limited("forgot_password"):
+            flash("Too many password reset attempts. Please try again later.", "error")
+            return render_template("auth/forgot_password.html"), 429
         email = request.form.get("email")
         if not email:
             flash("Email is required", "error")
@@ -161,8 +206,12 @@ def forgot_password():
                     "A password reset email has been sent. Please check your inbox.",
                     "success",
                 )
-            except Exception as e:
-                flash(f"Failed to send password reset email: {str(e)}", "error")
+            except Exception:
+                current_app.logger.exception("Failed to send password reset email")
+                flash(
+                    "Failed to send password reset email. Please try again later.",
+                    "error",
+                )
         else:
             # Don't reveal that the email doesn't exist, just show the same message
             flash(
@@ -205,6 +254,11 @@ def reset_password(token):
 
         if password != confirm_password:
             flash("Passwords do not match", "error")
+            return render_template("auth/reset_password.html", token=token)
+
+        password_error = password_policy_error(password)
+        if password_error:
+            flash(password_error, "error")
             return render_template("auth/reset_password.html", token=token)
 
         if user.reset_password(token, password):

@@ -50,11 +50,22 @@ class Config:
         "MAIL_DEFAULT_SENDER", "Orion Sphere LRP <replace-this-in-production>"
     )
 
+    # CSRF is on outside tests. TestConfig turns it off.
+    WTF_CSRF_ENABLED = True
+
+    # Per-address limits for login and password-reset requests.
+    RATELIMIT_ENABLED = True
+    AUTH_LOGIN_LIMIT = 10
+    AUTH_LOGIN_WINDOW_SECONDS = 60
+    AUTH_FORGOT_PASSWORD_LIMIT = 5
+    AUTH_FORGOT_PASSWORD_WINDOW_SECONDS = 3600
+
 
 class TestConfig(Config):
     TESTING = True
     SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"
     WTF_CSRF_ENABLED = False
+    RATELIMIT_ENABLED = False
     LOGIN_DISABLED = False
     SSL_ENABLED = False
     SERVER_NAME = "localhost"

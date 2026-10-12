@@ -1,5 +1,17 @@
 // Packs page JavaScript
 
+function appendCsrfToken(form) {
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    if (!meta || !meta.content) {
+        return;
+    }
+    const csrfInput = document.createElement('input');
+    csrfInput.type = 'hidden';
+    csrfInput.name = 'csrf_token';
+    csrfInput.value = meta.content;
+    form.appendChild(csrfInput);
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     let currentCharacterId = null;
     let currentGroupId = null;
@@ -545,6 +557,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const form = document.createElement('form');
         form.method = 'POST';
         form.action = `/events/${currentEventId}/packs/character/${currentCharacterId}/update`;
+        appendCsrfToken(form);
 
         // Add the completion data as a hidden input
         const input = document.createElement('input');
@@ -593,6 +606,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const form = document.createElement('form');
         form.method = 'POST';
         form.action = `/events/${currentEventId}/packs/group/${currentGroupId}/update`;
+        appendCsrfToken(form);
 
         // Add the completion data as a hidden input
         const input = document.createElement('input');
