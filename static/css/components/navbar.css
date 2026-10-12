@@ -26,6 +26,15 @@ nav > * {
     z-index: 2;
 }
 
+.main-nav .logout-form {
+    margin: 0;
+}
+
+.main-nav .logout-form button {
+    font-family: inherit;
+    cursor: pointer;
+}
+
 /* Logo styling */
 .brand-logo {
     display: flex;
@@ -398,7 +407,7 @@ nav > * {
     .main-nav li:last-child {
         border-bottom: none;
     }
-    .main-nav a, .main-nav .dropbtn {
+    .main-nav a, .main-nav .dropbtn, .main-nav .logout-form button {
         display: block;
         width: 100%;
         padding: 1rem;
@@ -409,7 +418,7 @@ nav > * {
         font-size: 1rem;
         text-decoration: none;
     }
-    .main-nav a:hover, .main-nav .dropbtn:hover {
+    .main-nav a:hover, .main-nav .dropbtn:hover, .main-nav .logout-form button:hover {
         background: var(--bg-tertiary);
     }
     .brand-text {
@@ -504,7 +513,7 @@ nav > * {
         list-style: none;
         position: relative;
     }
-    .main-nav a, .main-nav .dropbtn {
+    .main-nav a, .main-nav .dropbtn, .main-nav .logout-form button {
         color: white;
         padding: 0.75rem 1rem;
         font-size: 1rem;
@@ -514,7 +523,7 @@ nav > * {
         text-decoration: none;
         display: block;
     }
-    .main-nav a:hover, .main-nav .dropbtn:hover {
+    .main-nav a:hover, .main-nav .dropbtn:hover, .main-nav .logout-form button:hover {
         background: rgba(255,255,255,0.08);
     }
     .brand-text {

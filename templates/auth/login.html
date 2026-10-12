@@ -1,4 +1,5 @@
 {% extends "_template.html" %}
+{% from "macros/csrf.html" import csrf_field %}
 
 {% block title %}Login{% endblock %}
 
@@ -6,6 +7,7 @@
 <div class="auth-form">
     <h2>Login</h2>
     <form method="POST" action="{{ url_for('auth.login') }}">
+        {{ csrf_field() }}
         <div class="form-group">
             <label for="email">Email:</label>
             <input type="email" id="email" name="email" required>

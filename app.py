@@ -20,6 +20,7 @@ from flask import (  # noqa: E402
 )
 from flask_login import current_user, login_required  # noqa: E402
 from flask_migrate import Migrate  # noqa: E402
+from flask_wtf.csrf import CSRFProtect  # noqa: E402
 from sqlalchemy.orm import sessionmaker  # noqa: E402
 
 from config import Config  # noqa: E402
@@ -71,6 +72,25 @@ from utils.template_helpers import (  # noqa: E402
     has_any_permission,
     has_permission,
 )
+
+# Auth, banking, events, and wiki forms send a token. Other blueprints stay
+# exempt until their forms do too.
+CSRF_PROTECTED_BLUEPRINTS = frozenset({"auth", "banking", "events", "wiki"})
+
+
+def _configure_csrf(app, exempt_views=()):
+    """Turn on CSRF protection for non-test configs."""
+    if app.config.get("TESTING") or not app.config.get("WTF_CSRF_ENABLED", True):
+        return None
+
+    csrf = CSRFProtect()
+    csrf.init_app(app)
+    for blueprint in app.blueprints.values():
+        if blueprint.name not in CSRF_PROTECTED_BLUEPRINTS:
+            csrf.exempt(blueprint)
+    for view in exempt_views:
+        csrf.exempt(view)
+    return csrf
 
 
 def create_app(config_class=None):
@@ -294,6 +314,8 @@ def create_app(config_class=None):
             if not current_user.has_permission("user.roles"):
                 abort(403)
             return "Admin content"
+
+    _configure_csrf(app, exempt_views=[toggle_theme])
 
     return app
 

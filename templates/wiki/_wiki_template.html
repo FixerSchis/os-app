@@ -1,4 +1,5 @@
 {% extends "_template.html" %}
+{% from "macros/csrf.html" import csrf_field %}
 
 {% block title %}{{ page.title }} - Wiki - Orion Sphere LRP{% endblock %}
 
@@ -21,10 +22,12 @@
                 {% if page.slug != 'index' %}
                     {% if version and not version.deleted %}
                         <form method="POST" action="{{ url_for('wiki.wiki_delete', slug=page.slug) }}" class="d-inline-block">
+                            {{ csrf_field() }}
                             <button type="submit" class="btn btn-danger btn-sm">Delete</button>
                         </form>
                     {% elif version %}
                         <form method="POST" action="{{ url_for('wiki.wiki_restore', slug=page.slug) }}" class="d-inline-block">
+                            {{ csrf_field() }}
                             <button type="submit" class="btn btn-warning btn-sm">Restore</button>
                         </form>
                     {% endif %}
