@@ -835,6 +835,11 @@ def restore_character(character_id):
     )
     db.session.add(audit)
     db.session.commit()
+    flash("Character restored.", "success")
+    admin_context = request.form.get("admin_context") == "1"
+    if admin_context:
+        return redirect(url_for("user_management.user_management_edit_user", user_id=user.id))
+    return redirect(url_for("characters.character_list"))
 
 
 @characters_bp.route("/<int:character_id>/delete", methods=["POST"])
