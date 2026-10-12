@@ -6,12 +6,14 @@ from flask_login import current_user, login_required
 from models.enums import TicketType
 from models.event import Event
 from models.tools.event_ticket import EventTicket
+from utils.decorators import email_verified_required
 
 tickets_bp = Blueprint("tickets", __name__)
 
 
 @tickets_bp.route("/")
 @login_required
+@email_verified_required
 def list_tickets():
     now = datetime.now(timezone.utc)
 

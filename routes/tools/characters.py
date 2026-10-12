@@ -1271,6 +1271,7 @@ def audit_log(character_id):
 
 @characters_bp.route("/api/search")
 @login_required
+@email_verified_required
 def api_character_search():
     """Search active characters by name, user name, or user_id.character_id."""
     query = request.args.get("q", "").strip()
@@ -1303,6 +1304,7 @@ def api_character_search():
 
 @characters_bp.route("/api/validate_user_id_character_id")
 @login_required
+@email_verified_required
 def validate_user_id_character_id():
     character_id = request.args.get("character_id")
     if not character_id:

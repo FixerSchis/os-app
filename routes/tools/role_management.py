@@ -4,6 +4,7 @@ from flask_login import current_user, login_required
 from models.database.permissions import Permission, Role
 from models.extensions import db
 from models.tools.user import User
+from utils.decorators import email_verified_required
 from utils.permission_decorators import permission_required
 
 bp = Blueprint("role_management", __name__)
@@ -11,6 +12,7 @@ bp = Blueprint("role_management", __name__)
 
 @bp.route("/roles")
 @login_required
+@email_verified_required
 @permission_required(permissions=["user.roles"])
 def role_list():
     """List all roles sorted by permission count (most to least) with owner always at top."""
@@ -34,6 +36,7 @@ def role_list():
 
 @bp.route("/roles/<int:role_id>")
 @login_required
+@email_verified_required
 @permission_required(permissions=["user.roles"])
 def role_view(role_id):
     """View a specific role and its permissions."""
@@ -46,6 +49,7 @@ def role_view(role_id):
 
 @bp.route("/roles/new", methods=["GET", "POST"])
 @login_required
+@email_verified_required
 @permission_required(permissions=["user.roles"])
 def role_create():
     """Create a new role."""
@@ -84,6 +88,7 @@ def role_create():
 
 @bp.route("/roles/<int:role_id>/edit", methods=["GET", "POST"])
 @login_required
+@email_verified_required
 @permission_required(permissions=["user.roles"])
 def role_edit(role_id):
     """Edit a role."""
@@ -135,6 +140,7 @@ def role_edit(role_id):
 
 @bp.route("/roles/<int:role_id>/delete", methods=["POST"])
 @login_required
+@email_verified_required
 @permission_required(permissions=["user.roles"])
 def role_delete(role_id):
     """Delete a role."""
@@ -167,6 +173,7 @@ def role_delete(role_id):
 
 @bp.route("/roles/promote-user", methods=["POST"])
 @login_required
+@email_verified_required
 @permission_required(permissions=["owner.promote"])
 def promote_user():
     """Promote a user to owner role (only available to current owner)."""
@@ -212,6 +219,7 @@ def promote_user():
 
 @bp.route("/permissions")
 @login_required
+@email_verified_required
 @permission_required(permissions=["user.roles"])
 def permission_list():
     """List all permissions grouped by category."""

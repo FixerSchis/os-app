@@ -112,6 +112,7 @@ def get_available_engineering_slots_with_sources(character):
 
 @bp.route("/")
 @login_required
+@email_verified_required
 def index():
     """Display the downtime management page."""
     active_period = DowntimePeriod.query.filter_by(status=DowntimeStatus.PENDING).first()
@@ -187,6 +188,7 @@ def index():
 
 @bp.route("/start", methods=["POST"])
 @login_required
+@email_verified_required
 @permission_required(permissions=["downtime.manage"])
 def start_downtime():
     """Start a new downtime period."""
@@ -239,6 +241,7 @@ def start_downtime():
 
 @bp.route("/enter-pack-contents/<int:period_id>/<int:character_id>", methods=["GET"])
 @login_required
+@email_verified_required
 @character_owner_or_downtime_team_required
 def enter_pack_contents(period_id, character_id):
     """Display the pack contents entry page."""
@@ -277,6 +280,7 @@ def enter_pack_contents(period_id, character_id):
 
 @bp.route("/enter-pack-contents/<int:period_id>/<int:character_id>", methods=["POST"])
 @login_required
+@email_verified_required
 @character_owner_or_downtime_team_required
 def enter_pack_contents_post(period_id, character_id):
     """Handle pack contents entry submission."""
@@ -440,6 +444,7 @@ def enter_pack_contents_post(period_id, character_id):
 
 @bp.route("/enter-downtime/<int:period_id>/<int:character_id>", methods=["GET"])
 @login_required
+@email_verified_required
 @character_owner_or_downtime_team_required
 def enter_downtime(period_id, character_id):
     """Display the downtime activity entry page."""
@@ -653,6 +658,7 @@ def enter_downtime(period_id, character_id):
 
 @bp.route("/enter-downtime/<int:period_id>/<int:character_id>", methods=["POST"])
 @login_required
+@email_verified_required
 @character_owner_or_downtime_team_required
 def enter_downtime_post(period_id, character_id):
     """Handle downtime activity entry submission."""
@@ -703,6 +709,7 @@ def enter_downtime_post(period_id, character_id):
 
 @bp.route("/manual-review/<int:period_id>/<int:character_id>", methods=["GET"])
 @login_required
+@email_verified_required
 @permission_required(permissions=["downtime.manage"])
 def manual_review(period_id, character_id):
     """Display the manual review page for downtime activities."""
@@ -1018,6 +1025,7 @@ def manual_review(period_id, character_id):
 
 @bp.route("/manual-review/<int:period_id>/<int:character_id>", methods=["POST"])
 @login_required
+@email_verified_required
 @permission_required(permissions=["downtime.manage"])
 def manual_review_post(period_id, character_id):
     """Handle manual review submission."""
@@ -1116,6 +1124,7 @@ def manual_review_post(period_id, character_id):
 
 @bp.route("/process/<int:period_id>", methods=["POST"])
 @login_required
+@email_verified_required
 @permission_required(permissions=["downtime.manage"])
 def process_downtime(period_id):
     """Process a completed downtime period."""

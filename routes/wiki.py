@@ -23,6 +23,7 @@ from models.wiki import (
     WikiTag,
     db,
 )
+from utils.decorators import email_verified_required
 from utils.email import send_wiki_published_notification_to_all
 from utils.mask_email import mask_email
 from utils.permission_decorators import permission_required
@@ -254,6 +255,7 @@ def has_access(section, user):
 
 @wiki_bp.route("/delete/<path:slug>", methods=["POST"])
 @login_required
+@email_verified_required
 @permission_required(permissions=["wiki.delete"])
 def wiki_delete(slug):
     page = db.session.get(WikiPage, slug)
@@ -269,6 +271,7 @@ def wiki_delete(slug):
 
 @wiki_bp.route("/restore/<path:slug>", methods=["POST"])
 @login_required
+@email_verified_required
 @permission_required(permissions=["wiki.edit"])
 def wiki_restore(slug):
     page = db.session.get(WikiPage, slug)
@@ -401,6 +404,7 @@ def api_wiki_pages():
 
 @wiki_bp.route("/<path:slug>/edit", methods=["GET"])
 @login_required
+@email_verified_required
 @permission_required(permissions=["wiki.edit"])
 def wiki_edit(slug):
     page = db.session.get(WikiPage, slug)
@@ -453,6 +457,7 @@ def wiki_edit(slug):
 
 @wiki_bp.route("/<path:slug>/edit", methods=["POST"])
 @login_required
+@email_verified_required
 @permission_required(permissions=["wiki.edit"])
 def wiki_edit_post(slug):
     page = db.session.get(WikiPage, slug)
@@ -492,6 +497,7 @@ def wiki_edit_post(slug):
 
 @wiki_bp.route("/new", methods=["GET"])
 @login_required
+@email_verified_required
 @permission_required(permissions=["wiki.create"])
 def wiki_new():
     # Get roles from database instead of enum
@@ -525,6 +531,7 @@ def wiki_new():
 
 @wiki_bp.route("/new", methods=["POST"])
 @login_required
+@email_verified_required
 @permission_required(permissions=["wiki.create"])
 def wiki_new_post():
     if request.is_json:
@@ -581,6 +588,7 @@ def wiki_new_post():
 
 @wiki_bp.route("/upload_image", methods=["POST"])
 @login_required
+@email_verified_required
 @permission_required(permissions=["wiki.edit"])
 def wiki_upload_image():
     file = request.files.get("file")
@@ -613,6 +621,7 @@ def wiki_image(image_id):
 
 @wiki_bp.route("/changes/pending", methods=["GET"])
 @login_required
+@email_verified_required
 @permission_required(permissions=["wiki.publish"])
 def wiki_pending_changes():
     pages = WikiPage.query.order_by(WikiPage.title).all()
@@ -693,6 +702,7 @@ def wiki_pending_changes():
 
 @wiki_bp.route("/changes/pending", methods=["POST"])
 @login_required
+@email_verified_required
 @permission_required(permissions=["wiki.publish"])
 def wiki_pending_changes_post():
     selected_slugs = request.form.getlist("selected_pages")
@@ -930,6 +940,7 @@ def wiki_tags():
 
 @wiki_bp.route("/tags", methods=["POST"])
 @login_required
+@email_verified_required
 @permission_required(permissions=["wiki.manage_sections"])
 def wiki_tags_post():
     name = request.json.get("name", "").strip()

@@ -648,7 +648,7 @@ def test_npc_cannot_buy_crew_ticket_for_others(test_client, db, faction):
     db.session.commit()
 
     # Create an NPC user
-    npc_user = User(email="npc@example.com", first_name="NPC", surname="User")
+    npc_user = User(email="npc@example.com", first_name="NPC", surname="User", email_verified=True)
     npc_user.set_password("password")
     db.session.add(npc_user)
     db.session.commit()
@@ -709,7 +709,7 @@ def test_npc_can_buy_crew_ticket_for_self_without_character(test_client, db):
     db.session.commit()
 
     # Create an NPC user
-    npc_user = User(email="npc2@example.com", first_name="NPC", surname="User")
+    npc_user = User(email="npc2@example.com", first_name="NPC", surname="User", email_verified=True)
     npc_user.set_password("password")
     db.session.add(npc_user)
     db.session.commit()

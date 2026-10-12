@@ -21,6 +21,7 @@ from models.tools.samples.exotic import get_sample_exotic_substance
 from models.tools.samples.item import get_sample_item
 from models.tools.samples.medicament import get_sample_medicament
 from utils import generate_qr_code, generate_web_qr_code
+from utils.decorators import email_verified_required
 from utils.permission_decorators import permission_required
 from utils.print_layout import PrintLayout
 
@@ -29,6 +30,7 @@ templates_bp = Blueprint("templates", __name__)
 
 @templates_bp.route("/list")
 @login_required
+@email_verified_required
 @permission_required(permissions=["template.edit"])
 def template_list():
     """List all available templates"""
@@ -40,6 +42,7 @@ def template_list():
 
 @templates_bp.route("/<int:template_id>/edit", methods=["GET"])
 @login_required
+@email_verified_required
 @permission_required(permissions=["template.edit"])
 def template_edit(template_id):
     """Edit an existing template"""
@@ -61,6 +64,7 @@ def template_edit(template_id):
 
 @templates_bp.route("/<int:template_id>/edit", methods=["POST"])
 @login_required
+@email_verified_required
 @permission_required(permissions=["template.edit"])
 def template_edit_post(template_id):
     """Handle template editing"""
@@ -80,6 +84,7 @@ def template_edit_post(template_id):
 
 @templates_bp.route("/api/<int:template_id>/render", methods=["POST"])
 @login_required
+@email_verified_required
 @permission_required(permissions=["template.edit"])
 def render_template_preview(template_id):
     """API endpoint to render a template preview with sample data"""
@@ -153,6 +158,7 @@ def render_template_preview(template_id):
 
 @templates_bp.route("/<type>/<int:id>/print")
 @login_required
+@email_verified_required
 @permission_required(permissions=["template.edit"])
 def print_item_sheet(type, id):
     """Generate PDF for a single item (character sheet, item card, etc.)"""
@@ -234,6 +240,7 @@ def print_item_sheet(type, id):
 
 @templates_bp.route("/events/<int:event_id>/print/<type>")
 @login_required
+@email_verified_required
 @permission_required(permissions=["template.edit"])
 def print_event_items(event_id, type):
     """Generate PDFs for all items of a given type in an event."""
@@ -402,6 +409,7 @@ def generate_template_completions(template_type):
 
 @templates_bp.route("/api/<int:template_id>/print_preview", methods=["POST"])
 @login_required
+@email_verified_required
 @permission_required(permissions=["template.edit"])
 def print_template_preview(template_id):
     """Generate a full page preview PDF of the template with sample data."""
@@ -555,6 +563,7 @@ def get_jinja_completions():
 
 @templates_bp.route("/<int:template_id>/layout", methods=["GET", "POST"])
 @login_required
+@email_verified_required
 @permission_required(permissions=["template.edit"])
 def template_layout(template_id):
     """Edit layout settings for a template"""
@@ -587,6 +596,7 @@ def template_layout(template_id):
 
 @templates_bp.route("/print/exotics-sheet", methods=["POST"])
 @login_required
+@email_verified_required
 @permission_required(permissions=["template.edit"])
 def print_exotics_sheet():
     """Generate PDF for exotic substances."""

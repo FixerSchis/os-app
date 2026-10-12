@@ -5,6 +5,7 @@ from models.database.cybernetic import Cybernetic
 from models.enums import ScienceType
 from models.extensions import db
 from models.wiki import WikiPage, get_or_create_wiki_page
+from utils.decorators import email_verified_required
 from utils.permission_decorators import permission_required
 
 cybernetics_bp = Blueprint("cybernetics", __name__)
@@ -12,6 +13,7 @@ cybernetics_bp = Blueprint("cybernetics", __name__)
 
 @cybernetics_bp.route("/")
 @login_required
+@email_verified_required
 @permission_required(permissions=["rules.cybernetics"])
 def list():
     cybernetics = Cybernetic.query.order_by(Cybernetic.name).all()
@@ -20,6 +22,7 @@ def list():
 
 @cybernetics_bp.route("/new", methods=["GET", "POST"])
 @login_required
+@email_verified_required
 @permission_required(permissions=["rules.cybernetics"])
 def create():
     if request.method == "POST":
@@ -64,6 +67,7 @@ def create():
 
 @cybernetics_bp.route("/<int:id>/edit", methods=["GET", "POST"])
 @login_required
+@email_verified_required
 @permission_required(permissions=["rules.cybernetics"])
 def edit(id):
     cyber = Cybernetic.query.get_or_404(id)
@@ -113,6 +117,7 @@ def edit(id):
 
 @cybernetics_bp.route("/<int:id>/delete", methods=["POST"])
 @login_required
+@email_verified_required
 @permission_required(permissions=["rules.cybernetics"])
 def delete(id):
     cyber = Cybernetic.query.get_or_404(id)

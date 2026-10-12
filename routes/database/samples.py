@@ -4,6 +4,7 @@ from flask_login import current_user, login_required
 from models.database.sample import Sample, SampleTag
 from models.enums import ScienceType
 from models.extensions import db
+from utils.decorators import email_verified_required
 from utils.permission_decorators import permission_required
 
 samples_bp = Blueprint("samples", __name__)
@@ -11,6 +12,7 @@ samples_bp = Blueprint("samples", __name__)
 
 @samples_bp.route("/")
 @login_required
+@email_verified_required
 @permission_required(permissions=["rules.items"])
 def sample_list():
     """List all samples."""
@@ -20,6 +22,7 @@ def sample_list():
 
 @samples_bp.route("/new", methods=["GET"])
 @login_required
+@email_verified_required
 @permission_required(permissions=["rules.items"])
 def create():
     """Show the create sample form."""
@@ -33,6 +36,7 @@ def create():
 
 @samples_bp.route("/new", methods=["POST"])
 @login_required
+@email_verified_required
 @permission_required(permissions=["rules.items"])
 def create_post():
     """Handle the create sample form submission."""
@@ -74,6 +78,7 @@ def create_post():
 
 @samples_bp.route("/<int:id>/edit", methods=["GET"])
 @login_required
+@email_verified_required
 @permission_required(permissions=["rules.items"])
 def edit(id):
     """Show the edit sample form."""
@@ -88,6 +93,7 @@ def edit(id):
 
 @samples_bp.route("/<int:id>/edit", methods=["POST"])
 @login_required
+@email_verified_required
 @permission_required(permissions=["rules.items"])
 def edit_post(id):
     """Handle the edit sample form submission."""
@@ -130,6 +136,7 @@ def edit_post(id):
 
 @samples_bp.route("/<int:id>/delete", methods=["POST"])
 @login_required
+@email_verified_required
 @permission_required(permissions=["rules.items"])
 def delete(id):
     """Delete a sample."""
@@ -142,6 +149,7 @@ def delete(id):
 
 @samples_bp.route("/create", methods=["POST"])
 @login_required
+@email_verified_required
 @permission_required(permissions=["rules.items"])
 def create_sample():
     """Create a new sample."""
