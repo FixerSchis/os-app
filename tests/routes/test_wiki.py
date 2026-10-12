@@ -5,8 +5,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from models.enums import SectionRestrictionType
-from models.tools.character import CharacterTag
+from models.enums import CharacterStatus, SectionRestrictionType
+from models.tools.character import Character, CharacterTag
 from models.wiki import (
     WikiImage,
     WikiPage,
@@ -818,3 +818,285 @@ def test_build_wiki_tree(test_client):
     # Check that page1 is in the root _pages
     assert len(tree["_pages"]) == 1
     assert tree["_pages"][0]["slug"] == "page1"
+
+
+class _GateCharacter:
+    def __init__(self, name, **kwargs):
+        self.name = name
+        self.faction_id = kwargs.get("faction_id")
+        self.species_id = kwargs.get("species_id")
+        self.skills = kwargs.get("skills", [])
+        self.cybernetics = kwargs.get("cybernetics", [])
+        self.tags = kwargs.get("tags", [])
+        self.reputation = kwargs.get("reputation", {})
+
+    def get_reputation(self, faction_id):
+        return self.reputation.get(faction_id, 0)
+
+
+class _SkillLink:
+    def __init__(self, skill_id):
+        self.skill_id = skill_id
+
+
+class _Record:
+    def __init__(self, record_id):
+        self.id = record_id
+
+
+class _GateUser:
+    def __init__(self, characters, editor=False):
+        self.id = id(self)
+        self.is_authenticated = True
+        self._characters = characters
+        self._editor = editor
+
+    def has_permission(self, name):
+        return self._editor and name == "wiki.edit"
+
+    def get_active_characters(self):
+        return list(self._characters)
+
+
+@pytest.mark.parametrize(
+    ("restriction_type", "restriction_value", "matching_kwargs", "other_kwargs"),
+    [
+        (SectionRestrictionType.FACTION, [3], {"faction_id": 3}, {"faction_id": 9}),
+        (SectionRestrictionType.SPECIES, [4], {"species_id": 4}, {"species_id": 8}),
+        (
+            SectionRestrictionType.SKILL,
+            [5],
+            {"skills": [_SkillLink(5)]},
+            {"skills": [_SkillLink(6)]},
+        ),
+        (
+            SectionRestrictionType.CYBERNETIC,
+            [7],
+            {"cybernetics": [_Record(7)]},
+            {"cybernetics": []},
+        ),
+        (SectionRestrictionType.TAG, [2], {"tags": [_Record(2)]}, {"tags": [_Record(1)]}),
+        (
+            SectionRestrictionType.REPUTATION,
+            [3, 10],
+            {"reputation": {3: 10}},
+            {"reputation": {3: 9}},
+        ),
+    ],
+)
+def test_has_access_allows_any_matching_active_character(
+    test_client, restriction_type, restriction_value, matching_kwargs, other_kwargs
+):
+    """Character gates pass when any active character meets them."""
+    from routes.wiki import has_access, visible_character_names
+
+    matching = _GateCharacter("Matching Character", **matching_kwargs)
+    other = _GateCharacter("Other Character", **other_kwargs)
+    section = WikiSection(
+        restriction_type=restriction_type,
+        restriction_value=json.dumps(restriction_value),
+        content="<p>Restricted</p>",
+    )
+
+    user = _GateUser([other, matching])
+    assert has_access(section, user) is True
+    assert visible_character_names(section, user) == ["Matching Character"]
+
+    everyone = _GateUser(
+        [matching, _GateCharacter("Also Matching", **matching_kwargs)],
+    )
+    assert has_access(section, everyone) is True
+    assert visible_character_names(section, everyone) is None
+
+    only_one = _GateUser([matching])
+    assert has_access(section, only_one) is True
+    assert visible_character_names(section, only_one) is None
+
+    nobody = _GateUser([other, _GateCharacter("Also Out", **other_kwargs)])
+    assert has_access(section, nobody) is False
+    assert visible_character_names(section, nobody) is None
+
+    editor = _GateUser([other, matching], editor=True)
+    assert has_access(section, editor) is True
+    assert visible_character_names(section, editor) == ["Matching Character"]
+
+    editor_without_match = _GateUser(
+        [other, _GateCharacter("Also Out", **other_kwargs)],
+        editor=True,
+    )
+    assert has_access(section, editor_without_match) is True
+    assert visible_character_names(section, editor_without_match) is None
+
+
+def _publish_wiki_page(db, owner, slug, sections):
+    page = WikiPage(slug=slug, title=slug)
+    db.session.add(page)
+    db.session.flush()
+    version = WikiPageVersion(
+        page_slug=page.slug,
+        version_number=1,
+        status=WikiPageVersionStatus.PUBLISHED,
+        created_by=owner.id,
+    )
+    db.session.add(version)
+    db.session.flush()
+    for index, section in enumerate(sections, start=1):
+        section.version_id = version.id
+        section.id = index
+        section.order = index
+        db.session.add(section)
+    db.session.commit()
+    return page
+
+
+def test_wiki_names_characters_with_partial_section_access(
+    test_client, db, authenticated_user, species, faction
+):
+    """A section names the active characters who can see it when others cannot."""
+    outsider = Character(
+        user_id=authenticated_user.id,
+        name="Outsider Character",
+        status=CharacterStatus.ACTIVE.value,
+        species_id=species.id,
+    )
+    member = Character(
+        user_id=authenticated_user.id,
+        name="Faction Character",
+        status=CharacterStatus.ACTIVE.value,
+        species_id=species.id,
+        faction_id=faction.id,
+    )
+    db.session.add_all([outsider, member])
+    page = _publish_wiki_page(
+        db,
+        authenticated_user,
+        f"partial-access-{uuid.uuid4().hex}",
+        [
+            WikiSection(title="Public Content", content="<p>Public body</p>"),
+            WikiSection(
+                title="Faction Content",
+                content="<p>Secret body</p>",
+                restriction_type=SectionRestrictionType.FACTION,
+                restriction_value=json.dumps([faction.id]),
+            ),
+        ],
+    )
+
+    response = test_client.get(f"/wiki/{page.slug}")
+    assert response.status_code == 200
+    assert b"Faction Content" in response.data
+    assert b"Characters with access: Faction Character" in response.data
+    assert b"Characters with access: Outsider Character" not in response.data
+    assert b"Outsider Character, Faction Character" not in response.data
+    assert b"Faction Character, Outsider Character" not in response.data
+
+
+def test_wiki_omits_character_list_when_every_active_character_has_access(
+    test_client, db, authenticated_user, species, faction
+):
+    """No access note when every active character can see the section."""
+    first = Character(
+        user_id=authenticated_user.id,
+        name="First Member",
+        status=CharacterStatus.ACTIVE.value,
+        species_id=species.id,
+        faction_id=faction.id,
+    )
+    second = Character(
+        user_id=authenticated_user.id,
+        name="Second Member",
+        status=CharacterStatus.ACTIVE.value,
+        species_id=species.id,
+        faction_id=faction.id,
+    )
+    db.session.add_all([first, second])
+    page = _publish_wiki_page(
+        db,
+        authenticated_user,
+        f"full-access-{uuid.uuid4().hex}",
+        [
+            WikiSection(
+                title="Faction Content",
+                content="<p>Shared body</p>",
+                restriction_type=SectionRestrictionType.FACTION,
+                restriction_value=json.dumps([faction.id]),
+            ),
+        ],
+    )
+
+    response = test_client.get(f"/wiki/{page.slug}")
+    assert response.status_code == 200
+    assert b"Faction Content" in response.data
+    assert b"Characters with access:" not in response.data
+
+
+def test_wiki_omits_character_list_for_a_single_active_character(
+    test_client, db, authenticated_user, species, faction
+):
+    """A player with one active character sees a gated section without an access note."""
+    character = Character(
+        user_id=authenticated_user.id,
+        name="Only Character",
+        status=CharacterStatus.ACTIVE.value,
+        species_id=species.id,
+        faction_id=faction.id,
+    )
+    db.session.add(character)
+    page = _publish_wiki_page(
+        db,
+        authenticated_user,
+        f"single-access-{uuid.uuid4().hex}",
+        [
+            WikiSection(
+                title="Faction Content",
+                content="<p>Solo body</p>",
+                restriction_type=SectionRestrictionType.FACTION,
+                restriction_value=json.dumps([faction.id]),
+            ),
+        ],
+    )
+
+    response = test_client.get(f"/wiki/{page.slug}")
+    assert response.status_code == 200
+    assert b"Faction Content" in response.data
+    assert b"Characters with access:" not in response.data
+
+
+def test_wiki_ignores_inactive_characters_for_section_access(
+    test_client, db, authenticated_user, species, faction
+):
+    """A developing character does not open a section for the user's active character."""
+    active = Character(
+        user_id=authenticated_user.id,
+        name="Active Outsider",
+        status=CharacterStatus.ACTIVE.value,
+        species_id=species.id,
+    )
+    developing = Character(
+        user_id=authenticated_user.id,
+        name="Developing Member",
+        status=CharacterStatus.DEVELOPING.value,
+        species_id=species.id,
+        faction_id=faction.id,
+    )
+    db.session.add_all([active, developing])
+    page = _publish_wiki_page(
+        db,
+        authenticated_user,
+        f"inactive-access-{uuid.uuid4().hex}",
+        [
+            WikiSection(title="Public Content", content="<p>Public body</p>"),
+            WikiSection(
+                title="Faction Content",
+                content="<p>Secret body</p>",
+                restriction_type=SectionRestrictionType.FACTION,
+                restriction_value=json.dumps([faction.id]),
+            ),
+        ],
+    )
+
+    response = test_client.get(f"/wiki/{page.slug}")
+    assert response.status_code == 200
+    assert b"Public Content" in response.data
+    assert b"Faction Content" not in response.data
+    assert b"Developing Member" not in response.data

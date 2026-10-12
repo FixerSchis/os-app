@@ -35,6 +35,11 @@
                         {% for section in result.sections %}
                             <div class="mb-3">
                                 <h4>{{ section.title|safe }}</h4>
+                                {% if section.visible_to %}
+                                <p class="wiki-section-access text-muted">
+                                    Characters with access: {{ section.visible_to | join(', ') }}
+                                </p>
+                                {% endif %}
                                 <div class="excerpt">
                                     {{ section.excerpt|safe }}
                                 </div>

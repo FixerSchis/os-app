@@ -206,10 +206,8 @@ def transfer():
             flash("Source group not found", "error")
             return redirect(url_for("banking.bank"))
         if not current_user.has_permission("banking.manage"):
-            active_character = Character.query.filter_by(
-                user_id=current_user.id, status=CharacterStatus.ACTIVE.value
-            ).first()
-            if not active_character or active_character.group_id != source.id:
+            active_characters = current_user.get_active_characters()
+            if not any(character.group_id == source.id for character in active_characters):
                 flash("You do not have access to this account", "error")
                 return redirect(url_for("banking.bank"))
         source_name = source.name
