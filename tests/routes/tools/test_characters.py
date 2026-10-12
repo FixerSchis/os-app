@@ -397,3 +397,201 @@ def test_character_search_by_name_user_and_id(test_client, authenticated_user, d
     assert reference_items[0]["player_reference"] == f"{other.id}.2"
 
     assert test_client.get("/characters/api/search?q=A").get_json()["items"] == []
+
+
+def _button_form_owners(html):
+    """Map button aria-labels to the form a browser would submit.
+
+    Nested form start tags are ignored, and the next form end tag closes the open form.
+    """
+    import re
+
+    def attr(attrs, name):
+        match = re.search(rf'{name}="([^"]*)"', attrs or "", flags=re.IGNORECASE)
+        return match.group(1) if match else None
+
+    pattern = re.compile(r"<form\b([^>]*)>|</form>|<button\b([^>]*)>", re.IGNORECASE)
+    owners = {}
+    open_form_id = None
+    for match in pattern.finditer(html):
+        token = match.group(0).lower()
+        if token.startswith("<form"):
+            if open_form_id is None:
+                open_form_id = attr(match.group(1), "id") or ""
+        elif token.startswith("</form"):
+            open_form_id = None
+        else:
+            label = attr(match.group(2), "aria-label")
+            if not label:
+                continue
+            explicit = attr(match.group(2), "form")
+            owners[label] = explicit if explicit is not None else open_form_id
+    return owners
+
+
+def test_admin_character_edit_save_stays_on_character_form(test_client, db):
+    """Save Changes, conditions, and samples stay on the character form."""
+    from tests.conftest import assign_role_to_user
+
+    admin = User(email="save-form-admin@example.com", first_name="Save", surname="Admin")
+    admin.set_password("password")
+    admin.email_verified = True
+    db.session.add(admin)
+    db.session.commit()
+    assign_role_to_user(admin, "admin", db.session)
+
+    faction = Faction(name="Save Faction", wiki_slug="save-faction", allow_player_characters=True)
+    db.session.add(faction)
+    db.session.flush()
+    species = Species(
+        name="Save Species",
+        wiki_page="save-species",
+        body_hits_type="locational",
+        body_hits=3,
+        death_count=1,
+        permitted_factions_list=[faction.id],
+    )
+    db.session.add(species)
+    db.session.flush()
+    character = Character(
+        user_id=admin.id,
+        name="Save Subject",
+        status=CharacterStatus.ACTIVE.value,
+        faction_id=faction.id,
+        species_id=species.id,
+    )
+    db.session.add(character)
+    db.session.commit()
+
+    with test_client.session_transaction() as session:
+        session["_user_id"] = admin.id
+        session["_fresh"] = True
+
+    response = test_client.get(f"/characters/{character.id}/edit")
+    assert response.status_code == 200
+    owners = _button_form_owners(response.get_data(as_text=True))
+    assert owners["Save character changes"] == "character-edit-form"
+    assert owners["Add condition to character"] == "character-edit-form"
+    assert owners["Add sample to character"] == "character-edit-form"
+
+
+def test_admin_character_edit_commits_conditions_and_points(test_client, db):
+    """Saving the character form stores condition stage, duration, and base points."""
+    from models.database.conditions import Condition, ConditionStage
+    from models.tools.character import CharacterCondition
+    from tests.conftest import assign_role_to_user
+
+    admin = User(email="save-points-admin@example.com", first_name="Points", surname="Admin")
+    admin.set_password("password")
+    admin.email_verified = True
+    db.session.add(admin)
+    db.session.commit()
+    assign_role_to_user(admin, "admin", db.session)
+
+    faction = Faction(
+        name="Points Faction", wiki_slug="points-faction", allow_player_characters=True
+    )
+    db.session.add(faction)
+    db.session.flush()
+    species = Species(
+        name="Points Species",
+        wiki_page="points-species",
+        body_hits_type="locational",
+        body_hits=3,
+        death_count=1,
+        permitted_factions_list=[faction.id],
+    )
+    db.session.add(species)
+    db.session.flush()
+    character = Character(
+        user_id=admin.id,
+        name="Points Subject",
+        status=CharacterStatus.ACTIVE.value,
+        faction_id=faction.id,
+        species_id=species.id,
+        base_character_points=10,
+    )
+    db.session.add(character)
+    db.session.flush()
+
+    condition = Condition(name="Lingering Chill")
+    db.session.add(condition)
+    db.session.flush()
+    db.session.add_all(
+        [
+            ConditionStage(
+                condition_id=condition.id,
+                stage_number=1,
+                rp_effect="Shivers",
+                diagnosis="Cold",
+                cure="Warmth",
+                duration=3,
+            ),
+            ConditionStage(
+                condition_id=condition.id,
+                stage_number=2,
+                rp_effect="Fever",
+                diagnosis="Worse cold",
+                cure="Rest",
+                duration=1,
+            ),
+        ]
+    )
+    character_condition = CharacterCondition(
+        character_id=character.id,
+        condition_id=condition.id,
+        current_stage=1,
+        current_duration=3,
+    )
+    db.session.add(character_condition)
+    db.session.commit()
+
+    with test_client.session_transaction() as session:
+        session["_user_id"] = admin.id
+        session["_fresh"] = True
+
+    response = test_client.post(
+        f"/characters/{character.id}/edit",
+        data={
+            "name": "Points Subject",
+            "pronouns_subject": "they",
+            "pronouns_object": "them",
+            "faction": str(faction.id),
+            "species_id": str(species.id),
+            "background": "",
+            "goals": "",
+            "concept": "",
+            "base_character_points": "25",
+            f"condition_stage_{character_condition.id}": "2",
+            f"condition_duration_{character_condition.id}": "1",
+        },
+    )
+    assert response.status_code == 302
+
+    db.session.refresh(character)
+    db.session.refresh(character_condition)
+    assert character.base_character_points == 25
+    assert character_condition.current_stage == 2
+    assert character_condition.current_duration == 1
+
+    rejected = test_client.post(
+        f"/characters/{character.id}/edit",
+        data={
+            "name": "Points Subject",
+            "pronouns_subject": "they",
+            "pronouns_object": "them",
+            "faction": str(faction.id),
+            "species_id": str(species.id),
+            "base_character_points": "-3",
+            f"condition_stage_{character_condition.id}": "1",
+            f"condition_duration_{character_condition.id}": "0",
+        },
+        follow_redirects=True,
+    )
+    assert rejected.status_code == 200
+    assert b"Base character points cannot be negative." in rejected.data
+    db.session.refresh(character)
+    db.session.refresh(character_condition)
+    assert character.base_character_points == 25
+    assert character_condition.current_stage == 2
+    assert character_condition.current_duration == 1

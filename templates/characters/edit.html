@@ -19,7 +19,7 @@
             {% endif %}
         </div>
 
-        <form method="POST" action="{{ url_for('characters.create_character_post' if not character else 'characters.edit_post', character_id=character.id if character else None) }}" class="settings-form w-100">
+        <form id="character-edit-form" method="POST" action="{{ url_for('characters.create_character_post' if not character else 'characters.edit_post', character_id=character.id if character else None) }}" class="settings-form w-100">
             {% if admin_context %}
             <input type="hidden" name="admin_context" value="1">
             {% endif %}
@@ -407,15 +407,12 @@
                                                     </td>
                                                     {% if has_permission('character.edit_all') %}
                                                     <td>
-                                                        <form method="POST" action="{{ url_for('characters.edit_post', character_id=character.id) }}"
-                                                              style="display: inline;"
-                                                              onsubmit="return confirm('Are you sure you want to remove this sample?')">
-                                                            <input type="hidden" name="remove_sample" value="{{ sample.id }}">
-                                                            {% if admin_context %}
-                                                            <input type="hidden" name="admin_context" value="1">
-                                                            {% endif %}
-                                                            <button type="submit" class="btn btn-sm btn-danger" aria-label="Remove sample from character">Remove</button>
-                                                        </form>
+                                                        <button type="submit"
+                                                                name="remove_sample"
+                                                                value="{{ sample.id }}"
+                                                                class="btn btn-sm btn-danger"
+                                                                aria-label="Remove sample from character"
+                                                                onclick="return confirm('Are you sure you want to remove this sample?')">Remove</button>
                                                     </td>
                                                     {% endif %}
                                                 </tr>
@@ -431,25 +428,19 @@
                             <!-- Add Sample -->
                             <div>
                                 <h6>Add Sample</h6>
-                                <form method="POST" action="{{ url_for('characters.edit_post', character_id=character.id) }}">
-                                    {% if admin_context %}
-                                    <input type="hidden" name="admin_context" value="1">
-                                    {% endif %}
-                                    <input type="hidden" name="add_sample" value="1">
-                                    <div class="mb-3">
-                                        <select class="form-select select2-sample" id="add_sample_id" name="add_sample_id" required title="Select sample to add">
-                                            <option value="">Choose a sample...</option>
-                                            {% for sample in available_samples %}
-                                            <option value="{{ sample.id }}">
-                                                {{ sample.name }} ({{ sample.type.value }})
-                                            </option>
-                                            {% endfor %}
-                                        </select>
-                                    </div>
-                                    <button type="submit" class="btn btn-primary btn-sm" aria-label="Add sample to character">
-                                        <i class="fas fa-plus me-1"></i>Add Sample
-                                    </button>
-                                </form>
+                                <div class="mb-3">
+                                    <select class="form-select select2-sample" id="add_sample_id" name="add_sample_id" title="Select sample to add">
+                                        <option value="">Choose a sample...</option>
+                                        {% for sample in available_samples %}
+                                        <option value="{{ sample.id }}">
+                                            {{ sample.name }} ({{ sample.type.value }})
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <button type="submit" name="add_sample" value="1" class="btn btn-primary btn-sm" aria-label="Add sample to character">
+                                    <i class="fas fa-plus me-1"></i>Add Sample
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -503,13 +494,11 @@
                                                         <td>{{ character_item.assigned_at.strftime('%Y-%m-%d %H:%M') }}</td>
                                                         {% if has_permission('character.edit_all') %}
                                                         <td>
-                                                            <form method="POST" action="{{ url_for('tools_items.remove_item_from_character', character_id=character.id) }}"
-                                                                  style="display: inline;"
-                                                                  onsubmit="return confirm('Are you sure you want to remove this item?')">
-                                                                <input type="hidden" name="character_item_id" value="{{ character_item.id }}">
-                                                                <input type="hidden" name="from_character_edit" value="1">
-                                                                <button type="submit" class="btn btn-sm btn-danger" aria-label="Remove item from character inventory">Remove</button>
-                                                            </form>
+                                                            <button type="submit"
+                                                                    form="remove-item-{{ character_item.id }}"
+                                                                    class="btn btn-sm btn-danger"
+                                                                    aria-label="Remove item from character inventory"
+                                                                    onclick="return confirm('Are you sure you want to remove this item?')">Remove</button>
                                                         </td>
                                                         {% endif %}
                                                     </tr>
@@ -527,64 +516,74 @@
                 </div>
                 {% endif %}
                 {% endif %}
-
-                <!-- Assign New Item (Admin Only) - Moved outside main form to fix nested form issue -->
-                {% if has_permission('character.edit_all') and character %}
-                <div class="mt-4">
-                    <div class="card">
-                        <div class="card-header">
-                            <h5 class="mb-0">Assign New Item</h5>
-                        </div>
-                        <div class="card-body">
-                            <form method="POST" action="{{ url_for('tools_items.assign_item_to_character', character_id=character.id) }}">
-                                <input type="hidden" name="from_character_edit" value="1">
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <div class="mb-3">
-                                            <label for="item_id" class="form-label">Select Existing Item</label>
-                                            <select class="form-select select2-single" id="item_id" name="item_id" title="Select existing item">
-                                                <option value="">Choose an existing item...</option>
-                                                {% for item in available_items %}
-                                                <option value="{{ item.id }}">
-                                                    {{ item.blueprint.display_name }} ({{ item.full_code }})
-                                                </option>
-                                                {% endfor %}
-                                            </select>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <div class="mb-3">
-                                            <label for="blueprint_id" class="form-label">Or Create New Item from Blueprint</label>
-                                            <select class="form-select select2-single" id="blueprint_id" name="blueprint_id" title="Select blueprint for new item">
-                                                <option value="">Choose a blueprint...</option>
-                                                {% for blueprint in item_blueprints %}
-                                                <option value="{{ blueprint.id }}">
-                                                    {{ blueprint.display_name }} ({{ blueprint.full_code }})
-                                                </option>
-                                                {% endfor %}
-                                            </select>
-                                        </div>
-                                    </div>
-                                </div>
-                                <button type="submit" class="btn btn-primary" aria-label="Assign item to character">
-                                    <i class="fas fa-plus me-1"></i>Assign Item
-                                </button>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-                {% endif %}
-            </div>
-
-            <div class="mt-4">
-                <button type="submit" class="btn btn-primary" aria-label="Save character changes">
-                    <i class="fas fa-save me-1"></i>Save Changes
-                </button>
-                <a href="{{ url_for('characters.character_list') }}" class="btn btn-secondary">
-                    <i class="fas fa-times me-1"></i>Cancel
-                </a>
             </div>
         </form>
+
+        {% if has_permission('character.edit_all') and character %}
+        <div class="mt-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Assign New Item</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('tools_items.assign_item_to_character', character_id=character.id) }}">
+                        <input type="hidden" name="from_character_edit" value="1">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="item_id" class="form-label">Select Existing Item</label>
+                                    <select class="form-select select2-single" id="item_id" name="item_id" title="Select existing item">
+                                        <option value="">Choose an existing item...</option>
+                                        {% for item in available_items %}
+                                        <option value="{{ item.id }}">
+                                            {{ item.blueprint.display_name }} ({{ item.full_code }})
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="blueprint_id" class="form-label">Or Create New Item from Blueprint</label>
+                                    <select class="form-select select2-single" id="blueprint_id" name="blueprint_id" title="Select blueprint for new item">
+                                        <option value="">Choose a blueprint...</option>
+                                        {% for blueprint in item_blueprints %}
+                                        <option value="{{ blueprint.id }}">
+                                            {{ blueprint.display_name }} ({{ blueprint.full_code }})
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary" aria-label="Assign item to character">
+                            <i class="fas fa-plus me-1"></i>Assign Item
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% if inventory_items is defined %}
+        {% for character_item in inventory_items %}
+        <form id="remove-item-{{ character_item.id }}"
+              method="POST"
+              action="{{ url_for('tools_items.remove_item_from_character', character_id=character.id) }}"
+              class="d-none">
+            <input type="hidden" name="character_item_id" value="{{ character_item.id }}">
+            <input type="hidden" name="from_character_edit" value="1">
+        </form>
+        {% endfor %}
+        {% endif %}
+        {% endif %}
+
+        <div class="mt-4">
+            <button type="submit" form="character-edit-form" class="btn btn-primary" aria-label="Save character changes">
+                <i class="fas fa-save me-1"></i>Save Changes
+            </button>
+            <a href="{{ url_for('characters.character_list') }}" class="btn btn-secondary">
+                <i class="fas fa-times me-1"></i>Cancel
+            </a>
+        </div>
     </div>
 </div>
 {% endblock %}
