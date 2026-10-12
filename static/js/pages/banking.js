@@ -54,37 +54,30 @@ $(document).ready(function() {
     setupBalanceDisplay('character_select', 'character_balance_display', 'character_balance', 'character_account_id', 'character_balance_input');
     setupBalanceDisplay('group_select', 'group_balance_display', 'group_balance', 'group_account_id', 'group_balance_input');
 
-    // --- The rest of the banking logic (transfers, etc) can remain as needed ---
-    // Handle source account selection
-    $('#source_account').change(function() {
-        var option = $(this).find('option:selected');
-        var value = option.val();
-        if (value) {
-            var parts = value.split('_');
-            $('#source_type_hidden').val(parts[0]);
-            $('#source_id_hidden').val(parts[1]);
-        } else {
-            $('#source_type_hidden').val('');
-            $('#source_id_hidden').val('');
+    function setAccountFields(selectSelector, typeSelector, idSelector) {
+        var value = $(selectSelector).val() || '';
+        var separator = value.indexOf('_');
+        if (separator === -1) {
+            $(typeSelector).val('');
+            $(idSelector).val('');
+            return;
         }
-    });
+        $(typeSelector).val(value.slice(0, separator));
+        $(idSelector).val(value.slice(separator + 1));
+    }
 
-    // Handle target account selection
-    $('#target_account').change(function() {
-        var option = $(this).find('option:selected');
-        var value = option.val();
-        if (value) {
-            var parts = value.split('_');
-            $('#target_type_hidden').val(parts[0]);
-            $('#target_id_hidden').val(parts[1]);
-        } else {
-            $('#target_type_hidden').val('');
-            $('#target_id_hidden').val('');
+    function syncTransferAccounts() {
+        if ($('#source_account').length) {
+            setAccountFields('#source_account', '#source_type_hidden', '#source_id_hidden');
         }
-    });
+        setAccountFields('#target_account', '#target_type_hidden', '#target_id_hidden');
+    }
 
-    // Validate amount against source balance
-    $('form').submit(function(e) {
+    $('#source_account, #target_account').on('change select2:select select2:clear', syncTransferAccounts);
+
+    $('#transfer-form').submit(function(e) {
+        syncTransferAccounts();
+
         var sourceOption = $('#source_account option:selected');
         var sourceBalance = parseFloat(sourceOption.data('balance'));
         var amount = parseFloat($('#amount').val());

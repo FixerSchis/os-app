@@ -216,6 +216,50 @@ class TestTransfer:
             group = db.session.get(Group, character_with_group.group_id)
             assert group.bank_account == 400  # 500 - 100
 
+    def test_transfer_admin_from_account_selects(
+        self, test_client, user_admin, character_with_faction, group
+    ):
+        """Admin transfers post the From/To dropdown values, not only hidden fields."""
+        with test_client as c:
+            with c.session_transaction() as sess:
+                sess["_user_id"] = user_admin.id
+            response = c.post(
+                "/banking/transfer",
+                data={
+                    "source_account": f"character_{character_with_faction.id}",
+                    "target_account": f"group_{group.id}",
+                    "amount": "50",
+                },
+                follow_redirects=True,
+            )
+            assert response.status_code == 200
+            assert b"Please select both source and target accounts" not in response.data
+            assert b"Transfer completed successfully" in response.data
+            db.session.refresh(character_with_faction)
+            db.session.refresh(group)
+            assert character_with_faction.bank_account == 450
+            assert group.bank_account == 550
+
+    def test_admin_transfer_form_uses_hidden_field_names(
+        self, test_client, user_admin, character_with_faction, group
+    ):
+        """The transfer form names match the fields the transfer route reads."""
+        with test_client as c:
+            with c.session_transaction() as sess:
+                sess["_user_id"] = user_admin.id
+            response = c.get("/banking/")
+        assert response.status_code == 200
+        soup = BeautifulSoup(response.data, "html.parser")
+        form = soup.find(id="transfer-form")
+        assert form is not None
+        for field_name in (
+            "source_type_hidden",
+            "source_id_hidden",
+            "target_type_hidden",
+            "target_id_hidden",
+        ):
+            assert form.find("input", {"name": field_name}) is not None
+
     def test_transfer_admin_any_account(
         self, test_client, user_admin, character_with_faction, group, admin_character
     ):

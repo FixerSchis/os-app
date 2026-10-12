@@ -97,7 +97,7 @@
             <h2>Transfer Money</h2>
         </div>
         <div class="card-body">
-            <form method="POST" action="{{ url_for('banking.transfer') }}">
+            <form method="POST" action="{{ url_for('banking.transfer') }}" id="transfer-form">
                 <div class="row">
                     <div class="col-md-4">
                         <label for="source_account">From</label>
@@ -134,10 +134,10 @@
                         <button type="submit" class="btn btn-primary">Transfer</button>
                     </div>
                 </div>
-                <input type="hidden" name="source_type" id="source_type_hidden">
-                <input type="hidden" name="source_id" id="source_id_hidden">
-                <input type="hidden" name="target_type" id="target_type_hidden">
-                <input type="hidden" name="target_id" id="target_id_hidden">
+                <input type="hidden" name="source_type_hidden" id="source_type_hidden">
+                <input type="hidden" name="source_id_hidden" id="source_id_hidden">
+                <input type="hidden" name="target_type_hidden" id="target_type_hidden">
+                <input type="hidden" name="target_id_hidden" id="target_id_hidden">
             </form>
         </div>
     </div>

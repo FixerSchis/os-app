@@ -11,6 +11,18 @@ from utils.permission_decorators import permission_required
 banking_bp = Blueprint("banking", __name__)
 
 
+def _account_selection(type_value, id_value, combined_value):
+    """Return an account type and id from explicit fields or a type_id select value."""
+    if type_value and id_value:
+        return type_value, id_value
+    if not combined_value or "_" not in combined_value:
+        return type_value, id_value
+    account_type, account_id = combined_value.split("_", 1)
+    if account_type in ("character", "group") and account_id:
+        return account_type, account_id
+    return type_value, id_value
+
+
 @banking_bp.route("/")
 @login_required
 @email_verified_required
@@ -148,17 +160,20 @@ def update_balance():
 @login_required
 @email_verified_required
 def transfer():
-    source_type = request.form.get("source_type_hidden")
-    source_id = request.form.get("source_id_hidden")
-    target_type = request.form.get("target_type_hidden")
-    target_id = request.form.get("target_id_hidden")
+    source_type = request.form.get("source_type_hidden") or request.form.get("source_type")
+    source_id = request.form.get("source_id_hidden") or request.form.get("source_id")
+    target_type = request.form.get("target_type_hidden") or request.form.get("target_type")
+    target_id = request.form.get("target_id_hidden") or request.form.get("target_id")
     amount = request.form.get("amount")
 
-    # This handles the case for a single character with no group,
-    # where the hidden fields aren't used.
-    if not source_type and not source_id:
-        source_type = request.form.get("source_type")
-        source_id = request.form.get("source_id")
+    # Dropdowns submit type_id values. Hidden fields are filled by script, and a
+    # single character with no group posts source_type/source_id directly.
+    source_type, source_id = _account_selection(
+        source_type, source_id, request.form.get("source_account")
+    )
+    target_type, target_id = _account_selection(
+        target_type, target_id, request.form.get("target_account")
+    )
 
     # Validate required form data
     if not source_type or not source_id or not target_type or not target_id:
