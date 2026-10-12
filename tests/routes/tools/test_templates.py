@@ -98,6 +98,85 @@ class TestTemplatesRoutes:
         assert "front_html" in data
         assert "success" in data
 
+    def test_render_template_preview_keeps_sample_fields(self, test_client, admin_user, db):
+        self.clear_templates(db)
+        self.login_admin(test_client, admin_user)
+        template = self.make_template(
+            admin_user,
+            PrintTemplateType.MEDICAMENT_CARD,
+            "Medicament Card Fields",
+            front_html="{{ medicament.name }} {{ generate_qr_code(medicament.name) }}",
+        )
+        db.session.add(template)
+        db.session.commit()
+        resp = test_client.post(
+            f"/templates/api/{template.id}/render",
+            json={
+                "front_html": "{{ medicament.name }} {{ generate_qr_code(medicament.name) }}",
+                "back_html": "",
+                "css_styles": "",
+            },
+        )
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data["success"] is True
+        assert "StimPak" in data["front_html"]
+        assert "data:image/png;base64," in data["front_html"]
+
+    def test_render_template_preview_blocks_config(self, test_client, admin_user, db, app):
+        secret = "print-template-preview-secret"
+        original_secret = app.config["SECRET_KEY"]
+        app.config["SECRET_KEY"] = secret
+        try:
+            self.clear_templates(db)
+            self.login_admin(test_client, admin_user)
+            template = self.make_template(
+                admin_user,
+                PrintTemplateType.MEDICAMENT_CARD,
+                "Medicament Card Config",
+                front_html="Hello",
+            )
+            db.session.add(template)
+            db.session.commit()
+            resp = test_client.post(
+                f"/templates/api/{template.id}/render",
+                json={"front_html": "{{ config.SECRET_KEY }}", "back_html": "", "css_styles": ""},
+            )
+            assert resp.status_code == 400
+            body = resp.get_data(as_text=True)
+            assert secret not in body
+            assert resp.get_json()["success"] is False
+        finally:
+            app.config["SECRET_KEY"] = original_secret
+
+    def test_print_template_preview_blocks_config(self, test_client, admin_user, db, app):
+        secret = "print-template-pdf-secret"
+        original_secret = app.config["SECRET_KEY"]
+        app.config["SECRET_KEY"] = secret
+        try:
+            self.clear_templates(db)
+            self.login_admin(test_client, admin_user)
+            template = self.make_template(
+                admin_user,
+                PrintTemplateType.ITEM_CARD,
+                "Item Card Config",
+                front_html="Hello",
+            )
+            db.session.add(template)
+            db.session.commit()
+            resp = test_client.post(
+                f"/templates/api/{template.id}/print_preview",
+                json={
+                    "front_html": "{{ config['SECRET_KEY'] }}",
+                    "back_html": "",
+                    "css_styles": "",
+                },
+            )
+            assert resp.status_code == 400
+            assert secret not in resp.get_data(as_text=True)
+        finally:
+            app.config["SECRET_KEY"] = original_secret
+
     def test_print_template_preview(self, test_client, admin_user, db):
         self.clear_templates(db)
         self.login_admin(test_client, admin_user)
