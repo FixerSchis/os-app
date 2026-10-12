@@ -1,5 +1,6 @@
-import os
+import re
 import shutil
+import sqlite3
 from datetime import datetime
 from pathlib import Path
 
@@ -30,6 +31,9 @@ from utils.decorators import email_verified_required
 from utils.permission_decorators import permission_required
 
 database_management_bp = Blueprint("database_management", __name__)
+
+# Matches backups written by create_backup and listed by get_available_backups.
+BACKUP_FILENAME_PATTERN = re.compile(r"oslrp_backup_.*\.db")
 
 
 @database_management_bp.route("/database")
@@ -65,7 +69,7 @@ def create_backup():
     try:
         # Get database file path
         db_path = get_database_path()
-        if not db_path or not os.path.exists(db_path):
+        if not db_path or not db_path.is_file():
             return jsonify({"success": False, "error": "Database file not found"}), 400
 
         # Create backups directory if it doesn't exist
@@ -77,8 +81,8 @@ def create_backup():
         backup_filename = f"oslrp_backup_{timestamp}.db"
         backup_path = backups_dir / backup_filename
 
-        # Copy database file
-        shutil.copy2(db_path, backup_path)
+        # Online backup stays consistent while the app has the database open.
+        snapshot_sqlite_database(db_path, backup_path)
 
         flash(f"Database backup created successfully: {backup_filename}", "success")
         return jsonify({"success": True, "filename": backup_filename})
@@ -99,27 +103,27 @@ def restore_backup():
         if not backup_filename:
             return jsonify({"success": False, "error": "No backup file selected"}), 400
 
-        # Validate backup file exists
         backups_dir = get_backups_directory()
-        backup_path = backups_dir / backup_filename
-
-        if not backup_path.exists():
+        backup_path = resolve_backup_path(backups_dir, backup_filename)
+        if backup_path is None:
+            return jsonify({"success": False, "error": "Invalid backup file"}), 400
+        if not backup_path.is_file():
             return jsonify({"success": False, "error": "Backup file not found"}), 400
 
         # Get current database path
         db_path = get_database_path()
-        if not db_path:
+        if not db_path or not db_path.is_file():
             return jsonify({"success": False, "error": "Database file not found"}), 400
 
-        # Create a backup of current database before restoring
+        # Snapshot the open database before replacing it.
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         current_backup = db_path.parent / f"oslrp_pre_restore_{timestamp}.db"
-        shutil.copy2(db_path, current_backup)
+        snapshot_sqlite_database(db_path, current_backup)
 
         # Restore the selected backup
         shutil.copy2(backup_path, db_path)
 
-        flash(f"Database restored successfully from {backup_filename}", "success")
+        flash(f"Database restored successfully from {backup_path.name}", "success")
         return jsonify({"success": True})
 
     except Exception as e:
@@ -206,6 +210,40 @@ def get_available_backups():
     # Sort by timestamp (newest first)
     backups.sort(key=lambda x: x["timestamp"], reverse=True)
     return backups
+
+
+def snapshot_sqlite_database(source_path, dest_path):
+    """Copy a SQLite database with the online backup API.
+
+    A file copy of a database that is open for writing can be torn. The backup
+    API reads a consistent snapshot while other connections are using the source.
+    """
+    source = sqlite3.connect(source_path)
+    try:
+        destination = sqlite3.connect(dest_path)
+        try:
+            with destination:
+                source.backup(destination)
+        finally:
+            destination.close()
+    finally:
+        source.close()
+
+
+def resolve_backup_path(backups_dir, backup_filename):
+    """Return a backup path inside backups_dir, or None when it is not allowed."""
+    if not backups_dir or not backup_filename:
+        return None
+
+    backup_name = Path(backup_filename).name
+    if BACKUP_FILENAME_PATTERN.fullmatch(backup_name) is None:
+        return None
+
+    backups_root = Path(backups_dir).resolve()
+    backup_path = (backups_root / backup_name).resolve()
+    if backup_path.parent != backups_root:
+        return None
+    return backup_path
 
 
 def get_database_path():
