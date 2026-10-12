@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from models.database.faction import Faction
 from models.database.species import Species
 from models.tools.character import CharacterTag
+from utils.description_format import format_rank_description
 
 from ..enums import ScienceType
 from ..extensions import db
@@ -50,6 +51,14 @@ class Skill(db.Model):
 
     def __repr__(self):
         return f"<Skill {self.name}>"
+
+    def format_applied(self, rank):
+        """Format the description at a character's purchased rank."""
+        return format_rank_description(self.description, rank)
+
+    def format_unapplied(self):
+        """Format the description before purchase, using rank 1."""
+        return format_rank_description(self.description, 1, per_rank=True)
 
     @property
     def character_sheet_values_list(self):

@@ -53,6 +53,12 @@ class CharacterSkill(db.Model):
     def __repr__(self):
         return f"<CharacterSkill {self.skill.name} (x{self.times_purchased})>"
 
+    def format_description(self):
+        """Description with this character's purchased rank substituted."""
+        if not self.skill:
+            return ""
+        return self.skill.format_applied(self.times_purchased)
+
 
 class Character(db.Model):
     id = db.Column(db.Integer, primary_key=True)

@@ -46,7 +46,7 @@
                                 {% endif %}
                             </strong>
                             <div class="text-muted small ps-3">
-                                {{ skill.description | safe }}
+                                {{ skill.format_unapplied() | safe }}
                             </div>
                         </td>
                         <td class="col-1 align-middle">{{ skill.base_cost }}</td>

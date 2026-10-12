@@ -45,6 +45,24 @@ class TestCharacterSkills:
         assert response.status_code == 200
         assert skill.name.encode() in response.data
 
+    def test_skills_list_shows_effect_at_purchased_rank(
+        self, test_client, regular_user, character_with_faction, skill
+    ):
+        skill.description = "Stabilise a casualty in {70 - rank * 10} seconds."
+        skill.can_purchase_multiple = True
+        character_skill = CharacterSkill(
+            character_id=character_with_faction.id,
+            skill_id=skill.id,
+            times_purchased=3,
+            purchased_by_user_id=regular_user.id,
+        )
+        db.session.add(character_skill)
+        db.session.commit()
+        login_user(test_client, regular_user)
+        response = test_client.get(self.url(character_with_faction.id))
+        assert response.status_code == 200
+        assert b"Stabilise a casualty in 40 seconds." in response.data
+
     def test_skills_list_admin(self, test_client, user_admin, character_with_faction, skill):
         login_user(test_client, user_admin)
         response = test_client.get(self.url(character_with_faction.id))

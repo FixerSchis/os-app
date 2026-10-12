@@ -57,8 +57,8 @@
     </div>
     <div>
        <span class="section-title">Skills:</span><br>
-       {% for skill in character.skills %}
-       {{ skill.skill.name }}{% if loop.index != character.skills|length %}, {% endif %}
+       {% for character_skill in character.skills %}
+       <div><strong>{{ character_skill.skill.name }}{% if character_skill.skill.can_purchase_multiple %} {{ character_skill.times_purchased }}{% endif %}</strong>{% if character_skill.skill.description %}: {{ character_skill.format_description() }}{% endif %}</div>
        {% endfor %}
     </div>
     <div>
