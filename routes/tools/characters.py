@@ -50,6 +50,26 @@ def can_edit_character(user, args, kwargs):
     return False
 
 
+def _posted_base_character_points(user):
+    """Parse an admin base-character-points field.
+
+    Returns (points, error_message). points is None when the field was not submitted
+    or the user cannot edit every character.
+    """
+    if "base_character_points" not in request.form:
+        return None, None
+    if not user.has_permission("character.edit_all"):
+        return None, None
+    raw = (request.form.get("base_character_points") or "").strip()
+    try:
+        points = int(raw)
+    except ValueError:
+        return None, "Base character points must be a whole number."
+    if points < 0:
+        return None, "Base character points cannot be negative."
+    return points, None
+
+
 characters_bp = Blueprint("characters", __name__)
 
 
@@ -167,6 +187,18 @@ def create_character_post():
             )
 
     base_character_points = 10
+    posted_points, points_error = _posted_base_character_points(current_user)
+    if points_error:
+        flash(points_error, "error")
+        return render_template(
+            "characters/edit.html",
+            admin_context=admin_context,
+            factions=factions,
+            species_list=species_list,
+            all_cybernetics=all_cybernetics,
+        )
+    if posted_points is not None:
+        base_character_points = posted_points
 
     # Get background fields from form
     background = request.form.get("background", "").strip()
@@ -397,6 +429,14 @@ def edit_post(character_id):
                 species_list=species_list,
             )
 
+    posted_points, points_error = _posted_base_character_points(current_user)
+    if points_error:
+        flash(points_error, "error")
+        redirect_url = url_for("characters.edit", character_id=character.id)
+        if admin_context:
+            redirect_url += "?admin_context=1"
+        return redirect(redirect_url)
+
     # Track basic information changes for EDIT action
     basic_changes = []
 
@@ -423,12 +463,19 @@ def edit_post(character_id):
         old_name = old_species.name if old_species else "None"
         new_name = new_species.name if new_species else "None"
         basic_changes.append(f"Species changed from '{old_name}' to '{new_name}'")
+    if posted_points is not None and character.base_character_points != posted_points:
+        basic_changes.append(
+            f"Base character points changed from '{character.base_character_points}' "
+            f"to '{posted_points}'"
+        )
 
     character.name = name
     character.pronouns_subject = pronouns_subject
     character.pronouns_object = pronouns_object
     character.faction_id = faction_id
     character.species_id = species_id
+    if posted_points is not None:
+        character.base_character_points = posted_points
 
     # Handle background fields
     background = request.form.get("background", "")
