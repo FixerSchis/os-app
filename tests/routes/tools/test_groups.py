@@ -6,6 +6,7 @@ from models.database.group_type import GroupType
 from models.enums import CharacterStatus
 from models.tools.character import Character
 from models.tools.group import Group, GroupInvite
+from models.tools.user import User
 
 
 @pytest.fixture
@@ -1187,3 +1188,45 @@ def test_invite_to_inactive_group_denied(
     resp = test_client.post(f"/groups/{group.id}/invite", data=data, follow_redirects=True)
     assert resp.status_code == 200
     assert b"Cannot invite to inactive groups" in resp.data
+
+
+def test_group_character_search_by_name_user_and_id(test_client, new_user, db_session, faction):
+    """Group invite search matches character name, user name, and player reference."""
+    owner = User(email="group.search.owner@example.com", first_name="Ada", surname="Lovelace")
+    owner.set_password("password")
+    owner.email_verified = True
+    other = User(email="group.search.other@example.com", first_name="Grace", surname="Hopper")
+    other.set_password("password")
+    db_session.add_all([owner, other])
+    db_session.commit()
+
+    named = Character(
+        user_id=owner.id,
+        name="Analytical Engine",
+        status=CharacterStatus.ACTIVE.value,
+        faction_id=faction.id,
+        character_id=1,
+    )
+    by_user = Character(
+        user_id=other.id,
+        name="Compiler",
+        status=CharacterStatus.ACTIVE.value,
+        faction_id=faction.id,
+        character_id=4,
+    )
+    db_session.add_all([named, by_user])
+    db_session.commit()
+
+    with test_client.session_transaction() as sess:
+        sess["_user_id"] = new_user.id
+        sess["_fresh"] = True
+
+    by_name = test_client.get("/groups/api/characters/search?q=Analytical")
+    assert named.id in [item["id"] for item in by_name.get_json()["items"]]
+
+    by_surname = test_client.get("/groups/api/characters/search?q=Hopper")
+    surname_ids = [item["id"] for item in by_surname.get_json()["items"]]
+    assert surname_ids == [by_user.id]
+
+    by_reference = test_client.get(f"/groups/api/characters/search?q={other.id}.4")
+    assert [item["id"] for item in by_reference.get_json()["items"]] == [by_user.id]

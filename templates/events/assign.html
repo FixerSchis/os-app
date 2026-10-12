@@ -41,9 +41,18 @@
                                     </select>
                                 </div>
 
-                                <!-- Character ID Input (for Adult tickets) -->
-                                <div class="mb-3" id="character_section">
-                                    <label for="character" class="form-label">Character ID (user_id.character_id)</label>
+                                <!-- Character search (for Adult tickets) -->
+                                <div class="mb-3" id="character_section" data-character-search-section>
+                                    <label for="character_search" class="form-label">Find character</label>
+                                    <select id="character_search" class="form-select" data-character-search
+                                            data-search-url="{{ url_for('characters.api_character_search') }}"
+                                            data-target-input="#character"
+                                            data-placeholder="Search by character name, user name, or ID"
+                                            title="Search by character name, user name, or character ID">
+                                        <option value=""></option>
+                                    </select>
+                                    <div class="form-text mb-2">Search by character name, user name, or character ID.</div>
+                                    <label for="character" class="form-label">Character ID</label>
                                     <div class="input-group">
                                         <input type="text" class="form-control" id="character" name="character"
                                                pattern="\d+\.\d+" placeholder="e.g. 1.1">
@@ -52,6 +61,7 @@
                                         </span>
                                     </div>
                                     <div id="character_name" class="form-text text-success" style="display: none;"></div>
+                                    <div class="form-text">Filled in when you pick a character above, or enter user_id.character_id directly.</div>
                                 </div>
 
                                 <!-- User Selection (for Crew and Child tickets) -->
@@ -112,6 +122,7 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="{{ url_for('static', filename='js/components/character-search.js') }}"></script>
 <script>
 let validationTimeout = null;
 const eventId = document.getElementById('event_id').value;
@@ -126,6 +137,9 @@ function updateFormFields() {
     // Adult: show character selection
     if (ticketType === 'adult') {
         document.getElementById('character_section').style.display = '';
+        if (window.initCharacterSearch) {
+            window.initCharacterSearch();
+        }
         document.getElementById('character').required = true;
         document.getElementById('user_id').required = false;
         document.getElementById('child_name').required = false;

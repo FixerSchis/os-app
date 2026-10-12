@@ -945,25 +945,9 @@ def api_characters_search():
     # Build the query
     characters_query = Character.query.filter_by(status=CharacterStatus.ACTIVE.value)
 
-    # Don't filter out characters already in groups - we'll show them as disabled
-
-    # Check if query looks like user_id.character_id format
-    if "." in query:
-        try:
-            user_id_str, char_id_str = query.split(".", 1)
-            user_id = int(user_id_str)
-            char_id = int(char_id_str)
-
-            # Search by user_id and character_id
-            characters_query = characters_query.filter(
-                Character.user_id == user_id, Character.character_id == char_id
-            )
-        except (ValueError, TypeError):
-            # If parsing fails, fall back to name search
-            characters_query = characters_query.filter(Character.name.ilike(f"%{query}%"))
-    else:
-        # Search by name
-        characters_query = characters_query.filter(Character.name.ilike(f"%{query}%"))
+    # Don't filter out characters already in groups - we'll show them as disabled.
+    # Match character name, the user's name, or an exact user_id.character_id.
+    characters_query = Character.filter_by_search(query, characters_query)
 
     # Only apply faction filter for non-admin users
     if faction_id and not current_user.has_permission("group.view_all"):
@@ -975,7 +959,7 @@ def api_characters_search():
     items = []
     for character in characters:
         # Include user info in the text for better identification
-        user_info = f"{character.user.first_name} {character.user.surname or ''}"
+        user_info = f"{character.user.first_name} {character.user.surname or ''}".strip()
 
         # Check if character is already in a group
         is_in_group = character.group_id is not None
@@ -983,10 +967,17 @@ def api_characters_search():
         if is_in_group:
             group_info = f" (Already in {character.group.name})"
 
+        player_reference = ""
+        if character.character_id is not None:
+            player_reference = f" ({character.user_id}.{character.character_id})"
+
         items.append(
             {
                 "id": character.id,
-                "text": f"{character.name} ({character.faction.name}) - {user_info}{group_info}",
+                "text": (
+                    f"{character.name} ({character.faction.name}) - "
+                    f"{user_info}{player_reference}{group_info}"
+                ),
                 "name": character.name,
                 "faction": character.faction.name,
                 "user_info": user_info,

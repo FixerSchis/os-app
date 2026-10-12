@@ -340,3 +340,60 @@ def test_retire_character_uses_correct_id(test_client, authenticated_user, db):
     db.session.refresh(character)
     assert character.status == CharacterStatus.RETIRED.value
     assert character.id == db_character_id  # Should be the same database ID
+
+
+def test_character_search_by_name_user_and_id(test_client, authenticated_user, db):
+    """Search finds active characters by character name, user name, and player reference."""
+    owner = User(email="owner.search@example.com", first_name="Ada", surname="Lovelace")
+    owner.set_password("password")
+    owner.email_verified = True
+    other = User(email="other.search@example.com", first_name="Grace", surname="Hopper")
+    other.set_password("password")
+    db.session.add_all([owner, other])
+    db.session.commit()
+
+    named = Character(
+        user_id=owner.id,
+        name="Analytical Engine",
+        status=CharacterStatus.ACTIVE.value,
+        character_id=1,
+    )
+    by_user = Character(
+        user_id=other.id,
+        name="Compiler",
+        status=CharacterStatus.ACTIVE.value,
+        character_id=2,
+    )
+    developing = Character(
+        user_id=owner.id,
+        name="Analytical Draft",
+        status=CharacterStatus.DEVELOPING.value,
+        character_id=3,
+    )
+    db.session.add_all([named, by_user, developing])
+    db.session.commit()
+
+    with test_client.session_transaction() as session:
+        session["_user_id"] = authenticated_user.id
+        session["_fresh"] = True
+
+    by_name = test_client.get("/characters/api/search?q=Analytical")
+    assert by_name.status_code == 200
+    name_ids = [item["id"] for item in by_name.get_json()["items"]]
+    assert named.id in name_ids
+    assert developing.id not in name_ids
+
+    by_surname = test_client.get("/characters/api/search?q=Hopper")
+    assert by_user.id in [item["id"] for item in by_surname.get_json()["items"]]
+
+    by_full_name = test_client.get("/characters/api/search?q=Ada Lovelace")
+    full_name_ids = [item["id"] for item in by_full_name.get_json()["items"]]
+    assert named.id in full_name_ids
+    assert by_user.id not in full_name_ids
+
+    by_reference = test_client.get(f"/characters/api/search?q={other.id}.2")
+    reference_items = by_reference.get_json()["items"]
+    assert [item["id"] for item in reference_items] == [by_user.id]
+    assert reference_items[0]["player_reference"] == f"{other.id}.2"
+
+    assert test_client.get("/characters/api/search?q=A").get_json()["items"] == []

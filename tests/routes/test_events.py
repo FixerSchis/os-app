@@ -290,6 +290,8 @@ def test_purchase_ticket_get(test_client, authenticated_user, db):
 
     response = test_client.get(f"/events/{event.id}/purchase", follow_redirects=True)
     assert response.status_code == 200
+    assert b"data-character-search" in response.data
+    assert b"Search by character name, user name, or character ID." in response.data
 
 
 def test_purchase_ticket_get_no_active_character(test_client, authenticated_user, db):
@@ -470,6 +472,8 @@ def test_assign_ticket_get(test_client, admin_user, db):
 
     response = test_client.get(f"/events/{event.id}/assign")
     assert response.status_code == 200
+    assert b"data-character-search" in response.data
+    assert b"Search by character name, user name, or character ID." in response.data
 
 
 def test_view_attendees_get(test_client, admin_user, db):

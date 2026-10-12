@@ -433,6 +433,9 @@ function updateFormFields() {
             }
         } else {
             document.getElementById('character_id_section').style.display = '';
+            if (window.initCharacterSearch) {
+                window.initCharacterSearch();
+            }
         }
     }
     // Crew: only allow self, hide character selection and recipient toggle

@@ -1,5 +1,7 @@
 from datetime import datetime, timezone
 
+from sqlalchemy import false, func, or_
+
 from models.database.mods import Mod
 from models.enums import AbilityType, CharacterAuditAction, CharacterStatus, ScienceType
 from models.extensions import db
@@ -120,6 +122,42 @@ class Character(db.Model):
     @classmethod
     def get_by_user_id_and_char_id(cls, user_id, char_id):
         return cls.query.filter_by(user_id=user_id, character_id=char_id).first()
+
+    @classmethod
+    def filter_by_search(cls, query_text, characters_query=None):
+        """Match characters by name, user name, or user_id.character_id.
+
+        A value like ``12.3`` matches that player reference exactly. Any other
+        text matches the character name or the user's first name, surname, or
+        full name.
+        """
+        from models.tools.user import User
+
+        if characters_query is None:
+            characters_query = cls.query
+
+        query_text = (query_text or "").strip()
+        if len(query_text) < 2:
+            return characters_query.filter(false())
+
+        if query_text.count(".") == 1:
+            user_id_str, char_id_str = query_text.split(".", 1)
+            if user_id_str.isdigit() and char_id_str.isdigit():
+                return characters_query.filter(
+                    cls.user_id == int(user_id_str),
+                    cls.character_id == int(char_id_str),
+                )
+
+        full_name = func.trim(func.concat(User.first_name, " ", func.coalesce(User.surname, "")))
+        pattern = f"%{query_text}%"
+        return characters_query.join(User).filter(
+            or_(
+                cls.name.ilike(pattern),
+                User.first_name.ilike(pattern),
+                User.surname.ilike(pattern),
+                full_name.ilike(pattern),
+            )
+        )
 
     def __repr__(self):
         return f"<Character {self.name}>"
