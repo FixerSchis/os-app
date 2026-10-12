@@ -3,7 +3,18 @@ import io
 import json
 import uuid
 
-from flask import Blueprint, flash, jsonify, redirect, render_template, request, send_file, url_for
+from flask import (
+    Blueprint,
+    flash,
+    g,
+    has_request_context,
+    jsonify,
+    redirect,
+    render_template,
+    request,
+    send_file,
+    url_for,
+)
 from flask_login import current_user, login_required
 
 from models.database.cybernetic import Cybernetic
@@ -191,6 +202,93 @@ def wiki_list():
     return render_template("wiki/list.html", wiki_tree=tree)
 
 
+_CHARACTER_RESTRICTIONS = (
+    SectionRestrictionType.FACTION,
+    SectionRestrictionType.SPECIES,
+    SectionRestrictionType.SKILL,
+    SectionRestrictionType.TAG,
+    SectionRestrictionType.REPUTATION,
+    SectionRestrictionType.CYBERNETIC,
+)
+
+
+def _restriction_values(section):
+    values = section.restriction_value_list
+    if not isinstance(values, list):
+        return [values]
+    return values
+
+
+def _user_active_characters(user):
+    """Active characters for this user, cached for the current request."""
+    if not user or not getattr(user, "is_authenticated", False):
+        return []
+    getter = getattr(user, "get_active_characters", None)
+    if not callable(getter):
+        return []
+
+    user_id = getattr(user, "id", None)
+    cache_attr = f"active_characters_{user_id}"
+    if has_request_context() and hasattr(g, cache_attr):
+        return getattr(g, cache_attr)
+
+    characters = list(getter() or [])
+    if has_request_context():
+        setattr(g, cache_attr, characters)
+    return characters
+
+
+def _character_meets_restriction(character, section):
+    """Return whether one character satisfies a character-based section gate."""
+    values = _restriction_values(section)
+    restriction = section.restriction_type
+    if restriction == SectionRestrictionType.FACTION:
+        return character.faction_id in [int(value) for value in values]
+    if restriction == SectionRestrictionType.SPECIES:
+        return character.species_id in [int(value) for value in values]
+    if restriction == SectionRestrictionType.SKILL:
+        skill_ids = [skill.skill_id for skill in getattr(character, "skills", [])]
+        return any(int(value) in skill_ids for value in values)
+    if restriction == SectionRestrictionType.CYBERNETIC:
+        cybernetic_ids = [cybernetic.id for cybernetic in getattr(character, "cybernetics", [])]
+        return any(int(value) in cybernetic_ids for value in values)
+    if restriction == SectionRestrictionType.TAG:
+        tag_ids = [tag.id for tag in getattr(character, "tags", [])]
+        return any(int(value) in tag_ids for value in values)
+    if restriction == SectionRestrictionType.REPUTATION:
+        if len(values) != 2:
+            return False
+        faction_id = int(values[0])
+        min_reputation = int(values[1])
+        return character.get_reputation(faction_id) >= min_reputation
+    return False
+
+
+def characters_with_section_access(section, user):
+    """Active characters that meet a character gate.
+
+    Returns None when the section is not gated on a character attribute.
+    """
+    if section.restriction_type not in _CHARACTER_RESTRICTIONS:
+        return None
+    return [
+        character
+        for character in _user_active_characters(user)
+        if _character_meets_restriction(character, section)
+    ]
+
+
+def visible_character_names(section, user):
+    """Names to show when only some of the user's active characters can see a section."""
+    matching = characters_with_section_access(section, user)
+    if matching is None:
+        return None
+    active_characters = _user_active_characters(user)
+    if len(active_characters) <= 1 or not matching or len(matching) == len(active_characters):
+        return None
+    return [character.name for character in matching]
+
+
 def has_access(section, user):
     # Always allow for wiki_admin or rules_team
     if user and user.is_authenticated and user.has_permission("wiki.edit"):
@@ -203,52 +301,9 @@ def has_access(section, user):
             return False
         # If you want to support dynamic permissions, you could do:
         return user.has_permission(f"wiki.section.{section.restriction_value}")
-    # Character-based restrictions
-    if section.restriction_type in [
-        SectionRestrictionType.FACTION,
-        SectionRestrictionType.SPECIES,
-        SectionRestrictionType.SKILL,
-        SectionRestrictionType.TAG,
-        SectionRestrictionType.REPUTATION,
-        SectionRestrictionType.CYBERNETIC,
-    ]:
-        # User must have an active character
-        character = None
-        if user and user.is_authenticated and hasattr(user, "characters"):
-            # Use the first active character (customize as needed)
-            character = next((c for c in user.characters if c.status == "active"), None)
-        if not character:
-            return False
-        values = []
-        if section.restriction_value:
-            try:
-                values = json.loads(section.restriction_value)
-            except Exception:
-                values = [section.restriction_value]
-        if section.restriction_type == SectionRestrictionType.FACTION:
-            return character.faction_id in [int(v) for v in values]
-        if section.restriction_type == SectionRestrictionType.SPECIES:
-            return character.species_id in [int(v) for v in values]
-        if section.restriction_type == SectionRestrictionType.SKILL:
-            # Character must have at least one of the required skills
-            character_skill_ids = [cs.skill_id for cs in getattr(character, "skills", [])]
-            return any(int(v) in character_skill_ids for v in values)
-        if section.restriction_type == SectionRestrictionType.CYBERNETIC:
-            # Character must have at least one of the required cybernetics
-            character_cyber_ids = [c.id for c in getattr(character, "cybernetics", [])]
-            return any(int(v) in character_cyber_ids for v in values)
-        if section.restriction_type == SectionRestrictionType.TAG:
-            character_tag_ids = [t.id for t in getattr(character, "tags", [])]
-            return any(int(v) in character_tag_ids for v in values)
-        if section.restriction_type == SectionRestrictionType.REPUTATION:
-            # For reputation, values should be [faction_id, min_reputation]
-            if len(values) != 2:
-                return False
-            faction_id = int(values[0])
-            min_reputation = int(values[1])
-            # Get character's reputation with the faction
-            reputation = character.get_reputation(faction_id)
-            return reputation >= min_reputation
+    # Character-based restrictions: any active character may satisfy the gate
+    if section.restriction_type in _CHARACTER_RESTRICTIONS:
+        return bool(characters_with_section_access(section, user))
     # Default: allow
     return True
 
@@ -336,6 +391,7 @@ def wiki_view(slug):
             "order": s.order,
             "restriction_type": (s.restriction_type.name.lower() if s.restriction_type else None),
             "restriction_value": s.restriction_value,
+            "visible_to": visible_character_names(s, user),
         }
         for s in version.sections
         if has_access(s, user)
@@ -915,6 +971,7 @@ def wiki_search():
                         "excerpt": excerpt,
                         "title_match": section_title_match,
                         "content_match": section_content_match,
+                        "visible_to": visible_character_names(section, current_user),
                     }
                 )
         if title_match or section_matches:

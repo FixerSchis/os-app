@@ -130,6 +130,16 @@ class User(UserMixin, db.Model):
             user_id=self.id, status=CharacterStatus.ACTIVE.value
         ).first()
 
+    def get_active_characters(self):
+        """Return every active character belonging to this user."""
+        from models.tools.character import Character
+
+        return (
+            Character.query.filter_by(user_id=self.id, status=CharacterStatus.ACTIVE.value)
+            .order_by(Character.id)
+            .all()
+        )
+
     def generate_verification_token(self):
         """Generate a new email verification token."""
         self.verification_token = secrets.token_urlsafe(32)

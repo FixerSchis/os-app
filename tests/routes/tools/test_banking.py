@@ -531,3 +531,74 @@ def test_transfer_missing_form_data(test_client, db, npc_user_with_chars):
     }
     response = test_client.post("/banking/transfer", data=transfer_data, follow_redirects=True)
     assert response.status_code == 200  # Should redirect back to banking page, not 404
+
+
+def test_transfer_from_second_characters_group(test_client, db, npc_user_with_chars):
+    """A group is usable when any active character belongs to it, not only the first."""
+    user, char1, char2 = npc_user_with_chars
+    second_group = Group(
+        name="Second Character Group",
+        group_type_id=char1.group.group_type_id,
+        faction_id=char1.group.faction_id,
+        bank_account=800,
+    )
+    db.session.add(second_group)
+    db.session.flush()
+    char2.group_id = second_group.id
+    db.session.commit()
+
+    with test_client.session_transaction() as session:
+        session["_user_id"] = user.id
+        session["_fresh"] = True
+
+    response = test_client.post(
+        "/banking/transfer",
+        data={
+            "source_type_hidden": "group",
+            "source_id_hidden": str(second_group.id),
+            "target_type_hidden": "character",
+            "target_id_hidden": str(char2.id),
+            "amount": "100",
+        },
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+    assert b"Transfer completed successfully" in response.data
+    assert b"You do not have access to this account" not in response.data
+
+    db.session.refresh(second_group)
+    assert second_group.bank_account == 700
+
+
+def test_transfer_rejects_group_with_no_active_character(test_client, db, npc_user_with_chars):
+    """Several active characters still cannot spend from a group none of them belong to."""
+    user, char1, _char2 = npc_user_with_chars
+    outsider_group = Group(
+        name="Outsider Group",
+        group_type_id=char1.group.group_type_id,
+        faction_id=char1.group.faction_id,
+        bank_account=500,
+    )
+    db.session.add(outsider_group)
+    db.session.commit()
+
+    with test_client.session_transaction() as session:
+        session["_user_id"] = user.id
+        session["_fresh"] = True
+
+    response = test_client.post(
+        "/banking/transfer",
+        data={
+            "source_type_hidden": "group",
+            "source_id_hidden": str(outsider_group.id),
+            "target_type_hidden": "character",
+            "target_id_hidden": str(char1.id),
+            "amount": "100",
+        },
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+    assert b"You do not have access to this account" in response.data
+
+    db.session.refresh(outsider_group)
+    assert outsider_group.bank_account == 500

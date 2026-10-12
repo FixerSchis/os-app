@@ -4,6 +4,7 @@ import pytest
 
 from models.database.permissions import Permission, Role
 from models.enums import CharacterStatus
+from models.tools.character import Character
 from models.tools.user import User
 
 
@@ -130,6 +131,27 @@ def test_user_active_character(db, new_user, character):
     assert active_char is not None
     assert active_char.id == character.id
     assert active_char.status == CharacterStatus.ACTIVE.value
+
+
+def test_user_get_active_characters(db, new_user, character):
+    """Active-character lookup returns every active character and skips the others."""
+    developing = Character(
+        user_id=new_user.id,
+        name="Developing Character",
+        status=CharacterStatus.DEVELOPING.value,
+        species_id=character.species_id,
+    )
+    second = Character(
+        user_id=new_user.id,
+        name="Second Character",
+        status=CharacterStatus.ACTIVE.value,
+        species_id=character.species_id,
+    )
+    db.session.add_all([developing, second])
+    db.session.commit()
+
+    active = new_user.get_active_characters()
+    assert [item.id for item in active] == [character.id, second.id]
 
 
 def test_email_verification_token(new_user):
