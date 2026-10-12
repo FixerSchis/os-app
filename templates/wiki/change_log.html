@@ -22,7 +22,7 @@
                     Unknown
                 {% endif %}
             </div>
-            <div><strong>Change Log:</strong> <div class="wiki-changelog-message">{{ log.message|safe }}</div></div>
+            <div><strong>Change Log:</strong> <div class="wiki-changelog-message">{{ log.message|wiki_html }}</div></div>
             <div><strong>Changed Pages:</strong>
                 <ul>
                 {% for version in log.versions %}

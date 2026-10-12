@@ -32,7 +32,7 @@
         Characters with access: {{ section.visible_to | join(', ') }}
     </p>
     {% endif %}
-    {{ section.content|safe }}
+    {{ section.content|wiki_html }}
 </div>
 {% endfor %}
 {% endblock %}

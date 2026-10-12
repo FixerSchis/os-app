@@ -38,6 +38,7 @@ from utils.decorators import email_verified_required
 from utils.email import send_wiki_published_notification_to_all
 from utils.mask_email import mask_email
 from utils.permission_decorators import permission_required
+from utils.wiki_html import highlight_text, sanitize_wiki_html
 
 wiki_bp = Blueprint("wiki", __name__)
 
@@ -131,7 +132,7 @@ def save_wiki_version(data, version):
                 section = existing_sections.get(section_data["id"])
                 if section:
                     section.title = section_data.get("title")
-                    section.content = section_data["content"]
+                    section.content = sanitize_wiki_html(section_data["content"])
                     section.order = section_data["order"]
                     section.restriction_type = (
                         SectionRestrictionType(section_data["restriction_type"])
@@ -145,7 +146,7 @@ def save_wiki_version(data, version):
                     id=str(uuid.uuid4()),
                     version_id=version.id,
                     title=section_data.get("title"),
-                    content=section_data["content"],
+                    content=sanitize_wiki_html(section_data["content"]),
                     order=section_data["order"],
                     restriction_type=(
                         SectionRestrictionType(section_data["restriction_type"])
@@ -482,7 +483,7 @@ def wiki_edit(slug):
         {
             "id": s.id,
             "title": s.title,
-            "content": s.content,
+            "content": sanitize_wiki_html(s.content),
             "order": s.order,
             "restriction_type": (s.restriction_type.name.lower() if s.restriction_type else None),
             "restriction_value": s.restriction_value,
@@ -762,7 +763,7 @@ def wiki_pending_changes():
 @permission_required(permissions=["wiki.publish"])
 def wiki_pending_changes_post():
     selected_slugs = request.form.getlist("selected_pages")
-    changelog = request.form.get("changelog", "").strip()
+    changelog = sanitize_wiki_html(request.form.get("changelog", "").strip())
     if not changelog:
         flash("Change log message is required.", "error")
         return redirect(url_for("wiki.wiki_pending_changes"))
@@ -894,7 +895,7 @@ def wiki_search():
             results.append(
                 {
                     "page": page,
-                    "highlighted_title": page.title,
+                    "highlighted_title": highlight_text(page.title, query),
                     "sections": [],
                     "tags": [t.name for t in page.tags],
                 }
@@ -905,25 +906,6 @@ def wiki_search():
     pages = WikiPage.query.all()
     results = []
 
-    def highlight_text(text, query):
-        if not text:
-            return text
-        text_lower = text.lower()
-        query_lower = query.lower()
-        pos = 0
-        result = []
-        while True:
-            pos = text_lower.find(query_lower, pos)
-            if pos == -1:
-                break
-            result.append(text[:pos])
-            result.append("<mark>" + text[pos : pos + len(query)] + "</mark>")
-            text = text[pos + len(query) :]
-            text_lower = text_lower[pos + len(query) :]
-            pos = 0
-        result.append(text)
-        return "".join(result)
-
     for page in pages:
         version = get_latest_published_version(page)
         if not version or version.deleted:
@@ -932,7 +914,7 @@ def wiki_search():
         if not visible_sections:
             continue
         title_match = query.lower() in page.title.lower()
-        highlighted_title = highlight_text(page.title, query) if title_match else page.title
+        highlighted_title = highlight_text(page.title, query)
         section_matches = []
         for section in visible_sections:
             section_title_match = query.lower() in (section.title or "").lower()
@@ -959,15 +941,13 @@ def wiki_search():
                         excerpt = highlight_text(excerpt, query)
                     else:
                         excerpt = content[:200] + "..." if len(content) > 200 else content
+                        excerpt = highlight_text(excerpt, query)
                 else:
                     excerpt = content[:200] + "..." if len(content) > 200 else content
+                    excerpt = highlight_text(excerpt, query)
                 section_matches.append(
                     {
-                        "title": (
-                            highlight_text(section.title, query)
-                            if section_title_match
-                            else section.title
-                        ),
+                        "title": highlight_text(section.title, query),
                         "excerpt": excerpt,
                         "title_match": section_title_match,
                         "content_match": section_content_match,

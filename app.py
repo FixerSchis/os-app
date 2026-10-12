@@ -21,6 +21,7 @@ from flask import (  # noqa: E402
 from flask_login import current_user, login_required  # noqa: E402
 from flask_migrate import Migrate  # noqa: E402
 from flask_wtf.csrf import CSRFProtect  # noqa: E402
+from markupsafe import Markup  # noqa: E402
 from sqlalchemy.orm import sessionmaker  # noqa: E402
 
 from config import Config  # noqa: E402
@@ -72,6 +73,7 @@ from utils.template_helpers import (  # noqa: E402
     has_any_permission,
     has_permission,
 )
+from utils.wiki_html import sanitize_wiki_html  # noqa: E402
 
 # Auth, banking, events, and wiki forms send a token. Other blueprints stay
 # exempt until their forms do too.
@@ -134,6 +136,11 @@ def create_app(config_class=None):
         if text is None:
             return ""
         return text.replace("\n", "<br>")
+
+    @app.template_filter("wiki_html")
+    def wiki_html_filter(value):
+        """Render stored wiki HTML with scripts and event handlers removed."""
+        return Markup(sanitize_wiki_html(value))
 
     # Create engine and Session after app and db are initialized
     with app.app_context():
