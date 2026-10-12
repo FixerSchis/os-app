@@ -1,0 +1,22 @@
+---
+description: Open ready-to-review pull requests that close the related issue
+alwaysApply: true
+---
+
+# Pull requests
+
+When asked to open a pull request or merge request in this project:
+
+- Create a real, ready-for-review pull request. Do not open a draft.
+- If the work resolves a GitHub issue, include `Closes #<number>` in the pull request body so merging closes that issue.
+- Use the GitHub CLI (`gh pr create`) against this repository. Do not pass `--draft`.
+
+```markdown
+## Summary
+- What changed and why.
+
+## Test plan
+- [ ] How to verify the fix
+
+Closes #182
+```

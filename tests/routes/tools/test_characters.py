@@ -342,6 +342,69 @@ def test_retire_character_uses_correct_id(test_client, authenticated_user, db):
     assert character.id == db_character_id  # Should be the same database ID
 
 
+def test_restore_retired_character_redirects(test_client, authenticated_user, db):
+    """Restoring a retired character commits the status and returns a redirect."""
+    from tests.conftest import assign_role_to_user
+
+    assign_role_to_user(authenticated_user, "admin", db.session)
+
+    character = Character(
+        user_id=authenticated_user.id,
+        name="Retired Character",
+        status=CharacterStatus.RETIRED.value,
+        character_id=1,
+    )
+    db.session.add(character)
+    db.session.commit()
+
+    with test_client.session_transaction() as session:
+        session["_user_id"] = authenticated_user.id
+        session["_fresh"] = True
+
+    response = test_client.post(f"/characters/{character.id}/restore")
+    assert response.status_code == 302
+    assert "/characters" in response.location
+
+    db.session.refresh(character)
+    assert character.status == CharacterStatus.ACTIVE.value
+
+
+def test_restore_from_admin_context_returns_to_user(test_client, authenticated_user, db):
+    """Restoring from the user admin page returns to that user."""
+    from tests.conftest import assign_role_to_user
+
+    assign_role_to_user(authenticated_user, "admin", db.session)
+
+    owner = User(email="restore.owner@example.com", first_name="Rest", surname="Owner")
+    owner.set_password("password")
+    owner.email_verified = True
+    db.session.add(owner)
+    db.session.commit()
+
+    character = Character(
+        user_id=owner.id,
+        name="Dead Character",
+        status=CharacterStatus.DEAD.value,
+        character_id=1,
+    )
+    db.session.add(character)
+    db.session.commit()
+
+    with test_client.session_transaction() as session:
+        session["_user_id"] = authenticated_user.id
+        session["_fresh"] = True
+
+    response = test_client.post(
+        f"/characters/{character.id}/restore",
+        data={"admin_context": "1"},
+    )
+    assert response.status_code == 302
+    assert f"/users/user-management/user/{owner.id}" in response.location
+
+    db.session.refresh(character)
+    assert character.status == CharacterStatus.ACTIVE.value
+
+
 def test_character_search_by_name_user_and_id(test_client, authenticated_user, db):
     """Search finds active characters by character name, user name, and player reference."""
     owner = User(email="owner.search@example.com", first_name="Ada", surname="Lovelace")
