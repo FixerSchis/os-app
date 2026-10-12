@@ -352,6 +352,121 @@ def test_wiki_edit_post_authorized(test_client, authenticated_plot_team_user, wi
     assert response.status_code == 200
 
 
+def test_wiki_edit_assigns_integer_ids_to_new_sections(
+    test_client, authenticated_plot_team_user, wiki_page, db
+):
+    """New sections get integer ids and a later save updates them in place."""
+    response = test_client.post(
+        f"/wiki/{wiki_page.slug}/edit",
+        json={
+            "title": "Updated Title",
+            "sections": [
+                {
+                    "id": 1,
+                    "title": "Introduction",
+                    "content": "<p>Original</p>",
+                    "order": 0,
+                },
+                {
+                    "id": None,
+                    "title": "Added",
+                    "content": "<p>First new section</p>",
+                    "order": 1,
+                },
+                {
+                    "title": "Also added",
+                    "content": "<p>Second new section</p>",
+                    "order": 2,
+                },
+            ],
+        },
+    )
+    assert response.status_code == 200
+    assert response.get_json()["success"] is True
+
+    db.session.expire_all()
+    pending = (
+        WikiPageVersion.query.filter_by(
+            page_slug=wiki_page.slug,
+            status=WikiPageVersionStatus.PENDING,
+        )
+        .order_by(WikiPageVersion.version_number.desc())
+        .one()
+    )
+    sections = list(pending.sections.order_by(WikiSection.order))
+    assert [section.id for section in sections] == [1, 2, 3]
+    assert all(isinstance(section.id, int) for section in sections)
+
+    response = test_client.post(
+        f"/wiki/{wiki_page.slug}/edit",
+        json={
+            "title": "Updated Title",
+            "sections": [
+                {
+                    "id": 1,
+                    "title": "Introduction",
+                    "content": "<p>Original</p>",
+                    "order": 0,
+                },
+                {
+                    "id": "2",
+                    "title": "Added",
+                    "content": "<p>Edited new section</p>",
+                    "order": 1,
+                },
+                {
+                    "id": 3,
+                    "title": "Also added",
+                    "content": "<p>Second new section</p>",
+                    "order": 2,
+                },
+            ],
+        },
+    )
+    assert response.status_code == 200
+    assert response.get_json()["success"] is True
+
+    db.session.expire_all()
+    pending = (
+        WikiPageVersion.query.filter_by(
+            page_slug=wiki_page.slug,
+            status=WikiPageVersionStatus.PENDING,
+        )
+        .order_by(WikiPageVersion.version_number.desc())
+        .one()
+    )
+    sections = {section.id: section for section in pending.sections}
+    assert set(sections) == {1, 2, 3}
+    assert sections[1].content == "<p>Original</p>"
+    assert sections[2].content == "<p>Edited new section</p>"
+    assert sections[2].title == "Added"
+    assert pending.sections.count() == 3
+
+
+def test_wiki_new_post_assigns_integer_section_ids(test_client, authenticated_plot_team_user):
+    """A new page stores integer section ids instead of generated UUID strings."""
+    slug = f"new-sections-{uuid.uuid4().hex}"
+    response = test_client.post(
+        "/wiki/new",
+        json={
+            "title": "New Sections",
+            "slug": slug,
+            "sections": [
+                {"title": "One", "content": "<p>One</p>", "order": 0},
+                {"id": None, "title": "Two", "content": "<p>Two</p>", "order": 1},
+            ],
+        },
+    )
+    assert response.status_code == 200
+    assert response.get_json()["success"] is True
+
+    page = WikiPage.query.filter_by(slug=slug).one()
+    sections = list(page.versions.one().sections.order_by(WikiSection.order))
+    assert [section.id for section in sections] == [1, 2]
+    assert sections[0].title == "One"
+    assert sections[1].content == "<p>Two</p>"
+
+
 def test_wiki_edit_post_with_restrictions(test_client, authenticated_plot_team_user, wiki_page, db):
     """A role name survives save instead of being dropped by the integer filter."""
     response = test_client.post(

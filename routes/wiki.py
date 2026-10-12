@@ -1,7 +1,6 @@
 import difflib
 import io
 import json
-import uuid
 
 from flask import (
     Blueprint,
@@ -132,10 +131,32 @@ def _role_restriction_value(raw):
     return text
 
 
+def _numeric_section_id(raw_id):
+    """Return an integer section id, or None when the value is not numeric."""
+    if isinstance(raw_id, bool) or raw_id is None:
+        return None
+    if isinstance(raw_id, int):
+        return raw_id
+    if isinstance(raw_id, str) and raw_id.strip().isdigit():
+        return int(raw_id.strip())
+    return None
+
+
+def _next_section_id(existing_sections):
+    """Next integer id unique within this version."""
+    numeric_ids = []
+    for section_id in existing_sections:
+        numeric_id = _numeric_section_id(section_id)
+        if numeric_id is not None:
+            numeric_ids.append(numeric_id)
+    return max(numeric_ids, default=0) + 1
+
+
 def save_wiki_version(data, version):
     # Save sections
     if "sections" in data:
         existing_sections = {s.id: s for s in version.sections}
+        next_section_id = _next_section_id(existing_sections)
         for section_data in data["sections"]:
             restriction_type = section_data.get("restriction_type")
             restriction_value = section_data.get("restriction_value")
@@ -170,22 +191,28 @@ def save_wiki_version(data, version):
                     restriction_value = json.dumps(tag_ids)
                 else:
                     restriction_value = json.dumps([int(v) for v in values if str(v).isdigit()])
-            if section_data.get("id"):
-                section = existing_sections.get(section_data["id"])
-                if section:
-                    section.title = section_data.get("title")
-                    section.content = sanitize_wiki_html(section_data["content"])
-                    section.order = section_data["order"]
-                    section.restriction_type = (
-                        SectionRestrictionType(section_data["restriction_type"])
-                        if section_data.get("restriction_type")
-                        else None
-                    )
-                    section.restriction_value = restriction_value
-                    existing_sections.pop(section_data["id"])
-            else:
+            raw_id = section_data.get("id")
+            section = None
+            if raw_id:
+                section = existing_sections.get(raw_id)
+                if section is None:
+                    numeric_id = _numeric_section_id(raw_id)
+                    if numeric_id is not None:
+                        section = existing_sections.get(numeric_id)
+            if section:
+                section.title = section_data.get("title")
+                section.content = sanitize_wiki_html(section_data["content"])
+                section.order = section_data["order"]
+                section.restriction_type = (
+                    SectionRestrictionType(section_data["restriction_type"])
+                    if section_data.get("restriction_type")
+                    else None
+                )
+                section.restriction_value = restriction_value
+                existing_sections.pop(section.id)
+            elif not raw_id:
                 section = WikiSection(
-                    id=str(uuid.uuid4()),
+                    id=next_section_id,
                     version_id=version.id,
                     title=section_data.get("title"),
                     content=sanitize_wiki_html(section_data["content"]),
@@ -198,6 +225,7 @@ def save_wiki_version(data, version):
                     restriction_value=restriction_value,
                 )
                 db.session.add(section)
+                next_section_id += 1
         for section in existing_sections.values():
             db.session.delete(section)
     db.session.commit()
