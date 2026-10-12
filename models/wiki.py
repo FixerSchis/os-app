@@ -63,7 +63,8 @@ class WikiSection(db.Model):
     title = db.Column(db.String(200), nullable=True)  # Section title
     content = db.Column(db.Text, nullable=False)
     restriction_type = db.Column(SqlEnum(SectionRestrictionType), nullable=True)
-    restriction_value = db.Column(db.String(100), nullable=True)
+    # JSON id lists for faction, skill, and tag gates can exceed 100 characters.
+    restriction_value = db.Column(db.Text, nullable=True)
 
     @property
     def restriction_value_list(self):
