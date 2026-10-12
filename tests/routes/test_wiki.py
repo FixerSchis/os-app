@@ -8,6 +8,7 @@ import pytest
 from models.enums import CharacterStatus, SectionRestrictionType
 from models.tools.character import Character, CharacterTag
 from models.wiki import (
+    WikiChangeLog,
     WikiImage,
     WikiPage,
     WikiPageVersion,
@@ -1100,3 +1101,182 @@ def test_wiki_ignores_inactive_characters_for_section_access(
     assert b"Public Content" in response.data
     assert b"Faction Content" not in response.data
     assert b"Developing Member" not in response.data
+
+
+_STORED_XSS = (
+    "<p>Visible wiki text <strong>bold</strong></p>"
+    "<script>wiki-xss-marker</script>"
+    '<img src="x" onerror="wiki-xss-marker">'
+    '<a href="javascript:wiki-xss-marker">bad</a>'
+    '<p onclick="wiki-xss-marker">Hi</p>'
+)
+
+
+def test_wiki_edit_strips_script_before_save(test_client, authenticated_plot_team_user, wiki_page):
+    """Editor HTML is sanitized before it is stored on the section."""
+    response = test_client.post(
+        f"/wiki/{wiki_page.slug}/edit",
+        json={
+            "title": "Updated Title",
+            "sections": [
+                {
+                    "id": 1,
+                    "title": "Updated Section",
+                    "content": (
+                        "<p>Visible <strong>bold</strong></p>"
+                        "<ul><li>item</li></ul>"
+                        '<a href="https://example.com" target="_blank">site</a>'
+                        "<script>wiki-xss-marker</script>"
+                        '<img src="x" onerror="wiki-xss-marker">'
+                        '<a href="javascript:wiki-xss-marker">bad</a>'
+                    ),
+                    "order": 0,
+                }
+            ],
+        },
+    )
+    assert response.status_code == 200
+    assert response.get_json()["success"] is True
+
+    pending = (
+        WikiPageVersion.query.filter_by(
+            page_slug=wiki_page.slug,
+            status=WikiPageVersionStatus.PENDING,
+        )
+        .order_by(WikiPageVersion.version_number.desc())
+        .first()
+    )
+    stored = pending.sections.filter_by(id=1).one().content
+    assert "<strong>bold</strong>" in stored
+    assert "<ul><li>item</li></ul>" in stored
+    assert 'href="https://example.com"' in stored
+    assert 'target="_blank"' in stored
+    assert "wiki-xss-marker" not in stored
+    assert "<script" not in stored
+    assert "javascript:" not in stored
+    assert "onerror" not in stored
+
+
+def test_wiki_edit_page_omits_stored_script(
+    test_client, authenticated_plot_team_user, wiki_page, db
+):
+    """Stored markup cannot break out of the editor textarea."""
+    section = wiki_page.versions.first().sections.first()
+    section.content = (
+        '</textarea><img src=x onerror="wiki-xss-marker"><script>wiki-xss-marker</script>'
+    )
+    db.session.commit()
+
+    response = test_client.get(f"/wiki/{wiki_page.slug}/edit")
+
+    assert response.status_code == 200
+    assert b"wiki-xss-marker" not in response.data
+
+
+def test_wiki_view_strips_stored_script(test_client, wiki_page, db):
+    """Pages saved before sanitizing still do not run script for visitors."""
+    section = wiki_page.versions.first().sections.first()
+    section.content = _STORED_XSS
+    db.session.commit()
+
+    response = test_client.get(f"/wiki/{wiki_page.slug}")
+
+    assert response.status_code == 200
+    assert b"Visible wiki text" in response.data
+    assert b"<strong>bold</strong>" in response.data
+    assert b"wiki-xss-marker" not in response.data
+    assert b"javascript:" not in response.data
+    assert b"onclick" not in response.data
+
+
+def test_wiki_search_escapes_titles_and_excerpts(test_client, wiki_page, db):
+    """Search highlights are escaped before <mark> is inserted."""
+    wiki_page.title = "Findme <script>wiki-xss-marker</script>"
+    section = wiki_page.versions.first().sections.first()
+    section.title = 'Findme <img src=x onerror="wiki-xss-marker">'
+    section.content = "<p>Findme</p><script>wiki-xss-marker</script>"
+    db.session.commit()
+
+    response = test_client.get("/wiki/search?q=Findme")
+
+    assert response.status_code == 200
+    assert b"<mark>Findme</mark>" in response.data
+    assert b"<script>wiki-xss-marker</script>" not in response.data
+    assert b"&lt;script&gt;wiki-xss-marker&lt;/script&gt;" in response.data
+    assert b'onerror="wiki-xss-marker"' not in response.data
+    assert b"onerror=&quot;wiki-xss-marker&quot;" in response.data
+
+
+def test_wiki_change_log_strips_stored_script(test_client, db, new_user):
+    """Change log messages are sanitized when rendered."""
+    db.session.add(
+        WikiChangeLog(
+            user_id=new_user.id,
+            message="<p>Shipped <strong>now</strong></p><script>wiki-xss-marker</script>",
+        )
+    )
+    db.session.commit()
+
+    response = test_client.get("/wiki/changes/log")
+
+    assert response.status_code == 200
+    assert b"Shipped" in response.data
+    assert b"<strong>now</strong>" in response.data
+    assert b"wiki-xss-marker" not in response.data
+
+
+def test_wiki_publish_strips_changelog_script(test_client, authenticated_plot_team_user, db):
+    """Publish stores a sanitized change log message."""
+    slug = f"publish-xss-{uuid.uuid4().hex}"
+    page = WikiPage(slug=slug, title="Publish XSS")
+    db.session.add(page)
+    db.session.flush()
+    version = WikiPageVersion(
+        page_slug=page.slug,
+        version_number=1,
+        status=WikiPageVersionStatus.PENDING,
+        created_by=authenticated_plot_team_user.id,
+    )
+    db.session.add(version)
+    db.session.flush()
+    db.session.add(
+        WikiSection(
+            id=1,
+            version_id=version.id,
+            order=0,
+            title="Pending",
+            content="<p>Pending body</p>",
+        )
+    )
+    db.session.commit()
+
+    response = test_client.post(
+        "/wiki/changes/pending",
+        data={
+            "selected_pages": slug,
+            "changelog": "<p>Shipped</p><script>wiki-xss-marker</script>",
+        },
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    log = WikiChangeLog.query.one()
+    assert "<p>Shipped</p>" in log.message
+    assert "wiki-xss-marker" not in log.message
+    assert "<script" not in log.message
+
+
+def test_wiki_publish_rejects_script_only_changelog(test_client, authenticated_plot_team_user):
+    """A change log that is only a script is rejected."""
+    response = test_client.post(
+        "/wiki/changes/pending",
+        data={
+            "selected_pages": "missing",
+            "changelog": "<script>wiki-xss-marker</script>",
+        },
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    assert WikiChangeLog.query.count() == 0
+    assert b"Change log message is required." in response.data
