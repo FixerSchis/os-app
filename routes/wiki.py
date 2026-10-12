@@ -92,6 +92,46 @@ def get_pending_version(page, current_user):
         return latest_version
 
 
+def _role_restriction_value(raw):
+    """Keep the role name or id the editor sent.
+
+    Other restriction types are stored as JSON lists of integer ids. A role name
+    is not an integer, so that filter would save an empty list.
+    """
+    if raw is None or isinstance(raw, bool):
+        return None
+    if isinstance(raw, int):
+        return str(raw)
+    if isinstance(raw, list):
+        names = []
+        for item in raw:
+            if item is None or isinstance(item, bool):
+                continue
+            text = str(item).strip()
+            if text and text != "null":
+                names.append(text)
+        if not names:
+            return None
+        if len(names) == 1:
+            return names[0]
+        return json.dumps(names)
+    if not isinstance(raw, str):
+        return str(raw)
+
+    text = raw.strip()
+    if text in ("", "null", "[]"):
+        return None
+    try:
+        parsed = json.loads(text)
+    except (TypeError, ValueError):
+        return text
+    if isinstance(parsed, (list, int)) or parsed is None:
+        return _role_restriction_value(parsed)
+    if isinstance(parsed, str):
+        return parsed or None
+    return text
+
+
 def save_wiki_version(data, version):
     # Save sections
     if "sections" in data:
@@ -100,7 +140,9 @@ def save_wiki_version(data, version):
             restriction_type = section_data.get("restriction_type")
             restriction_value = section_data.get("restriction_value")
             # Robustly handle all list-based restriction types
-            if restriction_type:
+            if restriction_type == "role":
+                restriction_value = _role_restriction_value(restriction_value)
+            elif restriction_type:
                 if not restriction_value or restriction_value in ("null", "[]", ""):
                     values = []
                 else:
@@ -290,8 +332,50 @@ def visible_character_names(section, user):
     return [character.name for character in matching]
 
 
+def _stored_role_keys(section):
+    """Role names or ids saved on a section.
+
+    New saves store the role name the editor sent. Older rows may store a JSON
+    list of names from ``restriction_value_list``.
+    """
+    raw = section.restriction_value
+    if raw is None or raw == "":
+        return set()
+    values = section.restriction_value_list
+    if not isinstance(values, list):
+        values = [values]
+    keys = set()
+    for value in values:
+        if value is None or isinstance(value, bool):
+            continue
+        text = str(value).strip()
+        if text:
+            keys.add(text)
+    return keys
+
+
+def _user_role_keys(user):
+    """Names and id for the user's single role."""
+    keys = set()
+    role = getattr(user, "role", None)
+    if role is not None:
+        name = getattr(role, "name", None)
+        if isinstance(name, str) and name:
+            keys.add(name)
+        role_id = getattr(role, "id", None)
+        if isinstance(role_id, int):
+            keys.add(str(role_id))
+    roles_attr = getattr(user, "roles", None)
+    if isinstance(roles_attr, str) and roles_attr:
+        keys.add(roles_attr)
+    role_id = getattr(user, "role_id", None)
+    if isinstance(role_id, int):
+        keys.add(str(role_id))
+    return keys
+
+
 def has_access(section, user):
-    # Always allow for wiki_admin or rules_team
+    # Editors can see every section, including restricted ones.
     if user and user.is_authenticated and user.has_permission("wiki.edit"):
         return True
     if not section.restriction_type:
@@ -300,8 +384,7 @@ def has_access(section, user):
     if section.restriction_type == SectionRestrictionType.ROLE:
         if not user or not user.is_authenticated:
             return False
-        # If you want to support dynamic permissions, you could do:
-        return user.has_permission(f"wiki.section.{section.restriction_value}")
+        return bool(_user_role_keys(user) & _stored_role_keys(section))
     # Character-based restrictions: any active character may satisfy the gate
     if section.restriction_type in _CHARACTER_RESTRICTIONS:
         return bool(characters_with_section_access(section, user))
