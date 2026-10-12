@@ -467,8 +467,8 @@ def test_wiki_new_post_assigns_integer_section_ids(test_client, authenticated_pl
     assert sections[1].content == "<p>Two</p>"
 
 
-def test_wiki_edit_post_with_restrictions(test_client, authenticated_plot_team_user, wiki_page):
-    """Test POST request to edit wiki page with section restrictions."""
+def test_wiki_edit_post_with_restrictions(test_client, authenticated_plot_team_user, wiki_page, db):
+    """A role name survives save instead of being dropped by the integer filter."""
     response = test_client.post(
         f"/wiki/{wiki_page.slug}/edit",
         json={
@@ -480,13 +480,21 @@ def test_wiki_edit_post_with_restrictions(test_client, authenticated_plot_team_u
                     "content": "<p>Restricted content</p>",
                     "order": 0,
                     "restriction_type": "role",
-                    "restriction_value": ["admin"],
+                    "restriction_value": "plot_team",
                 }
             ],
         },
         follow_redirects=True,
     )
     assert response.status_code == 200
+
+    db.session.expire_all()
+    version = (
+        wiki_page.versions.order_by(None).order_by(WikiPageVersion.version_number.desc()).first()
+    )
+    section = version.sections.filter_by(id=1).one()
+    assert section.restriction_type == SectionRestrictionType.ROLE
+    assert section.restriction_value == "plot_team"
 
 
 def test_wiki_edit_post_with_tag_restrictions(
@@ -860,8 +868,23 @@ def test_has_access_public_section(test_client):
     assert has_access(section, MagicMock(is_authenticated=False)) is True
 
 
+class _RoleUser:
+    def __init__(self, role_name, *, editor=False, role_id=None):
+        self.is_authenticated = True
+        self.role = type("Role", (), {"name": role_name, "id": role_id})()
+        self.role_id = role_id
+        self._editor = editor
+
+    @property
+    def roles(self):
+        return self.role.name
+
+    def has_permission(self, name):
+        return self._editor and name == "wiki.edit"
+
+
 def test_has_access_role_restricted_section(test_client, authenticated_user):
-    """Test has_access function with role-restricted section."""
+    """Role gates match the user's role, not a wiki.section permission."""
     from models.wiki import WikiSection
     from routes.wiki import has_access
 
@@ -877,8 +900,24 @@ def test_has_access_role_restricted_section(test_client, authenticated_user):
 
     # Should not be accessible to regular user
     assert has_access(section, authenticated_user) is False
+    assert has_access(section, _RoleUser("player")) is False
+    assert has_access(section, _RoleUser("admin")) is True
 
-    # Should be accessible to admin user with appropriate permissions
+    named_section = WikiSection(
+        id=2,
+        version_id=1,
+        order=1,
+        title="Plot Team Section",
+        content="<p>Role restricted content</p>",
+        restriction_type=SectionRestrictionType.ROLE,
+        restriction_value="plot_team",
+    )
+    assert has_access(named_section, _RoleUser("plot_team")) is True
+    assert has_access(named_section, _RoleUser("player")) is False
+    assert has_access(named_section, None) is False
+    assert has_access(named_section, _RoleUser("player", editor=True)) is True
+
+    # Should be accessible to an editor even when the role does not match
     admin_user = MagicMock()
     admin_user.is_authenticated = True
     admin_user.has_permission.return_value = True
