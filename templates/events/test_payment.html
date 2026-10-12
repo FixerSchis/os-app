@@ -1,0 +1,70 @@
+{% extends "_template.html" %}
+{% from "macros/csrf.html" import csrf_field %}
+
+{% block title %}Test payment - Event {{ event.event_number }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>Test payment</h1>
+    <p class="text-muted">
+        This step stands in for a payment provider so a booking can be completed without a real charge.
+        The total below is calculated on the server. Nothing is sent to PayPal.
+    </p>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">{{ event.event_number }} - {{ event.name }}</h5>
+            <table class="table mb-0">
+                <thead>
+                    <tr>
+                        <th>Ticket</th>
+                        <th class="text-end">Price</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for line in lines %}
+                    <tr>
+                        <td>
+                            {{ line.label }}
+                            {% if line.detail %}
+                            <div class="small text-muted">{{ line.detail }}</div>
+                            {% endif %}
+                            {% if line.meal_ticket %}
+                            <div class="small text-success">Includes meal ticket</div>
+                            {% endif %}
+                            {% if line.requires_bunk %}
+                            <div class="small text-info">Bunk required</div>
+                            {% endif %}
+                        </td>
+                        <td class="text-end">£{{ '%.2f'|format(line.price) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <th>Total</th>
+                        <th class="text-end" id="paymentTotal">£{{ '%.2f'|format(total) }}</th>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+
+    <form method="POST" action="{{ url_for('events.confirm_simulated_payment', event_id=event.id) }}" id="testPaymentForm">
+        {{ csrf_field() }}
+        <div class="form-check mb-3">
+            <input class="form-check-input" type="checkbox" id="confirm_simulated_payment"
+                   name="confirm_simulated_payment" value="yes" required>
+            <label class="form-check-label" for="confirm_simulated_payment">
+                I confirm this simulated payment
+            </label>
+        </div>
+        <button type="submit" class="btn btn-success" id="confirmTestPayment">
+            Confirm test payment
+        </button>
+        <a href="{{ url_for('events.purchase_ticket', event_id=event.id) }}" class="btn btn-outline-secondary ms-2">
+            Back to cart
+        </a>
+    </form>
+</div>
+{% endblock %}

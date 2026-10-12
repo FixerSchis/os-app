@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from models.enums import EventType
+from models.enums import EventType, TicketType
 from models.extensions import db
 
 
@@ -56,3 +56,22 @@ class Event(db.Model):
         if self.is_early_booking_available():
             return self.early_booking_ticket_price
         return self.standard_ticket_price
+
+    def checkout_price(self, ticket_type, meal_ticket=False):
+        """Server price for a checkout line. Client-supplied amounts are not used."""
+        if ticket_type == TicketType.ADULT.value:
+            price = float(self.get_adult_ticket_price() or 0)
+        elif ticket_type == TicketType.CHILD_12_15.value:
+            price = float(self.child_ticket_price_12_15 or 0)
+        elif ticket_type == TicketType.CHILD_7_11.value:
+            price = float(self.child_ticket_price_7_11 or 0)
+        elif ticket_type == TicketType.CHILD_UNDER_7.value:
+            price = float(self.child_ticket_price_under_7 or 0)
+        elif ticket_type == TicketType.CREW.value:
+            price = 0.0
+        else:
+            price = 0.0
+
+        if meal_ticket and self.meal_ticket_available:
+            price += float(self.meal_ticket_price or 0)
+        return price
