@@ -1,10 +1,114 @@
 import re
+import types
 from datetime import datetime, timezone
 
-from flask import render_template_string
+from flask import Flask
+from flask.config import Config
+from jinja2 import select_autoescape
+from jinja2.exceptions import SecurityError
+from jinja2.runtime import Undefined
+from jinja2.sandbox import SandboxedEnvironment, is_internal_attribute
+from jinja2.utils import missing
 
 from models.enums import PrintTemplateType
 from models.extensions import db
+
+# Flask injects these names into render_template_string. Print templates must not see them.
+_BLOCKED_CONTEXT_NAMES = frozenset({"config", "current_app", "request", "session", "g"})
+
+# Attribute names that walk from a print object or helper into app config or Python globals.
+_BLOCKED_ATTRIBUTES = frozenset(
+    {
+        "config",
+        "__globals__",
+        "__dict__",
+        "__class__",
+        "__bases__",
+        "__mro__",
+        "__subclasses__",
+        "__init__",
+        "func_globals",
+        "func_code",
+        "gi_frame",
+        "gi_code",
+        "cr_frame",
+        "cr_code",
+        "ag_frame",
+        "ag_code",
+        "f_globals",
+        "f_locals",
+        "f_code",
+        "tb_frame",
+        "mro",
+    }
+)
+
+_ALLOWED_CALLABLES = frozenset({"generate_qr_code", "generate_web_qr_code", "qr_code_filter"})
+
+
+class PrintTemplateUndefined(Undefined):
+    """Undefined values that fail closed for config and other blocked names."""
+
+    __slots__ = ()
+
+    def _deny_blocked_access(self):
+        if self._undefined_exception is SecurityError:
+            self._fail_with_undefined_error()
+        if self._undefined_obj is missing and self._undefined_name in _BLOCKED_CONTEXT_NAMES:
+            raise SecurityError(f"{self._undefined_name} is not available in print templates")
+
+    def __str__(self):
+        self._deny_blocked_access()
+        return ""
+
+    def __iter__(self):
+        self._deny_blocked_access()
+        yield from ()
+
+    def __bool__(self):
+        if self._undefined_exception is SecurityError or (
+            self._undefined_obj is missing and self._undefined_name in _BLOCKED_CONTEXT_NAMES
+        ):
+            self._deny_blocked_access()
+        return False
+
+
+class PrintTemplateEnvironment(SandboxedEnvironment):
+    """Sandboxed Jinja environment for stored print templates."""
+
+    def is_safe_attribute(self, obj, attr, value):
+        if attr in _BLOCKED_ATTRIBUTES or attr.startswith("_"):
+            return False
+        if is_internal_attribute(obj, attr):
+            return False
+        if isinstance(
+            value,
+            (Flask, Config, types.ModuleType, types.FrameType, types.TracebackType, types.CodeType),
+        ):
+            return False
+        return True
+
+    def is_safe_callable(self, obj):
+        # Print context passes QR helpers as callables. Keep those callable, and
+        # still allow ordinary model methods used by character sheets and cards.
+        if getattr(obj, "__name__", None) in _ALLOWED_CALLABLES:
+            return True
+        return super().is_safe_callable(obj)
+
+
+_print_environment = PrintTemplateEnvironment(
+    autoescape=select_autoescape(default_for_string=True),
+    undefined=PrintTemplateUndefined,
+)
+
+
+def _render_print_html(html, context):
+    safe_context = {}
+    for key, value in (context or {}).items():
+        if key in _BLOCKED_CONTEXT_NAMES or isinstance(value, (Flask, Config)):
+            continue
+        safe_context[key] = value
+    return _print_environment.from_string(html).render(**safe_context)
 
 
 class PrintTemplate(db.Model):
@@ -82,13 +186,13 @@ class PrintTemplate(db.Model):
     def get_front_page_render(self, context):
         if not self.front_html:
             return ""
-        rendered = render_template_string(self.front_html, **context)
+        rendered = _render_print_html(self.front_html, context)
         return self.extract_body_content(rendered)
 
     def get_back_page_render(self, context):
         if not self.back_html or not self.has_back_side:
             return ""
-        rendered = render_template_string(self.back_html, **context)
+        rendered = _render_print_html(self.back_html, context)
         return self.extract_body_content(rendered)
 
     def get_css_render(self):
