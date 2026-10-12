@@ -185,12 +185,19 @@ def create_default_roles(permissions):
         "user.view",
         "user.edit",
         "user.roles",
-        "owner.promote",
     ]
 
     for perm_name in admin_permissions:
         if perm_name in permissions:
             admin_role.add_permission(permissions[perm_name])
+
+    # The seed only adds permissions, so drop owner.promote from admin roles
+    # that were created before it was removed from this list.
+    promote_permission = permissions.get("owner.promote")
+    if promote_permission is None:
+        promote_permission = Permission.query.filter_by(name="owner.promote").first()
+    if promote_permission is not None:
+        admin_role.remove_permission(promote_permission)
 
     # Assign basic permissions to default role
     default_permissions = [
