@@ -21,6 +21,25 @@ def _assign_banned_skills(ability, index):
     ability.banned_skills_list = request.form.getlist(f"ability_banned_skills_{index}[]")
 
 
+def _assign_ability_sheet_values(ability, index):
+    ids = request.form.getlist(f"ability_sheet_id_{index}[]")
+    descriptions = request.form.getlist(f"ability_sheet_description_{index}[]")
+    amounts = request.form.getlist(f"ability_sheet_value_{index}[]")
+    values = []
+    for value_id, description, amount in zip(ids, descriptions, amounts):
+        value_id = value_id.strip()
+        if not value_id:
+            continue
+        try:
+            number = int(amount) if amount.strip() else 0
+        except ValueError:
+            number = 0
+        values.append(
+            {"id": value_id, "description": description.strip() or value_id, "value": number}
+        )
+    ability.character_sheet_values_list = values
+
+
 def _assign_ability_tags(ability, index):
     ability.tags = RuleTag.resolve_list(request.form.getlist(f"ability_tags_{index}[]"))
 
@@ -161,10 +180,6 @@ def edit_species(species_id):
     )
 
 
-@species_bp.route("/<int:species_id>/edit", methods=["POST"])
-@login_required
-@email_verified_required
-@permission_required(permissions=["rules.species"])
 def _extra_hits_per_toughness(value):
     text = (value or "").strip()
     if not text.lstrip("-").isdigit():
@@ -175,6 +190,10 @@ def _extra_hits_per_toughness(value):
     return extra
 
 
+@species_bp.route("/<int:species_id>/edit", methods=["POST"])
+@login_required
+@email_verified_required
+@permission_required(permissions=["rules.species"])
 def edit_species_post(species_id):
     species = Species.query.get_or_404(species_id)
 
@@ -289,6 +308,7 @@ def edit_species_post(species_id):
             elif ab_type == AbilityType.CONDITION_TIMING.value:
                 _assign_condition_progress_rate(ab, i)
             _assign_ability_tags(ab, i)
+            _assign_ability_sheet_values(ab, i)
             db.session.add(ab)
         db.session.commit()
         flash("Species updated successfully.", "success")
@@ -459,6 +479,7 @@ def new_species_post():
             elif ab_type == AbilityType.CONDITION_TIMING.value:
                 _assign_condition_progress_rate(ab, i)
             _assign_ability_tags(ab, i)
+            _assign_ability_sheet_values(ab, i)
             db.session.add(ab)
         db.session.commit()
         flash("Species created successfully.", "success")

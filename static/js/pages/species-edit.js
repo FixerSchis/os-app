@@ -28,6 +28,9 @@ $(document).ready(function() {
             $(this).find('.ability-skill-bans select').attr('name', 'ability_banned_skills_' + i + '[]');
             $(this).find('.ability-condition-timing input').attr('name', 'ability_condition_progress_rate_' + i);
             $(this).find('.ability-tags select').attr('name', 'ability_tags_' + i + '[]');
+            $(this).find('.ability-sheet-values input[name^="ability_sheet_id"]').attr('name', 'ability_sheet_id_' + i + '[]');
+            $(this).find('.ability-sheet-values input[name^="ability_sheet_description"]').attr('name', 'ability_sheet_description_' + i + '[]');
+            $(this).find('.ability-sheet-values input[name^="ability_sheet_value"]').attr('name', 'ability_sheet_value_' + i + '[]');
             $(this).find('[name^="ability_additional_group_income"]').attr('name', 'ability_additional_group_income_' + i);
             $(this).find('.ability-skill-discounts select.select2-multiple').attr('name', 'ability_discount_skills_' + i + '[]');
             $(this).find('.ability-skill-discounts input[type=number]').attr('name', 'ability_discount_value_' + i);
@@ -194,6 +197,35 @@ $(document).ready(function() {
         reindexAbilities();
     });
 
+    function sheetValueRow() {
+        return $(`
+            <div class="row mb-2 sheet-value-row">
+                <div class="col-md-3">
+                    <input class="form-control" name="ability_sheet_id_0[]" placeholder="ID, such as psi" title="ID">
+                </div>
+                <div class="col-md-5">
+                    <input class="form-control" name="ability_sheet_description_0[]" placeholder="Description, such as Psi Points" title="Description">
+                </div>
+                <div class="col-md-2">
+                    <input type="number" class="form-control" name="ability_sheet_value_0[]" placeholder="Value" title="Value">
+                </div>
+                <div class="col-md-2">
+                    <button type="button" class="btn btn-danger btn-sm remove-sheet-value" aria-label="Remove sheet value">Remove</button>
+                </div>
+            </div>
+        `);
+    }
+
+    $(document).on('click', '.add-sheet-value', function() {
+        $(this).closest('.ability-sheet-values').find('.sheet-value-rows').append(sheetValueRow());
+        reindexAbilities();
+    });
+
+    $(document).on('click', '.remove-sheet-value', function() {
+        $(this).closest('.sheet-value-row').remove();
+        reindexAbilities();
+    });
+
     // Add/remove ability blocks
     $('#add-ability').click(function() {
         var idx = $('#abilities-list .ability-block').length;
@@ -266,6 +298,12 @@ $(document).ready(function() {
                 <label>Tags</label>
                 <select class="form-control rule-tag-select" name="ability_tags_${idx}[]" multiple title="Select or add tags"></select>
                 <small class="form-text text-muted">Search for a tag, or type a new one. Saving stores a new tag so later searches can find it.</small>
+            </div>
+            <div class="form-group mb-2 ability-sheet-values">
+                <label>Character sheet values</label>
+                <div class="sheet-value-rows"></div>
+                <button type="button" class="btn btn-secondary btn-sm add-sheet-value">Add sheet value</button>
+                <small class="form-text text-muted">Added to skill values with the same ID on the character sheet. Psionic Potential and rank 6 path skills use psi.</small>
             </div>
             <div class="form-group mb-2 ability-extra ability-skill-discounts" style="display:none;">
                 <label>Skill Discounts</label>

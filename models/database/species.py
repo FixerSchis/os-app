@@ -27,6 +27,7 @@ class Ability(db.Model):
     skill_discounts = db.Column(db.String, nullable=True)
     additional_group_income = db.Column(db.Integer, nullable=True)
     condition_progress_rate = db.Column(db.Float, nullable=True)
+    character_sheet_values = db.Column(db.String, nullable=True)
     starting_item_blueprint_id = db.Column(
         db.Integer, db.ForeignKey("item_blueprints.id"), nullable=True
     )
@@ -48,6 +49,14 @@ class Ability(db.Model):
         "Faction", foreign_keys=[starting_reputation_faction_id]
     )
     tags = db.relationship("RuleTag", secondary=ability_rule_tags, order_by="RuleTag.name")
+
+    @property
+    def character_sheet_values_list(self):
+        return json.loads(self.character_sheet_values) if self.character_sheet_values else []
+
+    @character_sheet_values_list.setter
+    def character_sheet_values_list(self, values):
+        self.character_sheet_values = json.dumps(values) if values else None
 
     @property
     def starting_skills_list(self):

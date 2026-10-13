@@ -209,6 +209,33 @@
                         </select>
                         <small class="form-text text-muted">Search for a tag, or type a new one. Saving stores a new tag so later searches can find it.</small>
                     </div>
+                    <div class="form-group mb-2 ability-sheet-values">
+                        <label>Character sheet values</label>
+                        {% set ability_index = loop.index0 %}
+                        <div class="sheet-value-rows">
+                        {% for value in ability.character_sheet_values_list %}
+                        <div class="row mb-2 sheet-value-row">
+                            <div class="col-md-3">
+                                <label class="sr-only" for="ability_sheet_id_{{ ability_index }}_{{ loop.index0 }}">ID</label>
+                                <input class="form-control" id="ability_sheet_id_{{ ability_index }}_{{ loop.index0 }}" name="ability_sheet_id_{{ ability_index }}[]" value="{{ value.id }}" placeholder="ID, such as psi">
+                            </div>
+                            <div class="col-md-5">
+                                <label class="sr-only" for="ability_sheet_description_{{ ability_index }}_{{ loop.index0 }}">Description</label>
+                                <input class="form-control" id="ability_sheet_description_{{ ability_index }}_{{ loop.index0 }}" name="ability_sheet_description_{{ ability_index }}[]" value="{{ value.description }}" placeholder="Description, such as Psi Points">
+                            </div>
+                            <div class="col-md-2">
+                                <label class="sr-only" for="ability_sheet_value_{{ ability_index }}_{{ loop.index0 }}">Value</label>
+                                <input type="number" class="form-control" id="ability_sheet_value_{{ ability_index }}_{{ loop.index0 }}" name="ability_sheet_value_{{ ability_index }}[]" value="{{ value.value }}" placeholder="Value">
+                            </div>
+                            <div class="col-md-2">
+                                <button type="button" class="btn btn-danger btn-sm remove-sheet-value" aria-label="Remove sheet value">Remove</button>
+                            </div>
+                        </div>
+                        {% endfor %}
+                        </div>
+                        <button type="button" class="btn btn-secondary btn-sm add-sheet-value">Add sheet value</button>
+                        <small class="form-text text-muted">Added to skill values with the same ID on the character sheet. Psionic Potential and rank 6 path skills use psi.</small>
+                    </div>
                     <div class="form-group mb-2 ability-extra ability-skill-bans" {% if not is_skill_bans %}style="display:none;"{% endif %}>
                         <label for="ability_banned_skills_{{ loop.index0 }}">Banned skills</label>
                         <select class="form-control select2-multiple" id="ability_banned_skills_{{ loop.index0 }}" name="ability_banned_skills_{{ loop.index0 }}[]" multiple title="Skills this species cannot buy">

@@ -1130,3 +1130,81 @@ def test_skill_ban_stops_that_species_buying_the_skill(db, new_user, character, 
         character.purchase_skill(banned, new_user)
     character.purchase_skill(allowed, new_user)
     outsider.purchase_skill(banned, new_user)
+
+
+def test_starting_psi_adds_to_purchased_psi_on_the_sheet(db, new_user, character, species):
+    """Species starting psi and each purchased psi rank share one sheet total."""
+    from models.database.species import Ability
+    from models.enums import AbilityType
+    from models.tools.character import CharacterSkill
+
+    psi = [{"id": "psi", "description": "Psi Points", "value": 2}]
+    potential = Skill(name="Psionic Potential", base_cost=1, skill_type="psionic")
+    potential.character_sheet_values_list = psi
+    rank_six = Skill(name="Telekinesis [6]", base_cost=1, skill_type="psionic")
+    rank_six.character_sheet_values_list = [{"id": "psi", "description": "Psi Points", "value": 1}]
+    db.session.add_all([potential, rank_six])
+    db.session.flush()
+    starting = Ability(
+        name="Starting psi",
+        description="Start with 2 Psi Points.",
+        type=AbilityType.GENERIC,
+        species=species,
+    )
+    starting.character_sheet_values_list = psi
+    character.species = species
+    db.session.add_all(
+        [
+            starting,
+            CharacterSkill(
+                character_id=character.id,
+                skill_id=potential.id,
+                times_purchased=2,
+                purchased_by_user_id=new_user.id,
+            ),
+            CharacterSkill(
+                character_id=character.id,
+                skill_id=rank_six.id,
+                times_purchased=1,
+                purchased_by_user_id=new_user.id,
+            ),
+        ]
+    )
+    db.session.commit()
+    db.session.refresh(character)
+
+    assert character.get_character_sheet_values()["psi"] == {"name": "Psi Points", "value": 7}
+
+
+def test_extra_will_point_ranks_add_to_discipline_will(db, new_user, character):
+    """Each Extra Will Point rank adds one Will Point to Discipline's two."""
+    from models.tools.character import CharacterSkill
+
+    discipline = Skill(name="Discipline", base_cost=2, skill_type="discipline")
+    discipline.character_sheet_values_list = [
+        {"id": "will", "description": "Will Points", "value": 2}
+    ]
+    extra = Skill(name="Extra Will Point", base_cost=1, skill_type="discipline")
+    extra.character_sheet_values_list = [{"id": "will", "description": "Will Points", "value": 1}]
+    db.session.add_all([discipline, extra])
+    db.session.flush()
+    db.session.add_all(
+        [
+            CharacterSkill(
+                character_id=character.id,
+                skill_id=discipline.id,
+                times_purchased=1,
+                purchased_by_user_id=new_user.id,
+            ),
+            CharacterSkill(
+                character_id=character.id,
+                skill_id=extra.id,
+                times_purchased=3,
+                purchased_by_user_id=new_user.id,
+            ),
+        ]
+    )
+    db.session.commit()
+    db.session.refresh(character)
+
+    assert character.get_character_sheet_values()["will"] == {"name": "Will Points", "value": 5}

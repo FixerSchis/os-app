@@ -502,6 +502,69 @@ def _skill_description(spec):
     return f"{description} {requirement}."
 
 
+def _seed_sheet_values(spec):
+    values = []
+    if spec.get("will"):
+        values.append({"id": "will", "description": "Will Points", "value": spec["will"]})
+    if spec.get("psi"):
+        values.append({"id": "psi", "description": "Psi Points", "value": spec["psi"]})
+    return values
+
+
+_STARTING_PSI = (
+    ("Elysian", 2),
+    ("Felani", 1),
+    ("Kelki", 1),
+    ("Kordai", 2),
+    ("Lithos", 1),
+    ("Vikaas Aquerna", 2),
+)
+
+
+def _has_sheet_value(owner, value_id):
+    return any(value.get("id") == value_id for value in owner.character_sheet_values_list)
+
+
+def _has_psi_sheet_value(owner):
+    return _has_sheet_value(owner, "psi")
+
+
+def link_default_skill_sheet_values():
+    """Add seeded will and psi sheet values to existing skills that lack them."""
+    for spec in _load_skill_definitions():
+        values = _seed_sheet_values(spec)
+        if not values:
+            continue
+        skill = Skill.query.filter_by(name=spec["name"]).first()
+        if skill is None:
+            continue
+        missing = [value for value in values if not _has_sheet_value(skill, value["id"])]
+        if missing:
+            skill.character_sheet_values_list = skill.character_sheet_values_list + missing
+    db.session.commit()
+
+
+def link_default_psi_points():
+    """Add sheet values to seeded skills and each psionic species' starting psi."""
+    link_default_skill_sheet_values()
+    for species_name, points in _STARTING_PSI:
+        species = Species.query.filter_by(name=species_name).first()
+        if species is None or any(_has_psi_sheet_value(row) for row in species.abilities):
+            continue
+        plural = "Point" if points == 1 else "Points"
+        ability = Ability(
+            species_id=species.id,
+            name="Starting psi",
+            description=f"Start with {points} Psi {plural}.",
+            type=AbilityType.GENERIC,
+        )
+        ability.character_sheet_values_list = [
+            {"id": "psi", "description": "Psi Points", "value": points}
+        ]
+        db.session.add(ability)
+    db.session.commit()
+
+
 def create_default_skills():
     """Create wiki skills if none exist."""
     if Skill.query.first():
@@ -530,10 +593,7 @@ def create_default_skills():
             adds_science_downtime=spec.get("sci_slots", 0),
             science_type=spec.get("science"),
         )
-        if spec.get("will"):
-            skill.character_sheet_values_list = [
-                {"id": "will", "description": "Will Points", "value": spec["will"]}
-            ]
+        skill.character_sheet_values_list = _seed_sheet_values(spec)
         required_faction = factions.get(spec.get("faction"))
         if required_faction is not None:
             skill.required_factions_list = [required_faction.id]
@@ -1932,6 +1992,7 @@ def create_default_data():
     link_default_group_income()
     link_default_toughness_hits()
     link_default_condition_timing()
+    link_default_psi_points()
     create_default_exotics()
     create_default_medicaments()
     create_default_item_types()

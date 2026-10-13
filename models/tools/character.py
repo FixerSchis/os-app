@@ -842,21 +842,23 @@ class Character(db.Model):
         return rate
 
     def get_character_sheet_values(self):
-        """Get the character sheet values for the character."""
+        """Sum sheet values from each skill rank and from printed abilities."""
         values = {}
+
+        def add(value, times):
+            value_id = value["id"]
+            amount = value["value"] * times
+            if value_id in values:
+                values[value_id]["value"] += amount
+            else:
+                values[value_id] = {"name": value["description"], "value": amount}
+
         for skill in self.skills:
-            if skill.skill.character_sheet_values_list:
-                for value in skill.skill.character_sheet_values_list:
-                    value_id = value["id"]
-                    if value_id in values:
-                        # Add to existing value
-                        values[value_id]["value"] += value["value"]
-                    else:
-                        # Create new entry
-                        values[value_id] = {
-                            "name": value["description"],
-                            "value": value["value"],
-                        }
+            for value in skill.skill.character_sheet_values_list:
+                add(value, skill.times_purchased or 1)
+        for ability in self.printed_abilities():
+            for value in ability.character_sheet_values_list:
+                add(value, 1)
         return values
 
     def get_factions_with_reputation(self):

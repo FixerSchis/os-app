@@ -44,6 +44,16 @@ _CAPTAIN_CONSOLE_SKILLS = (
 )
 
 
+_PSIONIC_SPECIES = [
+    "Elysian",
+    "Felani",
+    "Kelki",
+    "Kordai",
+    "Lithos",
+    "Vikaas Aquerna",
+]
+
+
 def _captain(name, effect):
     return _skill(
         name,
@@ -120,6 +130,7 @@ def _expand_paths(catalogue):
                 1,
                 species=path["species"],
                 requires=prerequisite,
+                psi=1,
             )
         )
     return skills
@@ -672,6 +683,7 @@ SKILL_DEFINITIONS = [
         multiple=True,
         requires="Discipline",
         species="Ascendancy Terran",
+        will=1,
     ),
     _skill(
         "Relentless",
@@ -801,6 +813,8 @@ SKILL_DEFINITIONS = [
         1,
         multiple=True,
         increases=True,
+        species=_PSIONIC_SPECIES,
+        psi=2,
     ),
     _skill(
         "Psionic Aptitude",
@@ -810,6 +824,7 @@ SKILL_DEFINITIONS = [
         ),
         "psionic",
         0,
+        species=_PSIONIC_SPECIES,
     ),
     *_expand_paths(_load_path_catalogue()),
     # Corpori programs. Each is a skill costing 1. Standard and advanced are separate types.
