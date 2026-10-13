@@ -16,6 +16,7 @@
             <thead>
                 <tr>
                     <th>Name</th>
+                    <th>Summary</th>
                     {% if can_edit or (current_user.is_authenticated and has_permission('user.roles')) %}
                     <th>Actions</th>
                     {% endif %}
@@ -29,6 +30,7 @@
                             {{ medicament.name }}
                         </a>
                     </td>
+                    <td>{{ medicament.summary or '' }}</td>
                     {% if can_edit or (current_user.is_authenticated and has_permission('user.roles')) %}
                     <td>
                         <div class="btn-group">
@@ -44,7 +46,7 @@
                 </tr>
                 {% else %}
                 <tr>
-                    <td colspan="{% if can_edit or (current_user.is_authenticated and has_permission('user.roles')) %}2{% else %}1{% endif %}" class="text-center text-muted">No medicaments found.</td>
+                    <td colspan="{% if can_edit or (current_user.is_authenticated and has_permission('user.roles')) %}3{% else %}2{% endif %}" class="text-center text-muted">No medicaments found.</td>
                 </tr>
                 {% endfor %}
             </tbody>

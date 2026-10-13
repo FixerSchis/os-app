@@ -1,1 +1,4 @@
-{{ medicament.name }} Back
+<div class="medicament-card medicament-back">
+    <h1 class="medicament-name">{{ medicament.name }}</h1>
+    <img class="medicament-qr" src="{{ generate_web_qr_code('wiki.wiki_view', slug=medicament.wiki_slug) }}" alt="Medicament wiki page QR code">
+</div>

@@ -104,6 +104,41 @@ def test_medicaments_edit_post_authorized(test_client, verified_login, medicamen
     assert wiki_page.title.startswith(new_name)
 
 
+def test_medicaments_edit_post_saves_rules(test_client, verified_login, medicament, db):
+    post_data = MultiDict(
+        [
+            ("name", medicament.name),
+            ("wiki_slug", medicament.wiki_slug),
+            ("summary", "Restores lost Body Hits"),
+            ("effect", ""),
+            ("mode_name[]", "RED"),
+            ("mode_effect[]", "After 10s, restores 1 lost Body Hit."),
+            ("mode_name[]", ""),
+            ("mode_effect[]", ""),
+            ("mode_name[]", "GREEN"),
+            ("mode_effect[]", "After 30min Rest, restores all lost Body Hits."),
+        ]
+    )
+    response = test_client.post(
+        f"/db/medicaments/{medicament.id}/edit",
+        data=post_data,
+        follow_redirects=True,
+        content_type="application/x-www-form-urlencoded",
+    )
+    assert response.status_code == 200
+    db.session.expire_all()
+    updated = db.session.get(Medicament, medicament.id)
+    assert updated.summary == "Restores lost Body Hits"
+    assert updated.effect is None
+    assert updated.modes_list == [
+        {"name": "RED", "effect": "After 10s, restores 1 lost Body Hit."},
+        {"name": "GREEN", "effect": "After 30min Rest, restores all lost Body Hits."},
+    ]
+
+    response = test_client.get(f"/db/medicaments/{medicament.id}/edit")
+    assert b"After 10s, restores 1 lost Body Hit." in response.data
+
+
 def test_medicaments_edit_missing_fields(test_client, verified_login, medicament, db):
     post_data = MultiDict(
         [

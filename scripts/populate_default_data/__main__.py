@@ -1424,41 +1424,110 @@ def create_default_exotics():
         db.session.commit()
 
 
+def _load_medicament_definitions():
+    path = os.path.join(os.path.dirname(__file__), "default_medicaments.py")
+    spec = importlib.util.spec_from_file_location("default_medicaments", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.MEDICAMENT_DEFINITIONS
+
+
+_RENAMED_MEDICAMENTS = {"Radiation Nano-sponges": "Radiation Nanosponges"}
+_RETIRED_MEDICAMENTS = ("Wound Sealant", "Bloodfire Antivirals")
+
+
+def _medicament_slug(name):
+    return "medicament/" + name.lower().replace(" ", "-")
+
+
+def _medicament_modes(spec):
+    return [{"name": name, "effect": effect} for name, effect in spec["modes"]]
+
+
+def _medicament_wiki_content(spec):
+    parts = [f"<p><strong>{html.escape(spec['summary'])}</strong></p>"]
+    if spec["effect"]:
+        parts.append(f"<p>{html.escape(spec['effect'])}</p>")
+    if spec["modes"]:
+        rows = "".join(
+            f"<li><strong>{html.escape(name)}</strong> - {html.escape(effect)}</li>"
+            for name, effect in spec["modes"]
+        )
+        parts.append(f"<h3>Modes</h3><ul>{rows}</ul>")
+    return "".join(parts)
+
+
+def _medicament_in_pack(medicament_id):
+    from models.tools.group import Group
+
+    for owner in Character.query.all() + Group.query.all():
+        if medicament_id in owner.pack.medicaments:
+            return True
+    return False
+
+
+def _rename_and_retire_medicaments():
+    for old_name, new_name in _RENAMED_MEDICAMENTS.items():
+        medicament = Medicament.query.filter_by(name=old_name).first()
+        if medicament is None or Medicament.query.filter_by(name=new_name).first():
+            continue
+        logging.info(f"Renaming medicament {old_name} to {new_name}")
+        medicament.name = new_name
+        medicament.wiki_slug = _medicament_slug(new_name)
+    for name in _RETIRED_MEDICAMENTS:
+        medicament = Medicament.query.filter_by(name=name).first()
+        if medicament is None or _medicament_in_pack(medicament.id):
+            continue
+        logging.info(f"Removing placeholder medicament: {name}")
+        db.session.delete(medicament)
+    db.session.flush()
+
+
 def create_default_medicaments():
-    if not Medicament.query.first():
-        medicaments = [
-            ("Wound Sealant", "medicament/wound-sealant"),
-            ("Bloodfire Antivirals", "medicament/bloodfire-antivirals"),
-            ("Radiation Nano-sponges", "medicament/radiation-nano-sponges"),
-        ]
-        tag = WikiTag(name="medicament")
-        for name, wiki_slug in medicaments:
+    """Create each wiki medicament, and fill in rules on rows that have none."""
+    _rename_and_retire_medicaments()
+    for spec in _load_medicament_definitions():
+        name = spec["name"]
+        medicament = Medicament.query.filter_by(name=name).first()
+        if medicament is None:
             logging.info(f"Adding medicament: {name}")
-            # Create wiki page if it doesn't exist
-            wiki_page = WikiPage.query.filter_by(slug=wiki_slug).first()
-            if not wiki_page:
-                wiki_page = WikiPage(slug=wiki_slug, title=f"{name} - Medicament", tags=[tag])
-                db.session.add(wiki_page)
-                db.session.flush()
-                wiki_version = WikiPageVersion(
-                    page_slug=wiki_slug,
-                    version_number=1,
-                    status=WikiPageVersionStatus.PUBLISHED,
-                )
-                db.session.add(wiki_version)
-                db.session.flush()
-                wiki_section = WikiSection(
-                    id=str(uuid.uuid4()),
-                    version_id=wiki_version.id,
-                    order=0,
-                    title=name,
-                    content=f"<p>Description for {name} medicament.</p>",
-                )
-                db.session.add(wiki_section)
-                db.session.flush()
-            medicament = Medicament(name=name, wiki_slug=wiki_slug)
+            medicament = Medicament(name=name, wiki_slug=_medicament_slug(name))
             db.session.add(medicament)
-        db.session.commit()
+        if not (medicament.summary or medicament.effect or medicament.modes):
+            medicament.summary = spec["summary"]
+            medicament.effect = spec["effect"]
+            medicament.modes_list = _medicament_modes(spec)
+        _ensure_stub_wiki_page(
+            medicament.wiki_slug,
+            f"{name} - Medicament",
+            "medicament",
+            name,
+            _medicament_wiki_content(spec),
+        )
+    db.session.commit()
+
+
+_PLACEHOLDER_MEDICAMENT_CARD = ("{{ medicament.name }} Front", "{{ medicament.name }} Back")
+
+
+def link_default_medicament_card():
+    """Replace the placeholder medicament card with one that prints the rules."""
+    template = PrintTemplate.query.filter_by(type=PrintTemplateType.MEDICAMENT_CARD).first()
+    if template is None:
+        return
+    current = ((template.front_html or "").strip(), (template.back_html or "").strip())
+    if current != _PLACEHOLDER_MEDICAMENT_CARD:
+        return
+    folder = os.path.join("data", "templates", PrintTemplateType.MEDICAMENT_CARD.value)
+    contents = {}
+    for filename in ("front.html", "back.html", "styles.css"):
+        with open(os.path.join(folder, filename), "r", encoding="utf-8") as handle:
+            contents[filename] = handle.read()
+    template.front_html = contents["front.html"]
+    template.back_html = contents["back.html"]
+    if not (template.css_styles or "").strip():
+        template.css_styles = contents["styles.css"]
+    db.session.commit()
 
 
 def create_default_item_types():
@@ -2094,6 +2163,7 @@ def create_default_data():
     create_default_events()
     create_default_templates()
     link_default_character_sheet_abilities()
+    link_default_medicament_card()
 
 
 def main():
