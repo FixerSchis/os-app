@@ -20,6 +20,7 @@ from models.tools.character import (
     CharacterStatus,
     CharacterTag,
     assign_character_id,
+    format_event_count,
 )
 from models.tools.character_inventory import CharacterItem
 from models.tools.group import GroupBackground
@@ -699,12 +700,19 @@ def edit_post(character_id):
                     f"to {stage_val}"
                 )
                 cc.current_stage = int(stage_val)
-            if duration_val is not None and int(duration_val) != cc.current_duration:
+            posted_duration = None
+            if duration_val is not None and str(duration_val).strip() != "":
+                try:
+                    posted_duration = float(duration_val)
+                except ValueError:
+                    posted_duration = None
+            if posted_duration is not None and posted_duration != float(cc.current_duration or 0):
                 condition_changes.append(
-                    f"Condition {cc.condition.name} duration changed from {cc.current_duration} "
-                    f"to {duration_val}"
+                    f"Condition {cc.condition.name} duration changed from "
+                    f"{format_event_count(cc.current_duration)} to "
+                    f"{format_event_count(posted_duration)}"
                 )
-                cc.current_duration = int(duration_val)
+                cc.current_duration = posted_duration
 
         # Track cybernetic changes for CYBERNETICS_CHANGE action
 

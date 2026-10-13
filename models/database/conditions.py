@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 
+from models.database.rule_tag import condition_rule_tags
 from models.extensions import db
 
 
@@ -42,6 +43,7 @@ class Condition(db.Model):
     stages = db.relationship(
         "ConditionStage", back_populates="condition", cascade="all, delete-orphan"
     )
+    tags = db.relationship("RuleTag", secondary=condition_rule_tags, order_by="RuleTag.name")
 
     def __repr__(self):
         return f"<Condition {self.name}>"

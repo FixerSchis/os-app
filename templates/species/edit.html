@@ -83,6 +83,7 @@
                 {% set is_skill_pairs = ability.type == AbilityType.FIRST_SKILL_PAIR %}
                 {% set is_rank_caps = ability.type == AbilityType.SKILL_RANK_CAPS %}
                 {% set is_skill_bans = ability.type == AbilityType.SKILL_BANS %}
+                {% set is_condition_timing = ability.type == AbilityType.CONDITION_TIMING %}
                 {% set is_group_income = ability.type == AbilityType.GROUP_INCOME %}
                 {% set is_skill_discounts = ability.type == AbilityType.SKILL_DISCOUNTS %}
                 {% set is_starting_item = ability.type == AbilityType.STARTING_ITEM %}
@@ -192,6 +193,22 @@
                         </div>
                         <button type="button" class="btn btn-secondary btn-sm add-rank-cap">Add cap</button>
                     </div>
+                    <div class="form-group mb-2 ability-extra ability-condition-timing" {% if not is_condition_timing %}style="display:none;"{% endif %}>
+                        <label for="ability_condition_progress_rate_{{ loop.index0 }}">Events consumed per event</label>
+                        <input type="number" class="form-control" id="ability_condition_progress_rate_{{ loop.index0 }}" name="ability_condition_progress_rate_{{ loop.index0 }}"
+                               value="{{ ability.condition_progress_rate if ability.condition_progress_rate is not none else '' }}"
+                               min="0.01" step="any" placeholder="1">
+                        <small class="form-text text-muted">2 finishes a stage in half the stated time. 4 is a quarter of the time. 0.5 makes it last twice as long. This applies to conditions that share a tag.</small>
+                    </div>
+                    <div class="form-group mb-2 ability-tags">
+                        <label for="ability_tags_{{ loop.index0 }}">Tags</label>
+                        <select class="form-control rule-tag-select" id="ability_tags_{{ loop.index0 }}" name="ability_tags_{{ loop.index0 }}[]" multiple title="Select or add tags">
+                            {% for tag in ability.tags %}
+                            <option value="{{ tag.id }}" selected>{{ tag.name }}</option>
+                            {% endfor %}
+                        </select>
+                        <small class="form-text text-muted">Search for a tag, or type a new one. Saving stores a new tag so later searches can find it.</small>
+                    </div>
                     <div class="form-group mb-2 ability-extra ability-skill-bans" {% if not is_skill_bans %}style="display:none;"{% endif %}>
                         <label for="ability_banned_skills_{{ loop.index0 }}">Banned skills</label>
                         <select class="form-control select2-multiple" id="ability_banned_skills_{{ loop.index0 }}" name="ability_banned_skills_{{ loop.index0 }}[]" multiple title="Skills this species cannot buy">
@@ -273,6 +290,7 @@
 {% block scripts %}
 {{ super() }}
 <script src="{{ url_for('static', filename='js/wiki_page_autocomplete.js') }}"></script>
+<script src="{{ url_for('static', filename='js/rule-tags.js') }}"></script>
 <script src="{{ url_for('static', filename='js/pages/species-edit.js') }}"></script>
 <script>
 window.ABILITY_TYPE_OPTIONS_HTML = document.getElementById('ability-type-options-template').innerHTML;

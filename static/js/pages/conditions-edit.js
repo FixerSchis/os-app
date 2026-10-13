@@ -1,4 +1,7 @@
 document.addEventListener('DOMContentLoaded', function() {
+    if (window.jQuery) {
+        initRuleTagSelects();
+    }
     const stagesContainer = document.getElementById('stages-container');
     const addStageButton = document.getElementById('add-stage');
     let stageCount = parseInt(document.getElementById('stage-count').value) || 0;

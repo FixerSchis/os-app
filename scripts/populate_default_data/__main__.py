@@ -28,6 +28,7 @@ from models.database.item_blueprint import ItemBlueprint
 from models.database.item_type import ItemType
 from models.database.medicaments import Medicament
 from models.database.mods import Mod
+from models.database.rule_tag import RuleTag
 from models.database.sample import Sample, SampleTag
 from models.database.skills import Skill
 from models.database.species import Ability, Species
@@ -1102,6 +1103,71 @@ def _add_felani_rank_caps():
     return True
 
 
+_POROUS_HIDE_DESCRIPTION = (
+    "Radiation, toxic, and disease conditions are acquired in half the time and "
+    "progress in half the stated time. Breathing gear is required to function and speak."
+)
+_HIVE_PHYSIOLOGY_DESCRIPTION = (
+    "Cannot wear armour. Regenerates 1 global hit per minute in the same area. "
+    "Immune to LETHAL. DISRUPT causes a 30 second knockout, or starts the death count "
+    "at 0 hits. Environmental toxins progress in a quarter of the usual time. "
+    "Medicaments need specialist delivery."
+)
+_CONDITION_TAG_NAMES = ("radiation", "toxic", "disease")
+
+
+def _ensure_rule_tag(name):
+    tag = RuleTag.query.filter(RuleTag.name.ilike(name)).first()
+    if tag is not None:
+        return tag
+    tag = RuleTag(name=name)
+    db.session.add(tag)
+    db.session.flush()
+    return tag
+
+
+def _add_condition_timing(species_name, name, description, rate, tag_names, tags):
+    species = Species.query.filter_by(name=species_name).first()
+    if species is None or _species_has_ability(species, AbilityType.CONDITION_TIMING):
+        return False
+    ability = Ability(
+        species_id=species.id,
+        name=name,
+        description=description,
+        type=AbilityType.CONDITION_TIMING,
+        condition_progress_rate=rate,
+    )
+    ability.tags = [tags[tag_name] for tag_name in tag_names]
+    db.session.add(ability)
+    return True
+
+
+def link_default_condition_timing():
+    """Tag radiation, toxic, and disease, and set Vikaas and Reskan progress rates."""
+    tags = {name: _ensure_rule_tag(name) for name in _CONDITION_TAG_NAMES}
+    _add_condition_timing(
+        "Vikaas Aquerna",
+        "Porous hide",
+        _POROUS_HIDE_DESCRIPTION,
+        2,
+        ("radiation", "toxic", "disease"),
+        tags,
+    )
+    _add_condition_timing(
+        "Reskan",
+        "Hive physiology",
+        _HIVE_PHYSIOLOGY_DESCRIPTION,
+        4,
+        ("toxic",),
+        tags,
+    )
+    steel_viscera = Skill.query.filter_by(name="Steel Viscera").first()
+    if steel_viscera is not None and steel_viscera.condition_progress_rate is None:
+        steel_viscera.condition_progress_rate = 0.5
+        steel_viscera.condition_tags = [tags["toxic"], tags["disease"]]
+    db.session.commit()
+
+
 def _species_has_ability(species, ability_type):
     for ability in species.abilities:
         current = ability.type.value if hasattr(ability.type, "value") else ability.type
@@ -1865,6 +1931,7 @@ def create_default_data():
     link_default_status_discounts()
     link_default_group_income()
     link_default_toughness_hits()
+    link_default_condition_timing()
     create_default_exotics()
     create_default_medicaments()
     create_default_item_types()

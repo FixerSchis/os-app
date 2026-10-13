@@ -5,6 +5,7 @@ from flask_login import current_user, login_required
 
 from models.database.faction import Faction
 from models.database.item_blueprint import ItemBlueprint
+from models.database.rule_tag import RuleTag
 from models.database.skills import Skill
 from models.database.species import Ability, Species
 from models.enums import AbilityType, BodyHitsType
@@ -18,6 +19,23 @@ species_bp = Blueprint("species", __name__)
 
 def _assign_banned_skills(ability, index):
     ability.banned_skills_list = request.form.getlist(f"ability_banned_skills_{index}[]")
+
+
+def _assign_ability_tags(ability, index):
+    ability.tags = RuleTag.resolve_list(request.form.getlist(f"ability_tags_{index}[]"))
+
+
+def _assign_condition_progress_rate(ability, index):
+    raw = (request.form.get(f"ability_condition_progress_rate_{index}") or "").strip()
+    if not raw:
+        ability.condition_progress_rate = None
+        return
+    try:
+        rate = float(raw)
+    except ValueError:
+        ability.condition_progress_rate = None
+        return
+    ability.condition_progress_rate = rate if rate > 0 else None
 
 
 def _assign_rank_caps(ability, index):
@@ -268,6 +286,9 @@ def edit_species_post(species_id):
                     ab.starting_reputation_faction_id = int(ability_starting_reputation_factions[i])
                 if ability_starting_reputation_values[i]:
                     ab.starting_reputation_value = int(ability_starting_reputation_values[i])
+            elif ab_type == AbilityType.CONDITION_TIMING.value:
+                _assign_condition_progress_rate(ab, i)
+            _assign_ability_tags(ab, i)
             db.session.add(ab)
         db.session.commit()
         flash("Species updated successfully.", "success")
@@ -435,6 +456,9 @@ def new_species_post():
                     ab.starting_reputation_faction_id = int(ability_starting_reputation_factions[i])
                 if ability_starting_reputation_values[i]:
                     ab.starting_reputation_value = int(ability_starting_reputation_values[i])
+            elif ab_type == AbilityType.CONDITION_TIMING.value:
+                _assign_condition_progress_rate(ab, i)
+            _assign_ability_tags(ab, i)
             db.session.add(ab)
         db.session.commit()
         flash("Species created successfully.", "success")

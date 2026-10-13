@@ -1,7 +1,8 @@
-from flask import Blueprint, flash, redirect, render_template, request, url_for
+from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from models.database.conditions import Condition, ConditionStage
+from models.database.rule_tag import RuleTag
 from models.extensions import db
 from utils.decorators import email_verified_required
 from utils.permission_decorators import permission_required
@@ -14,6 +15,23 @@ def list():
     conditions = Condition.query.order_by(Condition.name).all()
     can_edit = current_user.is_authenticated and current_user.has_permission("rules.conditions")
     return render_template("rules/conditions/list.html", conditions=conditions, can_edit=can_edit)
+
+
+@conditions_bp.route("/tags", methods=["GET"])
+@login_required
+@email_verified_required
+@permission_required(permissions=["rules.conditions", "rules.species", "rules.skills"])
+def rule_tags():
+    query_text = request.args.get("q", "").strip()
+    query = RuleTag.query
+    if query_text:
+        query = query.filter(RuleTag.name.ilike(f"%{query_text}%"))
+    tags = query.order_by(RuleTag.name).limit(50).all()
+    return jsonify({"results": [{"id": tag.id, "text": tag.name} for tag in tags]})
+
+
+def _assign_condition_tags(condition):
+    condition.tags = RuleTag.resolve_list(request.form.getlist("tags[]"))
 
 
 @conditions_bp.route("/new", methods=["GET"])
@@ -40,6 +58,7 @@ def create_post():
         condition = Condition(name=name)
         db.session.add(condition)
         db.session.flush()  # Get the condition ID
+        _assign_condition_tags(condition)
 
         # Process stages
         for i, stage_data in enumerate(stages_data, 1):
@@ -86,6 +105,7 @@ def edit_post(id):
 
     try:
         condition.name = name
+        _assign_condition_tags(condition)
 
         # Remove all existing stages
         for stage in condition.stages:

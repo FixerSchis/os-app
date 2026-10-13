@@ -2,6 +2,7 @@ import json
 from datetime import datetime, timezone
 
 from models.database.faction import Faction
+from models.database.rule_tag import skill_rule_tags
 from models.database.species import Species
 from models.tools.character import CharacterTag
 from utils.description_format import format_rank_description
@@ -67,10 +68,12 @@ class Skill(db.Model):
     )  # Stored as JSON string of faction values
     required_species = db.Column(db.String, nullable=True)  # Stored as JSON string of species IDs
     required_tags = db.Column(db.String, nullable=True)  # Stored as JSON string of tag IDs
+    condition_progress_rate = db.Column(db.Float, nullable=True)
 
     # Relationships
     required_skill = db.relationship("Skill", remote_side=[id], backref="prerequisites")
     adds_reputation_faction = db.relationship("Faction", foreign_keys=[adds_reputation_faction_id])
+    condition_tags = db.relationship("RuleTag", secondary=skill_rule_tags, order_by="RuleTag.name")
 
     def __repr__(self):
         return f"<Skill {self.name}>"

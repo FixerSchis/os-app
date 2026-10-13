@@ -33,6 +33,21 @@ def _ability_type_value(ability):
     return ability_type.value if hasattr(ability_type, "value") else ability_type
 
 
+def format_event_count(value):
+    """Show a whole event count without a decimal, and keep a real fraction."""
+    number = float(value or 0)
+    if number.is_integer():
+        return str(int(number))
+    return f"{number:.2f}".rstrip("0").rstrip(".")
+
+
+def _ranked_condition_rate(first_rank_rate, ranks):
+    time_multiplier = 1 + ranks * (1 / first_rank_rate - 1)
+    if time_multiplier <= 0.01:
+        return first_rank_rate
+    return 1 / time_multiplier
+
+
 def _pool_key(skill_ids):
     return tuple(sorted(int(item) for item in skill_ids or []))
 
@@ -792,6 +807,40 @@ class Character(db.Model):
         shared = list(self.species.abilities) if self.species is not None else []
         return shared + list(self.abilities)
 
+    def condition_progress_rate(self, condition):
+        """Events consumed for one event of this condition.
+
+        Condition-timing abilities and owned skills multiply when they share a tag
+        with the condition. 2 finishes a stage in half the stated time. 0.5 makes
+        it last twice as long. A condition with no tags always consumes 1.
+        A skill's rate is its first rank. Each further rank adds the same extra
+        time again, so 0.5 gives 2x, 3x, then 4x the stated time.
+        """
+        tag_ids = {tag.id for tag in condition.tags}
+        if not tag_ids:
+            return 1.0
+        rate = 1.0
+        abilities = []
+        if self.species is not None:
+            abilities.extend(self.species.abilities)
+        abilities.extend(self.abilities)
+        for ability in abilities:
+            if _ability_type_value(ability) != AbilityType.CONDITION_TIMING.value:
+                continue
+            factor = ability.condition_progress_rate
+            if not factor or not tag_ids.intersection(tag.id for tag in ability.tags):
+                continue
+            rate *= float(factor)
+        for link in self.skills:
+            skill = link.skill
+            if skill is None or not link.times_purchased:
+                continue
+            factor = skill.condition_progress_rate
+            if not factor or not tag_ids.intersection(tag.id for tag in skill.condition_tags):
+                continue
+            rate *= _ranked_condition_rate(float(factor), link.times_purchased)
+        return rate
+
     def get_character_sheet_values(self):
         """Get the character sheet values for the character."""
         values = {}
@@ -982,7 +1031,7 @@ class CharacterCondition(db.Model):
     character_id = db.Column(db.Integer, db.ForeignKey("character.id"), nullable=False)
     condition_id = db.Column(db.Integer, db.ForeignKey("conditions.id"), nullable=False)
     current_stage = db.Column(db.Integer, nullable=True, default=1)
-    current_duration = db.Column(db.Integer, nullable=False, default=0)
+    current_duration = db.Column(db.Float, nullable=False, default=0)
 
     # Relationships
     character = db.relationship("Character", back_populates="active_conditions")
@@ -1002,6 +1051,10 @@ class CharacterCondition(db.Model):
     def events_remaining(self):
         """Return the number of events remaining for this condition."""
         return self.current_duration
+
+    @property
+    def duration_label(self):
+        return format_event_count(self.current_duration)
 
     def progress_condition(self) -> dict:
         """
@@ -1026,11 +1079,14 @@ class CharacterCondition(db.Model):
                 "completed": False,
             }
 
-        # Deduct one event from the current duration
-        self.current_duration -= 1
+        # Consume this character's rate for the condition. 1 is the usual event.
+        rate = 1.0
+        if self.character is not None:
+            rate = self.character.condition_progress_rate(self.condition)
+        self.current_duration = float(self.current_duration) - rate
 
         # Check if we've reached 0 events remaining
-        if self.current_duration <= 0:
+        if self.current_duration <= 1e-9:
             # Find the next stage
             next_stage = None
             for stage in self.condition.stages:
@@ -1061,11 +1117,12 @@ class CharacterCondition(db.Model):
                 }
         else:
             # Still in the same stage
+            remaining = format_event_count(self.current_duration)
             return {
                 "progressed": True,
                 "message": (
                     f"Condition {self.condition.name} stage {self.current_stage} "
-                    f"has {self.current_duration} events remaining"
+                    f"has {remaining} events remaining"
                 ),
                 "completed": False,
             }

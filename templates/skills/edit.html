@@ -215,6 +215,27 @@
             </div>
 
             <div class="form-group">
+                <label for="condition-tags">Condition tags</label>
+                <select class="form-control rule-tag-select" id="condition-tags" name="condition_tags[]" multiple title="Select or add condition tags">
+                    {% if skill %}
+                    {% for tag in skill.condition_tags %}
+                    <option value="{{ tag.id }}" selected>{{ tag.name }}</option>
+                    {% endfor %}
+                    {% endif %}
+                </select>
+                <small class="form-text text-muted">Search for a tag, or type a new one. Saving stores a new tag so later searches on conditions and abilities can find it.</small>
+            </div>
+
+            <div class="form-group">
+                <label for="condition_progress_rate">Condition events per event</label>
+                <input type="number" class="form-control" id="condition_progress_rate" name="condition_progress_rate"
+                       min="0.01" step="any"
+                       value="{{ skill.condition_progress_rate if skill and skill.condition_progress_rate is not none else '' }}"
+                       placeholder="Blank leaves condition timing unchanged">
+                <small class="form-text text-muted">Rate for the first rank, applied to conditions that share a tag. 0.5 doubles the time, and each further rank adds the stated time again (3x, 4x). 2 halves the time.</small>
+            </div>
+
+            <div class="form-group">
                 <button type="submit" class="btn btn-primary">{{ 'Save Changes' if skill else 'Create Skill' }}</button>
                 <a href="{{ url_for('skills.skills_list') }}" class="btn btn-secondary">Cancel</a>
             </div>
@@ -225,6 +246,7 @@
 
 {% block scripts %}
 {{ super() }}
+<script src="{{ url_for('static', filename='js/rule-tags.js') }}"></script>
 <script>
 $(document).ready(function() {
     $('.select2-multiple').select2({
@@ -260,6 +282,8 @@ $(document).ready(function() {
         placeholder: 'Select skills...',
         allowClear: true
     });
+    initRuleTagSelects();
+
     $('#required_tags').select2({
         theme: 'bootstrap-5',
         width: '100%',

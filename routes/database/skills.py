@@ -4,6 +4,7 @@ from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from models.database.faction import Faction
+from models.database.rule_tag import RuleTag
 from models.database.skills import Skill
 from models.database.species import Species
 from models.enums import ScienceType
@@ -23,6 +24,24 @@ def _blank_to_none(value):
 
 def _form_skill_ids(values):
     return [int(value) for value in values if str(value).isdigit()]
+
+
+def _optional_positive_float(value):
+    text = (value or "").strip()
+    if not text:
+        return None
+    try:
+        number = float(text)
+    except ValueError:
+        return None
+    return number if number > 0 else None
+
+
+def _assign_condition_timing(skill):
+    skill.condition_tags = RuleTag.resolve_list(request.form.getlist("condition_tags[]"))
+    skill.condition_progress_rate = _optional_positive_float(
+        request.form.get("condition_progress_rate")
+    )
 
 
 def _optional_rank_limit(value):
@@ -168,6 +187,7 @@ def edit_skill_post(skill_id):
             int(adds_reputation_faction_id) if adds_reputation_faction_id else None
         )
         skill.adds_reputation_value = int(adds_reputation_value) if adds_reputation_value else 0
+        _assign_condition_timing(skill)
 
         db.session.commit()
         flash("Skill updated successfully.", "success")
@@ -281,6 +301,7 @@ def new_skill():
                 adds_reputation_value=int(adds_reputation_value) if adds_reputation_value else 0,
             )
             db.session.add(skill)
+            _assign_condition_timing(skill)
             db.session.commit()
             flash("Skill created successfully.", "success")
             return redirect(url_for("skills.skills_list"))

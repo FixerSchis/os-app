@@ -128,7 +128,7 @@
                             <div class="form-group condition-duration" data-condition-id="{{ condition.id }}" style="display: none;">
                                 <label for="condition_duration_{{ condition.id }}">Remaining Duration of {{ condition.name }}</label>
                                 <input type="number" class="form-control" id="condition_duration_{{ condition.id }}"
-                                       name="condition_duration_{{ condition.id }}" min="0"
+                                       name="condition_duration_{{ condition.id }}" min="0" step="any"
                                        value="{{ pack.conditions|selectattr('id', 'equalto', condition.id|string)|map(attribute='duration')|first|default(condition.stages[0].duration if condition.stages else 0) }}">
                             </div>
                             {% endfor %}

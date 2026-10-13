@@ -26,6 +26,8 @@ $(document).ready(function() {
             $(this).find('.ability-rank-caps select[name^="ability_rank_cap_skill"]').attr('name', 'ability_rank_cap_skill_' + i + '[]');
             $(this).find('.ability-rank-caps input[name^="ability_rank_cap_limit"]').attr('name', 'ability_rank_cap_limit_' + i + '[]');
             $(this).find('.ability-skill-bans select').attr('name', 'ability_banned_skills_' + i + '[]');
+            $(this).find('.ability-condition-timing input').attr('name', 'ability_condition_progress_rate_' + i);
+            $(this).find('.ability-tags select').attr('name', 'ability_tags_' + i + '[]');
             $(this).find('[name^="ability_additional_group_income"]').attr('name', 'ability_additional_group_income_' + i);
             $(this).find('.ability-skill-discounts select.select2-multiple').attr('name', 'ability_discount_skills_' + i + '[]');
             $(this).find('.ability-skill-discounts input[type=number]').attr('name', 'ability_discount_value_' + i);
@@ -106,6 +108,8 @@ $(document).ready(function() {
             block.find('.ability-rank-caps').show();
         } else if ($(this).val() === 'skill_bans') {
             block.find('.ability-skill-bans').show();
+        } else if ($(this).val() === 'condition_timing') {
+            block.find('.ability-condition-timing').show();
         } else if ($(this).val() === 'group_income') {
             block.find('.ability-group-income').show();
         } else if ($(this).val() === 'skill_discounts') {
@@ -253,6 +257,16 @@ $(document).ready(function() {
                     ${skillsOptions}
                 </select>
             </div>
+            <div class="form-group mb-2 ability-extra ability-condition-timing" style="display:none;">
+                <label>Events consumed per event</label>
+                <input type="number" class="form-control" name="ability_condition_progress_rate_${idx}" min="0.01" step="any" placeholder="1">
+                <small class="form-text text-muted">2 finishes a stage in half the stated time. 4 is a quarter of the time. 0.5 makes it last twice as long. This applies to conditions that share a tag.</small>
+            </div>
+            <div class="form-group mb-2 ability-tags">
+                <label>Tags</label>
+                <select class="form-control rule-tag-select" name="ability_tags_${idx}[]" multiple title="Select or add tags"></select>
+                <small class="form-text text-muted">Search for a tag, or type a new one. Saving stores a new tag so later searches can find it.</small>
+            </div>
             <div class="form-group mb-2 ability-extra ability-skill-discounts" style="display:none;">
                 <label>Skill Discounts</label>
                 <div class="mb-2">
@@ -336,6 +350,7 @@ $(document).ready(function() {
         // Remove 'required' from all Select2 fields in the new block
         block.find('.select2-multiple, .select2-single').removeAttr('required');
         reindexAbilities();
+        initRuleTagSelects(block);
     });
 
     $(document).on('click', '.remove-ability', function() {
@@ -345,6 +360,7 @@ $(document).ready(function() {
 
     // Initial reindex in case of server-rendered abilities
     reindexAbilities();
+    initRuleTagSelects();
 
     function toggleExtraHitsPerToughness() {
         var show = $('#body_hits_type').val() === 'global';

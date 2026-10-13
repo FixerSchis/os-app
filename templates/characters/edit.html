@@ -346,8 +346,8 @@
                                                 </td>
                                                 <td>
                                                     <label for="condition_duration_{{ ac.id }}" class="sr-only">Condition duration</label>
-                                                    <input type="number" id="condition_duration_{{ ac.id }}" name="condition_duration_{{ ac.id }}" value="{{ ac.current_duration }}"
-                                                           class="form-control form-control-sm width-80-px" min="0">
+                                                    <input type="number" id="condition_duration_{{ ac.id }}" name="condition_duration_{{ ac.id }}" value="{{ ac.duration_label }}"
+                                                           class="form-control form-control-sm width-80-px" min="0" step="any">
                                                 </td>
                                                 <td>
                                                     <button type="submit" name="remove_condition" value="{{ ac.id }}" class="btn btn-danger btn-sm" aria-label="Remove condition">
@@ -356,7 +356,7 @@
                                                 </td>
                                                 {% else %}
                                                 <td>Stage {{ ac.current_stage }}</td>
-                                                <td>{{ ac.events_remaining }}</td>
+                                                <td>{{ ac.duration_label }}</td>
                                                 {% endif %}
                                             </tr>
                                             {% endfor %}

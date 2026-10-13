@@ -2,6 +2,7 @@ import json
 
 from ..enums import AbilityType, BodyHitsType
 from ..extensions import db
+from .rule_tag import ability_rule_tags
 
 
 class Ability(db.Model):
@@ -25,6 +26,7 @@ class Ability(db.Model):
     banned_skills = db.Column(db.String, nullable=True)
     skill_discounts = db.Column(db.String, nullable=True)
     additional_group_income = db.Column(db.Integer, nullable=True)
+    condition_progress_rate = db.Column(db.Float, nullable=True)
     starting_item_blueprint_id = db.Column(
         db.Integer, db.ForeignKey("item_blueprints.id"), nullable=True
     )
@@ -45,6 +47,7 @@ class Ability(db.Model):
     starting_reputation_faction = db.relationship(
         "Faction", foreign_keys=[starting_reputation_faction_id]
     )
+    tags = db.relationship("RuleTag", secondary=ability_rule_tags, order_by="RuleTag.name")
 
     @property
     def starting_skills_list(self):
