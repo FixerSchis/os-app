@@ -3,6 +3,7 @@
 Script to populate default data after migrations.
 """
 
+import html
 import importlib.util
 import logging
 import os
@@ -1490,48 +1491,46 @@ def create_default_item_types():
         db.session.commit()
 
 
+def _load_mod_definitions():
+    path = os.path.join(os.path.dirname(__file__), "default_mods.py")
+    spec = importlib.util.spec_from_file_location("default_mods", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.MOD_DEFINITIONS
+
+
+def _rows_for_names(model, names, label):
+    rows = model.query.filter(model.name.in_(names)).all()
+    missing = sorted(set(names) - {row.name for row in rows})
+    if missing:
+        raise ValueError(f"Mod seed references unknown {label}: {missing}")
+    return rows
+
+
 def create_default_mods():
-    if not Mod.query.first():
-        ew_types = ItemType.query.filter(
-            ItemType.name.in_(
-                ["Light Energy Weapon", "Medium Energy Weapon", "Heavy Energy Weapon"]
-            )
-        ).all()
-        tag = WikiTag(name="mod")
-        mods = [
-            ("Increase Charge Capacity", []),
-            ("Hardened Components", []),
-            ("Shock Bolt", ew_types),
+    if Mod.query.first():
+        return
+    for spec in _load_mod_definitions():
+        name = spec["name"]
+        logging.info(f"Adding mod: {name}")
+        wiki_slug = "mod/" + name.lower().replace(" ", "-")
+        _ensure_stub_wiki_page(
+            wiki_slug,
+            f"{name} - Mod",
+            "mod",
+            name,
+            f"<p>{html.escape(spec['description'])}</p>",
+        )
+        mod = Mod(name=name, wiki_slug=wiki_slug, description=spec["description"])
+        db.session.add(mod)
+        mod.item_types = _rows_for_names(ItemType, spec["item_types"], "item types")
+        mod.required_skills_list = [
+            skill.id for skill in _rows_for_names(Skill, spec["requires"], "skills")
         ]
-        for name, types in mods:
-            logging.info(f"Adding mod: {name}")
-            wiki_slug = "mod/" + name.lower().replace(" ", "-")
-            # Create wiki page if it doesn't exist
-            wiki_page = WikiPage.query.filter_by(slug=wiki_slug).first()
-            if not wiki_page:
-                wiki_page = WikiPage(slug=wiki_slug, title=name + " - Mod", tags=[tag])
-                db.session.add(wiki_page)
-                db.session.flush()
-                wiki_version = WikiPageVersion(
-                    page_slug=wiki_slug,
-                    version_number=1,
-                    status=WikiPageVersionStatus.PUBLISHED,
-                )
-                db.session.add(wiki_version)
-                db.session.flush()
-                wiki_section = WikiSection(
-                    id=str(uuid.uuid4()),
-                    version_id=wiki_version.id,
-                    order=0,
-                    title=name,
-                    content=f"<p>Description for {name} mod.</p>",
-                )
-                db.session.add(wiki_section)
-                db.session.flush()
-            mod = Mod(name=name, wiki_slug=wiki_slug)
-            mod.item_types = types
-            db.session.add(mod)
-        db.session.commit()
+        mod.granted_by_skills_list = [
+            skill.id for skill in _rows_for_names(Skill, spec["granted_by"], "skills")
+        ]
+    db.session.commit()
 
 
 def create_default_item_blueprints():
@@ -1545,21 +1544,21 @@ def create_default_item_blueprints():
             return Mod.query.filter_by(name=name).first()
 
         blueprints = [
-            ("AA Blaster", "Light Energy Weapon", 100, ["Increase Charge Capacity"]),
+            ("AA Blaster", "Light Energy Weapon", 100, ["Charge Cells"]),
             (
                 "AA Rifle",
                 "Medium Energy Weapon",
                 150,
-                ["Increase Charge Capacity", "Hardened Components"],
+                ["Charge Cells", "Hardened Components"],
             ),
-            ("AA Cannon", "Heavy Energy Weapon", 200, ["Shock Bolt"]),
+            ("AA Cannon", "Heavy Energy Weapon", 200, ["Heavy Shock Bolt"]),
             ("Light Combat Armor", "Light Armour", 80, []),
             ("Medium Combat Armor", "Medium Armour", 120, ["Hardened Components"]),
             ("Heavy Combat Armor", "Heavy Armour", 180, ["Hardened Components"]),
             ("Combat Knife", "Small Melee Weapon", 50, []),
             ("Vibro Sword", "Medium Melee Weapon", 80, []),
             ("Plasma Axe", "Large Melee Weapon", 120, []),
-            ("Personal Shield", "Energy Field", 200, ["Increase Charge Capacity"]),
+            ("Personal Shield", "Energy Field", 200, ["Charge Cells"]),
             ("Tactical Scanner", "Scanner", 150, []),
             ("Medical Device", "Medical Device", 100, []),
             ("Ancient Relic", "Artefact", 500, []),

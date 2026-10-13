@@ -30,6 +30,12 @@
                         <a href="{{ url_for('wiki.wiki_view', slug=mod.wiki_slug) }}">
                             {{ mod.name }}
                         </a>
+                        {% if mod.required_skills_list %}
+                        <div class="small text-muted">Requires {{ mod.get_required_skills()|map(attribute='name')|join(' or ') }}</div>
+                        {% endif %}
+                        {% if mod.granted_by_skills_list %}
+                        <div class="small text-muted">Known automatically by engineers with {{ mod.get_granted_by_skills()|map(attribute='name')|join(' or ') }}</div>
+                        {% endif %}
                     </td>
                     <td>
                         {% if mod.description %}
