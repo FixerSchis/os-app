@@ -63,6 +63,8 @@ class Config:
 
 class TestConfig(Config):
     TESTING = True
+    # A developer .env with FLASK_DEBUG=1 would otherwise make errors propagate past handlers.
+    DEBUG = False
     SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"
     WTF_CSRF_ENABLED = False
     RATELIMIT_ENABLED = False
