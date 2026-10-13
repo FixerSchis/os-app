@@ -87,18 +87,14 @@ def get_skill_cost(character_id):
 
     # Check if character has enough CP
     cost = character.get_skill_cost(skill)
-    total_skills_cost = character.get_total_skill_cost()
-    remaining_base_cp = character.base_character_points - total_skills_cost
-    cp_from_user = max(0, cost - remaining_base_cp)
+    cp_from_user = (
+        character.earned_points_spent(cost, skill.earned_points_only)
+        - character.earned_points_spent()
+    )
 
-    if character.status == CharacterStatus.ACTIVE.value and cp_from_user > 0:
-        if not current_user.can_spend_character_points(cp_from_user):
-            return jsonify(
-                {
-                    "can_purchase": False,
-                    "reason": (f"Not enough character points (need {cp_from_user} from user)"),
-                }
-            )
+    points_error = character.skill_points_error(skill, current_user, cost)
+    if points_error:
+        return jsonify({"can_purchase": False, "reason": points_error})
 
     ban_reason = character.skill_ban_reason(skill)
     if ban_reason:

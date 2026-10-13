@@ -171,6 +171,7 @@ def edit_skill_post(skill_id):
         skill.base_cost = int(base_cost)
         skill.can_purchase_multiple = can_purchase_multiple
         skill.cost_increases = cost_increases
+        skill.earned_points_only = request.form.get("earned_points_only") == "on"
         skill.max_ranks = _optional_rank_limit(request.form.get("max_ranks"))
         skill.required_skill_id = int(required_skill_id) if required_skill_id else None
         skill.required_any_skills_list = _form_skill_ids(
@@ -283,6 +284,7 @@ def new_skill():
                 base_cost=int(base_cost),
                 can_purchase_multiple=can_purchase_multiple,
                 cost_increases=cost_increases,
+                earned_points_only=request.form.get("earned_points_only") == "on",
                 max_ranks=_optional_rank_limit(request.form.get("max_ranks")),
                 required_skill_id=int(required_skill_id) if required_skill_id else None,
                 required_any_skills_list=_form_skill_ids(

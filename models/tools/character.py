@@ -48,6 +48,10 @@ def _ranked_condition_rate(first_rank_rate, ranks):
     return 1 / time_multiplier
 
 
+def _earned_points_message(skill):
+    return f"{skill.name} needs earned character points. Base character points cannot pay for it."
+
+
 def _pool_key(skill_ids):
     return tuple(sorted(int(item) for item in skill_ids or []))
 
@@ -240,20 +244,51 @@ class Character(db.Model):
     def __repr__(self):
         return f"<Character {self.name}>"
 
+    def _paid_skill_cost(self, character_skill):
+        skill = character_skill.skill
+        paid = character_skill.paid_purchases()
+        discount = self.skill_discount(skill)
+        if skill.cost_increases:
+            # The first paid purchase costs base_cost. A free rank is not a paid purchase.
+            return sum(max(0, skill.base_cost + i - discount) for i in range(paid))
+        return max(0, skill.base_cost - discount) * paid
+
     def get_total_skill_cost(self):
         """Calculate the total cost of all skills for this character."""
-        total_cost = 0
+        return sum(self._paid_skill_cost(character_skill) for character_skill in self.skills)
+
+    def earned_points_spent(self, change=0, earned_only=False):
+        """Earned points the skills need, with an optional pending cost change.
+
+        Base character points never pay for earned-points-only skills.
+        """
+        earned_only_cost = 0
+        other_cost = 0
         for character_skill in self.skills:
-            skill = character_skill.skill
-            paid = character_skill.paid_purchases()
-            discount = self.skill_discount(skill)
-            if skill.cost_increases:
-                # The first paid purchase costs base_cost. A free rank is not a paid purchase.
-                for i in range(paid):
-                    total_cost += max(0, skill.base_cost + i - discount)
+            cost = self._paid_skill_cost(character_skill)
+            if character_skill.skill.earned_points_only:
+                earned_only_cost += cost
             else:
-                total_cost += max(0, skill.base_cost - discount) * paid
-        return total_cost
+                other_cost += cost
+        if earned_only:
+            earned_only_cost += change
+        else:
+            other_cost += change
+        return earned_only_cost + max(0, other_cost - self.base_character_points)
+
+    def _unspent_base_points(self):
+        other_cost = sum(
+            self._paid_skill_cost(character_skill)
+            for character_skill in self.skills
+            if not character_skill.skill.earned_points_only
+        )
+        return max(0, self.base_character_points - other_cost)
+
+    def _unspent_earned_points(self, user_points):
+        # A developing character's earned spend is only taken from the user at activation.
+        if self.status == CharacterStatus.DEVELOPING.value:
+            return max(0, user_points - self.earned_points_spent())
+        return user_points
 
     def get_faction_name(self):
         return self.faction.name if self.faction else None
@@ -320,10 +355,33 @@ class Character(db.Model):
         user = User.query.get(self.user_id)
         user_points = user.character_points if user else 0
 
-        character_cp_balance = self.base_character_points - self.get_total_skill_cost()
-        total_available = user_points + max(0, character_cp_balance)
+        return self._unspent_earned_points(user_points) + self._unspent_base_points()
 
-        return total_available
+    def available_points_for(self, skill):
+        """Points this character can put toward the skill."""
+        if not skill.earned_points_only:
+            return self.get_available_character_points()
+        from models.tools.user import User
+
+        user = User.query.get(self.user_id)
+        return self._unspent_earned_points(user.character_points if user else 0)
+
+    def skill_points_error(self, skill, user, cost):
+        """Why the points cannot cover this skill, or None when they can."""
+        needed = self.earned_points_spent(cost, skill.earned_points_only)
+        from_user = needed - self.earned_points_spent()
+        if self.status == CharacterStatus.ACTIVE.value and from_user > 0:
+            if not user.can_spend_character_points(from_user):
+                if skill.earned_points_only:
+                    return _earned_points_message(skill)
+                return "Not enough character points"
+        if self.status == CharacterStatus.DEVELOPING.value and skill.earned_points_only:
+            from models.tools.user import User
+
+            owner = User.query.get(self.user_id)
+            if owner is None or not owner.can_spend_character_points(needed):
+                return _earned_points_message(skill)
+        return None
 
     @property
     def skill_pair_grants_list(self):
@@ -476,19 +534,9 @@ class Character(db.Model):
                     required_name = "another skill"
                 return False, f"Requires {required_name}"
 
-        cost = self.get_skill_cost(skill)
-
-        # Calculate total CP spent on all current skills
-        total_skills_cost = self.get_total_skill_cost()
-
-        # Calculate how much CP we need from the user
-        remaining_base_cp = self.base_character_points - total_skills_cost
-        cp_from_user = max(0, cost - remaining_base_cp)
-
-        # Spend CP if character is active
-        if self.status == CharacterStatus.ACTIVE.value and cp_from_user > 0:
-            if not user.can_spend_character_points(cp_from_user):
-                return False, "Not enough character points"
+        points_error = self.skill_points_error(skill, user, self.get_skill_cost(skill))
+        if points_error:
+            return False, points_error
 
         return True, None
 
@@ -499,14 +547,9 @@ class Character(db.Model):
             raise ValueError(error)
 
         cost = self.get_skill_cost(skill)
-
-        # Calculate total CP spent on all current skills
-        total_skills_cost = self.get_total_skill_cost()
-
-        # Calculate how much CP we need from the user
-        user_spent_before = max(0, total_skills_cost - self.base_character_points)
-        user_spent_after = max(0, total_skills_cost + cost - self.base_character_points)
-        cp_from_user = user_spent_after - user_spent_before
+        cp_from_user = (
+            self.earned_points_spent(cost, skill.earned_points_only) - self.earned_points_spent()
+        )
 
         # Spend CP if character is active
         if self.status == CharacterStatus.ACTIVE.value and cp_from_user > 0:
@@ -615,12 +658,9 @@ class Character(db.Model):
 
         note_skill_refund(self, skill)
 
-        # Calculate how much CP was spent from the user's pool before the refund
-        total_skills_cost_before = self.get_total_skill_cost()
-        user_spent_before = max(0, total_skills_cost_before - self.base_character_points)
-
-        # Calculate refund amount for this specific skill purchase
         refund_amount = self.get_skill_cost(skill, is_refund=True)
+        user_spent_before = self.earned_points_spent()
+        user_spent_after = self.earned_points_spent(-refund_amount, skill.earned_points_only)
 
         # Handle reputation removal if character is active
         if (
@@ -641,10 +681,6 @@ class Character(db.Model):
         else:
             # Decrease the times purchased
             character_skill.times_purchased -= 1
-
-        # Calculate how much CP would be spent from the user's pool after the refund
-        total_skills_cost_after = total_skills_cost_before - refund_amount
-        user_spent_after = max(0, total_skills_cost_after - self.base_character_points)
 
         # The actual refund is the difference
         refund_to_user = user_spent_before - user_spent_after

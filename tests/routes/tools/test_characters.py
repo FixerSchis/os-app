@@ -660,6 +660,91 @@ def test_admin_character_edit_commits_conditions_and_points(test_client, db):
     assert character_condition.current_duration == 1
 
 
+def test_user_editor_sets_owner_earned_points_from_character_page(test_client, db):
+    """Staff with user.edit set the owner's earned pool on the character form; players cannot."""
+    from tests.conftest import assign_role_to_user
+
+    admin = User(email="earned-admin@example.com", first_name="Earned", surname="Admin")
+    admin.set_password("password")
+    admin.email_verified = True
+    player = User(email="earned-player@example.com", first_name="Earned", surname="Player")
+    player.set_password("password")
+    player.email_verified = True
+    db.session.add_all([admin, player])
+    db.session.commit()
+    assign_role_to_user(admin, "admin", db.session)
+    faction = Faction(name="Earned Faction", wiki_slug="earned", allow_player_characters=True)
+    db.session.add(faction)
+    db.session.flush()
+    species = Species(
+        name="Earned Species",
+        wiki_page="earned-species",
+        body_hits_type="locational",
+        body_hits=3,
+        death_count=1,
+        permitted_factions_list=[faction.id],
+    )
+    db.session.add(species)
+    db.session.flush()
+    character = Character(
+        user_id=player.id,
+        name="Earned Subject",
+        status=CharacterStatus.ACTIVE.value,
+        faction_id=faction.id,
+        species_id=species.id,
+    )
+    db.session.add(character)
+    db.session.commit()
+    form = {
+        "name": "Earned Subject",
+        "pronouns_subject": "they",
+        "pronouns_object": "them",
+        "faction": str(faction.id),
+        "species_id": str(species.id),
+        "base_character_points": "10",
+    }
+
+    with test_client.session_transaction() as session:
+        session["_user_id"] = admin.id
+        session["_fresh"] = True
+    page = test_client.get(f"/characters/{character.id}/edit").get_data(as_text=True)
+    assert 'name="earned_character_points"' in page
+
+    test_client.post(
+        f"/characters/{character.id}/edit", data={**form, "earned_character_points": "2.5"}
+    )
+    db.session.refresh(player)
+    assert player.character_points == 2.5
+
+    for bad, message in (
+        ("-1", b"Earned character points cannot be negative."),
+        ("1.25", b"Earned character points must be a whole or half point."),
+    ):
+        response = test_client.post(
+            f"/characters/{character.id}/edit",
+            data={**form, "earned_character_points": bad},
+            follow_redirects=True,
+        )
+        assert message in response.data
+    db.session.refresh(player)
+    assert player.character_points == 2.5
+
+    from flask import g
+
+    # The fixture's app context outlives requests, so Flask-Login's cached user must go too.
+    g.pop("_login_user", None)
+    with test_client.session_transaction() as session:
+        session["_user_id"] = player.id
+        session["_fresh"] = True
+    page = test_client.get(f"/characters/{character.id}/edit").get_data(as_text=True)
+    assert 'name="earned_character_points"' not in page
+    test_client.post(
+        f"/characters/{character.id}/edit", data={**form, "earned_character_points": "50"}
+    )
+    db.session.refresh(player)
+    assert player.character_points == 2.5
+
+
 def test_create_character_page_has_no_character_abilities(test_client, db):
     """Character abilities are only edited on an existing character, even by staff."""
     from tests.conftest import assign_role_to_user

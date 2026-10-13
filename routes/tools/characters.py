@@ -133,6 +133,28 @@ def _posted_base_character_points(user):
     return points, None
 
 
+def _posted_earned_character_points(user):
+    """Parse the owner's earned character points pool from the character form.
+
+    Returns (points, error_message). points is None when the field was not submitted
+    or the user cannot edit users.
+    """
+    if "earned_character_points" not in request.form:
+        return None, None
+    if not user.has_permission("user.edit"):
+        return None, None
+    raw = (request.form.get("earned_character_points") or "").strip()
+    try:
+        points = float(raw)
+    except ValueError:
+        return None, "Earned character points must be a number."
+    if points < 0:
+        return None, "Earned character points cannot be negative."
+    if points * 2 != int(points * 2):
+        return None, "Earned character points must be a whole or half point."
+    return points, None
+
+
 characters_bp = Blueprint("characters", __name__)
 
 
@@ -546,6 +568,8 @@ def edit_post(character_id):
             return _edit_redirect(character, admin_context)
 
     posted_points, points_error = _posted_base_character_points(current_user)
+    posted_earned, earned_error = _posted_earned_character_points(current_user)
+    points_error = points_error or earned_error
     if points_error:
         flash(points_error, "error")
         redirect_url = url_for("characters.edit", character_id=character.id)
@@ -584,6 +608,13 @@ def edit_post(character_id):
             f"Base character points changed from '{character.base_character_points}' "
             f"to '{posted_points}'"
         )
+    owner = character.user
+    if posted_earned is not None and owner.character_points != posted_earned:
+        basic_changes.append(
+            f"Player earned character points changed from '{owner.character_points:g}' "
+            f"to '{posted_earned:g}'"
+        )
+        owner.character_points = posted_earned
 
     character.name = name
     character.pronouns_subject = pronouns_subject
@@ -1137,18 +1168,16 @@ def activate_character(character_id):
         flash("Could not find character owner.", "error")
         return redirect(url_for("characters.character_list"))
 
-    total_skill_cost = character.get_total_skill_cost()
-    if total_skill_cost > character.base_character_points and not user.can_spend_character_points(
-        total_skill_cost - character.base_character_points
-    ):
+    earned_spend = character.earned_points_spent()
+    if earned_spend > 0 and not user.can_spend_character_points(earned_spend):
         flash("Not enough character points to activate character.", "error")
         return redirect(url_for("characters.character_list"))
 
     if character.character_id is None:
         character.character_id = assign_character_id(character.user_id)
 
-    if total_skill_cost > character.base_character_points:
-        user.spend_character_points(total_skill_cost - character.base_character_points)
+    if earned_spend > 0:
+        user.spend_character_points(earned_spend)
 
     character.status = CharacterStatus.ACTIVE.value
 
@@ -1237,7 +1266,10 @@ def activate_character(character_id):
         character_id=character.id,
         editor_user_id=current_user.id,
         action=CharacterAuditAction.STATUS_CHANGE.value,
-        changes=(f"Character activated. Spent {total_skill_cost} character points on skills."),
+        changes=(
+            f"Character activated. Spent {character.get_total_skill_cost()} character points "
+            "on skills."
+        ),
     )
     db.session.add(audit)
     db.session.commit()

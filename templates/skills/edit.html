@@ -112,6 +112,14 @@
                   <label class="form-check-label" for="cost_increases">Cost increases with each purchase</label>
                 </td>
               </tr>
+              <tr>
+                <td class="width-1-5-em" style="vertical-align: middle;">
+                  <input class="form-check-input" type="checkbox" id="earned_points_only" name="earned_points_only" {% if skill and skill.earned_points_only %}checked{% endif %}>
+                </td>
+                <td>
+                  <label class="form-check-label" for="earned_points_only">Earned character points only (base character points cannot pay for it)</label>
+                </td>
+              </tr>
             </table>
 
             <div class="form-group">

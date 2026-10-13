@@ -1208,3 +1208,64 @@ def test_extra_will_point_ranks_add_to_discipline_will(db, new_user, character):
     db.session.refresh(character)
 
     assert character.get_character_sheet_values()["will"] == {"name": "Will Points", "value": 5}
+
+
+def _earned_only_skill(db, name="Mutate Claws [1]"):
+    mutation = Skill(name=name, base_cost=2, skill_type="mutation", earned_points_only=True)
+    db.session.add(mutation)
+    db.session.commit()
+    return mutation
+
+
+def test_earned_only_skill_cannot_use_base_points(db, new_user, character):
+    """Unspent base points never pay for a mutation; only earned points do."""
+    from models.tools.user import User
+
+    mutation = _earned_only_skill(db)
+    assert character.get_available_character_points() == 10
+    assert character.available_points_for(mutation) == 0
+    allowed, reason = character.can_purchase_skill(mutation, new_user)
+    assert not allowed
+    assert reason == (
+        "Mutate Claws [1] needs earned character points. "
+        "Base character points cannot pay for it."
+    )
+
+    new_user.add_character_points(1)
+    db.session.commit()
+    assert not character.can_purchase_skill(mutation, new_user)[0]
+
+    new_user.add_character_points(1)
+    db.session.commit()
+    character.purchase_skill(mutation, new_user)
+    assert User.query.get(new_user.id).character_points == 0
+    assert character.get_available_character_points() == 10
+
+    ordinary = Skill(name="Ordinary", base_cost=10, skill_type="professional")
+    db.session.add(ordinary)
+    db.session.commit()
+    character.purchase_skill(ordinary, new_user)
+    assert User.query.get(new_user.id).character_points == 0
+    assert character.earned_points_spent() == 2
+
+    character.refund_skill(mutation, new_user)
+    assert User.query.get(new_user.id).character_points == 2
+    assert character.earned_points_spent() == 0
+
+
+def test_developing_character_needs_earned_points_for_mutations(db, new_user, character):
+    """A developing character's mutations wait on earned points, charged at activation."""
+    character.status = CharacterStatus.DEVELOPING.value
+    first = _earned_only_skill(db)
+    second = _earned_only_skill(db, "Mutate Claws [2]")
+    ordinary = Skill(name="Ordinary", base_cost=12, skill_type="professional")
+    db.session.add(ordinary)
+    new_user.add_character_points(4)
+    db.session.merge(new_user)
+    db.session.commit()
+
+    character.purchase_skill(first, new_user)
+    character.purchase_skill(ordinary, new_user)
+    assert character.earned_points_spent() == 4
+    assert character.available_points_for(second) == 0
+    assert not character.can_purchase_skill(second, new_user)[0]

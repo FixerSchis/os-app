@@ -645,6 +645,7 @@ def create_default_skills():
             base_cost=spec["base_cost"],
             can_purchase_multiple=spec.get("multiple", False),
             cost_increases=spec.get("increases", False),
+            earned_points_only=spec.get("earned_only", False),
             max_ranks=spec.get("max_ranks"),
             adds_engineering_mods=spec.get("mods", 0),
             adds_engineering_downtime=spec.get("eng_slots", 0),
@@ -745,6 +746,7 @@ def _mutation_rank_rows(definitions):
                 description=_skill_description(spec),
                 skill_type=spec["skill_type"],
                 base_cost=spec["base_cost"],
+                earned_points_only=spec.get("earned_only", False),
             )
             db.session.add(skill)
             added = True

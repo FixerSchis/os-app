@@ -142,7 +142,7 @@ def _mutation(name, ranks):
     prerequisite = None
     note = " Cannot be bought with starting character points."
     for index, effect in enumerate(ranks, start=1):
-        flags = {"species": "N-DAX"}
+        flags = {"species": "N-DAX", "earned_only": True}
         if prerequisite:
             flags["requires"] = prerequisite
         skill_name = f"{name} [{index}]"

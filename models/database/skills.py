@@ -56,6 +56,7 @@ class Skill(db.Model):
     base_cost = db.Column(db.Integer, nullable=False)
     can_purchase_multiple = db.Column(db.Boolean, nullable=False, default=False)
     cost_increases = db.Column(db.Boolean, nullable=False, default=False)
+    earned_points_only = db.Column(db.Boolean, nullable=False, default=False)
     max_ranks = db.Column(db.Integer, nullable=True)
     character_sheet_values = db.Column(db.String, nullable=True)  # Stored as JSON string
 
