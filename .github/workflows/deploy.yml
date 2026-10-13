@@ -12,9 +12,7 @@ jobs:
   deploy:
     name: Deploy to Production Server
     runs-on: ubuntu-latest
-    # Temporarily disabled while production issues are investigated.
-    # Re-enable with: if: ${{ github.event.workflow_run.conclusion == 'success' }}
-    if: ${{ false }}
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
 
     steps:
     - name: Checkout code
