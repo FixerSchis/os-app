@@ -77,10 +77,12 @@ def test_email_verified_required_without_verified_email():
         return "success"
 
     with patch("utils.decorators.current_user", mock_user):
-        with patch("utils.decorators.flash") as mock_flash:
+        with patch("utils.decorators.db") as mock_db:
             with patch("utils.decorators.redirect") as mock_redirect:
-                with patch("utils.decorators.url_for") as mock_url_for:
-                    mock_url_for.return_value = "/verify"
-                    test_function()
-                    mock_flash.assert_called_once()
-                    mock_redirect.assert_called_once_with("/verify")
+                result = test_function()
+                assert result == "success"
+                assert mock_user.email_verified is True
+                assert mock_user.verification_token is None
+                assert mock_user.verification_token_expires is None
+                mock_db.session.commit.assert_called_once()
+                mock_redirect.assert_not_called()
