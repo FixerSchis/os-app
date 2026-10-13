@@ -82,6 +82,7 @@
                 {% set is_starting_choices = ability.type == AbilityType.STARTING_SKILL_CHOICES %}
                 {% set is_skill_pairs = ability.type == AbilityType.FIRST_SKILL_PAIR %}
                 {% set is_rank_caps = ability.type == AbilityType.SKILL_RANK_CAPS %}
+                {% set is_skill_bans = ability.type == AbilityType.SKILL_BANS %}
                 {% set is_group_income = ability.type == AbilityType.GROUP_INCOME %}
                 {% set is_skill_discounts = ability.type == AbilityType.SKILL_DISCOUNTS %}
                 {% set is_starting_item = ability.type == AbilityType.STARTING_ITEM %}
@@ -190,6 +191,14 @@
                         {% endfor %}
                         </div>
                         <button type="button" class="btn btn-secondary btn-sm add-rank-cap">Add cap</button>
+                    </div>
+                    <div class="form-group mb-2 ability-extra ability-skill-bans" {% if not is_skill_bans %}style="display:none;"{% endif %}>
+                        <label for="ability_banned_skills_{{ loop.index0 }}">Banned skills</label>
+                        <select class="form-control select2-multiple" id="ability_banned_skills_{{ loop.index0 }}" name="ability_banned_skills_{{ loop.index0 }}[]" multiple title="Skills this species cannot buy">
+                            {% for skill in skills_list %}
+                            <option value="{{ skill.id }}" {% if is_skill_bans and (skill.id|string) in ability.banned_skills_list %}selected{% endif %}>{{ skill.name }}</option>
+                            {% endfor %}
+                        </select>
                     </div>
                     <div class="form-group mb-2 ability-extra ability-skill-discounts" {% if not is_skill_discounts %}style="display:none;"{% endif %}>
                         <label>Skill Discounts</label>

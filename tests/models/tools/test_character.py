@@ -1099,3 +1099,34 @@ def test_character_abilities_print_after_species_abilities(db, new_user, charact
         "Natural armour",
     ]
     assert [ability.name for ability in species.abilities] == ["Regeneration"]
+
+
+def test_skill_ban_stops_that_species_buying_the_skill(db, new_user, character, species):
+    """A skill-ban ability blocks purchase for that species only."""
+    from models.database.species import Ability
+    from models.enums import AbilityType
+
+    banned = Skill(name="Heavy Armour Training", base_cost=1, skill_type="combat")
+    allowed = Skill(name="Shield Training", base_cost=1, skill_type="combat")
+    db.session.add_all([banned, allowed])
+    db.session.flush()
+    ban = Ability(
+        name="Skill bans",
+        description="Cannot buy heavy armour.",
+        type=AbilityType.SKILL_BANS,
+        species=species,
+    )
+    ban.banned_skills_list = [banned.id]
+    outsider = Character(
+        user_id=new_user.id,
+        name="Unrestricted",
+        status=CharacterStatus.ACTIVE.value,
+    )
+    character.species = species
+    db.session.add_all([ban, outsider])
+    db.session.commit()
+
+    with pytest.raises(ValueError, match="cannot buy Heavy Armour Training"):
+        character.purchase_skill(banned, new_user)
+    character.purchase_skill(allowed, new_user)
+    outsider.purchase_skill(banned, new_user)

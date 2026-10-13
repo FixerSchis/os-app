@@ -16,6 +16,10 @@ from utils.permission_decorators import permission_required
 species_bp = Blueprint("species", __name__)
 
 
+def _assign_banned_skills(ability, index):
+    ability.banned_skills_list = request.form.getlist(f"ability_banned_skills_{index}[]")
+
+
 def _assign_rank_caps(ability, index):
     skill_ids = request.form.getlist(f"ability_rank_cap_skill_{index}[]")
     limits = request.form.getlist(f"ability_rank_cap_limit_{index}[]")
@@ -244,6 +248,8 @@ def edit_species_post(species_id):
                 _assign_skill_pairs(ab, i)
             elif ab_type == AbilityType.SKILL_RANK_CAPS.value:
                 _assign_rank_caps(ab, i)
+            elif ab_type == AbilityType.SKILL_BANS.value:
+                _assign_banned_skills(ab, i)
             elif ab_type == AbilityType.SKILL_DISCOUNTS.value:
                 discounts = {}
                 skills = request.form.getlist(f"ability_discount_skills_{i}[]")
@@ -409,6 +415,8 @@ def new_species_post():
                 _assign_skill_pairs(ab, i)
             elif ab_type == AbilityType.SKILL_RANK_CAPS.value:
                 _assign_rank_caps(ab, i)
+            elif ab_type == AbilityType.SKILL_BANS.value:
+                _assign_banned_skills(ab, i)
             elif ab_type == AbilityType.SKILL_DISCOUNTS.value:
                 discounts = {}
                 skills = request.form.getlist(f"ability_discount_skills_{i}[]")

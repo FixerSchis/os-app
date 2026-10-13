@@ -41,6 +41,9 @@ def character_skills(character_id):
         if character.skill_requirement_error(skill):
             continue
 
+        if character.skill_ban_reason(skill):
+            continue
+
         # Check required factions
         if skill.required_factions:
             required_factions = skill.required_factions_list
@@ -96,6 +99,10 @@ def get_skill_cost(character_id):
                     "reason": (f"Not enough character points (need {cp_from_user} from user)"),
                 }
             )
+
+    ban_reason = character.skill_ban_reason(skill)
+    if ban_reason:
+        return jsonify({"can_purchase": False, "reason": ban_reason})
 
     # Check required skill
     if skill.required_skill_id:

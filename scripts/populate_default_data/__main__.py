@@ -1024,6 +1024,44 @@ def _ability_type_value(ability):
     return ability_type.value if hasattr(ability_type, "value") else ability_type
 
 
+_FELANI_BANNED_SKILLS = (
+    "Heavy Armour Training",
+    "Heavy Energy Weapon Training",
+    "Large Melee Weapon Training",
+)
+
+
+def link_default_skill_bans():
+    """Stop Felani buying heavy armour, heavy energy weapons, and large melee weapons."""
+    if _add_felani_skill_bans():
+        db.session.commit()
+
+
+def _add_felani_skill_bans():
+    species = Species.query.filter_by(name="Felani").first()
+    if species is None or _species_has_ability(species, AbilityType.SKILL_BANS):
+        return False
+    skill_ids = []
+    for skill_name in _FELANI_BANNED_SKILLS:
+        skill = Skill.query.filter_by(name=skill_name).first()
+        if skill is None:
+            logging.warning(f"Banned skill {skill_name} is missing; skipped Felani")
+            return False
+        skill_ids.append(str(skill.id))
+    ability = Ability(
+        species_id=species.id,
+        name="Skill bans",
+        description=(
+            "Cannot buy Heavy Armour Training, Heavy Energy Weapon Training, "
+            "or Large Melee Weapon Training."
+        ),
+        type=AbilityType.SKILL_BANS,
+    )
+    ability.banned_skills_list = skill_ids
+    db.session.add(ability)
+    return True
+
+
 def link_default_rank_limits():
     """Set catalogue rank limits, and Felani's lower caps, when they are still empty."""
     changed = False
@@ -1823,6 +1861,7 @@ def create_default_data():
     link_default_skill_species()
     link_default_starting_skills()
     link_default_rank_limits()
+    link_default_skill_bans()
     link_default_status_discounts()
     link_default_group_income()
     link_default_toughness_hits()

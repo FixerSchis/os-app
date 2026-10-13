@@ -22,6 +22,7 @@ class Ability(db.Model):
     starting_skill_choices = db.Column(db.String, nullable=True)
     skill_pairs = db.Column(db.String, nullable=True)
     rank_caps = db.Column(db.String, nullable=True)
+    banned_skills = db.Column(db.String, nullable=True)
     skill_discounts = db.Column(db.String, nullable=True)
     additional_group_income = db.Column(db.Integer, nullable=True)
     starting_item_blueprint_id = db.Column(
@@ -82,6 +83,18 @@ class Ability(db.Model):
     @rank_caps_list.setter
     def rank_caps_list(self, caps):
         self.rank_caps = json.dumps(caps) if caps else None
+
+    @property
+    def banned_skills_list(self):
+        if not self.banned_skills:
+            return []
+        return [str(skill_id) for skill_id in json.loads(self.banned_skills)]
+
+    @banned_skills_list.setter
+    def banned_skills_list(self, skill_ids):
+        self.banned_skills = (
+            json.dumps([str(skill_id) for skill_id in skill_ids]) if skill_ids else None
+        )
 
     @property
     def skill_discounts_dict(self):

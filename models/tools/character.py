@@ -403,6 +403,19 @@ class Character(db.Model):
                 limit = species_limit if limit is None else min(limit, species_limit)
         return limit
 
+    def skill_ban_reason(self, skill):
+        """Why this species cannot buy the skill, or None when the purchase is allowed."""
+        if self.species is None:
+            return None
+        from models.database.skills import id_listed
+
+        for ability in self.species.abilities:
+            if _ability_type_value(ability) != AbilityType.SKILL_BANS.value:
+                continue
+            if id_listed(ability.banned_skills_list, skill.id):
+                return f"{self.species.name} cannot buy {skill.name}"
+        return None
+
     def can_purchase_skill(self, skill, user):
         """Check if the character can purchase a skill."""
         # Check if user has permission
@@ -428,6 +441,10 @@ class Character(db.Model):
         rank_limit = self.maximum_rank(skill)
         if rank_limit is not None and owned_ranks >= rank_limit:
             return False, f"Maximum {rank_limit} ranks"
+
+        ban_reason = self.skill_ban_reason(skill)
+        if ban_reason:
+            return False, ban_reason
 
         requirement_error = self.skill_requirement_error(skill)
         if requirement_error:

@@ -25,6 +25,7 @@ $(document).ready(function() {
             $(this).find('.ability-skill-pairs select[name^="ability_pair_granted"]').attr('name', 'ability_pair_granted_' + i + '[]');
             $(this).find('.ability-rank-caps select[name^="ability_rank_cap_skill"]').attr('name', 'ability_rank_cap_skill_' + i + '[]');
             $(this).find('.ability-rank-caps input[name^="ability_rank_cap_limit"]').attr('name', 'ability_rank_cap_limit_' + i + '[]');
+            $(this).find('.ability-skill-bans select').attr('name', 'ability_banned_skills_' + i + '[]');
             $(this).find('[name^="ability_additional_group_income"]').attr('name', 'ability_additional_group_income_' + i);
             $(this).find('.ability-skill-discounts select.select2-multiple').attr('name', 'ability_discount_skills_' + i + '[]');
             $(this).find('.ability-skill-discounts input[type=number]').attr('name', 'ability_discount_value_' + i);
@@ -103,6 +104,8 @@ $(document).ready(function() {
             block.find('.ability-skill-pairs').show();
         } else if ($(this).val() === 'skill_rank_caps') {
             block.find('.ability-rank-caps').show();
+        } else if ($(this).val() === 'skill_bans') {
+            block.find('.ability-skill-bans').show();
         } else if ($(this).val() === 'group_income') {
             block.find('.ability-group-income').show();
         } else if ($(this).val() === 'skill_discounts') {
@@ -243,6 +246,12 @@ $(document).ready(function() {
                 <label>Maximum ranks for this species</label>
                 <div class="rank-cap-rows"></div>
                 <button type="button" class="btn btn-secondary btn-sm add-rank-cap">Add cap</button>
+            </div>
+            <div class="form-group mb-2 ability-extra ability-skill-bans" style="display:none;">
+                <label>Banned skills</label>
+                <select class="form-control select2-multiple" name="ability_banned_skills_${idx}[]" multiple>
+                    ${skillsOptions}
+                </select>
             </div>
             <div class="form-group mb-2 ability-extra ability-skill-discounts" style="display:none;">
                 <label>Skill Discounts</label>
