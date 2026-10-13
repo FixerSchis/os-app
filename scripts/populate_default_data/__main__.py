@@ -1463,18 +1463,25 @@ def create_default_medicaments():
 def create_default_item_types():
     if not ItemType.query.first():
         default_types = [
-            ("Light Energy Weapon", "EW"),
-            ("Medium Energy Weapon", "EW"),
-            ("Heavy Energy Weapon", "EW"),
-            ("Light Armor", "AR"),
-            ("Medium Armor", "AR"),
-            ("Heavy Armor", "AR"),
             ("Small Melee Weapon", "MW"),
             ("Medium Melee Weapon", "MW"),
             ("Large Melee Weapon", "MW"),
+            ("Light Energy Weapon", "EW"),
+            ("Medium Energy Weapon", "EW"),
+            ("Heavy Energy Weapon", "EW"),
+            ("Projectile", "PJ"),
+            ("Shield", "SH"),
+            ("Light Armour", "AR"),
+            ("Medium Armour", "AR"),
+            ("Heavy Armour", "AR"),
+            ("Assault Armour", "AR"),
             ("Energy Field", "EF"),
             ("Scanner", "DV"),
-            ("Device", "DV"),
+            ("Charge Pack", "DV"),
+            ("Engineering Device", "DV"),
+            ("Engineering Tools", "DV"),
+            ("Medical Device", "DV"),
+            ("Breathing Mask", "DV"),
             ("Artefact", "AX"),
         ]
         for name, prefix in default_types:
@@ -1546,15 +1553,15 @@ def create_default_item_blueprints():
                 ["Increase Charge Capacity", "Hardened Components"],
             ),
             ("AA Cannon", "Heavy Energy Weapon", 200, ["Shock Bolt"]),
-            ("Light Combat Armor", "Light Armor", 80, []),
-            ("Medium Combat Armor", "Medium Armor", 120, ["Hardened Components"]),
-            ("Heavy Combat Armor", "Heavy Armor", 180, ["Hardened Components"]),
+            ("Light Combat Armor", "Light Armour", 80, []),
+            ("Medium Combat Armor", "Medium Armour", 120, ["Hardened Components"]),
+            ("Heavy Combat Armor", "Heavy Armour", 180, ["Hardened Components"]),
             ("Combat Knife", "Small Melee Weapon", 50, []),
             ("Vibro Sword", "Medium Melee Weapon", 80, []),
             ("Plasma Axe", "Large Melee Weapon", 120, []),
             ("Personal Shield", "Energy Field", 200, ["Increase Charge Capacity"]),
             ("Tactical Scanner", "Scanner", 150, []),
-            ("Medical Device", "Device", 100, []),
+            ("Medical Device", "Medical Device", 100, []),
             ("Ancient Relic", "Artefact", 500, []),
         ]
 
@@ -1614,16 +1621,26 @@ def create_default_group_types():
     if not GroupType.query.first():
         logging.info("Creating default group types")
 
+        def blueprints_for_types(type_names):
+            return ItemBlueprint.query.join(ItemType).filter(ItemType.name.in_(type_names)).all()
+
         # Get some item blueprints for the group types
-        weapons_blueprints = ItemBlueprint.query.filter(
-            ItemBlueprint.item_type_id.in_([1, 2, 3])
-        ).all()
-        armor_blueprints = ItemBlueprint.query.filter(
-            ItemBlueprint.item_type_id.in_([4, 5, 6])
-        ).all()
-        device_blueprints = ItemBlueprint.query.filter(
-            ItemBlueprint.item_type_id.in_([7, 8, 9])
-        ).all()
+        weapons_blueprints = blueprints_for_types(
+            [
+                "Small Melee Weapon",
+                "Medium Melee Weapon",
+                "Large Melee Weapon",
+                "Light Energy Weapon",
+                "Medium Energy Weapon",
+                "Heavy Energy Weapon",
+            ]
+        )
+        armor_blueprints = blueprints_for_types(
+            ["Light Armour", "Medium Armour", "Heavy Armour", "Assault Armour"]
+        )
+        device_blueprints = blueprints_for_types(
+            ["Scanner", "Engineering Device", "Engineering Tools", "Medical Device"]
+        )
 
         group_types = [
             GroupType(
