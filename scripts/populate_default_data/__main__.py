@@ -1477,11 +1477,11 @@ def create_default_item_types():
             ("Assault Armour", "AR"),
             ("Energy Field", "EF"),
             ("Scanner", "DV"),
-            ("Charge Pack", "CP"),
+            ("Charge Pack", "DV"),
             ("Engineering Device", "DV"),
-            ("Engineering Tools", "ET"),
+            ("Engineering Tools", "DV"),
             ("Medical Device", "DV"),
-            ("Breathing Mask", "BM"),
+            ("Breathing Mask", "DV"),
             ("Artefact", "AX"),
         ]
         for name, prefix in default_types:
