@@ -2,6 +2,10 @@
 
 {% block title %}{{ 'Edit' if character else 'Create' }} Character - Orion Sphere LRP{% endblock %}
 
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/pages/character-edit.css') }}">
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid px-0">
     <div class="character-management">
@@ -160,6 +164,40 @@
                                                   {% if is_readonly %}readonly{% endif %}>{{ character.concept if character else '' }}</textarea>
                                     </div>
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {% set catalogue = starting_skill_catalogue|default([]) %}
+                {% set free_skill_ids = (character.skills|selectattr('free_ranks')|map(attribute='skill_id')|list) if character else [] %}
+                <div class="col-12" id="character-creation-choices" style="display:none;">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Choices</h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="starting-skill-picks">
+                                {% for entry in catalogue %}
+                                <div class="starting-skill-panel creation-choice-panel" data-species-id="{{ entry.species_id }}" style="display:none;">
+                                    <p class="mb-3">Choose the free starting skills for this species.</p>
+                                    <div class="creation-choice-groups">
+                                        {% for group in entry.groups %}
+                                        <div class="creation-choice-group" style="--choice-weight: {{ group.skills|length }};">
+                                            <div class="creation-choice-heading">{{ group.label }} <span class="text-muted fw-normal">choose {{ group.count }}</span></div>
+                                            <div class="creation-choice-skills">
+                                                {% for skill in group.skills %}
+                                                <div class="form-check"{% if skill.description %} data-bs-toggle="tooltip" data-bs-placement="top" data-bs-custom-class="creation-choice-tooltip" title="{{ skill.description }}"{% endif %}>
+                                                    <input class="form-check-input starting-skill-pick" type="checkbox" name="starting_skill_pick" value="{{ skill.id }}" id="starting-skill-{{ entry.species_id }}-{{ skill.id }}" data-skill-type="{{ group.skill_type }}" data-max="{{ group.count }}" {% if skill.id in free_skill_ids %}checked{% endif %}{% if skill.description %} aria-description="{{ skill.description }}"{% endif %}>
+                                                    <label class="form-check-label" for="starting-skill-{{ entry.species_id }}-{{ skill.id }}">{{ skill.name }}</label>
+                                                </div>
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                {% endfor %}
                             </div>
                         </div>
                     </div>

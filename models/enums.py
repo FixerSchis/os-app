@@ -82,6 +82,7 @@ class WikiPageVersionStatus(Enum):
 class AbilityType(Enum):
     GENERIC = "generic"
     STARTING_SKILLS = "starting_skills"
+    STARTING_SKILL_CHOICES = "starting_skill_choices"
     SKILL_DISCOUNTS = "skill_discounts"
     GROUP_INCOME = "group_income"
     STARTING_ITEM = "starting_item"
@@ -96,6 +97,7 @@ class AbilityType(Enum):
         return {
             cls.GENERIC.value: "Generic Ability",
             cls.STARTING_SKILLS.value: "Starting Skills",
+            cls.STARTING_SKILL_CHOICES.value: "Starting Skill Choices",
             cls.SKILL_DISCOUNTS.value: "Skill Discounts",
             cls.GROUP_INCOME.value: "Group Income",
             cls.STARTING_ITEM.value: "Starting Item",

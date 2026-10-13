@@ -74,6 +74,7 @@
                 {% for ability in (species.abilities if species else []) %}
                 {% set ability_type_value = ability.type.value if ability.type is not string else ability.type %}
                 {% set is_starting_skills = ability.type == AbilityType.STARTING_SKILLS %}
+                {% set is_starting_choices = ability.type == AbilityType.STARTING_SKILL_CHOICES %}
                 {% set is_skill_discounts = ability.type == AbilityType.SKILL_DISCOUNTS %}
                 {% set is_starting_item = ability.type == AbilityType.STARTING_ITEM %}
                 {% set is_starting_reputation = ability.type == AbilityType.STARTING_REPUTATION %}
@@ -102,6 +103,24 @@
                                 <option value="{{ skill.id }}" {% if is_starting_skills and (skill.id|string) in ability.starting_skills_list %}selected{% endif %}>{{ skill.name }}</option>
                                 {% endfor %}
                             </select>
+                    </div>
+                    <div class="form-group mb-2 ability-extra ability-starting-choices" {% if not is_starting_choices %}style="display:none;"{% endif %}>
+                        <label>Starting skill choices</label>
+                        {% set ability_index = loop.index0 %}
+                        {% set saved_choices = ability.starting_skill_choices_list if is_starting_choices else [] %}
+                        {% for slot in range(2) %}
+                        {% set saved = saved_choices[slot] if slot < (saved_choices|length) else none %}
+                        <div class="row mb-2">
+                            <div class="col-md-6">
+                                <label class="sr-only" for="ability_choice_type_{{ ability_index }}_{{ slot }}">Skill type</label>
+                                <input class="form-control" id="ability_choice_type_{{ ability_index }}_{{ slot }}" name="ability_choice_type_{{ ability_index }}[]" placeholder="Skill type, such as standard_program" value="{{ saved.skill_type if saved else '' }}">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="sr-only" for="ability_choice_count_{{ ability_index }}_{{ slot }}">How many</label>
+                                <input type="number" class="form-control" id="ability_choice_count_{{ ability_index }}_{{ slot }}" name="ability_choice_count_{{ ability_index }}[]" placeholder="How many" min="1" value="{{ saved.count if saved else '' }}">
+                            </div>
+                        </div>
+                        {% endfor %}
                     </div>
                     <div class="form-group mb-2 ability-extra ability-skill-discounts" {% if not is_skill_discounts %}style="display:none;"{% endif %}>
                         <label>Skill Discounts</label>

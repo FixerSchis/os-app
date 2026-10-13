@@ -59,13 +59,84 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // Initialize the species filter
             initSpeciesFilter('faction', 'species_id', userIsAdmin, userIsNpc);
+            initCreationChoiceTooltips();
+            showStartingSkillPicks();
         } catch (e) {
             console.error('Error parsing user info:', e);
             // Fallback: initialize without admin privileges
             initSpeciesFilter('faction', 'species_id', false, false);
+            initCreationChoiceTooltips();
+            showStartingSkillPicks();
         }
     } else {
         // Fallback: initialize without admin privileges
         initSpeciesFilter('faction', 'species_id', false, false);
+        initCreationChoiceTooltips();
+        showStartingSkillPicks();
+    }
+});
+
+function currentSpeciesId() {
+    const speciesSelect = document.getElementById('species_id');
+    if (speciesSelect && speciesSelect.value) {
+        return speciesSelect.value;
+    }
+    const hidden = document.querySelector('input[name="species_id"]');
+    return hidden ? hidden.value : '';
+}
+
+function showStartingSkillPicks() {
+    const speciesId = String(currentSpeciesId());
+    document.querySelectorAll('.starting-skill-panel').forEach(function(panel) {
+        const match = panel.dataset.speciesId === speciesId;
+        panel.style.display = match ? '' : 'none';
+        panel.dataset.active = match ? 'true' : 'false';
+        panel.querySelectorAll('input').forEach(function(input) {
+            input.disabled = !match;
+        });
+    });
+    refreshCreationChoices();
+}
+
+function initCreationChoiceTooltips() {
+    if (typeof bootstrap === 'undefined' || !bootstrap.Tooltip) {
+        return;
+    }
+    document.querySelectorAll('#character-creation-choices [data-bs-toggle="tooltip"]').forEach(
+        function(el) {
+            if (!bootstrap.Tooltip.getInstance(el)) {
+                new bootstrap.Tooltip(el, { container: 'body' });
+            }
+        }
+    );
+}
+
+function refreshCreationChoices() {
+    const section = document.getElementById('character-creation-choices');
+    if (!section) {
+        return;
+    }
+    const active = section.querySelector('.creation-choice-panel[data-active="true"]');
+    section.style.display = active ? '' : 'none';
+}
+
+document.addEventListener('change', function(event) {
+    if (event.target && event.target.id === 'species_id') {
+        showStartingSkillPicks();
+    }
+    if (!event.target || !event.target.classList.contains('starting-skill-pick')) {
+        return;
+    }
+    if (!event.target.checked) {
+        return;
+    }
+    const skillType = event.target.dataset.skillType;
+    const max = parseInt(event.target.dataset.max, 10);
+    const panel = event.target.closest('.starting-skill-panel');
+    const checked = panel.querySelectorAll(
+        '.starting-skill-pick[data-skill-type="' + skillType + '"]:checked'
+    );
+    if (checked.length > max) {
+        event.target.checked = false;
     }
 });

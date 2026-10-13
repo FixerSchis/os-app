@@ -16,6 +16,18 @@ from utils.permission_decorators import permission_required
 species_bp = Blueprint("species", __name__)
 
 
+def _assign_starting_skill_choices(ability, index):
+    skill_types = request.form.getlist(f"ability_choice_type_{index}[]")
+    counts = request.form.getlist(f"ability_choice_count_{index}[]")
+    choices = []
+    for skill_type, count in zip(skill_types, counts):
+        skill_type = (skill_type or "").strip()
+        if not skill_type or count in (None, ""):
+            continue
+        choices.append({"skill_type": skill_type, "count": int(count)})
+    ability.starting_skill_choices_list = choices
+
+
 @species_bp.route("/")
 def species_list():
     # Get all species
@@ -193,6 +205,8 @@ def edit_species_post(species_id):
             )
             if ab_type == AbilityType.STARTING_SKILLS.value:
                 ab.starting_skills_list = ability_starting_skills[i]
+            elif ab_type == AbilityType.STARTING_SKILL_CHOICES.value:
+                _assign_starting_skill_choices(ab, i)
             elif ab_type == AbilityType.SKILL_DISCOUNTS.value:
                 discounts = {}
                 skills = request.form.getlist(f"ability_discount_skills_{i}[]")
@@ -349,6 +363,8 @@ def new_species_post():
             )
             if ab_type == AbilityType.STARTING_SKILLS.value:
                 ab.starting_skills_list = ability_starting_skills[i]
+            elif ab_type == AbilityType.STARTING_SKILL_CHOICES.value:
+                _assign_starting_skill_choices(ab, i)
             elif ab_type == AbilityType.SKILL_DISCOUNTS.value:
                 discounts = {}
                 skills = request.form.getlist(f"ability_discount_skills_{i}[]")

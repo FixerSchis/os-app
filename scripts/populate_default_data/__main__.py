@@ -698,6 +698,80 @@ def link_default_skill_species():
         db.session.commit()
 
 
+def link_default_starting_skills():
+    """Grant named creation skills, and Corpori program choices, on existing species."""
+    grants = (
+        (
+            "Arctonyx",
+            "Free Steel Viscera",
+            "One rank of Steel Viscera at character creation.",
+            ("Steel Viscera",),
+        ),
+        (
+            "Notumi Cerebri",
+            "Technocratic culture",
+            "Scientist and one rank of Corporeal Science at character creation.",
+            ("Scientist", "Corporeal Science"),
+        ),
+        (
+            "Sollen",
+            "Technical aptitude",
+            "One rank of Engineer and one rank of Extra Mods at character creation.",
+            ("Engineer", "Extra Mods"),
+        ),
+    )
+    for species_name, ability_name, description, skill_names in grants:
+        _add_fixed_starting_skills(species_name, ability_name, description, skill_names)
+    _add_corpori_program_choices()
+    db.session.commit()
+
+
+def _add_fixed_starting_skills(species_name, ability_name, description, skill_names):
+    species = Species.query.filter_by(name=species_name).first()
+    if species is None or _species_has_ability(species, AbilityType.STARTING_SKILLS):
+        return
+    skill_ids = []
+    for skill_name in skill_names:
+        skill = Skill.query.filter_by(name=skill_name).first()
+        if skill is None:
+            logging.warning(f"Starting skill {skill_name} is missing; skipped {species_name}")
+            return
+        skill_ids.append(str(skill.id))
+    ability = Ability(
+        species_id=species.id,
+        name=ability_name,
+        description=description,
+        type=AbilityType.STARTING_SKILLS,
+    )
+    ability.starting_skills_list = skill_ids
+    db.session.add(ability)
+
+
+def _add_corpori_program_choices():
+    species = Species.query.filter_by(name="Notumi Corpori").first()
+    if species is None or _species_has_ability(species, AbilityType.STARTING_SKILL_CHOICES):
+        return
+    ability = Ability(
+        species_id=species.id,
+        name="Known programs",
+        description="Choose two standard programs and one advanced program at creation.",
+        type=AbilityType.STARTING_SKILL_CHOICES,
+    )
+    ability.starting_skill_choices_list = [
+        {"skill_type": "standard_program", "count": 2},
+        {"skill_type": "advanced_program", "count": 1},
+    ]
+    db.session.add(ability)
+
+
+def _species_has_ability(species, ability_type):
+    for ability in species.abilities:
+        current = ability.type.value if hasattr(ability.type, "value") else ability.type
+        if current == ability_type.value:
+            return True
+    return False
+
+
 def _species_wiki_content(species, unpublished):
     hit_type = species.body_hits_type
     hit_key = hit_type.value if isinstance(hit_type, BodyHitsType) else hit_type
@@ -1446,6 +1520,7 @@ def create_default_data():
     create_default_species()
     ensure_ranked_mutation_skills()
     link_default_skill_species()
+    link_default_starting_skills()
     create_default_exotics()
     create_default_medicaments()
     create_default_item_types()

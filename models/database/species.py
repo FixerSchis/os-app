@@ -18,6 +18,7 @@ class Ability(db.Model):
         nullable=False,
     )
     starting_skills = db.Column(db.String, nullable=True)
+    starting_skill_choices = db.Column(db.String, nullable=True)
     skill_discounts = db.Column(db.String, nullable=True)
     additional_group_income = db.Column(db.Integer, nullable=True)
     starting_item_blueprint_id = db.Column(
@@ -40,6 +41,16 @@ class Ability(db.Model):
     @starting_skills_list.setter
     def starting_skills_list(self, skills):
         self.starting_skills = json.dumps(skills) if skills else None
+
+    @property
+    def starting_skill_choices_list(self):
+        if not self.starting_skill_choices:
+            return []
+        return json.loads(self.starting_skill_choices)
+
+    @starting_skill_choices_list.setter
+    def starting_skill_choices_list(self, choices):
+        self.starting_skill_choices = json.dumps(choices) if choices else None
 
     @property
     def skill_discounts_dict(self):

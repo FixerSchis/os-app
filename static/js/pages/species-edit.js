@@ -19,6 +19,8 @@ $(document).ready(function() {
             $(this).find('[name^="ability_type"]').attr('name', 'ability_type_' + i);
             $(this).find('[name^="ability_description"]').attr('name', 'ability_description_' + i);
             $(this).find('.ability-starting-skills select').attr('name', 'ability_starting_skills_' + i + '[]');
+            $(this).find('.ability-starting-choices input[name^="ability_choice_type"]').attr('name', 'ability_choice_type_' + i + '[]');
+            $(this).find('.ability-starting-choices input[name^="ability_choice_count"]').attr('name', 'ability_choice_count_' + i + '[]');
             $(this).find('.ability-skill-discounts select.select2-multiple').attr('name', 'ability_discount_skills_' + i + '[]');
             $(this).find('.ability-skill-discounts input[type=number]').attr('name', 'ability_discount_value_' + i);
             $(this).find('.ability-starting-item select').attr('name', 'ability_starting_item_blueprint_' + i);
@@ -90,6 +92,8 @@ $(document).ready(function() {
         block.find('.ability-starting-reputation input[type=number]').prop('required', false);
         if ($(this).val() === 'starting_skills') {
             block.find('.ability-starting-skills').show();
+        } else if ($(this).val() === 'starting_skill_choices') {
+            block.find('.ability-starting-choices').show();
         } else if ($(this).val() === 'skill_discounts') {
             block.find('.ability-skill-discounts').show();
             // Only add required if visible
@@ -132,6 +136,25 @@ $(document).ready(function() {
                 <select class="form-control select2-multiple" name="ability_starting_skills_${idx}[]" multiple>
                     ${skillsOptions}
                 </select>
+            </div>
+            <div class="form-group mb-2 ability-extra ability-starting-choices" style="display:none;">
+                <label>Starting skill choices</label>
+                <div class="row mb-2">
+                    <div class="col-md-6">
+                        <input class="form-control" name="ability_choice_type_${idx}[]" placeholder="Skill type, such as standard_program">
+                    </div>
+                    <div class="col-md-3">
+                        <input type="number" class="form-control" name="ability_choice_count_${idx}[]" placeholder="How many" min="1">
+                    </div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-md-6">
+                        <input class="form-control" name="ability_choice_type_${idx}[]" placeholder="Skill type, such as advanced_program">
+                    </div>
+                    <div class="col-md-3">
+                        <input type="number" class="form-control" name="ability_choice_count_${idx}[]" placeholder="How many" min="1">
+                    </div>
+                </div>
             </div>
             <div class="form-group mb-2 ability-extra ability-skill-discounts" style="display:none;">
                 <label>Skill Discounts</label>

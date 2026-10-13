@@ -43,6 +43,7 @@ class CharacterSkill(db.Model):
     character_id = db.Column(db.Integer, db.ForeignKey("character.id"), nullable=False)
     skill_id = db.Column(db.Integer, db.ForeignKey("skill.id"), nullable=False)
     times_purchased = db.Column(db.Integer, nullable=False, default=1)
+    free_ranks = db.Column(db.Integer, nullable=False, default=0)
     purchased_at = db.Column(db.DateTime, default=datetime.now(timezone.utc), nullable=False)
     purchased_by_user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
 
@@ -58,6 +59,10 @@ class CharacterSkill(db.Model):
         if not self.skill:
             return ""
         return self.skill.format_applied(self.times_purchased)
+
+    def paid_purchases(self):
+        """Ranks the character paid for. A free creation rank is not one of these."""
+        return max(0, self.times_purchased - (self.free_ranks or 0))
 
 
 class Character(db.Model):
@@ -174,10 +179,8 @@ class Character(db.Model):
         for character_skill in self.skills:
             skill = character_skill.skill
             if skill.cost_increases:
-                # For a skill with increasing cost, the cost of the nth purchase is
-                # base_cost + (n-1). We sum the cost for each purchase from 1 to
-                # times_purchased
-                for i in range(character_skill.times_purchased):
+                # The first paid purchase costs base_cost. A free rank is not a paid purchase.
+                for i in range(character_skill.paid_purchases()):
                     purchase_cost = skill.base_cost + i
                     # Apply species discounts
                     if self.species:
@@ -200,7 +203,8 @@ class Character(db.Model):
                         ):
                             discount = ability.skill_discounts_dict[str(skill.id)]
                             purchase_cost = max(0, purchase_cost - discount)
-                total_cost += purchase_cost
+                if character_skill.paid_purchases():
+                    total_cost += purchase_cost
         return total_cost
 
     def get_faction_name(self):
@@ -229,7 +233,9 @@ class Character(db.Model):
         ).first()
 
         # If the skill hasn't been purchased yet, start at 0
-        count = 0 if character_skill is None else character_skill.times_purchased
+        count = 0 if character_skill is None else character_skill.paid_purchases()
+        if is_refund and count <= 0:
+            return 0
 
         # Calculate the base cost based on the skill's properties
         base_cost = skill.base_cost
@@ -429,6 +435,9 @@ class Character(db.Model):
             current_reputation = self.get_reputation(skill.adds_reputation_faction_id)
             new_reputation = current_reputation - skill.adds_reputation_value
             self.set_reputation(skill.adds_reputation_faction_id, new_reputation, user.id)
+
+        if character_skill.paid_purchases() == 0:
+            character_skill.free_ranks = max(0, (character_skill.free_ranks or 0) - 1)
 
         if character_skill.times_purchased <= 1:
             # Remove the skill entirely

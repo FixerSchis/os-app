@@ -566,3 +566,148 @@ def test_get_available_engineering_mod_slots(db, new_user, character):
     db.session.commit()
 
     assert character.get_available_engineering_mod_slots() == 4 + 5
+
+
+def test_free_rank_is_left_out_of_the_rising_cost(db, new_user, character):
+    """A creation rank counts for the skill and leaves the next purchase at the first price."""
+    from models.tools.character import CharacterSkill
+
+    skill = Skill(
+        name="Rising Skill",
+        description="Costs more on each paid rank",
+        base_cost=2,
+        can_purchase_multiple=True,
+        cost_increases=True,
+    )
+    db.session.add(skill)
+    db.session.flush()
+    db.session.add(
+        CharacterSkill(
+            character_id=character.id,
+            skill_id=skill.id,
+            times_purchased=1,
+            free_ranks=1,
+            purchased_by_user_id=new_user.id,
+        )
+    )
+    db.session.commit()
+    db.session.refresh(character)
+
+    assert character.get_total_skill_cost() == 0
+    assert character.get_skill_cost(skill) == 2
+
+    character.purchase_skill(skill, new_user)
+    db.session.refresh(character)
+    assert character.get_total_skill_cost() == 2
+    assert character.get_skill_cost(skill) == 3
+
+    character.refund_skill(skill, new_user)
+    db.session.refresh(character)
+    assert character.get_total_skill_cost() == 0
+    assert character.get_available_character_points() == 10
+
+    character.refund_skill(skill, new_user)
+    db.session.refresh(character)
+    owned = CharacterSkill.query.filter_by(character_id=character.id, skill_id=skill.id).first()
+    assert owned is None
+    assert character.get_available_character_points() == 10
+
+
+def test_starting_skill_grant_and_choice_quota(db, new_user, character, species, faction):
+    """Named starting skills are granted free, and a choice quota is enforced."""
+    from models.database.species import Ability, Species
+    from models.enums import AbilityType
+    from models.tools.character import CharacterSkill
+    from utils.starting_skills import apply_starting_skills, validate_starting_skill_picks
+
+    engineer = Skill(
+        name="Grant Engineer",
+        description="A granted rank",
+        base_cost=2,
+        can_purchase_multiple=True,
+        cost_increases=True,
+        skill_type="professional",
+    )
+    first_program = Skill(
+        name="Program One",
+        description="A standard program",
+        base_cost=1,
+        skill_type="standard_program",
+    )
+    second_program = Skill(
+        name="Program Two",
+        description="A standard program",
+        base_cost=1,
+        skill_type="standard_program",
+    )
+    advanced = Skill(
+        name="Program Advanced",
+        description="An advanced program",
+        base_cost=1,
+        skill_type="advanced_program",
+    )
+    db.session.add_all([engineer, first_program, second_program, advanced])
+    db.session.flush()
+    first_program.required_species_list = [species.id]
+    second_program.required_species_list = [species.id]
+    advanced.required_species_list = [species.id]
+
+    grant = Ability(
+        name="Technical aptitude",
+        description="One free rank of Engineer.",
+        type=AbilityType.STARTING_SKILLS,
+        species=species,
+    )
+    grant.starting_skills_list = [str(engineer.id)]
+    choices = Ability(
+        name="Known programs",
+        description="Pick programs.",
+        type=AbilityType.STARTING_SKILL_CHOICES,
+        species=species,
+    )
+    choices.starting_skill_choices_list = [
+        {"skill_type": "standard_program", "count": 2},
+        {"skill_type": "advanced_program", "count": 1},
+    ]
+    db.session.add_all([grant, choices])
+    db.session.commit()
+    db.session.refresh(species)
+
+    error = validate_starting_skill_picks(species, [str(first_program.id)])
+    assert error == "Choose 2 Standard Program skills."
+
+    picks = [str(first_program.id), str(second_program.id), str(advanced.id)]
+    assert validate_starting_skill_picks(species, picks) is None
+
+    apply_starting_skills(character, species, new_user, picks)
+    db.session.commit()
+    owned = CharacterSkill.query.filter_by(character_id=character.id, skill_id=engineer.id).one()
+    assert owned.times_purchased == 1
+    assert owned.free_ranks == 1
+    assert character.get_skill_cost(engineer) == 2
+
+    apply_starting_skills(character, species, new_user, picks)
+    db.session.commit()
+    db.session.refresh(owned)
+    assert owned.times_purchased == 1
+
+    plain = Species(
+        name="Plain Species",
+        wiki_page="plain-species",
+        permitted_factions=f"[{faction.id}]",
+        body_hits_type="locational",
+        body_hits=1,
+        death_count=100,
+    )
+    db.session.add(plain)
+    db.session.commit()
+    apply_starting_skills(character, plain, new_user, [])
+    db.session.commit()
+    assert (
+        CharacterSkill.query.filter_by(character_id=character.id, skill_id=engineer.id).first()
+        is None
+    )
+    assert (
+        CharacterSkill.query.filter_by(character_id=character.id, skill_id=first_program.id).first()
+        is None
+    )

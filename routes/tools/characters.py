@@ -29,6 +29,11 @@ from models.tools.user import User
 from utils import generate_qr_code, generate_web_qr_code
 from utils.decorators import email_verified_required
 from utils.permission_decorators import permission_required
+from utils.starting_skills import (
+    apply_starting_skills,
+    choice_catalogue,
+    validate_starting_skill_picks,
+)
 
 
 def can_edit_character(user, args, kwargs):
@@ -71,6 +76,11 @@ def _posted_base_character_points(user):
 
 
 characters_bp = Blueprint("characters", __name__)
+
+
+@characters_bp.context_processor
+def inject_starting_skill_catalogue():
+    return {"starting_skill_catalogue": choice_catalogue()}
 
 
 @characters_bp.route("/")
@@ -186,6 +196,18 @@ def create_character_post():
                 all_cybernetics=all_cybernetics,
             )
 
+    species = db.session.get(Species, species_id)
+    pick_error = validate_starting_skill_picks(species, request.form.getlist("starting_skill_pick"))
+    if pick_error:
+        flash(pick_error, "error")
+        return render_template(
+            "characters/edit.html",
+            admin_context=admin_context,
+            factions=factions,
+            species_list=species_list,
+            all_cybernetics=all_cybernetics,
+        )
+
     base_character_points = 10
     posted_points, points_error = _posted_base_character_points(current_user)
     if points_error:
@@ -219,6 +241,10 @@ def create_character_post():
         concept=concept,
     )
     db.session.add(character)
+    db.session.flush()
+    apply_starting_skills(
+        character, species, current_user, request.form.getlist("starting_skill_pick")
+    )
     db.session.commit()
 
     # Handle background review system for character creation
@@ -428,6 +454,18 @@ def edit_post(character_id):
                 factions=factions,
                 species_list=species_list,
             )
+
+    species = db.session.get(Species, species_id)
+    pick_error = validate_starting_skill_picks(species, request.form.getlist("starting_skill_pick"))
+    if pick_error:
+        flash(pick_error, "error")
+        return render_template(
+            "characters/edit.html",
+            character=character,
+            admin_context=admin_context,
+            factions=factions,
+            species_list=species_list,
+        )
 
     posted_points, points_error = _posted_base_character_points(current_user)
     if points_error:
@@ -729,6 +767,9 @@ def edit_post(character_id):
         )
         db.session.add(audit)
 
+    apply_starting_skills(
+        character, species, current_user, request.form.getlist("starting_skill_pick")
+    )
     db.session.commit()
     flash("Character updated successfully")
     redirect_url = url_for("characters.edit", character_id=character.id)
@@ -1185,6 +1226,19 @@ def create_for_player_post(user_id):
                 all_cybernetics=all_cybernetics,
             )
 
+    species = db.session.get(Species, species_id)
+    pick_error = validate_starting_skill_picks(species, request.form.getlist("starting_skill_pick"))
+    if pick_error:
+        flash(pick_error, "error")
+        return render_template(
+            "characters/edit.html",
+            user_id=user_id,
+            admin_context=True,
+            factions=factions,
+            species_list=species_list,
+            all_cybernetics=all_cybernetics,
+        )
+
     # Get background fields from form
     background = request.form.get("background", "").strip()
     goals = request.form.get("goals", "").strip()
@@ -1203,6 +1257,10 @@ def create_for_player_post(user_id):
         concept=concept,
     )
     db.session.add(character)
+    db.session.flush()
+    apply_starting_skills(
+        character, species, current_user, request.form.getlist("starting_skill_pick")
+    )
     db.session.commit()
 
     # Handle background review system for character creation by admin
