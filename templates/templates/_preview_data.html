@@ -1,0 +1,231 @@
+{% macro text_field(field, label, placeholder, type='text', col='col-md-4') %}
+<div class="{{ col }}">
+    <label class="form-label small mb-1" for="preview_{{ field }}">{{ label }}</label>
+    <input type="{{ type }}" class="form-control form-control-sm" id="preview_{{ field }}" data-preview-field="{{ field }}" placeholder="{{ placeholder if placeholder is not none else '' }}">
+</div>
+{% endmacro %}
+
+{% macro remove_button() %}
+<div class="col-md-1 d-flex align-items-end">
+    <button type="button" class="btn btn-outline-danger btn-sm preview-remove-row" aria-label="Remove row">
+        <i class="fas fa-times"></i>
+    </button>
+</div>
+{% endmacro %}
+
+{% macro row_list(name, title, help_text) %}
+<div class="mb-3">
+    <div class="d-flex justify-content-between align-items-center mb-1">
+        <span class="form-label small fw-semibold mb-0">{{ title }}</span>
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-preview-add="{{ name }}">
+            <i class="fas fa-plus"></i> Add
+        </button>
+    </div>
+    <div data-preview-list="{{ name }}"></div>
+    <small class="text-muted">{{ help_text }}</small>
+</div>
+{% endmacro %}
+
+{% macro source_select(records, label, sample_name) %}
+<div class="col-md-6">
+    <label class="form-label small mb-1" for="preview_source_id">{{ label }}</label>
+    <select class="form-select form-select-sm" id="preview_source_id" data-preview-field="source_id">
+        <option value="">Built-in sample ({{ sample_name }})</option>
+        {% for record in records %}
+        <option value="{{ record.id }}">{{ record.name }}</option>
+        {% endfor %}
+    </select>
+</div>
+{% endmacro %}
+
+{% set type = template.type.value %}
+{% set sample = preview_sample %}
+<div id="preview-data-panel" class="d-none">
+    <p class="text-muted small">
+        Choose what the preview and Print Preview show. Blank fields keep the value shown in grey,
+        and empty lists keep the base record's list. Nothing on this tab is saved.
+        <button type="button" class="btn btn-link btn-sm p-0 align-baseline" id="preview-data-reset">Clear all</button>
+    </p>
+
+    {% if type in ('character_sheet', 'character_id') %}
+    <div class="row g-2 mb-3">
+        {{ text_field('name', 'Character name', sample.name) }}
+        {{ text_field('pronouns_subject', 'Pronoun (subject)', sample.pronouns_subject, col='col-md-2') }}
+        {{ text_field('pronouns_object', 'Pronoun (object)', sample.pronouns_object, col='col-md-2') }}
+        {{ text_field('tags', 'Tags, comma separated', sample.tags | map(attribute='name') | join(', ')) }}
+        {{ text_field('player_first_name', 'Player first name', sample.user.first_name, col='col-md-3') }}
+        {{ text_field('player_surname', 'Player surname', sample.user.surname, col='col-md-3') }}
+        {{ text_field('user_id', 'Player ID', sample.user_id, type='number', col='col-md-2') }}
+        {{ text_field('character_id', 'Character number', sample.character_id, type='number', col='col-md-2') }}
+        {{ text_field('group_name', 'Group', 'No group', col='col-md-2') }}
+        <div class="col-md-4">
+            <label class="form-label small mb-1" for="preview_species_id">Species</label>
+            <select class="form-select form-select-sm" id="preview_species_id" data-preview-field="species_id">
+                <option value="">Sample species ({{ sample.species.name }})</option>
+                {% for species in preview_options.species %}
+                <option value="{{ species.id }}">{{ species.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label class="form-label small mb-1" for="preview_faction_id">Faction</label>
+            <select class="form-select form-select-sm" id="preview_faction_id" data-preview-field="faction_id">
+                <option value="">Sample faction ({{ sample.faction.name }})</option>
+                {% for faction in preview_options.factions %}
+                <option value="{{ faction.id }}">{{ faction.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        {{ text_field('base_character_points', 'Base CP', sample.base_character_points, type='number', col='col-md-1') }}
+        {{ text_field('earned_character_points', 'Earned CP', sample.user.character_points | int, type='number', col='col-md-1') }}
+        {{ text_field('bank_account', 'Bank (EC)', sample.bank_account, type='number', col='col-md-2') }}
+    </div>
+
+    {{ row_list('skills', 'Skills', 'Leave empty to keep the sample skills.') }}
+    <template data-preview-row-template="skills">
+        <div class="row g-2 mb-2 preview-row">
+            <div class="col-md-9">
+                <select class="form-select form-select-sm" data-preview-key="skill_id" aria-label="Skill">
+                    <option value="">Choose a skill</option>
+                    {% for skill in preview_options.skills %}
+                    <option value="{{ skill.id }}">{{ skill.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <input type="number" min="1" class="form-control form-control-sm" data-preview-key="ranks" value="1" aria-label="Ranks">
+            </div>
+            {{ remove_button() }}
+        </div>
+    </template>
+
+    {{ row_list('conditions', 'Active conditions', 'Conditions add their stage sheet values, such as Black Frost Will Points.') }}
+    <template data-preview-row-template="conditions">
+        <div class="row g-2 mb-2 preview-row">
+            <div class="col-md-9">
+                <select class="form-select form-select-sm" data-preview-key="condition_id" aria-label="Condition">
+                    <option value="">Choose a condition</option>
+                    {% for condition in preview_options.conditions %}
+                    <option value="{{ condition.id }}">{{ condition.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <input type="number" min="1" class="form-control form-control-sm" data-preview-key="stage" value="1" aria-label="Stage">
+            </div>
+            {{ remove_button() }}
+        </div>
+    </template>
+
+    {{ row_list('reputations', 'Reputation', 'Reputation with each faction or MegaCorp.') }}
+    <template data-preview-row-template="reputations">
+        <div class="row g-2 mb-2 preview-row">
+            <div class="col-md-9">
+                <select class="form-select form-select-sm" data-preview-key="faction_id" aria-label="Faction">
+                    <option value="">Choose a faction</option>
+                    {% for faction in preview_options.factions %}
+                    <option value="{{ faction.id }}">{{ faction.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <input type="number" class="form-control form-control-sm" data-preview-key="value" value="1" aria-label="Reputation">
+            </div>
+            {{ remove_button() }}
+        </div>
+    </template>
+
+    {% elif type == 'item_card' %}
+    <div class="row g-2 mb-3">
+        <div class="col-md-6">
+            <label class="form-label small mb-1" for="preview_blueprint_id">Blueprint</label>
+            <select class="form-select form-select-sm" id="preview_blueprint_id" data-preview-field="blueprint_id">
+                <option value="">Sample blueprint ({{ sample.blueprint.display_name }})</option>
+                {% for blueprint in preview_options.blueprints %}
+                <option value="{{ blueprint.id }}">{{ blueprint.full_code }} {{ blueprint.display_name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        {{ text_field('item_id', 'Item number', sample.item_id, type='number', col='col-md-2') }}
+        {{ text_field('version', 'Version', sample.version, type='number', col='col-md-2') }}
+        {{ text_field('expiry', 'Expires after event', 'No expiry', type='number', col='col-md-2') }}
+        <div class="col-12">
+            <label class="form-label small mb-1" for="preview_mod_ids">Applied mods</label>
+            <select multiple size="6" class="form-select form-select-sm" id="preview_mod_ids" data-preview-field="mod_ids">
+                {% for mod in preview_options.mods %}
+                <option value="{{ mod.id }}">{{ mod.name }}</option>
+                {% endfor %}
+            </select>
+            <small class="text-muted">Hold Ctrl or Cmd to pick several.</small>
+        </div>
+    </div>
+
+    {% elif type == 'medicament_card' %}
+    <div class="row g-2 mb-3">
+        {{ source_select(preview_options.medicaments, 'Base medicament', sample.name) }}
+        {{ text_field('name', 'Name', 'Keep base name', col='col-md-6') }}
+        {{ text_field('summary', 'Summary', 'Keep base summary', col='col-12') }}
+        <div class="col-12">
+            <label class="form-label small mb-1" for="preview_effect">Effect for every dose</label>
+            <textarea class="form-control form-control-sm" id="preview_effect" rows="2" data-preview-field="effect" placeholder="Keep base effect"></textarea>
+        </div>
+    </div>
+    {{ row_list('modes', 'Modes', 'Leave empty to keep the base modes.') }}
+    <template data-preview-row-template="modes">
+        <div class="row g-2 mb-2 preview-row">
+            <div class="col-md-3">
+                <input class="form-control form-control-sm" data-preview-key="name" placeholder="Mode, such as TREAT" aria-label="Mode">
+            </div>
+            <div class="col-md-8">
+                <textarea class="form-control form-control-sm" rows="2" data-preview-key="effect" placeholder="Effect of a dose in this mode" aria-label="Effect"></textarea>
+            </div>
+            {{ remove_button() }}
+        </div>
+    </template>
+
+    {% elif type == 'condition_card' %}
+    <div class="row g-2 mb-3">
+        {{ source_select(preview_options.conditions, 'Base condition', sample.name) }}
+        {{ text_field('name', 'Name', 'Keep base name', col='col-md-6') }}
+    </div>
+    {{ row_list('stages', 'Stages', 'Leave empty to keep the base stages. Stages are numbered in order.') }}
+    <template data-preview-row-template="stages">
+        <div class="row g-2 mb-2 preview-row">
+            <div class="col-md-4">
+                <textarea class="form-control form-control-sm" rows="2" data-preview-key="rp_effect" placeholder="Roleplay effect" aria-label="Roleplay effect"></textarea>
+            </div>
+            <div class="col-md-3">
+                <textarea class="form-control form-control-sm" rows="2" data-preview-key="diagnosis" placeholder="Diagnosis" aria-label="Diagnosis"></textarea>
+            </div>
+            <div class="col-md-3">
+                <textarea class="form-control form-control-sm" rows="2" data-preview-key="cure" placeholder="Cure" aria-label="Cure"></textarea>
+            </div>
+            <div class="col-md-1">
+                <input type="number" min="0" class="form-control form-control-sm" data-preview-key="duration" placeholder="Events" aria-label="Duration in events">
+            </div>
+            {{ remove_button() }}
+        </div>
+    </template>
+
+    {% elif type == 'exotic_substance_label' %}
+    <div class="row g-2 mb-3">
+        {{ source_select(preview_options.exotics, 'Base exotic substance', sample.name) }}
+        {{ text_field('name', 'Name', 'Keep base name', col='col-md-6') }}
+        <div class="col-md-3">
+            <label class="form-label small mb-1" for="preview_type">Science type</label>
+            <select class="form-select form-select-sm" id="preview_type" data-preview-field="type">
+                <option value="">Keep base type</option>
+                {% for value, label in preview_options.science_types.items() %}
+                <option value="{{ value }}">{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        {{ text_field('used_on', 'Used on', 'Keep base value', col='col-md-3') }}
+        {{ text_field('duration', 'Duration', 'Keep base duration', col='col-md-6') }}
+        <div class="col-12">
+            <label class="form-label small mb-1" for="preview_effect">Effect</label>
+            <textarea class="form-control form-control-sm" id="preview_effect" rows="2" data-preview-field="effect" placeholder="Keep base effect"></textarea>
+        </div>
+    </div>
+    {% endif %}
+</div>

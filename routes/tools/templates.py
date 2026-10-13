@@ -15,15 +15,15 @@ from models.extensions import db
 from models.tools.character import Character
 from models.tools.event_ticket import EventTicket
 from models.tools.print_template import PrintTemplate
-from models.tools.samples.character import get_sample_character
-from models.tools.samples.condition import get_sample_condition
-from models.tools.samples.exotic import get_sample_exotic_substance
-from models.tools.samples.item import get_sample_item
-from models.tools.samples.medicament import get_sample_medicament
+from models.tools.samples.preview import (
+    PREVIEW_CONTEXT_KEYS,
+    build_preview_object,
+    get_preview_options,
+)
 from utils import generate_qr_code, generate_web_qr_code
 from utils.decorators import email_verified_required
 from utils.permission_decorators import permission_required
-from utils.print_layout import PrintLayout
+from utils.print_layout import PrintLayout, item_card_links
 
 templates_bp = Blueprint("templates", __name__)
 
@@ -59,6 +59,8 @@ def template_edit(template_id):
         template=template,
         PrintTemplateType=PrintTemplateType,
         completions=completions,
+        preview_options=get_preview_options(template.type),
+        preview_sample=build_preview_object(template.type),
     )
 
 
@@ -98,45 +100,22 @@ def render_template_preview(template_id):
     template.back_html = data.get("back_html", template.back_html)
     template.css_styles = data.get("css_styles", template.css_styles)
 
-    # Generate sample data based on template type
-    if template.type == PrintTemplateType.CHARACTER_SHEET:
-        sample_data = {"character": get_sample_character()}
-    elif template.type == PrintTemplateType.CHARACTER_ID:
-        sample_data = {"character": get_sample_character()}
-    elif template.type == PrintTemplateType.ITEM_CARD:
-        sample_data = {"item": get_sample_item()}
-        # Add QR code context for item cards
-        sample_item = sample_data["item"]
-        try:
-            item_view_url = url_for(
-                "items.view", id=sample_item.id, version=sample_item.version, _external=True
-            )
-            sample_data["item_view_url"] = item_view_url
-            sample_data["item_qr_code"] = generate_qr_code(item_view_url, size=3)
-        except Exception:
-            # Fallback if URL generation fails
-            sample_data["item_view_url"] = f"/db/items/{sample_item.id}/{sample_item.version}/view"
-            sample_data["item_qr_code"] = generate_qr_code(sample_data["item_view_url"], size=3)
-    elif template.type == PrintTemplateType.MEDICAMENT_CARD:
-        sample_data = {"medicament": get_sample_medicament()}
-    elif template.type == PrintTemplateType.CONDITION_CARD:
-        sample_data = {"condition": get_sample_condition()}
-    elif template.type == PrintTemplateType.EXOTIC_SUBSTANCE_LABEL:
-        sample_data = {"substance": get_sample_exotic_substance()}
-    else:
-        sample_data = {}
-
-    # Add QR code utilities to the template context
-    template_context = {
-        **sample_data,
-        "generate_qr_code": generate_qr_code,
-        "generate_web_qr_code": generate_web_qr_code,
-    }
-
     try:
-        front_rendered = template.get_front_page_render(template_context)
-        back_rendered = template.get_back_page_render(template_context)
-        css = template.get_css_render()
+        # Preview objects borrow real species, skills, and so on. Never flush them.
+        with db.session.no_autoflush:
+            template_context = {
+                "generate_qr_code": generate_qr_code,
+                "generate_web_qr_code": generate_web_qr_code,
+            }
+            preview = build_preview_object(template.type, data.get("preview_data"))
+            if preview is not None:
+                template_context[PREVIEW_CONTEXT_KEYS[template.type]] = preview
+            if template.type == PrintTemplateType.ITEM_CARD:
+                template_context.update(item_card_links(preview))
+
+            front_rendered = template.get_front_page_render(template_context)
+            back_rendered = template.get_back_page_render(template_context)
+            css = template.get_css_render()
         css_b64 = base64.b64encode(css.encode("utf-8")).decode("ascii")
 
         return jsonify(
@@ -154,6 +133,9 @@ def render_template_preview(template_id):
             jsonify({"error": f"Template rendering error: {str(e)}", "success": False}),
             400,
         )
+
+    finally:
+        db.session.expire_all()
 
 
 @templates_bp.route("/<type>/<int:id>/print")
@@ -481,48 +463,27 @@ def print_template_preview(template_id):
         template.back_html = data.get("back_html", template.back_html)
         template.css_styles = data.get("css_styles", template.css_styles)
 
-        # Create layout manager
         layout_manager = PrintLayout()
-
-        # Generate PDF based on template type
-        if template.type == PrintTemplateType.CHARACTER_SHEET:
-            sample = get_sample_character()
-            pdf = layout_manager.generate_character_sheets_pdf(
-                [sample for _ in range(template.items_per_row * template.items_per_column)],
-                template,
-            )
-        elif template.type == PrintTemplateType.CHARACTER_ID:
-            sample = get_sample_character()
-            pdf = layout_manager.generate_character_id_pdf(
-                [sample for _ in range(template.items_per_row * template.items_per_column)],
-                template,
-            )
-        elif template.type == PrintTemplateType.ITEM_CARD:
-            sample = get_sample_item()
-            pdf = layout_manager.generate_item_cards_pdf(
-                [sample for _ in range(template.items_per_row * template.items_per_column)],
-                template,
-            )
-        elif template.type == PrintTemplateType.MEDICAMENT_CARD:
-            sample = get_sample_medicament()
-            pdf = layout_manager.generate_medicament_sheet_pdf(
-                [sample for _ in range(template.items_per_row * template.items_per_column)],
-                template,
-            )
-        elif template.type == PrintTemplateType.CONDITION_CARD:
-            sample = get_sample_condition()
-            pdf = layout_manager.generate_condition_sheet_pdf(
-                [sample for _ in range(template.items_per_row * template.items_per_column)],
-                template,
-            )
-        elif template.type == PrintTemplateType.EXOTIC_SUBSTANCE_LABEL:
-            sample = get_sample_exotic_substance()
-            pdf = layout_manager.generate_exotic_substance_labels_pdf(
-                [sample for _ in range(template.items_per_row * template.items_per_column)],
-                template,
-            )
-        else:
+        generators = {
+            PrintTemplateType.CHARACTER_SHEET: layout_manager.generate_character_sheets_pdf,
+            PrintTemplateType.CHARACTER_ID: layout_manager.generate_character_id_pdf,
+            PrintTemplateType.ITEM_CARD: layout_manager.generate_item_cards_pdf,
+            PrintTemplateType.MEDICAMENT_CARD: layout_manager.generate_medicament_sheet_pdf,
+            PrintTemplateType.CONDITION_CARD: layout_manager.generate_condition_sheet_pdf,
+            PrintTemplateType.EXOTIC_SUBSTANCE_LABEL: (
+                layout_manager.generate_exotic_substance_labels_pdf
+            ),
+        }
+        generate = generators.get(template.type)
+        if generate is None:
             return jsonify({"error": "Invalid template type"}), 400
+
+        with db.session.no_autoflush:
+            sample = build_preview_object(template.type, data.get("preview_data"))
+            pdf = generate(
+                [sample for _ in range(template.items_per_row * template.items_per_column)],
+                template,
+            )
 
         # Return the PDF
         return jsonify(
@@ -540,6 +501,7 @@ def print_template_preview(template_id):
         # Restore original values
         for key, value in original_values.items():
             setattr(template, key, value)
+        db.session.expire_all()
 
 
 def get_jinja_completions():

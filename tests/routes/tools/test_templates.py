@@ -128,6 +128,122 @@ class TestTemplatesRoutes:
         assert "TREAT" in data["front_html"]
         assert "data:image/png;base64," in data["front_html"]
 
+    def test_render_character_sheet_with_sample_character(self, test_client, admin_user, db):
+        self.clear_templates(db)
+        self.login_admin(test_client, admin_user)
+        template = self.make_template(
+            admin_user, PrintTemplateType.CHARACTER_SHEET, "Character Sheet Sample"
+        )
+        db.session.add(template)
+        db.session.commit()
+        resp = test_client.post(
+            f"/templates/api/{template.id}/render",
+            json={
+                "front_html": "{{ character.name }} {{ character.user.first_name }}",
+                "back_html": "",
+                "css_styles": "",
+            },
+        )
+        assert resp.status_code == 200
+        assert "Alex Chen Admin" in resp.get_json()["front_html"]
+
+    def test_render_character_sheet_with_preview_data(
+        self, test_client, admin_user, db, species, faction, skill
+    ):
+        self.clear_templates(db)
+        self.login_admin(test_client, admin_user)
+        template = self.make_template(
+            admin_user, PrintTemplateType.CHARACTER_SHEET, "Character Sheet Data"
+        )
+        db.session.add(template)
+        db.session.commit()
+        characters_before = Character.query.count()
+        front_html = (
+            "{{ character.name }}|{{ character.species.name }}|{{ character.faction.name }}|"
+            "{% for row in character.skills %}{{ row.skill.name }} x{{ row.times_purchased }}"
+            "{% endfor %}|{{ character.group.name }}"
+        )
+        resp = test_client.post(
+            f"/templates/api/{template.id}/render",
+            json={
+                "front_html": front_html,
+                "back_html": "",
+                "css_styles": "",
+                "preview_data": {
+                    "name": "Preview Person",
+                    "species_id": str(species.id),
+                    "faction_id": str(faction.id),
+                    "group_name": "The Crew",
+                    "skills": [{"skill_id": str(skill.id), "ranks": "2"}],
+                },
+            },
+        )
+        assert resp.status_code == 200
+        rendered = resp.get_json()["front_html"]
+        assert rendered == (
+            f"Preview Person|{species.name}|{faction.name}|{skill.name} x2|The Crew"
+        )
+        assert Character.query.count() == characters_before
+
+    def test_render_medicament_with_preview_data(self, test_client, admin_user, db, medicament):
+        self.clear_templates(db)
+        self.login_admin(test_client, admin_user)
+        template = self.make_template(
+            admin_user, PrintTemplateType.MEDICAMENT_CARD, "Medicament Card Data"
+        )
+        db.session.add(template)
+        db.session.commit()
+        resp = test_client.post(
+            f"/templates/api/{template.id}/render",
+            json={
+                "front_html": (
+                    "{{ medicament.name }}|"
+                    "{% for mode in medicament.modes_list %}{{ mode.name }}{% endfor %}"
+                ),
+                "back_html": "",
+                "css_styles": "",
+                "preview_data": {
+                    "source_id": str(medicament.id),
+                    "modes": [{"name": "RED", "effect": "Heals"}, {"name": "", "effect": ""}],
+                },
+            },
+        )
+        assert resp.status_code == 200
+        assert resp.get_json()["front_html"] == f"{medicament.name}|RED"
+        db.session.refresh(medicament)
+        assert medicament.modes is None
+
+    def test_template_edit_shows_data_tab(self, test_client, admin_user, db, species):
+        self.clear_templates(db)
+        self.login_admin(test_client, admin_user)
+        template = self.make_template(
+            admin_user, PrintTemplateType.CHARACTER_SHEET, "Character Sheet Data Tab"
+        )
+        db.session.add(template)
+        db.session.commit()
+        resp = test_client.get(f"/templates/{template.id}/edit")
+        assert resp.status_code == 200
+        assert b'id="preview-data-panel"' in resp.data
+        assert species.name.encode() in resp.data
+
+    def test_render_seeded_condition_card(self, test_client, admin_user, db):
+        self.clear_templates(db)
+        self.login_admin(test_client, admin_user)
+        template = self.make_template(
+            admin_user, PrintTemplateType.CONDITION_CARD, "Condition Card Seeded"
+        )
+        template.has_back_side = True
+        db.session.add(template)
+        db.session.commit()
+        with open("data/templates/condition_card/back.html", encoding="utf-8") as handle:
+            back_html = handle.read()
+        resp = test_client.post(
+            f"/templates/api/{template.id}/render",
+            json={"front_html": "Front", "back_html": back_html, "css_styles": ""},
+        )
+        assert resp.status_code == 200
+        assert "Radiation Poisoning" in resp.get_json()["back_html"]
+
     def test_render_template_preview_blocks_config(self, test_client, admin_user, db, app):
         secret = "print-template-preview-secret"
         original_secret = app.config["SECRET_KEY"]
