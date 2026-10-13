@@ -15,6 +15,7 @@ class Skill(db.Model):
     name = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text)
     skill_type = db.Column(db.String(50))
+    group_name = db.Column(db.String(100), nullable=True)
     adds_engineering_mods = db.Column(db.Integer, default=0)
     adds_engineering_downtime = db.Column(db.Integer, default=0)
     adds_science_downtime = db.Column(db.Integer, default=0)

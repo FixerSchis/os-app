@@ -58,7 +58,7 @@ git clone <your-repo-url>
 cd os-app
 
 # Run the setup script
-python3 scripts/setup_production_server.py
+python3 scripts/setup_production_server
 ```
 
 This script will:

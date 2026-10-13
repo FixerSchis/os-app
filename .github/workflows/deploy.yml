@@ -48,9 +48,9 @@ jobs:
                   --exclude='.gitignore' \
                   --exclude='.pre-commit-config.yaml' \
                   --exclude='pyproject.toml' \
-                  --exclude='scripts/setup_dev_environment.py' \
-                  --exclude='scripts/setup_dev.py' \
-                  --exclude='scripts/verify_ci_setup.py' \
+                  --exclude='scripts/setup_dev_environment/' \
+                  --exclude='scripts/setup_dev/' \
+                  --exclude='scripts/verify_ci_setup/' \
                   --exclude='*.pyc' \
                   --exclude='*.pyo' \
                   --exclude='*.log' \
@@ -159,7 +159,7 @@ jobs:
           # Populate default data
           echo "Populating default data..."
           cd $DEPLOY_DIR
-          sudo -u os-app venv/bin/python scripts/populate_default_data.py
+          sudo -u os-app venv/bin/python scripts/populate_default_data
 
           # Set proper permissions
           sudo chown -R os-app:os-app $DEPLOY_DIR

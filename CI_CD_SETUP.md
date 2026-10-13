@@ -100,7 +100,7 @@ GitHub Repository
 
 3. **Production Server Setup**:
    - Follow the detailed instructions in `DEPLOYMENT.md`
-   - Run the automated setup script: `python3 scripts/setup_production_server.py`
+   - Run the automated setup script: `python3 scripts/setup_production_server`
    - Configure GitHub repository secrets
 
 4. **Verify Setup**:
@@ -120,7 +120,7 @@ GitHub Repository
 
 2. **Run Setup Script**:
    ```bash
-   python scripts/setup_dev_environment.py
+   python scripts/setup_dev_environment
    ```
 
 3. **Manual Setup** (alternative):

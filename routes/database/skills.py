@@ -11,61 +11,22 @@ from models.extensions import db
 from models.tools.character import CharacterTag
 from utils.decorators import email_verified_required
 from utils.permission_decorators import permission_required
+from utils.skill_grouping import group_skills_for_display
 
 skills_bp = Blueprint("skills", __name__)
 
 
+def _blank_to_none(value):
+    text = (value or "").strip()
+    return text or None
+
+
 @skills_bp.route("/")
 def skills_list():
-    # Get all skills
     skills = Skill.query.all()
-
-    # Build a mapping of skill_type to friendly name
-    skill_types = Skill.get_all_skill_types()
-    type_friendly_names = {
-        t[0]: t[0].replace("_", " ").title() for t in skill_types if t[0] is not None
-    }
-
-    # Group skills by type
-    from collections import defaultdict
-
-    skills_by_type = defaultdict(list)
-    for s in skills:
-        skill_type = s.skill_type or "UNCATEGORIZED"
-        skills_by_type[skill_type].append(s)
-
-    # For each type, sort by name, and ensure requirements are after their prerequisites
-    sorted_skills_by_type = {}
-    for skill_type in sorted(skills_by_type.keys()):
-        group = skills_by_type[skill_type]
-        group_sorted = []
-        processed_ids = set()
-        # First, add skills with no requirements
-        for skill in sorted(group, key=lambda s: s.name):
-            if not skill.required_skill_id and skill.id not in processed_ids:
-                group_sorted.append(skill)
-                processed_ids.add(skill.id)
-        # Then, add skills with requirements, after their prerequisites
-        remaining_skills = [s for s in group if s.id not in processed_ids]
-        while remaining_skills:
-            for skill in sorted(remaining_skills, key=lambda s: s.name):
-                if skill.required_skill_id in processed_ids:
-                    group_sorted.append(skill)
-                    processed_ids.add(skill.id)
-                    remaining_skills.remove(skill)
-                    break
-            else:
-                # If we couldn't add any skills in this pass, add the remaining ones
-                for skill in sorted(remaining_skills, key=lambda s: s.name):
-                    group_sorted.append(skill)
-                    processed_ids.add(skill.id)
-                break
-        sorted_skills_by_type[skill_type] = group_sorted
-
     return render_template(
         "skills/list.html",
-        skills_by_type=sorted_skills_by_type,
-        type_friendly_names=type_friendly_names,
+        sections=group_skills_for_display(skills),
         can_edit=current_user.is_authenticated and current_user.has_permission("rules.skills"),
     )
 
@@ -173,6 +134,7 @@ def edit_skill_post(skill_id):
         skill.name = name
         skill.description = description
         skill.skill_type = skill_type
+        skill.group_name = _blank_to_none(request.form.get("group_name"))
         skill.base_cost = int(base_cost)
         skill.can_purchase_multiple = can_purchase_multiple
         skill.cost_increases = cost_increases
@@ -276,6 +238,7 @@ def new_skill():
                 name=name,
                 description=description,
                 skill_type=skill_type,
+                group_name=_blank_to_none(request.form.get("group_name")),
                 base_cost=int(base_cost),
                 can_purchase_multiple=can_purchase_multiple,
                 cost_increases=cost_increases,

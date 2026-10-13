@@ -3,14 +3,16 @@
 Script to populate default data after migrations.
 """
 
+import importlib.util
 import logging
 import os
 import sys
 import uuid
 from datetime import datetime, timedelta
 
-# Add the project root to the Python path BEFORE any other imports
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Add the project root to the Python path BEFORE any other imports.
+# This file lives in scripts/<name>/, so the root is two directories up.
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
 # flake8: noqa: E402
 from app import create_app
@@ -38,6 +40,7 @@ from models.enums import (
     WikiPageVersionStatus,
 )
 from models.event import Event
+from models.tools.character import CharacterSkill
 from models.tools.print_template import PrintTemplate
 from models.wiki import WikiPage, WikiPageVersion, WikiSection, WikiTag
 
@@ -78,269 +81,681 @@ def create_default_wiki_pages():
         db.session.commit()
 
 
+# Playable factions, then the MegaCorps characters can hold reputation with.
+# allow_player_characters is False for a reputation-only organisation.
+DEFAULT_FACTIONS = (
+    ("Terran Ascendancy", "faction/terran-ascendancy", True),
+    ("Free Union", "faction/free-union", True),
+    ("Elysian Commonality", "faction/elysian-commonality", True),
+    ("Tulaki Dominion", "faction/tulaki-dominion", True),
+    ("Advanced Armaments", "faction/advanced-armaments", False),
+    ("Spacer Collective", "faction/spacer-collective", False),
+    ("Galactic Energy Supplies", "faction/galactic-energy-supplies", False),
+    ("Clearance Organisation", "faction/clearance-organisation", False),
+    ("Corporeal Perfection Syndicate", "faction/corporeal-perfection-syndicate", False),
+    ("Lazarus Corporation", "faction/lazarus-corporation", False),
+    ("Galactic Continental", "faction/galactic-continental", False),
+)
+
+_ASCENDANCY = ("Terran Ascendancy",)
+_COMMONALITY = ("Elysian Commonality",)
+_DOMINION = ("Tulaki Dominion",)
+_FREE_UNION = ("Free Union",)
+_ANY_FACTION = ("Terran Ascendancy", "Free Union", "Elysian Commonality", "Tulaki Dominion")
+
+# death is the wiki death-count duration in seconds. hits is the number on each
+# location, or the global total when hits_type is global. Unpublished species
+# have no rules page, so their hit totals stay at 0.
+DEFAULT_SPECIES = (
+    {
+        "name": "Arctonyx",
+        "slug": "species/arctonyx",
+        "hits_type": BodyHitsType.LOCATIONAL,
+        "hits": 2,
+        "death": 250,
+        "factions": _DOMINION,
+        "keywords": ("mammalian",),
+    },
+    {
+        "name": "Ascendancy Terran",
+        "slug": "species/ascendancy-terran",
+        "hits_type": BodyHitsType.LOCATIONAL,
+        "hits": 2,
+        "death": 200,
+        "factions": _ASCENDANCY,
+        "keywords": ("human", "terran"),
+    },
+    {
+        "name": "Beaupecian",
+        "slug": "species/beaupecian",
+        "hits_type": BodyHitsType.LOCATIONAL,
+        "hits": 0,
+        "death": 0,
+        "factions": (),
+        "keywords": ("unpublished", "unaligned"),
+        "unpublished": True,
+    },
+    {
+        "name": "Borean",
+        "slug": "species/borean",
+        "hits_type": BodyHitsType.LOCATIONAL,
+        "hits": 2,
+        "death": 300,
+        "factions": _COMMONALITY,
+        "keywords": ("humanoid",),
+    },
+    {
+        "name": "Coronite",
+        "slug": "species/coronite",
+        "hits_type": BodyHitsType.GLOBAL,
+        "hits": 2,
+        "death": 300,
+        "factions": _ASCENDANCY,
+        "keywords": ("energy",),
+    },
+    {
+        "name": "Cradian",
+        "slug": "species/cradian",
+        "hits_type": BodyHitsType.LOCATIONAL,
+        "hits": 2,
+        "death": 200,
+        "factions": _DOMINION,
+        "keywords": ("reptilian",),
+    },
+    {
+        "name": "Elysian",
+        "slug": "species/elysian",
+        "hits_type": BodyHitsType.LOCATIONAL,
+        "hits": 1,
+        "death": 200,
+        "factions": _COMMONALITY,
+        "keywords": ("humanoid", "psionic"),
+    },
+    {
+        "name": "Etherna",
+        "slug": "species/etherna",
+        "hits_type": BodyHitsType.LOCATIONAL,
+        "hits": 2,
+        "death": 200,
+        "factions": _FREE_UNION,
+        "keywords": ("humanoid",),
+    },
+    {
+        "name": "Felani",
+        "slug": "species/felani",
+        "hits_type": BodyHitsType.LOCATIONAL,
+        "hits": 2,
+        "death": 150,
+        "factions": _COMMONALITY,
+        "keywords": ("mammalian", "psionic"),
+    },
+    {
+        "name": "Free Union Terran",
+        "slug": "species/free-union-terran",
+        "hits_type": BodyHitsType.LOCATIONAL,
+        "hits": 2,
+        "death": 200,
+        "factions": _FREE_UNION,
+        "keywords": ("human", "terran"),
+    },
+    {
+        "name": "Gardener",
+        "slug": "species/gardener",
+        "hits_type": BodyHitsType.LOCATIONAL,
+        "hits": 4,
+        "death": 100,
+        "factions": _FREE_UNION,
+        "keywords": ("plant", "parasitic", "undead"),
+    },
+    {
+        "name": "Garvian",
+        "slug": "species/garvian",
+        "hits_type": BodyHitsType.LOCATIONAL,
+        "hits": 0,
+        "death": 0,
+        "factions": (),
+        "keywords": ("unpublished", "unaligned"),
+        "unpublished": True,
+    },
+    {
+        "name": "Gharial",
+        "slug": "species/gharial",
+        "hits_type": BodyHitsType.LOCATIONAL,
+        "hits": 0,
+        "death": 0,
+        "factions": (),
+        "keywords": ("unpublished", "unaligned"),
+        "unpublished": True,
+    },
+    {
+        "name": "Ikunkuma",
+        "slug": "species/ikunkuma",
+        "hits_type": BodyHitsType.LOCATIONAL,
+        "hits": 2,
+        "death": 400,
+        "factions": _FREE_UNION,
+        "keywords": ("mammalian",),
+    },
+    {
+        "name": "Kelki",
+        "slug": "species/kelki",
+        "hits_type": BodyHitsType.LOCATIONAL,
+        "hits": 2,
+        "death": 200,
+        "factions": _DOMINION,
+        "keywords": ("mammalian", "psionic"),
+    },
+    {
+        "name": "Kordai",
+        "slug": "species/kordai",
+        "hits_type": BodyHitsType.LOCATIONAL,
+        "hits": 3,
+        "death": 120,
+        "factions": ("Elysian Commonality", "Free Union"),
+        "keywords": ("psionic",),
+    },
+    {
+        "name": "Kulkani",
+        "slug": "species/kulkani",
+        "hits_type": BodyHitsType.LOCATIONAL,
+        "hits": 0,
+        "death": 0,
+        "factions": (),
+        "keywords": ("unpublished", "unaligned"),
+        "unpublished": True,
+    },
+    {
+        "name": "Lithos",
+        "slug": "species/lithos",
+        "hits_type": BodyHitsType.LOCATIONAL,
+        "hits": 4,
+        "death": 300,
+        "factions": _COMMONALITY,
+        "keywords": ("mineral", "psionic"),
+    },
+    {
+        "name": "N-DAX",
+        "slug": "species/n-dax",
+        "hits_type": BodyHitsType.GLOBAL,
+        "hits": 3,
+        "death": 200,
+        "factions": _ANY_FACTION,
+        "keywords": ("avian", "xenobiological"),
+    },
+    {
+        "name": "Notumi Cerebri",
+        "slug": "species/notumi-cerebri",
+        "hits_type": BodyHitsType.LOCATIONAL,
+        "hits": 1,
+        "death": 180,
+        "factions": _ASCENDANCY,
+        "keywords": ("humanoid",),
+    },
+    {
+        "name": "Notumi Corpori",
+        "slug": "species/notumi-corpori",
+        "hits_type": BodyHitsType.LOCATIONAL,
+        "hits": 1,
+        "death": 180,
+        "factions": _ASCENDANCY,
+        "keywords": ("humanoid",),
+    },
+    {
+        "name": "Olm",
+        "slug": "species/olm",
+        "hits_type": BodyHitsType.LOCATIONAL,
+        "hits": 0,
+        "death": 0,
+        "factions": (),
+        "keywords": ("unpublished", "unaligned"),
+        "unpublished": True,
+    },
+    {
+        "name": "Raegar",
+        "slug": "species/raegar",
+        "hits_type": BodyHitsType.LOCATIONAL,
+        "hits": 2,
+        "death": 300,
+        "factions": _ASCENDANCY,
+        "keywords": ("mammalian",),
+    },
+    {
+        "name": "Reskan",
+        "slug": "species/reskan",
+        "hits_type": BodyHitsType.GLOBAL,
+        "hits": 10,
+        "death": 200,
+        "factions": _COMMONALITY,
+        "keywords": ("hive",),
+    },
+    {
+        "name": "Sollen",
+        "slug": "species/sollen",
+        "hits_type": BodyHitsType.LOCATIONAL,
+        "hits": 1,
+        "death": 200,
+        "factions": _ASCENDANCY,
+        "keywords": ("reptilian",),
+    },
+    {
+        "name": "Thrah'Kah",
+        "slug": "species/thrah-kah",
+        "hits_type": BodyHitsType.LOCATIONAL,
+        "hits": 3,
+        "death": 150,
+        "factions": _ANY_FACTION,
+        "keywords": ("humanoid",),
+    },
+    {
+        "name": "Tulaki Megasaurian",
+        "slug": "species/tulaki-megasaurian",
+        "hits_type": BodyHitsType.LOCATIONAL,
+        "hits": 4,
+        "death": 200,
+        "factions": _DOMINION,
+        "keywords": ("reptilian", "tulaki"),
+    },
+    {
+        "name": "Tulaki Saurian",
+        "slug": "species/tulaki-saurian",
+        "hits_type": BodyHitsType.LOCATIONAL,
+        "hits": 3,
+        "death": 200,
+        "factions": _DOMINION,
+        "keywords": ("reptilian", "tulaki"),
+    },
+    {
+        "name": "Tulaki Serpentine",
+        "slug": "species/tulaki-serpentine",
+        "hits_type": BodyHitsType.LOCATIONAL,
+        "hits": 2,
+        "death": 200,
+        "factions": _DOMINION,
+        "keywords": ("reptilian", "tulaki"),
+    },
+    {
+        "name": "Urg",
+        "slug": "species/urg",
+        "hits_type": BodyHitsType.LOCATIONAL,
+        "hits": 4,
+        "death": 300,
+        "factions": _ASCENDANCY,
+        "keywords": ("humanoid",),
+    },
+    {
+        "name": "Vikaas Aquerna",
+        "slug": "species/vikaas-aquerna",
+        "hits_type": BodyHitsType.LOCATIONAL,
+        "hits": 3,
+        "death": 200,
+        "factions": _FREE_UNION,
+        "keywords": ("aquatic", "psionic"),
+    },
+    {
+        "name": "Wrathian",
+        "slug": "species/wrathian",
+        "hits_type": BodyHitsType.LOCATIONAL,
+        "hits": 1,
+        "death": 400,
+        "factions": _ASCENDANCY,
+        "keywords": ("humanoid",),
+    },
+    {
+        "name": "Xak'Noth",
+        "slug": "species/xak-noth",
+        "hits_type": BodyHitsType.LOCATIONAL,
+        "hits": 2,
+        "death": 200,
+        "factions": _DOMINION,
+        "keywords": ("arthropoid",),
+    },
+    {
+        "name": "Yelk",
+        "slug": "species/yelk",
+        "hits_type": BodyHitsType.GLOBAL,
+        "hits": 6,
+        "death": 200,
+        "factions": _FREE_UNION,
+        "keywords": ("fungoid",),
+    },
+)
+
+
+def _wiki_tag(name):
+    tag = WikiTag.query.filter_by(name=name).first()
+    if tag is None:
+        tag = WikiTag(name=name)
+        db.session.add(tag)
+        db.session.flush()
+    return tag
+
+
+def _ensure_stub_wiki_page(slug, title, tag_name, section_title, content):
+    if WikiPage.query.filter_by(slug=slug).first():
+        return
+    wiki_page = WikiPage(slug=slug, title=title, tags=[_wiki_tag(tag_name)])
+    db.session.add(wiki_page)
+    db.session.flush()
+    wiki_version = WikiPageVersion(
+        page_slug=slug,
+        version_number=1,
+        status=WikiPageVersionStatus.PUBLISHED,
+    )
+    db.session.add(wiki_version)
+    db.session.flush()
+    wiki_section = WikiSection(
+        id=str(uuid.uuid4()),
+        version_id=wiki_version.id,
+        order=0,
+        title=section_title,
+        content=content,
+    )
+    db.session.add(wiki_section)
+    db.session.flush()
+
+
+def _faction_ids(names):
+    factions = {faction.name: faction.id for faction in Faction.query.all()}
+    missing = [name for name in names if name not in factions]
+    if missing:
+        raise ValueError(f"Species seed references unknown factions: {missing}")
+    return [factions[name] for name in names]
+
+
 def create_default_factions():
-    """Create default factions if none exist."""
-    if Faction.query.first() is None:
-        default_factions = [
-            ("Terran Ascendancy", "faction/terran-ascendancy", True),
-            ("Free Union", "faction/free-union", True),
-            ("Elysian Commonality", "faction/elysian-commonality", True),
-            ("Tulaki Dominion", "faction/tulaki-dominion", True),
-        ]
+    """Create any wiki factions that are not already present."""
+    for name, slug, allow_players in DEFAULT_FACTIONS:
+        if Faction.query.filter_by(name=name).first():
+            continue
+        logging.info(f"Creating faction: {name}")
+        faction = Faction(name=name, wiki_slug=slug, allow_player_characters=allow_players)
+        db.session.add(faction)
+        role = "Playable faction" if allow_players else "Reputation organisation"
+        _ensure_stub_wiki_page(
+            slug,
+            f"{name} - Faction",
+            "faction",
+            name,
+            f"<p>{role}. Description for {name}.</p>",
+        )
+    db.session.commit()
 
-        tag = WikiTag(name="faction")
-        for name, slug, allow_players in default_factions:
-            logging.info(f"Creating faction: {name}")
-            faction = Faction(name=name, wiki_slug=slug, allow_player_characters=allow_players)
-            db.session.add(faction)
-            # Create wiki page if it doesn't exist
-            wiki_page = WikiPage.query.filter_by(slug=slug).first()
-            if not wiki_page:
-                wiki_page = WikiPage(slug=slug, title=f"{name} - Faction", tags=[tag])
-                db.session.add(wiki_page)
-                db.session.flush()
-                wiki_version = WikiPageVersion(
-                    page_slug=slug,
-                    version_number=1,
-                    status=WikiPageVersionStatus.PUBLISHED,
-                )
-                db.session.add(wiki_version)
-                db.session.flush()
-                wiki_section = WikiSection(
-                    id=str(uuid.uuid4()),
-                    version_id=wiki_version.id,
-                    order=0,
-                    title=name,
-                    content=f"<p>Description for {name} faction.</p>",
-                )
-                db.session.add(wiki_section)
-                db.session.flush()
 
-        db.session.commit()
+def _load_skill_definitions():
+    """Load the wiki skill catalogue from the sibling module."""
+    path = os.path.join(os.path.dirname(__file__), "default_skill_definitions.py")
+    spec = importlib.util.spec_from_file_location("default_skill_definitions", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.SKILL_DEFINITIONS
+
+
+def _skill_description(spec):
+    description = spec["description"]
+    required_name = spec.get("requires")
+    if not required_name:
+        return description
+    requirement = f"Requires {required_name}"
+    if spec.get("requires_rank"):
+        requirement += f" rank {spec['requires_rank']}"
+    return f"{description} {requirement}."
 
 
 def create_default_skills():
-    """Create default skills if none exist."""
-    if not Skill.query.first():
-        # Add skills first since species will reference them
-        skills = [
-            Skill(
-                name="Medium Energy Weapon Training",
-                description="Training in the use of medium energy weapons.",
-                skill_type="combat",
-                base_cost=2,
-            ),
-            Skill(
-                name="Heavy Energy Weapon Training",
-                description="Training in the use of heavy energy weapons.",
-                skill_type="combat",
-                base_cost=2,
-            ),
-            Skill(
-                name="Toughness",
-                description=("Increases physical resilience and ability to withstand damage."),
-                skill_type="defense",
-                base_cost=2,
-                can_purchase_multiple=True,
-                cost_increases=True,
-            ),
-            Skill(
-                name="Engineering",
-                description="Increases the ability to build and repair items.",
-                skill_type="engineering",
-                base_cost=2,
-                can_purchase_multiple=True,
-                cost_increases=True,
-                adds_engineering_mods=2,
-                adds_engineering_downtime=1,
-            ),
-            Skill(
-                name="Additional Mods",
-                description="Increases the number of known mods.",
-                skill_type="engineering",
-                base_cost=1,
-                can_purchase_multiple=True,
-                cost_increases=True,
-                adds_engineering_mods=1,
-            ),
-            Skill(
-                name="Science",
-                description="Increases the ability to perform science actions.",
-                skill_type="science",
-                base_cost=2,
-                adds_science_downtime=1,
-                science_type=ScienceType.GENERIC.value,
-            ),
-            Skill(
-                name="Life Science",
-                description="Increases the ability to perform life science actions.",
-                skill_type="science",
-                base_cost=1,
-                can_purchase_multiple=True,
-                cost_increases=True,
-                adds_science_downtime=1,
-                science_type=ScienceType.LIFE.value,
-            ),
-            Skill(
-                name="Corporeal Science",
-                description=("Increases the ability to perform corporeal science actions."),
-                skill_type="science",
-                base_cost=1,
-                can_purchase_multiple=True,
-                cost_increases=True,
-                adds_science_downtime=1,
-                science_type=ScienceType.CORPOREAL.value,
-            ),
-            Skill(
-                name="Etheric Science",
-                description="Increases the ability to perform etheric science actions.",
-                skill_type="science",
-                base_cost=1,
-                can_purchase_multiple=True,
-                cost_increases=True,
-                adds_science_downtime=1,
-                science_type=ScienceType.ETHERIC.value,
-            ),
-            Skill(
-                name="Discipline",
-                description=(
-                    "Increases the ability to perform discipline actions. " "Adds 2 Will Points."
-                ),
-                skill_type="discipline",
-                base_cost=2,
-                character_sheet_values_list=[
-                    {"id": "will", "description": "Will Points", "value": 2}
-                ],
-            ),
-        ]
+    """Create wiki skills if none exist."""
+    if Skill.query.first():
+        return
 
-        # Add skills to database and get their IDs
-        for skill in skills:
-            logging.info(f"Adding skill: {skill.name}")
-            db.session.add(skill)
-        db.session.flush()
+    definitions = _load_skill_definitions()
+    names = [spec["name"] for spec in definitions]
+    duplicates = {name for name in names if names.count(name) > 1}
+    if duplicates:
+        raise ValueError(f"Duplicate seeded skill names: {sorted(duplicates)}")
 
-        # Set up combat skill requirements
-        heavy_weapon = next(s for s in skills if s.name == "Heavy Energy Weapon Training")
-        medium_weapon = next(s for s in skills if s.name == "Medium Energy Weapon Training")
-        heavy_weapon.required_skill_id = medium_weapon.id
+    factions = {faction.name: faction for faction in Faction.query.all()}
+    created = {}
+    for spec in definitions:
+        skill = Skill(
+            name=spec["name"],
+            description=_skill_description(spec),
+            skill_type=spec["skill_type"],
+            group_name=spec.get("group"),
+            base_cost=spec["base_cost"],
+            can_purchase_multiple=spec.get("multiple", False),
+            cost_increases=spec.get("increases", False),
+            adds_engineering_mods=spec.get("mods", 0),
+            adds_engineering_downtime=spec.get("eng_slots", 0),
+            adds_science_downtime=spec.get("sci_slots", 0),
+            science_type=spec.get("science"),
+        )
+        if spec.get("will"):
+            skill.character_sheet_values_list = [
+                {"id": "will", "description": "Will Points", "value": spec["will"]}
+            ]
+        required_faction = factions.get(spec.get("faction"))
+        if required_faction is not None:
+            skill.required_factions_list = [required_faction.id]
+        reputation_name = spec.get("reputation_faction", spec.get("faction"))
+        reputation_faction = factions.get(reputation_name) if spec.get("reputation") else None
+        if reputation_faction is not None:
+            skill.adds_reputation_faction_id = reputation_faction.id
+            skill.adds_reputation_value = spec["reputation"]
+        logging.info(f"Adding skill: {skill.name}")
+        db.session.add(skill)
+        created[spec["name"]] = skill
 
-        # Set up science skill requirements
-        science = next(s for s in skills if s.name == "Science")
-        life_science = next(s for s in skills if s.name == "Life Science")
-        corporeal_science = next(s for s in skills if s.name == "Corporeal Science")
-        etheric_science = next(s for s in skills if s.name == "Etheric Science")
+    db.session.flush()
+    for spec in definitions:
+        required_name = spec.get("requires")
+        if required_name:
+            created[spec["name"]].required_skill_id = created[required_name].id
+    db.session.commit()
 
-        life_science.required_skill_id = science.id
-        corporeal_science.required_skill_id = science.id
-        etheric_science.required_skill_id = science.id
 
+def _species_names(spec):
+    species_name = spec.get("species")
+    if not species_name:
+        return []
+    if isinstance(species_name, str):
+        return [species_name]
+    return list(species_name)
+
+
+def link_default_skill_types():
+    """Move seeded skills that are still marked professional into spaceflight."""
+    definitions = _load_skill_definitions()
+    changed = False
+    for spec in definitions:
+        if spec.get("skill_type") != "spaceflight":
+            continue
+        skill = Skill.query.filter_by(name=spec["name"]).first()
+        if skill is None or skill.skill_type != "professional":
+            continue
+        skill.skill_type = "spaceflight"
+        changed = True
+    if changed:
         db.session.commit()
 
 
-def create_default_species():
-    """Create default species if none exist."""
-    if not Species.query.first():
-        logging.info("Creating default species")
-        species_list = [
-            Species(
-                name="Ascendancy Terran",
-                wiki_page="species/ascendancy-terran",
-                permitted_factions_list=[1, 2, 3, 4],
-                body_hits_type=BodyHitsType.LOCATIONAL,
-                body_hits=3,
-                death_count=3,
-                keywords_list=["human", "terran", "ascendancy"],
-            ),
-            Species(
-                name="Free Union Human",
-                wiki_page="species/free-union-human",
-                permitted_factions_list=[2],
-                body_hits_type=BodyHitsType.LOCATIONAL,
-                body_hits=3,
-                death_count=3,
-                keywords_list=["human", "free union"],
-            ),
-            Species(
-                name="Elysian",
-                wiki_page="species/elysian",
-                permitted_factions_list=[3],
-                body_hits_type=BodyHitsType.GLOBAL,
-                body_hits=4,
-                death_count=2,
-                keywords_list=["elysian", "psionic"],
-            ),
-            Species(
-                name="Tulaki",
-                wiki_page="species/tulaki",
-                permitted_factions_list=[4],
-                body_hits_type=BodyHitsType.LOCATIONAL,
-                body_hits=5,
-                death_count=4,
-                keywords_list=["tulaki", "warrior"],
-            ),
-        ]
+def link_default_skill_groups():
+    """Fill an empty catalogue group name from the seed, leaving admin edits in place."""
+    definitions = _load_skill_definitions()
+    changed = False
+    for spec in definitions:
+        group_name = spec.get("group")
+        if not group_name:
+            continue
+        skill = Skill.query.filter_by(name=spec["name"]).first()
+        if skill is None or skill.group_name:
+            continue
+        skill.group_name = group_name
+        changed = True
+    if changed:
+        db.session.commit()
 
-        for species in species_list:
-            logging.info(f"Adding species: {species.name}")
-            db.session.add(species)
+
+_RETIRED_MUTATION_SKILLS = (
+    "Mutate Claws",
+    "Mutate Musculature",
+    "Mutate Rapid Recovery",
+)
+
+
+def ensure_ranked_mutation_skills():
+    """Add one skill per mutation rank, and drop the old unsplit rows when unused."""
+    definitions = [
+        spec for spec in _load_skill_definitions() if spec.get("skill_type") == "mutation"
+    ]
+    rows, added = _mutation_rank_rows(definitions)
+    linked = _link_mutation_prerequisites(definitions, rows)
+    removed = _remove_retired_mutation_skills()
+    if added or linked or removed:
+        db.session.commit()
+
+
+def _mutation_rank_rows(definitions):
+    rows = {}
+    added = False
+    for spec in definitions:
+        skill = Skill.query.filter_by(name=spec["name"]).first()
+        if skill is None:
+            skill = Skill(
+                name=spec["name"],
+                description=_skill_description(spec),
+                skill_type=spec["skill_type"],
+                base_cost=spec["base_cost"],
+            )
+            db.session.add(skill)
+            added = True
+        rows[spec["name"]] = skill
+    if added:
         db.session.flush()
+    return rows, added
 
-        # Add abilities to species
-        for species in species_list:
-            if species.name == "Ascendancy Terran":
-                ability = Ability(
+
+def _link_mutation_prerequisites(definitions, rows):
+    changed = False
+    for spec in definitions:
+        required_name = spec.get("requires")
+        skill = rows[spec["name"]]
+        if not required_name or skill.required_skill_id:
+            continue
+        skill.required_skill_id = rows[required_name].id
+        changed = True
+    return changed
+
+
+def _remove_retired_mutation_skills():
+    removed = False
+    for name in _RETIRED_MUTATION_SKILLS:
+        skill = Skill.query.filter_by(name=name).first()
+        if skill is None or _mutation_skill_in_use(skill):
+            continue
+        db.session.delete(skill)
+        removed = True
+    return removed
+
+
+def _mutation_skill_in_use(skill):
+    return CharacterSkill.query.filter_by(skill_id=skill.id).first() is not None
+
+
+def link_default_skill_reputation():
+    """Point a seeded skill at its reputation faction once that faction exists."""
+    definitions = _load_skill_definitions()
+    factions = {faction.name: faction for faction in Faction.query.all()}
+    changed = False
+    for spec in definitions:
+        if not spec.get("reputation"):
+            continue
+        reputation_name = spec.get("reputation_faction", spec.get("faction"))
+        faction = factions.get(reputation_name)
+        skill = Skill.query.filter_by(name=spec["name"]).first()
+        if skill is None or faction is None or skill.adds_reputation_faction_id:
+            continue
+        skill.adds_reputation_faction_id = faction.id
+        skill.adds_reputation_value = spec["reputation"]
+        changed = True
+    if changed:
+        db.session.commit()
+
+
+def link_default_skill_species():
+    """Restrict seeded skills to a species once that species record exists."""
+    definitions = _load_skill_definitions()
+    changed = False
+    for spec in definitions:
+        names = _species_names(spec)
+        if not names:
+            continue
+        skill = Skill.query.filter_by(name=spec["name"]).first()
+        species = [Species.query.filter_by(name=name).first() for name in names]
+        if skill is None or any(row is None for row in species) or skill.required_species:
+            continue
+        skill.required_species_list = [row.id for row in species]
+        changed = True
+    if changed:
+        db.session.commit()
+
+
+def _species_wiki_content(species, unpublished):
+    hit_type = species.body_hits_type
+    hit_key = hit_type.value if isinstance(hit_type, BodyHitsType) else hit_type
+    body_hits_desc = BodyHitsType.descriptions()[hit_key]
+    factions = Faction.query.filter(Faction.id.in_(species.permitted_factions_list)).all()
+    faction_names = [faction.name for faction in factions] or ["None published"]
+    faction_list = "".join(f"<li>{name}</li>" for name in faction_names)
+    note = ""
+    if unpublished:
+        note = "<p>The official wiki topic for this species does not exist yet.</p>"
+    return f"""
+                <h2>Species Information</h2>
+                {note}
+                <p>Body Hits: {species.body_hits}</p>
+                <p>Death Count: {species.death_count} seconds</p>
+                <p>Body Hits Type: {body_hits_desc}</p>
+                <h3>Permitted Factions</h3>
+                <ul>
+                    {faction_list}
+                </ul>
+                """
+
+
+def create_default_species():
+    """Create any wiki species that are not already present."""
+    for spec in DEFAULT_SPECIES:
+        if Species.query.filter_by(name=spec["name"]).first():
+            continue
+        logging.info(f"Adding species: {spec['name']}")
+        species = Species(
+            name=spec["name"],
+            wiki_page=spec["slug"],
+            permitted_factions_list=_faction_ids(spec["factions"]),
+            body_hits_type=spec["hits_type"],
+            body_hits=spec["hits"],
+            death_count=spec["death"],
+            keywords_list=list(spec["keywords"]),
+        )
+        db.session.add(species)
+        db.session.flush()
+        if spec["name"] == "Ascendancy Terran":
+            db.session.add(
+                Ability(
                     species_id=species.id,
                     name="Additional Group Income",
                     description="Increases the amount of income a group receives.",
                     type=AbilityType.GROUP_INCOME,
                     additional_group_income=30,
                 )
-                db.session.add(ability)
-
-        # Create wiki pages for each species
-        tag = WikiTag(name="species")
-        for species in species_list:
-            # Create wiki page
-            wiki_page = WikiPage(
-                slug=species.wiki_page, title=f"{species.name} - Species", tags=[tag]
             )
-            db.session.add(wiki_page)
-            db.session.flush()
-
-            # Create wiki version
-            wiki_version = WikiPageVersion(
-                page_slug=species.wiki_page,
-                version_number=1,
-                status=WikiPageVersionStatus.PUBLISHED,
-            )
-            db.session.add(wiki_version)
-            db.session.flush()
-
-            # Create wiki section with species info
-            body_hits_desc = BodyHitsType.descriptions()[species.body_hits_type.value]
-            faction_list = "".join(
-                f"<li>{faction}</li>" for faction in species.permitted_factions_list
-            )
-            wiki_section = WikiSection(
-                id=str(uuid.uuid4()),
-                version_id=wiki_version.id,
-                order=0,
-                title=f"{species.name}",
-                content=f"""
-                <h2>Species Information</h2>
-                <p>Body Hits: {species.body_hits}</p>
-                <p>Death Count: {species.death_count}</p>
-                <p>Body Hits Type: {body_hits_desc}</p>
-                <h3>Permitted Factions</h3>
-                <ul>
-                    {faction_list}
-                </ul>
-                """,
-            )
-            db.session.add(wiki_section)
-
-        db.session.commit()
+        _ensure_stub_wiki_page(
+            spec["slug"],
+            f"{spec['name']} - Species",
+            "species",
+            spec["name"],
+            _species_wiki_content(species, spec.get("unpublished", False)),
+        )
+    db.session.commit()
 
 
 def create_default_exotics():
@@ -1025,7 +1440,12 @@ def create_default_data():
     create_default_wiki_pages()
     create_default_factions()
     create_default_skills()
+    link_default_skill_types()
+    link_default_skill_groups()
+    link_default_skill_reputation()
     create_default_species()
+    ensure_ranked_mutation_skills()
+    link_default_skill_species()
     create_default_exotics()
     create_default_medicaments()
     create_default_item_types()

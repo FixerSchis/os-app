@@ -40,6 +40,15 @@
             </div>
 
             <div class="form-group">
+                <label for="group_name">Group</label>
+                <input type="text" class="form-control" id="group_name" name="group_name" value="{{ skill.group_name if skill and skill.group_name else '' }}">
+                <small class="form-text text-muted">
+                    Skills with the same group are listed together on the skills page.
+                    Armour Training covers Medium and Heavy Armour Training.
+                </small>
+            </div>
+
+            <div class="form-group">
                 <label for="adds_engineering_mods">Adds Engineering Mods</label>
                 <input type="number" class="form-control" id="adds_engineering_mods" name="adds_engineering_mods" value="{{ skill.adds_engineering_mods if skill else 0 }}" min="0">
             </div>
