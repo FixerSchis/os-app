@@ -109,10 +109,14 @@ class TestTemplatesRoutes:
         )
         db.session.add(template)
         db.session.commit()
+        front_html = (
+            "{{ medicament.name }} {{ generate_qr_code(medicament.name) }} "
+            "{{ medicament.modes_list[0].name }}"
+        )
         resp = test_client.post(
             f"/templates/api/{template.id}/render",
             json={
-                "front_html": "{{ medicament.name }} {{ generate_qr_code(medicament.name) }}",
+                "front_html": front_html,
                 "back_html": "",
                 "css_styles": "",
             },
@@ -120,7 +124,8 @@ class TestTemplatesRoutes:
         assert resp.status_code == 200
         data = resp.get_json()
         assert data["success"] is True
-        assert "StimPak" in data["front_html"]
+        assert "Radiation Nanosponges" in data["front_html"]
+        assert "TREAT" in data["front_html"]
         assert "data:image/png;base64," in data["front_html"]
 
     def test_render_template_preview_blocks_config(self, test_client, admin_user, db, app):

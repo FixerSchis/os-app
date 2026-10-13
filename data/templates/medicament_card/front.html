@@ -1,1 +1,8 @@
-{{ medicament.name }} Front
+<div class="medicament-card">
+    <h1 class="medicament-name">{{ medicament.name }}</h1>
+    {% if medicament.summary %}<p class="medicament-summary">{{ medicament.summary }}</p>{% endif %}
+    {% if medicament.effect %}<p class="medicament-effect">{{ medicament.effect }}</p>{% endif %}
+    {% for mode in medicament.modes_list %}
+    <p class="medicament-mode"><strong>{{ mode.name }}</strong> - {{ mode.effect }}</p>
+    {% endfor %}
+</div>

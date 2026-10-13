@@ -1,7 +1,7 @@
 """add used on, effect, and duration to exotic substances
 
 Revision ID: f2a6d38c5e17
-Revises: d5b2e8f17a3c
+Revises: e8c4f27a9b61
 Create Date: 2026-10-13 21:00:00.000000
 
 """
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision = "f2a6d38c5e17"
-down_revision = "d5b2e8f17a3c"
+down_revision = "e8c4f27a9b61"
 branch_labels = None
 depends_on = None
 
