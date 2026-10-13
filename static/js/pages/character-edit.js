@@ -120,6 +120,41 @@ function refreshCreationChoices() {
     section.style.display = active ? '' : 'none';
 }
 
+function reindexCharacterAbilities() {
+    document.querySelectorAll('#character-abilities-list .character-ability-block').forEach(
+        function(block, index) {
+            block.querySelectorAll('[name], [id], label[for]').forEach(function(el) {
+                ['name', 'id', 'htmlFor'].forEach(function(attr) {
+                    const value = el[attr];
+                    if (value) {
+                        el[attr] = value.replace(/_\d+$/, '_' + index);
+                    }
+                });
+            });
+        }
+    );
+}
+
+document.addEventListener('click', function(event) {
+    const addButton = event.target.closest('#add-character-ability');
+    if (addButton) {
+        const list = document.getElementById('character-abilities-list');
+        const template = document.getElementById('character-ability-template');
+        list.appendChild(template.content.cloneNode(true));
+        reindexCharacterAbilities();
+        return;
+    }
+    const removeButton = event.target.closest('.remove-character-ability');
+    if (!removeButton) {
+        return;
+    }
+    const block = removeButton.closest('.character-ability-block');
+    if (block) {
+        block.remove();
+        reindexCharacterAbilities();
+    }
+});
+
 document.addEventListener('change', function(event) {
     if (event.target && event.target.id === 'species_id') {
         showStartingSkillPicks();

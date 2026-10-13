@@ -6,7 +6,8 @@ from ..extensions import db
 
 class Ability(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    species_id = db.Column(db.Integer, db.ForeignKey("species.id"), nullable=False)
+    species_id = db.Column(db.Integer, db.ForeignKey("species.id"), nullable=True)
+    character_id = db.Column(db.Integer, db.ForeignKey("character.id"), nullable=True)
     name = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text, nullable=False)
     type = db.Column(
@@ -30,6 +31,14 @@ class Ability(db.Model):
         db.Integer, db.ForeignKey("faction.id"), nullable=True
     )
     starting_reputation_value = db.Column(db.Integer, nullable=True)
+
+    __table_args__ = (
+        db.CheckConstraint(
+            "(species_id IS NOT NULL AND character_id IS NULL) OR "
+            "(species_id IS NULL AND character_id IS NOT NULL)",
+            name="ck_ability_one_owner",
+        ),
+    )
 
     # Relationships
     starting_reputation_faction = db.relationship(
@@ -104,7 +113,12 @@ class Species(db.Model):
     keywords = db.Column(db.String, nullable=True)  # Stored as JSON string of keywords
 
     # Relationships
-    abilities = db.relationship("Ability", backref="species", cascade="all, delete-orphan")
+    abilities = db.relationship(
+        "Ability",
+        backref="species",
+        cascade="all, delete-orphan",
+        foreign_keys="Ability.species_id",
+    )
     characters = db.relationship("Character", back_populates="species")
 
     def __repr__(self):

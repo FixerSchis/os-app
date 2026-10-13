@@ -9,7 +9,7 @@ from models.database.faction import Faction
 from models.database.item import Item
 from models.database.item_blueprint import ItemBlueprint
 from models.database.sample import Sample
-from models.database.species import Species
+from models.database.species import Ability, Species
 from models.enums import AbilityType, CharacterAuditAction, PrintTemplateType
 from models.extensions import db
 from models.tools.character import (
@@ -35,6 +35,57 @@ from utils.starting_skills import (
     choice_catalogue,
     validate_starting_skill_picks,
 )
+
+
+def _posted_character_abilities():
+    """Read character-ability rows posted by the game team."""
+    rows = []
+    index = 0
+    while (
+        f"character_ability_name_{index}" in request.form
+        or f"character_ability_description_{index}" in request.form
+    ):
+        name = (request.form.get(f"character_ability_name_{index}") or "").strip()
+        description = (request.form.get(f"character_ability_description_{index}") or "").strip()
+        index += 1
+        if not name and not description:
+            continue
+        if not name or not description:
+            return None, "Each character ability needs a name and a description."
+        if len(name) > 100:
+            return None, "Character ability names must be 100 characters or fewer."
+        rows.append((name, description))
+    return rows, None
+
+
+def _replace_character_abilities(character, rows):
+    """Store the posted abilities on this character. Returns an audit note when they change."""
+    previous = [(ability.name, ability.description) for ability in character.abilities]
+    if previous == rows:
+        return None
+    for ability in list(character.abilities):
+        db.session.delete(ability)
+    db.session.flush()
+    for name, description in rows:
+        db.session.add(
+            Ability(
+                character_id=character.id,
+                name=name,
+                description=description,
+                type=AbilityType.GENERIC,
+            )
+        )
+    if rows:
+        names = ", ".join(name for name, _description in rows)
+        return f"Character abilities set to: {names}"
+    return "Character abilities removed"
+
+
+def _edit_redirect(character, admin_context):
+    redirect_url = url_for("characters.edit", character_id=character.id)
+    if admin_context:
+        redirect_url += "?admin_context=1"
+    return redirect(redirect_url)
 
 
 def can_edit_character(user, args, kwargs):
@@ -209,6 +260,19 @@ def create_character_post():
             all_cybernetics=all_cybernetics,
         )
 
+    ability_rows = None
+    if current_user.has_permission("character.edit_all"):
+        ability_rows, ability_error = _posted_character_abilities()
+        if ability_error:
+            flash(ability_error, "error")
+            return render_template(
+                "characters/edit.html",
+                admin_context=admin_context,
+                factions=factions,
+                species_list=species_list,
+                all_cybernetics=all_cybernetics,
+            )
+
     base_character_points = 10
     posted_points, points_error = _posted_base_character_points(current_user)
     if points_error:
@@ -247,6 +311,8 @@ def create_character_post():
         character, species, current_user, request.form.getlist("starting_skill_pick")
     )
     apply_skill_pair_grants(character, species, current_user)
+    if ability_rows is not None:
+        _replace_character_abilities(character, ability_rows)
     db.session.commit()
 
     # Handle background review system for character creation
@@ -261,11 +327,14 @@ def create_character_post():
         db.session.commit()
 
     # Audit log for creation
+    created = "Character created"
+    if ability_rows:
+        created += " with abilities: " + ", ".join(name for name, _description in ability_rows)
     audit = CharacterAuditLog(
         character_id=character.id,
         editor_user_id=current_user.id,
         action=CharacterAuditAction.CREATE.value,
-        changes="Character created",
+        changes=created,
     )
     db.session.add(audit)
     db.session.commit()
@@ -469,6 +538,13 @@ def edit_post(character_id):
             species_list=species_list,
         )
 
+    ability_rows = None
+    if current_user.has_permission("character.edit_all"):
+        ability_rows, ability_error = _posted_character_abilities()
+        if ability_error:
+            flash(ability_error, "error")
+            return _edit_redirect(character, admin_context)
+
     posted_points, points_error = _posted_base_character_points(current_user)
     if points_error:
         flash(points_error, "error")
@@ -551,6 +627,17 @@ def edit_post(character_id):
     sample_changes = []  # Initialize sample_changes outside the if block
 
     if current_user.has_permission("character.edit_all"):
+        if ability_rows is not None:
+            ability_change = _replace_character_abilities(character, ability_rows)
+            if ability_change:
+                db.session.add(
+                    CharacterAuditLog(
+                        character_id=character.id,
+                        editor_user_id=current_user.id,
+                        action=CharacterAuditAction.EDIT.value,
+                        changes=ability_change,
+                    )
+                )
         # Remove condition
         remove_condition_id = request.form.get("remove_condition")
         if remove_condition_id:
@@ -1242,6 +1329,18 @@ def create_for_player_post(user_id):
             all_cybernetics=all_cybernetics,
         )
 
+    ability_rows, ability_error = _posted_character_abilities()
+    if ability_error:
+        flash(ability_error, "error")
+        return render_template(
+            "characters/edit.html",
+            user_id=user_id,
+            admin_context=True,
+            factions=factions,
+            species_list=species_list,
+            all_cybernetics=all_cybernetics,
+        )
+
     # Get background fields from form
     background = request.form.get("background", "").strip()
     goals = request.form.get("goals", "").strip()
@@ -1265,6 +1364,7 @@ def create_for_player_post(user_id):
         character, species, current_user, request.form.getlist("starting_skill_pick")
     )
     apply_skill_pair_grants(character, species, current_user)
+    _replace_character_abilities(character, ability_rows)
     db.session.commit()
 
     # Handle background review system for character creation by admin
@@ -1279,11 +1379,14 @@ def create_for_player_post(user_id):
         db.session.commit()
 
     # Audit log for creation
+    created = "Character created by admin"
+    if ability_rows:
+        created += " with abilities: " + ", ".join(name for name, _description in ability_rows)
     audit = CharacterAuditLog(
         character_id=character.id,
         editor_user_id=current_user.id,
         action=CharacterAuditAction.CREATE.value,
-        changes="Character created by admin",
+        changes=created,
     )
     db.session.add(audit)
     db.session.commit()

@@ -153,6 +153,12 @@ class Character(db.Model):
     event_tickets = db.relationship("EventTicket", back_populates="character")
     inventory_items = db.relationship("CharacterItem", back_populates="character")
     samples = db.relationship("Sample", secondary="character_samples", lazy="dynamic")
+    abilities = db.relationship(
+        "Ability",
+        backref="character",
+        cascade="all, delete-orphan",
+        foreign_keys="Ability.character_id",
+    )
 
     @property
     def pack(self):
@@ -763,6 +769,11 @@ class Character(db.Model):
         if per_rank is None:
             per_rank = 1
         return self.toughness_ranks() * per_rank
+
+    def printed_abilities(self):
+        """Species abilities, then abilities written for this character alone."""
+        shared = list(self.species.abilities) if self.species is not None else []
+        return shared + list(self.abilities)
 
     def get_character_sheet_values(self):
         """Get the character sheet values for the character."""

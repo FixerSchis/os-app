@@ -910,6 +910,26 @@ _PASSPORT_BODY_HITS_WITH_TOUGHNESS = (
 )
 
 
+_PASSPORT_SPECIES_ABILITIES = "{% for ability in character.species.abilities %}"
+_PASSPORT_PRINTED_ABILITIES = "{% for ability in character.printed_abilities() %}"
+
+
+def link_default_character_sheet_abilities():
+    """Print abilities stored on the character beside the species abilities."""
+    template = PrintTemplate.query.filter_by(type=PrintTemplateType.CHARACTER_SHEET).first()
+    if (
+        template is None
+        or not template.front_html
+        or "printed_abilities" in template.front_html
+        or _PASSPORT_SPECIES_ABILITIES not in template.front_html
+    ):
+        return
+    template.front_html = template.front_html.replace(
+        _PASSPORT_SPECIES_ABILITIES, _PASSPORT_PRINTED_ABILITIES, 1
+    )
+    db.session.commit()
+
+
 def link_default_toughness_hits():
     """Set Toughness hit conversions, and print them on the character sheet."""
     changed = False
@@ -1790,6 +1810,7 @@ def create_default_data():
     create_default_samples()
     create_default_events()
     create_default_templates()
+    link_default_character_sheet_abilities()
 
 
 def main():

@@ -203,6 +203,58 @@
                     </div>
                 </div>
 
+                {% if has_permission('character.edit_all') or (character and character.abilities) %}
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Character Abilities</h5>
+                        </div>
+                        <div class="card-body">
+                            {% if has_permission('character.edit_all') %}
+                            <p class="text-muted">Printed on this character's sheet with their species abilities.</p>
+                            <div id="character-abilities-list">
+                                {% for ability in (character.abilities if character else []) %}
+                                <div class="character-ability-block border rounded p-3 mb-3">
+                                    <div class="row g-3">
+                                        <div class="col-md-4">
+                                            <label class="form-label" for="character_ability_name_{{ loop.index0 }}">Name *</label>
+                                            <input type="text" class="form-control" id="character_ability_name_{{ loop.index0 }}" name="character_ability_name_{{ loop.index0 }}" value="{{ ability.name }}" maxlength="100" required>
+                                        </div>
+                                        <div class="col-md-8">
+                                            <label class="form-label" for="character_ability_description_{{ loop.index0 }}">Description *</label>
+                                            <textarea class="form-control" id="character_ability_description_{{ loop.index0 }}" name="character_ability_description_{{ loop.index0 }}" rows="3" required>{{ ability.description }}</textarea>
+                                        </div>
+                                    </div>
+                                    <button type="button" class="btn btn-outline-danger btn-sm mt-2 remove-character-ability">Remove</button>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            <button type="button" class="btn btn-primary" id="add-character-ability">Add Ability</button>
+                            <template id="character-ability-template">
+                                <div class="character-ability-block border rounded p-3 mb-3">
+                                    <div class="row g-3">
+                                        <div class="col-md-4">
+                                            <label class="form-label" for="character_ability_name_0">Name *</label>
+                                            <input type="text" class="form-control" id="character_ability_name_0" name="character_ability_name_0" maxlength="100" required>
+                                        </div>
+                                        <div class="col-md-8">
+                                            <label class="form-label" for="character_ability_description_0">Description *</label>
+                                            <textarea class="form-control" id="character_ability_description_0" name="character_ability_description_0" rows="3" required></textarea>
+                                        </div>
+                                    </div>
+                                    <button type="button" class="btn btn-outline-danger btn-sm mt-2 remove-character-ability">Remove</button>
+                                </div>
+                            </template>
+                            {% else %}
+                            {% for ability in character.abilities %}
+                            <p class="mb-2"><strong>{{ ability.name }}:</strong> {{ ability.description }}</p>
+                            {% endfor %}
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
                 {% if character %}
                 <!-- Cybernetics -->
                 {% if has_permission('character.edit_all') or character.cybernetics %}

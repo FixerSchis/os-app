@@ -1071,3 +1071,31 @@ def test_global_species_adds_extra_hits_for_each_toughness_rank(db, new_user, ch
     species.body_hits_type = "locational"
     db.session.commit()
     assert character.toughness_hit_bonus() == 0
+
+
+def test_character_abilities_print_after_species_abilities(db, new_user, character, species):
+    """Abilities stored on a character print after that species' abilities."""
+    from models.database.species import Ability
+    from models.enums import AbilityType
+
+    shared = Ability(
+        name="Regeneration",
+        description="Regain 1 hit.",
+        type=AbilityType.GENERIC,
+        species=species,
+    )
+    own = Ability(
+        name="Natural armour",
+        description="3 armour hits on every location.",
+        type=AbilityType.GENERIC,
+        character=character,
+    )
+    character.species = species
+    db.session.add_all([shared, own])
+    db.session.commit()
+
+    assert [ability.name for ability in character.printed_abilities()] == [
+        "Regeneration",
+        "Natural armour",
+    ]
+    assert [ability.name for ability in species.abilities] == ["Regeneration"]
