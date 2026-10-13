@@ -623,6 +623,36 @@ def link_default_black_frost():
     db.session.commit()
 
 
+def _load_species_abilities():
+    path = os.path.join(os.path.dirname(__file__), "default_species_abilities.py")
+    spec = importlib.util.spec_from_file_location("default_species_abilities", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.SPECIES_ABILITIES
+
+
+def link_default_species_abilities():
+    """Add each wiki ability a species lacks, matched by name, as printed text."""
+    for species_name, abilities in _load_species_abilities().items():
+        species = Species.query.filter_by(name=species_name).first()
+        if species is None:
+            logging.warning(f"Species {species_name} is missing; skipped its abilities")
+            continue
+        existing = {ability.name for ability in species.abilities}
+        for name, description in abilities:
+            if name in existing:
+                continue
+            db.session.add(
+                Ability(
+                    species_id=species.id,
+                    name=name,
+                    description=description,
+                    type=AbilityType.GENERIC,
+                )
+            )
+    db.session.commit()
+
+
 def create_default_skills():
     """Create wiki skills if none exist."""
     if Skill.query.first():
@@ -2062,6 +2092,7 @@ def create_default_data():
     create_default_group_types()
     create_default_conditions()
     link_default_black_frost()
+    link_default_species_abilities()
     create_default_cybernetics()
     create_default_samples()
     create_default_events()
