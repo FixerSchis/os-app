@@ -930,6 +930,33 @@ def link_default_character_sheet_abilities():
     db.session.commit()
 
 
+_GROUP_INCOME_BONUS = 30
+_GROUP_INCOME_DESCRIPTION = "Adds 30 EC to group income for each attending character."
+
+
+def link_default_group_income():
+    """Keep Ascendancy Terran group income as a flat 30 EC bonus."""
+    species = Species.query.filter_by(name="Ascendancy Terran").first()
+    if species is None:
+        return
+    changed = False
+    for ability in species.abilities:
+        current = ability.type.value if hasattr(ability.type, "value") else ability.type
+        if current != AbilityType.GROUP_INCOME.value:
+            continue
+        if ability.additional_group_income == 6:
+            ability.additional_group_income = _GROUP_INCOME_BONUS
+            changed = True
+        if ability.description in (
+            "Increases the amount of income a group receives.",
+            "Adds 6 EC to group income for each attending character.",
+        ):
+            ability.description = _GROUP_INCOME_DESCRIPTION
+            changed = True
+    if changed:
+        db.session.commit()
+
+
 def link_default_toughness_hits():
     """Set Toughness hit conversions, and print them on the character sheet."""
     changed = False
@@ -1090,9 +1117,9 @@ def create_default_species():
                 Ability(
                     species_id=species.id,
                     name="Additional Group Income",
-                    description="Increases the amount of income a group receives.",
+                    description=_GROUP_INCOME_DESCRIPTION,
                     type=AbilityType.GROUP_INCOME,
-                    additional_group_income=30,
+                    additional_group_income=_GROUP_INCOME_BONUS,
                 )
             )
         _ensure_stub_wiki_page(
@@ -1797,6 +1824,7 @@ def create_default_data():
     link_default_starting_skills()
     link_default_rank_limits()
     link_default_status_discounts()
+    link_default_group_income()
     link_default_toughness_hits()
     create_default_exotics()
     create_default_medicaments()
