@@ -16,6 +16,23 @@ character_tags = db.Table(
 )
 
 
+def _pool_key(skill_ids):
+    return tuple(sorted(int(item) for item in skill_ids or []))
+
+
+def _skill_name_list(skill_ids):
+    from models.database.skills import Skill
+
+    rows = Skill.query.filter(Skill.id.in_(list(skill_ids))).all()
+    by_id = {row.id: row.name for row in rows}
+    names = [by_id[skill_id] for skill_id in skill_ids if skill_id in by_id]
+    if not names:
+        return "another skill"
+    if len(names) == 1:
+        return names[0]
+    return ", ".join(names[:-1]) + ", or " + names[-1]
+
+
 def _positive_rank_limit(value):
     if value is None or value == "":
         return None
@@ -294,6 +311,71 @@ class Character(db.Model):
     def skill_pair_grants_list(self, grants):
         self.skill_pair_grants = json.dumps(grants) if grants else None
 
+    def skill_requirement_error(self, skill):
+        """Return why this skill cannot be bought, or None when its skill rules are met."""
+        owned = self._owned_skill_ids()
+        any_of = skill.required_any_skills_list
+        if any_of and not set(any_of) & owned:
+            return f"Requires one of {_skill_name_list(any_of)}"
+        pool = skill.distinct_requirements_list
+        if pool and not self._has_distinct_requirement(skill, owned):
+            return f"Requires a different one of {_skill_name_list(pool)}"
+        return None
+
+    def skill_refund_error(self, skill):
+        """Return why this skill cannot be refunded, or None when other skills stay valid."""
+        owned = self._owned_skill_ids()
+        if skill.id not in owned:
+            return None
+        for peer in self._requirement_skills():
+            if peer.id not in owned:
+                continue
+            options = peer.required_any_skills_list
+            if skill.id in options and not any(
+                option in owned and option != skill.id for option in options
+            ):
+                return f"Cannot refund {skill.name} as it is required for {peer.name}."
+            pool = peer.distinct_requirements_list
+            if skill.id not in pool:
+                continue
+            key = _pool_key(pool)
+            consumers = sum(
+                1
+                for other in self._requirement_skills()
+                if other.id in owned and _pool_key(other.distinct_requirements_list) == key
+            )
+            remaining = len(set(pool) & owned) - 1
+            if remaining < consumers:
+                return f"Cannot refund {skill.name} as it is required for {peer.name}."
+        return None
+
+    def _has_distinct_requirement(self, skill, owned):
+        key = _pool_key(skill.distinct_requirements_list)
+        consumers = 0
+        for peer in self._requirement_skills():
+            if _pool_key(peer.distinct_requirements_list) != key:
+                continue
+            if peer.id in owned or peer.id == skill.id:
+                consumers += 1
+        return len(set(skill.distinct_requirements_list) & owned) >= consumers
+
+    def _requirement_skills(self):
+        cached = getattr(self, "_requirement_skill_cache", None)
+        if cached is None:
+            from models.database.skills import Skill
+
+            cached = Skill.query.filter(
+                or_(
+                    Skill.required_any_skills.isnot(None),
+                    Skill.distinct_requirements.isnot(None),
+                )
+            ).all()
+            self._requirement_skill_cache = cached
+        return cached
+
+    def _owned_skill_ids(self):
+        return {row.skill_id for row in self.skills}
+
     def maximum_rank(self, skill):
         """Lowest rank cap from the skill and this species. None means no cap."""
         limit = _positive_rank_limit(skill.max_ranks)
@@ -337,6 +419,10 @@ class Character(db.Model):
         rank_limit = self.maximum_rank(skill)
         if rank_limit is not None and owned_ranks >= rank_limit:
             return False, f"Maximum {rank_limit} ranks"
+
+        requirement_error = self.skill_requirement_error(skill)
+        if requirement_error:
+            return False, requirement_error
 
         if skill.required_skill_id:
             has_prerequisite = CharacterSkill.query.filter_by(
@@ -479,6 +565,10 @@ class Character(db.Model):
 
         if not character_skill:
             raise ValueError("Character does not have this skill")
+
+        refund_error = self.skill_refund_error(skill)
+        if refund_error:
+            raise ValueError(refund_error)
 
         from utils.skill_pairs import note_skill_refund
 

@@ -38,6 +38,9 @@ def character_skills(character_id):
             if skill.required_skill_id not in character_skill_ids:
                 continue
 
+        if character.skill_requirement_error(skill):
+            continue
+
         # Check required factions
         if skill.required_factions:
             required_factions = skill.required_factions_list
@@ -215,6 +218,11 @@ def refund_skill(character_id):
                 "error",
             )
             return redirect(url_for("character_skills.character_skills", character_id=character_id))
+
+    refund_error = character.skill_refund_error(skill)
+    if refund_error:
+        flash(refund_error, "error")
+        return redirect(url_for("character_skills.character_skills", character_id=character_id))
 
     # Check if this skill is a prerequisite for any other skills the character has
     character_skills = CharacterSkill.query.filter_by(character_id=character.id).all()

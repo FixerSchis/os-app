@@ -47,6 +47,7 @@
                         {% set rank_limit = character.maximum_rank(skill) %}
                         {% set owned_ranks = character_skill.times_purchased if character_skill else 0 %}
                         {% set at_rank_limit = rank_limit is not none and owned_ranks >= rank_limit %}
+                        {% set requirement_error = character.skill_requirement_error(skill) %}
                         <tr>
                             <td class="ps-4" style="padding-left: 2em;">
                                 <div><strong>
@@ -57,7 +58,7 @@
                                     {% elif skill.can_purchase_multiple and skill.cost_increases %}
                                         {% set _ = indicators.append('+') %}
                                     {% endif %}
-                                    {% if skill.required_skill or skill.get_required_factions() or skill.get_required_species() or skill.get_required_tags() %}
+                                    {% if skill.required_skill or skill.required_any_skills_list or skill.distinct_requirements_list or skill.get_required_factions() or skill.get_required_species() or skill.get_required_tags() %}
                                         {% set _ = indicators.append('*') %}
                                     {% endif %}
                                     {% if indicators %}
@@ -92,8 +93,8 @@
                                             <label for="purchase_skill_{{ skill.id }}" class="sr-only">Purchase {{ skill.name }}</label>
                                             <input type="hidden" id="purchase_skill_{{ skill.id }}" name="skill_id" value="{{ skill.id }}">
                                             <button type="submit" class="btn btn-outline-primary btn-sm"
-                                                {% if not can_afford or not owns_prerequisite or at_rank_limit %}disabled{% endif %}
-                                                {% if not owns_prerequisite %}title="Requires {{ skill.required_skill.name }}"{% elif at_rank_limit %}title="Maximum {{ rank_limit }} ranks"{% endif %}
+                                                {% if not can_afford or not owns_prerequisite or at_rank_limit or requirement_error %}disabled{% endif %}
+                                                {% if not owns_prerequisite %}title="Requires {{ skill.required_skill.name }}"{% elif requirement_error %}title="{{ requirement_error }}"{% elif at_rank_limit %}title="Maximum {{ rank_limit }} ranks"{% endif %}
                                                 aria-label="Increase {{ skill.name }} level">
                                                 <i class="fas fa-plus"></i>
                                             </button>
@@ -110,7 +111,7 @@
                                         <form method="POST" action="{{ url_for('character_skills.purchase_skill', character_id=character.id) }}" class="d-inline">
                                             <label for="purchase_skill_single_{{ skill.id }}" class="sr-only">Purchase {{ skill.name }}</label>
                                             <input type="hidden" id="purchase_skill_single_{{ skill.id }}" name="skill_id" value="{{ skill.id }}">
-                                            <button type="submit" class="btn btn-primary btn-sm" {% if not can_afford or not owns_prerequisite %}disabled{% endif %}{% if not owns_prerequisite %} title="Requires {{ skill.required_skill.name }}"{% endif %} aria-label="Buy {{ skill.name }}">Buy</button>
+                                            <button type="submit" class="btn btn-primary btn-sm" {% if not can_afford or not owns_prerequisite or requirement_error %}disabled{% endif %}{% if not owns_prerequisite %} title="Requires {{ skill.required_skill.name }}"{% elif requirement_error %} title="{{ requirement_error }}"{% endif %} aria-label="Buy {{ skill.name }}">Buy</button>
                                         </form>
                                     {% endif %}
                                 {% endif %}

@@ -10,6 +10,17 @@ from ..enums import ScienceType
 from ..extensions import db
 
 
+def _load_id_list(raw):
+    if not raw:
+        return []
+    return [int(item) for item in json.loads(raw)]
+
+
+def _dump_id_list(skill_ids):
+    cleaned = sorted({int(item) for item in skill_ids or []})
+    return json.dumps(cleaned) if cleaned else None
+
+
 class Skill(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
@@ -41,6 +52,8 @@ class Skill(db.Model):
 
     # Foreign keys for requirements
     required_skill_id = db.Column(db.Integer, db.ForeignKey("skill.id"), nullable=True)
+    required_any_skills = db.Column(db.String, nullable=True)
+    distinct_requirements = db.Column(db.String, nullable=True)
     required_factions = db.Column(
         db.String, nullable=True
     )  # Stored as JSON string of faction values
@@ -94,6 +107,22 @@ class Skill(db.Model):
     def required_tags_list(self, tag_ids):
         self.required_tags = json.dumps(tag_ids) if tag_ids else None
 
+    @property
+    def required_any_skills_list(self):
+        return _load_id_list(self.required_any_skills)
+
+    @required_any_skills_list.setter
+    def required_any_skills_list(self, skill_ids):
+        self.required_any_skills = _dump_id_list(skill_ids)
+
+    @property
+    def distinct_requirements_list(self):
+        return _load_id_list(self.distinct_requirements)
+
+    @distinct_requirements_list.setter
+    def distinct_requirements_list(self, skill_ids):
+        self.distinct_requirements = _dump_id_list(skill_ids)
+
     @classmethod
     def get_all_skill_types(cls):
         """Get a list of all unique skill types in the database."""
@@ -122,6 +151,16 @@ class Skill(db.Model):
             return []
         return Species.query.filter(Species.id.in_(self.required_species_list)).all()
 
+    def get_required_any_skills(self):
+        if not self.required_any_skills_list:
+            return []
+        return Skill.query.filter(Skill.id.in_(self.required_any_skills_list)).all()
+
+    def get_distinct_requirement_skills(self):
+        if not self.distinct_requirements_list:
+            return []
+        return Skill.query.filter(Skill.id.in_(self.distinct_requirements_list)).all()
+
     def get_required_tags(self):
         if not self.required_tags_list:
             return []
@@ -142,6 +181,9 @@ class Skill(db.Model):
             character_tag_ids = {tag.id for tag in character.tags}
             if not any(tag_id in character_tag_ids for tag_id in self.required_tags_list):
                 return False
+
+        if character.skill_requirement_error(self):
+            return False
 
         # Check skill prerequisites
         if self.required_skill_id:

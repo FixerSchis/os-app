@@ -93,7 +93,7 @@
                         {% elif skill.can_purchase_multiple and skill.cost_increases %}
                             {% set _ = indicators.append('+') %}
                         {% endif %}
-                        {% if skill.required_skill or skill.get_required_factions() or skill.get_required_species() or skill.get_required_tags() %}
+                        {% if skill.required_skill or skill.required_any_skills_list or skill.distinct_requirements_list or skill.get_required_factions() or skill.get_required_species() or skill.get_required_tags() %}
                             {% set _ = indicators.append('*') %}
                         {% endif %}
                         {% if indicators %}
@@ -109,6 +109,12 @@
                     {% if skill.required_skill %}
                         <span class="badge bg-primary">Skill: {{ skill.required_skill.name }}</span>
                     {% endif %}
+                    {% for required in skill.get_required_any_skills() %}
+                        <span class="badge bg-primary">One of: {{ required.name }}</span>
+                    {% endfor %}
+                    {% for required in skill.get_distinct_requirement_skills() %}
+                        <span class="badge bg-warning text-dark">Different: {{ required.name }}</span>
+                    {% endfor %}
                     {% for faction in skill.get_required_factions() %}
                         <span class="badge bg-secondary">Faction: {{ faction.name }}</span>
                     {% endfor %}

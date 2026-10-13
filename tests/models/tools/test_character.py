@@ -961,3 +961,42 @@ def test_species_rank_cap_stays_below_the_skill_maximum(db, new_user, character,
         outsider.purchase_skill(guarded, new_user)
     other = CharacterSkill.query.filter_by(character_id=outsider.id, skill_id=guarded.id).one()
     assert other.times_purchased == 3
+
+
+def test_captain_skills_need_one_expert_and_a_different_console(db, new_user, character):
+    """One expert unlocks every captain skill, and each one needs its own console."""
+    helm = Skill(name="Helm Advanced", base_cost=1, skill_type="spaceflight")
+    weapons = Skill(name="Weapons Advanced", base_cost=1, skill_type="spaceflight")
+    evasive = Skill(name="Evasive", base_cost=1, skill_type="spaceflight")
+    evacuation = Skill(name="Evacuation", base_cost=1, skill_type="spaceflight")
+    first = Skill(name="A Good Day", base_cost=1, skill_type="spaceflight")
+    second = Skill(name="Fly Apart", base_cost=1, skill_type="spaceflight")
+    db.session.add_all([helm, weapons, evasive, evacuation, first, second])
+    db.session.flush()
+    for captain in (first, second):
+        captain.required_any_skills_list = [evasive.id, evacuation.id]
+        captain.distinct_requirements_list = [helm.id, weapons.id]
+    db.session.commit()
+    assert first.character_meets_requirements(character) is False
+
+    with pytest.raises(ValueError, match="Requires one of"):
+        character.purchase_skill(first, new_user)
+
+    character.purchase_skill(evasive, new_user)
+    with pytest.raises(ValueError, match="Requires a different one of"):
+        character.purchase_skill(first, new_user)
+
+    character.purchase_skill(helm, new_user)
+    character.purchase_skill(first, new_user)
+    character.purchase_skill(evacuation, new_user)
+    with pytest.raises(ValueError, match="Requires a different one of"):
+        character.purchase_skill(second, new_user)
+
+    character.purchase_skill(weapons, new_user)
+    character.purchase_skill(second, new_user)
+
+    character.refund_skill(evasive, new_user)
+    with pytest.raises(ValueError, match="Cannot refund Evacuation"):
+        character.refund_skill(evacuation, new_user)
+    with pytest.raises(ValueError, match="Cannot refund Helm Advanced"):
+        character.refund_skill(helm, new_user)

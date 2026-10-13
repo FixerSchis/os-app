@@ -550,6 +550,7 @@ def create_default_skills():
         required_name = spec.get("requires")
         if required_name:
             created[spec["name"]].required_skill_id = created[required_name].id
+        _assign_named_skill_lists(created[spec["name"]], spec, created)
     db.session.commit()
 
 
@@ -679,6 +680,51 @@ def link_default_skill_reputation():
         changed = True
     if changed:
         db.session.commit()
+
+
+def link_default_captain_requirements():
+    """Fill empty captain any-of and distinct-console lists from the catalogue."""
+    definitions = _load_skill_definitions()
+    skills = {skill.name: skill for skill in Skill.query.all()}
+    changed = False
+    for spec in definitions:
+        skill = skills.get(spec["name"])
+        if skill is None:
+            continue
+        if spec.get("any_of") and not skill.required_any_skills:
+            skill_ids = _ids_for_names(spec["any_of"], skills)
+            if skill_ids:
+                skill.required_any_skills_list = skill_ids
+                changed = True
+        if spec.get("distinct_of") and not skill.distinct_requirements:
+            skill_ids = _ids_for_names(spec["distinct_of"], skills)
+            if skill_ids:
+                skill.distinct_requirements_list = skill_ids
+                changed = True
+    if changed:
+        db.session.commit()
+
+
+def _assign_named_skill_lists(skill, spec, skills):
+    if spec.get("any_of") and not skill.required_any_skills:
+        skill_ids = _ids_for_names(spec["any_of"], skills)
+        if skill_ids:
+            skill.required_any_skills_list = skill_ids
+    if spec.get("distinct_of") and not skill.distinct_requirements:
+        skill_ids = _ids_for_names(spec["distinct_of"], skills)
+        if skill_ids:
+            skill.distinct_requirements_list = skill_ids
+
+
+def _ids_for_names(names, skills):
+    ids = []
+    for name in names:
+        skill = skills.get(name)
+        if skill is None:
+            logging.warning(f"Requirement skill {name} is missing")
+            return []
+        ids.append(skill.id)
+    return ids
 
 
 def link_default_skill_species():
@@ -1631,6 +1677,7 @@ def create_default_data():
     create_default_wiki_pages()
     create_default_factions()
     create_default_skills()
+    link_default_captain_requirements()
     link_default_skill_types()
     link_default_skill_groups()
     link_default_skill_reputation()

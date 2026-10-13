@@ -132,6 +132,28 @@
             </div>
 
             <div class="form-group">
+                <label for="required_any_skills">Requires one of</label>
+                <select class="form-control" id="required_any_skills" name="required_any_skills" multiple title="Select skills that satisfy this requirement">
+                    {% for s in skills_list %}
+                    {% if not skill or s.id != skill.id %}
+                    <option value="{{ s.id }}" {% if skill and s.id in skill.required_any_skills_list %}selected{% endif %}>{{ s.name }}</option>
+                    {% endif %}
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="distinct_requirements">Requires a different one of</label>
+                <select class="form-control" id="distinct_requirements" name="distinct_requirements" multiple title="Select skills that each qualify only one skill with this same list">
+                    {% for s in skills_list %}
+                    {% if not skill or s.id != skill.id %}
+                    <option value="{{ s.id }}" {% if skill and s.id in skill.distinct_requirements_list %}selected{% endif %}>{{ s.name }}</option>
+                    {% endif %}
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
                 <label for="required_factions">Required Factions</label>
                 <select class="form-control select2-multiple" id="required_factions" name="required_factions" multiple title="Select required factions">
                     {% for faction in factions %}
@@ -230,6 +252,12 @@ $(document).ready(function() {
         theme: 'bootstrap-5',
         width: '100%',
         placeholder: 'Select a required skill...',
+        allowClear: true
+    });
+    $('#required_any_skills, #distinct_requirements').select2({
+        theme: 'bootstrap-5',
+        width: '100%',
+        placeholder: 'Select skills...',
         allowClear: true
     });
     $('#required_tags').select2({

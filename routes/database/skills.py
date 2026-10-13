@@ -21,6 +21,10 @@ def _blank_to_none(value):
     return text or None
 
 
+def _form_skill_ids(values):
+    return [int(value) for value in values if str(value).isdigit()]
+
+
 def _optional_rank_limit(value):
     text = (value or "").strip()
     if not text.isdigit():
@@ -150,6 +154,12 @@ def edit_skill_post(skill_id):
         skill.cost_increases = cost_increases
         skill.max_ranks = _optional_rank_limit(request.form.get("max_ranks"))
         skill.required_skill_id = int(required_skill_id) if required_skill_id else None
+        skill.required_any_skills_list = _form_skill_ids(
+            request.form.getlist("required_any_skills")
+        )
+        skill.distinct_requirements_list = _form_skill_ids(
+            request.form.getlist("distinct_requirements")
+        )
         skill.required_species_list = required_species
         skill.required_factions_list = required_factions
         skill.required_tags_list = tag_ids
@@ -255,6 +265,12 @@ def new_skill():
                 cost_increases=cost_increases,
                 max_ranks=_optional_rank_limit(request.form.get("max_ranks")),
                 required_skill_id=int(required_skill_id) if required_skill_id else None,
+                required_any_skills_list=_form_skill_ids(
+                    request.form.getlist("required_any_skills")
+                ),
+                distinct_requirements_list=_form_skill_ids(
+                    request.form.getlist("distinct_requirements")
+                ),
                 required_species_list=required_species,
                 required_factions_list=required_factions,
                 required_tags_list=tag_ids,

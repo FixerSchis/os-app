@@ -23,6 +23,37 @@ Each N-DAX mutation rank is its own skill for the same reason.
 import importlib.util
 import os
 
+_CAPTAIN_EXPERT_SKILLS = (
+    "Evasive Maneuvers",
+    "Emergency Evacuation",
+    "Concentrate Fire",
+    "Concussive Blast",
+    "Emergency Repairs",
+    "Technical Support",
+    "Sensor Ping",
+    "Wide Area Scan",
+    "Taunt",
+    "Coordinate Hacking",
+)
+_CAPTAIN_CONSOLE_SKILLS = (
+    "Helm Console [Advanced]",
+    "Weapons Console [Advanced]",
+    "Engineering Console [Advanced]",
+    "Science Console [Advanced]",
+    "Relay Console [Advanced]",
+)
+
+
+def _captain(name, effect):
+    return _skill(
+        name,
+        effect,
+        "spaceflight",
+        2,
+        any_of=_CAPTAIN_EXPERT_SKILLS,
+        distinct_of=_CAPTAIN_CONSOLE_SKILLS,
+    )
+
 
 def _skill(name, description, skill_type, base_cost, **flags):
     row = {
@@ -467,17 +498,15 @@ SKILL_DEFINITIONS = [
         2,
         requires="Relay Console [Advanced]",
     ),
-    _skill(
+    _captain(
         "A Good Day To Die",
         (
             "Captain only, once per mission. Directional shields become 500 and hull becomes 300%. "
             "The crew gains an extreme and a mild condition. Requires a different Advanced console "
             "skill for each captain skill. Includes Ready Room."
         ),
-        "spaceflight",
-        2,
     ),
-    _skill(
+    _captain(
         "Fly Her Apart",
         (
             "Captain only, once per mission. Manoeuvring systems are fully repaired and warp, "
@@ -485,28 +514,22 @@ SKILL_DEFINITIONS = [
             "mild condition. Each captain skill needs a different Advanced console skill. Includes "
             "Ready Room."
         ),
-        "spaceflight",
-        2,
     ),
-    _skill(
+    _captain(
         "Needs Of The Many",
         (
             "Captain only. At the end of the mission, take any 2 assigned crew conditions onto "
             "yourself. Each captain skill needs a different Advanced console skill. Includes Ready "
             "Room."
         ),
-        "spaceflight",
-        2,
     ),
-    _skill(
+    _captain(
         "Give It All She's Got",
         (
             "Captain only, once per mission. Ship energy becomes 2500. The crew gains an extreme "
             "and a mild condition. Each captain skill needs a different Advanced console skill. "
             "Includes Ready Room."
         ),
-        "spaceflight",
-        2,
     ),
     # Reputation skills. Faction status is 3 points, or 2 for that faction's core species.
     _skill(
