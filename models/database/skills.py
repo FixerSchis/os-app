@@ -10,6 +10,14 @@ from ..enums import ScienceType
 from ..extensions import db
 
 
+def id_listed(raw_ids, value):
+    """True when value matches a stored id, whether that id was saved as text or a number."""
+    if value is None:
+        return False
+    text = str(value)
+    return any(str(item) == text for item in raw_ids or [])
+
+
 def _load_id_list(raw):
     if not raw:
         return []
@@ -169,11 +177,15 @@ class Skill(db.Model):
     def character_meets_requirements(self, character):
         """Check if a character meets all requirements to learn this skill."""
         # Check faction requirements
-        if self.required_factions_list and character.faction_id not in self.required_factions_list:
+        if self.required_factions_list and not id_listed(
+            self.required_factions_list, character.faction_id
+        ):
             return False
 
         # Check species requirements
-        if self.required_species_list and character.species_id not in self.required_species_list:
+        if self.required_species_list and not id_listed(
+            self.required_species_list, character.species_id
+        ):
             return False
 
         # Check tag requirements

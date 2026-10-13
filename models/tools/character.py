@@ -16,6 +16,11 @@ character_tags = db.Table(
 )
 
 
+def _ability_type_value(ability):
+    ability_type = ability.type
+    return ability_type.value if hasattr(ability_type, "value") else ability_type
+
+
 def _pool_key(skill_ids):
     return tuple(sorted(int(item) for item in skill_ids or []))
 
@@ -207,33 +212,14 @@ class Character(db.Model):
         total_cost = 0
         for character_skill in self.skills:
             skill = character_skill.skill
+            paid = character_skill.paid_purchases()
+            discount = self.skill_discount(skill)
             if skill.cost_increases:
                 # The first paid purchase costs base_cost. A free rank is not a paid purchase.
-                for i in range(character_skill.paid_purchases()):
-                    purchase_cost = skill.base_cost + i
-                    # Apply species discounts
-                    if self.species:
-                        for ability in self.species.abilities:
-                            if (
-                                ability.type == "skill_discounts"
-                                and str(skill.id) in ability.skill_discounts_dict
-                            ):
-                                discount = ability.skill_discounts_dict[str(skill.id)]
-                                purchase_cost = max(0, purchase_cost - discount)
-                    total_cost += purchase_cost
+                for i in range(paid):
+                    total_cost += max(0, skill.base_cost + i - discount)
             else:
-                purchase_cost = skill.base_cost
-                # Apply species discounts
-                if self.species:
-                    for ability in self.species.abilities:
-                        if (
-                            ability.type == "skill_discounts"
-                            and str(skill.id) in ability.skill_discounts_dict
-                        ):
-                            discount = ability.skill_discounts_dict[str(skill.id)]
-                            purchase_cost = max(0, purchase_cost - discount)
-                if character_skill.paid_purchases():
-                    total_cost += purchase_cost
+                total_cost += max(0, skill.base_cost - discount) * paid
         return total_cost
 
     def get_faction_name(self):
@@ -278,15 +264,20 @@ class Character(db.Model):
             else:
                 base_cost += count  # Cost of the (N+1)th purchase
 
-        # Apply species discounts if any
-        if self.species:
-            for ability in self.species.abilities:
-                if ability.type == "skill_discounts":
-                    if str(skill.id) in ability.skill_discounts_dict:
-                        discount = ability.skill_discounts_dict[str(skill.id)]
-                        base_cost = max(0, base_cost - discount)
+        return max(0, base_cost - self.skill_discount(skill))
 
-        return base_cost
+    def skill_discount(self, skill):
+        """Character points a species skill-discount ability takes off this skill."""
+        if self.species is None:
+            return 0
+        discount = 0
+        for ability in self.species.abilities:
+            if _ability_type_value(ability) != AbilityType.SKILL_DISCOUNTS.value:
+                continue
+            amount = ability.skill_discounts_dict.get(str(skill.id))
+            if amount:
+                discount += int(amount)
+        return discount
 
     def get_available_character_points(self):
         """Get the available character points for the character to spend."""

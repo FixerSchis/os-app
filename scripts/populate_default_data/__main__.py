@@ -887,6 +887,59 @@ def _align_etherna_science_grant(character, scientist_id, science_id):
         db.session.delete(science_row)
 
 
+_STATUS_DISCOUNTS = (
+    ("Ascendancy Terran", "Ascendancy Status"),
+    ("Elysian", "Commonality Status"),
+    ("Free Union Terran", "Free Union Status"),
+    ("Tulaki Megasaurian", "Dominion Status"),
+    ("Tulaki Saurian", "Dominion Status"),
+    ("Tulaki Serpentine", "Dominion Status"),
+)
+
+
+def link_default_status_discounts():
+    """Give each faction's core species a 1-point discount on its status skill."""
+    changed = False
+    for species_name, skill_name in _STATUS_DISCOUNTS:
+        if _add_status_discount(species_name, skill_name):
+            changed = True
+    if changed:
+        db.session.commit()
+
+
+def _add_status_discount(species_name, skill_name):
+    species = Species.query.filter_by(name=species_name).first()
+    skill = Skill.query.filter_by(name=skill_name).first()
+    if species is None or skill is None:
+        logging.warning(f"Status discount for {species_name} / {skill_name} is missing")
+        return False
+    if _species_discounts_skill(species, skill.id):
+        return False
+    ability = Ability(
+        species_id=species.id,
+        name="Status discount",
+        description=f"{skill_name} costs 1 character point less per rank.",
+        type=AbilityType.SKILL_DISCOUNTS,
+    )
+    ability.skill_discounts_dict = {str(skill.id): 1}
+    db.session.add(ability)
+    return True
+
+
+def _species_discounts_skill(species, skill_id):
+    for ability in species.abilities:
+        if _ability_type_value(ability) != AbilityType.SKILL_DISCOUNTS.value:
+            continue
+        if str(skill_id) in ability.skill_discounts_dict:
+            return True
+    return False
+
+
+def _ability_type_value(ability):
+    ability_type = ability.type
+    return ability_type.value if hasattr(ability_type, "value") else ability_type
+
+
 def link_default_rank_limits():
     """Set catalogue rank limits, and Felani's lower caps, when they are still empty."""
     changed = False
@@ -1686,6 +1739,7 @@ def create_default_data():
     link_default_skill_species()
     link_default_starting_skills()
     link_default_rank_limits()
+    link_default_status_discounts()
     create_default_exotics()
     create_default_medicaments()
     create_default_item_types()

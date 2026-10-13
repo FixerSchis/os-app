@@ -2,7 +2,7 @@ from flask import Blueprint, flash, jsonify, redirect, render_template, request,
 from flask_login import current_user, login_required
 
 from models.database.faction import Faction
-from models.database.skills import Skill
+from models.database.skills import Skill, id_listed
 from models.enums import CharacterAuditAction, CharacterStatus
 from models.extensions import db
 from models.tools.character import Character, CharacterAuditLog, CharacterSkill
@@ -44,13 +44,13 @@ def character_skills(character_id):
         # Check required factions
         if skill.required_factions:
             required_factions = skill.required_factions_list
-            if str(character.faction_id) not in required_factions:
+            if not id_listed(required_factions, character.faction_id):
                 continue
 
         # Check required species
         if skill.required_species:
             required_species = skill.required_species_list
-            if str(character.species_id) not in required_species:
+            if not id_listed(required_species, character.species_id):
                 continue
 
         # If we get here, the skill is available
@@ -113,7 +113,7 @@ def get_skill_cost(character_id):
     # Check required factions
     if skill.required_factions:
         required_factions = skill.required_factions_list
-        if str(character.faction_id) not in required_factions:
+        if not id_listed(required_factions, character.faction_id):
             # Get faction names for the error message
             faction_names = [
                 f.name for f in Faction.query.filter(Faction.id.in_(required_factions)).all()
@@ -128,7 +128,7 @@ def get_skill_cost(character_id):
     # Check required species
     if skill.required_species:
         required_species = skill.required_species_list
-        if str(character.species_id) not in required_species:
+        if not id_listed(required_species, character.species_id):
             return jsonify(
                 {
                     "can_purchase": False,

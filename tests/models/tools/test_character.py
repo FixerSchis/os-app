@@ -1000,3 +1000,47 @@ def test_captain_skills_need_one_expert_and_a_different_console(db, new_user, ch
         character.refund_skill(evacuation, new_user)
     with pytest.raises(ValueError, match="Cannot refund Helm Advanced"):
         character.refund_skill(helm, new_user)
+
+
+def test_core_species_status_discount_applies_to_every_rank(db, new_user, character, species):
+    """A skill discount lowers each rank, and a flat-cost skill charges every rank."""
+    from models.database.species import Ability
+    from models.enums import AbilityType
+
+    status = Skill(
+        name="Faction Status",
+        base_cost=3,
+        can_purchase_multiple=True,
+        cost_increases=False,
+        skill_type="reputation",
+    )
+    db.session.add(status)
+    db.session.flush()
+    discount = Ability(
+        name="Status discount",
+        description="Faction Status costs 1 less per rank.",
+        type=AbilityType.SKILL_DISCOUNTS,
+        species=species,
+    )
+    discount.skill_discounts_dict = {str(status.id): 1}
+    outsider = Character(
+        user_id=new_user.id,
+        name="Full Price",
+        status=CharacterStatus.ACTIVE.value,
+    )
+    db.session.add_all([discount, outsider])
+    db.session.commit()
+    db.session.refresh(species)
+    character.species = species
+
+    assert character.get_skill_cost(status) == 2
+    assert outsider.get_skill_cost(status) == 3
+
+    character.purchase_skill(status, new_user)
+    character.purchase_skill(status, new_user)
+    assert character.get_total_skill_cost() == 4
+    assert character.get_skill_cost(status) == 2
+
+    outsider.purchase_skill(status, new_user)
+    outsider.purchase_skill(status, new_user)
+    assert outsider.get_total_skill_cost() == 6
