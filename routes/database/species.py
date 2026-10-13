@@ -143,6 +143,16 @@ def edit_species(species_id):
 @login_required
 @email_verified_required
 @permission_required(permissions=["rules.species"])
+def _extra_hits_per_toughness(value):
+    text = (value or "").strip()
+    if not text.lstrip("-").isdigit():
+        return 1
+    extra = int(text)
+    if extra < 0:
+        return 1
+    return extra
+
+
 def edit_species_post(species_id):
     species = Species.query.get_or_404(species_id)
 
@@ -206,6 +216,9 @@ def edit_species_post(species_id):
         species.wiki_page = wiki_page
         species.body_hits_type_enum = body_hits_type
         species.body_hits = int(body_hits)
+        species.extra_hits_per_toughness = _extra_hits_per_toughness(
+            request.form.get("extra_hits_per_toughness")
+        )
         species.death_count = int(death_count)
         species.permitted_factions_list = [int(faction_id) for faction_id in permitted_factions]
         species.keywords_list = request.form.getlist("keywords")
@@ -370,6 +383,9 @@ def new_species_post():
             wiki_page=wiki_page,
             body_hits_type_enum=body_hits_type,
             body_hits=int(body_hits),
+            extra_hits_per_toughness=_extra_hits_per_toughness(
+                request.form.get("extra_hits_per_toughness")
+            ),
             death_count=int(death_count),
             # Convert faction IDs to integers
             permitted_factions_list=[int(faction_id) for faction_id in permitted_factions],

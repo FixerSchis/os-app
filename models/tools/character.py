@@ -4,7 +4,13 @@ from datetime import datetime, timezone
 from sqlalchemy import false, func, or_
 
 from models.database.mods import Mod
-from models.enums import AbilityType, CharacterAuditAction, CharacterStatus, ScienceType
+from models.enums import (
+    AbilityType,
+    BodyHitsType,
+    CharacterAuditAction,
+    CharacterStatus,
+    ScienceType,
+)
 from models.extensions import db
 from models.tools.pack import Pack
 
@@ -14,6 +20,12 @@ character_tags = db.Table(
     db.Column("character_id", db.Integer, db.ForeignKey("character.id"), primary_key=True),
     db.Column("tag_id", db.Integer, db.ForeignKey("character_tag.id"), primary_key=True),
 )
+
+
+def _species_uses_global_hits(species):
+    hit_type = species.body_hits_type
+    hit_value = hit_type.value if hasattr(hit_type, "value") else hit_type
+    return hit_value == BodyHitsType.GLOBAL.value
 
 
 def _ability_type_value(ability):
@@ -735,6 +747,22 @@ class Character(db.Model):
             if cyber.cybernetic.adds_engineering_mods > 0
         )
         return skill_slots + cybernetic_slots
+
+    def toughness_ranks(self):
+        """Purchased ranks of Toughness, including a free rank."""
+        for row in self.skills:
+            if row.skill is not None and row.skill.name == "Toughness":
+                return row.times_purchased or 0
+        return 0
+
+    def toughness_hit_bonus(self):
+        """Global hits added by Toughness. Locational species keep those hits per location."""
+        if self.species is None or not _species_uses_global_hits(self.species):
+            return 0
+        per_rank = self.species.extra_hits_per_toughness
+        if per_rank is None:
+            per_rank = 1
+        return self.toughness_ranks() * per_rank
 
     def get_character_sheet_values(self):
         """Get the character sheet values for the character."""

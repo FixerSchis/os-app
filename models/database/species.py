@@ -99,6 +99,7 @@ class Species(db.Model):
         nullable=False,
     )
     body_hits = db.Column(db.Integer, nullable=False, default=0)
+    extra_hits_per_toughness = db.Column(db.Integer, nullable=False, default=1, server_default="1")
     death_count = db.Column(db.Integer, nullable=False, default=0)
     keywords = db.Column(db.String, nullable=True)  # Stored as JSON string of keywords
 

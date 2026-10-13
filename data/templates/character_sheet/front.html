@@ -20,7 +20,7 @@
        </tr>
        <tr>
           <td class="header">Body Hits</td>
-          <td>{{ character.species.body_hits }}</td>
+          <td>{% if character.toughness_hit_bonus() %}{{ character.species.body_hits }} + {{ character.toughness_hit_bonus() }}{% else %}{{ character.species.body_hits if character.species else 0 }}{% endif %}</td>
           <td class="header">Death Count</td>
           <td>{{ character.species.death_count }}</td>
        </tr>

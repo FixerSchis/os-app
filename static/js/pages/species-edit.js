@@ -337,6 +337,13 @@ $(document).ready(function() {
     // Initial reindex in case of server-rendered abilities
     reindexAbilities();
 
+    function toggleExtraHitsPerToughness() {
+        var show = $('#body_hits_type').val() === 'global';
+        $('#extra-hits-per-toughness-group').toggle(show);
+    }
+    $('#body_hits_type').on('change', toggleExtraHitsPerToughness);
+    toggleExtraHitsPerToughness();
+
     $('form.settings-form').on('submit', function(e) {
         let valid = true;
         // Check permitted factions

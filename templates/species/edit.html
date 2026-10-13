@@ -30,7 +30,7 @@
                 <label for="body_hits_type">Body Hits Type *</label>
                 <select class="form-control" id="body_hits_type" name="body_hits_type" required title="Select body hits type for species">
                     {% for hit_type in BodyHitsType %}
-                    <option value="{{ hit_type.value }}" {% if species and species.body_hits_type == hit_type.value %}selected{% endif %}>
+                    <option value="{{ hit_type.value }}" {% if species and (species.body_hits_type == hit_type or species.body_hits_type == hit_type.value) %}selected{% endif %}>
                         {{ BodyHitsType.descriptions()[hit_type.value] }}
                     </option>
                     {% endfor %}
@@ -40,6 +40,11 @@
             <div class="form-group">
                 <label for="body_hits">Body Hits *</label>
                 <input type="number" class="form-control" id="body_hits" name="body_hits" value="{{ species.body_hits if species else 0 }}" required min="0">
+            </div>
+
+            <div class="form-group" id="extra-hits-per-toughness-group">
+                <label for="extra_hits_per_toughness">Extra hits per Toughness skill</label>
+                <input type="number" class="form-control" id="extra_hits_per_toughness" name="extra_hits_per_toughness" min="0" value="{{ species.extra_hits_per_toughness if species and species.extra_hits_per_toughness is not none else 1 }}">
             </div>
 
             <div class="form-group">

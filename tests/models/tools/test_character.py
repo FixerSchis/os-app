@@ -1044,3 +1044,30 @@ def test_core_species_status_discount_applies_to_every_rank(db, new_user, charac
     outsider.purchase_skill(status, new_user)
     outsider.purchase_skill(status, new_user)
     assert outsider.get_total_skill_cost() == 6
+
+
+def test_global_species_adds_extra_hits_for_each_toughness_rank(db, new_user, character, species):
+    """Each Toughness rank adds the species extra when body hits are global."""
+    toughness = Skill(
+        name="Toughness",
+        base_cost=1,
+        can_purchase_multiple=True,
+        cost_increases=True,
+        skill_type="combat",
+    )
+    db.session.add(toughness)
+    species.body_hits_type = "global"
+    species.body_hits = 6
+    species.extra_hits_per_toughness = 3
+    character.species = species
+    db.session.commit()
+
+    assert character.toughness_hit_bonus() == 0
+    character.purchase_skill(toughness, new_user)
+    assert character.toughness_hit_bonus() == 3
+    character.purchase_skill(toughness, new_user)
+    assert character.toughness_hit_bonus() == 6
+
+    species.body_hits_type = "locational"
+    db.session.commit()
+    assert character.toughness_hit_bonus() == 0

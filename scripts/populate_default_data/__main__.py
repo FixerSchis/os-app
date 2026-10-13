@@ -897,6 +897,43 @@ _STATUS_DISCOUNTS = (
 )
 
 
+_TOUGHNESS_EXTRA_HITS = {
+    "Yelk": 3,
+    "Reskan": 3,
+    "N-DAX": 2,
+}
+_PASSPORT_BODY_HITS = "{{ character.species.body_hits }}"
+_PASSPORT_BODY_HITS_WITH_TOUGHNESS = (
+    "{% if character.toughness_hit_bonus() %}"
+    "{{ character.species.body_hits }} + {{ character.toughness_hit_bonus() }}"
+    "{% else %}{{ character.species.body_hits if character.species else 0 }}{% endif %}"
+)
+
+
+def link_default_toughness_hits():
+    """Set Toughness hit conversions, and print them on the character sheet."""
+    changed = False
+    for species_name, extra in _TOUGHNESS_EXTRA_HITS.items():
+        species = Species.query.filter_by(name=species_name).first()
+        if species is None or species.extra_hits_per_toughness not in (None, 1):
+            continue
+        species.extra_hits_per_toughness = extra
+        changed = True
+    template = PrintTemplate.query.filter_by(type=PrintTemplateType.CHARACTER_SHEET).first()
+    if (
+        template
+        and template.front_html
+        and "toughness_hit_bonus" not in template.front_html
+        and _PASSPORT_BODY_HITS in template.front_html
+    ):
+        template.front_html = template.front_html.replace(
+            _PASSPORT_BODY_HITS, _PASSPORT_BODY_HITS_WITH_TOUGHNESS, 1
+        )
+        changed = True
+    if changed:
+        db.session.commit()
+
+
 def link_default_status_discounts():
     """Give each faction's core species a 1-point discount on its status skill."""
     changed = False
@@ -1740,6 +1777,7 @@ def create_default_data():
     link_default_starting_skills()
     link_default_rank_limits()
     link_default_status_discounts()
+    link_default_toughness_hits()
     create_default_exotics()
     create_default_medicaments()
     create_default_item_types()
