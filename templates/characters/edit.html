@@ -199,11 +199,28 @@
                                 </div>
                                 {% endfor %}
                             </div>
+                            {% if not character or character.status == 'developing' %}
+                            <div id="starting-condition-stages">
+                                {% for entry in starting_condition_catalogue|default([]) %}
+                                {% set owned = (character.active_conditions|selectattr('condition_id', 'equalto', entry.condition_id)|first) if character else none %}
+                                {% set chosen = owned.current_stage if owned and owned.current_stage else 1 %}
+                                <div class="starting-condition-panel creation-choice-panel mt-3" data-species-id="{{ entry.species_id }}" style="display:none;">
+                                    <label class="form-label fw-bold" for="{{ entry.field }}_{{ entry.species_id }}">{{ entry.name }} starting stage</label>
+                                    <select class="form-select w-auto" id="{{ entry.field }}_{{ entry.species_id }}" name="{{ entry.field }}" required>
+                                        {% for stage in range(1, entry.max_stage + 1) %}
+                                        <option value="{{ stage }}" {% if stage == chosen %}selected{% endif %}>Stage {{ stage }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <small class="form-text text-muted d-block">{% if entry.sheet_text %}{{ entry.sheet_text }} {% endif %}Your character dies when stage {{ entry.max_stage }} of {{ entry.name }} completes.</small>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
 
-                {% if has_permission('character.edit_all') or (character and character.abilities) %}
+                {% if character and (has_permission('character.edit_all') or character.abilities) %}
                 <div class="col-12">
                     <div class="card">
                         <div class="card-header">
@@ -327,11 +344,16 @@
                                             </tr>
                                         </thead>
                                         <tbody>
+                                            {% set chosen_condition_ids = (starting_condition_catalogue|default([])|selectattr('species_id', 'equalto', character.species_id)|map(attribute='condition_id')|list) if character.status == 'developing' else [] %}
                                             {% for ac in character.active_conditions %}
                                             <tr>
                                                 <td>{{ ac.condition.name }}</td>
                                                 {% if has_permission('character.edit_all') %}
                                                 <td>
+                                                    {% if ac.condition_id in chosen_condition_ids %}
+                                                    Stage {{ ac.current_stage }}
+                                                    <small class="text-muted d-block">Chosen above while developing</small>
+                                                    {% else %}
                                                     <select name="condition_stage_{{ ac.id }}" class="form-select form-select-sm width-100-px" title="Select condition stage">
                                                         {% for condition in all_conditions %}
                                                             {% if condition.id == ac.condition_id %}
@@ -343,11 +365,16 @@
                                                             {% endif %}
                                                         {% endfor %}
                                                     </select>
+                                                    {% endif %}
                                                 </td>
                                                 <td>
+                                                    {% if ac.condition.progresses_naturally %}
                                                     <label for="condition_duration_{{ ac.id }}" class="sr-only">Condition duration</label>
                                                     <input type="number" id="condition_duration_{{ ac.id }}" name="condition_duration_{{ ac.id }}" value="{{ ac.duration_label }}"
                                                            class="form-control form-control-sm width-80-px" min="0" step="any">
+                                                    {% else %}
+                                                    Triggers only
+                                                    {% endif %}
                                                 </td>
                                                 <td>
                                                     <button type="submit" name="remove_condition" value="{{ ac.id }}" class="btn btn-danger btn-sm" aria-label="Remove condition">
@@ -356,7 +383,7 @@
                                                 </td>
                                                 {% else %}
                                                 <td>Stage {{ ac.current_stage }}</td>
-                                                <td>{{ ac.duration_label }}</td>
+                                                <td>{{ ac.duration_label if ac.condition.progresses_naturally else 'Triggers only' }}</td>
                                                 {% endif %}
                                             </tr>
                                             {% endfor %}

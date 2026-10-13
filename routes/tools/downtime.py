@@ -1827,6 +1827,8 @@ def process_downtime(period_id):
         active_conditions = pack.character.active_conditions
 
         for condition in active_conditions:
+            if not condition.condition.progresses_naturally:
+                continue
             # Progress the condition
             result = condition.progress_condition()
 

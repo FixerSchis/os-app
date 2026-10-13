@@ -87,11 +87,11 @@ function currentSpeciesId() {
 
 function showStartingSkillPicks() {
     const speciesId = String(currentSpeciesId());
-    document.querySelectorAll('.starting-skill-panel').forEach(function(panel) {
+    document.querySelectorAll('.starting-skill-panel, .starting-condition-panel').forEach(function(panel) {
         const match = panel.dataset.speciesId === speciesId;
         panel.style.display = match ? '' : 'none';
         panel.dataset.active = match ? 'true' : 'false';
-        panel.querySelectorAll('input').forEach(function(input) {
+        panel.querySelectorAll('input, select').forEach(function(input) {
             input.disabled = !match;
         });
     });

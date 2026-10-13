@@ -60,6 +60,41 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    const sheetRows = document.getElementById('stage-sheet-value-rows');
+    const addSheetValue = document.getElementById('add-stage-sheet-value');
+    if (sheetRows && addSheetValue) {
+        addSheetValue.addEventListener('click', function() {
+            const index = sheetRows.querySelectorAll('.stage-sheet-value-row').length;
+            const row = document.createElement('div');
+            row.className = 'row mb-2 stage-sheet-value-row';
+            row.innerHTML = `
+                <div class="col-md-3">
+                    <label class="sr-only" for="stage_sheet_id_new_${index}">ID</label>
+                    <input class="form-control" id="stage_sheet_id_new_${index}" name="stage_sheet_id[]" placeholder="ID, such as will">
+                </div>
+                <div class="col-md-5">
+                    <label class="sr-only" for="stage_sheet_description_new_${index}">Description</label>
+                    <input class="form-control" id="stage_sheet_description_new_${index}" name="stage_sheet_description[]" placeholder="Description, such as Will Points">
+                </div>
+                <div class="col-md-2">
+                    <label class="sr-only" for="stage_sheet_value_new_${index}">Value per stage</label>
+                    <input type="number" class="form-control" id="stage_sheet_value_new_${index}" name="stage_sheet_value[]" value="1" placeholder="Per stage">
+                </div>
+                <div class="col-md-2">
+                    <button type="button" class="btn btn-danger btn-sm remove-stage-sheet-value" aria-label="Remove sheet value">Remove</button>
+                </div>
+            `;
+            sheetRows.appendChild(row);
+            row.querySelector('input').focus();
+        });
+        sheetRows.addEventListener('click', function(e) {
+            const button = e.target.closest('.remove-stage-sheet-value');
+            if (button) {
+                button.closest('.stage-sheet-value-row').remove();
+            }
+        });
+    }
+
     if (stagesContainer) {
         stagesContainer.addEventListener('click', function(e) {
             if (e.target.closest('.remove-stage')) {

@@ -37,6 +37,7 @@ $(document).ready(function() {
             $(this).find('.ability-starting-item select').attr('name', 'ability_starting_item_blueprint_' + i);
             $(this).find('.ability-starting-reputation select').attr('name', 'ability_starting_reputation_faction_' + i);
             $(this).find('.ability-starting-reputation input[type=number]').attr('name', 'ability_starting_reputation_value_' + i);
+            $(this).find('.ability-starting-condition select').attr('name', 'ability_starting_condition_' + i);
         });
     }
 
@@ -101,6 +102,7 @@ $(document).ready(function() {
         block.find('.ability-starting-item select').prop('required', false);
         block.find('.ability-starting-reputation select').prop('required', false);
         block.find('.ability-starting-reputation input[type=number]').prop('required', false);
+        block.find('.ability-starting-condition select').prop('required', false);
         if ($(this).val() === 'starting_skills') {
             block.find('.ability-starting-skills').show();
         } else if ($(this).val() === 'starting_skill_choices') {
@@ -128,6 +130,9 @@ $(document).ready(function() {
             // Only add required if visible
             block.find('.ability-starting-reputation select').prop('required', true);
             block.find('.ability-starting-reputation input[type=number]').prop('required', true);
+        } else if ($(this).val() === 'starting_condition') {
+            block.find('.ability-starting-condition').show();
+            block.find('.ability-starting-condition select').prop('required', true);
         }
     });
 
@@ -333,6 +338,11 @@ $(document).ready(function() {
             <div class="form-group mb-2 ability-extra ability-starting-reputation" style="display:none;">
                 <label>Starting Reputation - Value</label>
                 <input type="number" class="form-control" name="ability_starting_reputation_value_${idx}" placeholder="0">
+            </div>
+            <div class="form-group mb-2 ability-extra ability-starting-condition" style="display:none;">
+                <label>Starting condition</label>
+                <select class="form-control" name="ability_starting_condition_${idx}">${window.CONDITION_OPTIONS_HTML || ''}</select>
+                <small class="form-text text-muted">Players choose the starting stage when they create the character. The lowest choice is stage 1.</small>
             </div>
             <div class="form-group mb-2">
                 <label>Description *</label>

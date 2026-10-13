@@ -88,6 +88,7 @@
                 {% set is_skill_discounts = ability.type == AbilityType.SKILL_DISCOUNTS %}
                 {% set is_starting_item = ability.type == AbilityType.STARTING_ITEM %}
                 {% set is_starting_reputation = ability.type == AbilityType.STARTING_REPUTATION %}
+                {% set is_starting_condition = ability.type == AbilityType.STARTING_CONDITION %}
                 <div class="ability-block card mb-3 p-3">
                     <div class="form-row mb-2">
                         <div class="col-md-4 mb-2">
@@ -288,6 +289,16 @@
                                {% if is_starting_reputation %}required{% endif %}
                                placeholder="0">
                     </div>
+                    <div class="form-group mb-2 ability-extra ability-starting-condition" {% if not is_starting_condition %}style="display:none;"{% endif %}>
+                        <label for="ability_starting_condition_{{ loop.index0 }}">Starting condition</label>
+                        <select class="form-control" id="ability_starting_condition_{{ loop.index0 }}" name="ability_starting_condition_{{ loop.index0 }}" title="Condition every character of this species starts with">
+                            <option value="">Select a condition</option>
+                            {% for condition in conditions_list|default([]) %}
+                            <option value="{{ condition.id }}" {% if is_starting_condition and ability.starting_condition_id == condition.id %}selected{% endif %}>{{ condition.name }}</option>
+                            {% endfor %}
+                        </select>
+                        <small class="form-text text-muted">Players choose the starting stage when they create the character. The lowest choice is stage 1.</small>
+                    </div>
                     <div class="form-group mb-2">
                         <label for="ability_description_{{ loop.index0 }}">Description *</label>
                         <textarea class="form-control" id="ability_description_{{ loop.index0 }}" name="ability_description_{{ loop.index0 }}" required>{{ ability.description }}</textarea>
@@ -311,6 +322,7 @@
 <!-- Ability type options template, rendered ONCE -->
 <template id="ability-type-options-template">{% for t in AbilityType %}<option value="{{ t.value }}">{{ AbilityType.descriptions()[t.value] }}</option>{% endfor %}</template>
 <template id="skill-options-template">{% for skill in skills_list %}<option value="{{ skill.id }}">{{ skill.name }}</option>{% endfor %}</template>
+<template id="condition-options-template"><option value="">Select a condition</option>{% for condition in conditions_list|default([]) %}<option value="{{ condition.id }}">{{ condition.name }}</option>{% endfor %}</template>
 
 {% endblock %}
 
@@ -322,6 +334,7 @@
 <script>
 window.ABILITY_TYPE_OPTIONS_HTML = document.getElementById('ability-type-options-template').innerHTML;
 window.SKILL_OPTIONS_HTML = document.getElementById('skill-options-template').innerHTML;
+window.CONDITION_OPTIONS_HTML = document.getElementById('condition-options-template').innerHTML;
 window.ITEM_BLUEPRINTS = JSON.parse('{{ item_blueprints | tojson | safe }}');
 window.FACTIONS = JSON.parse(document.getElementById('factions-data').dataset.factions);
 </script>

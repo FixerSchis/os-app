@@ -842,7 +842,7 @@ class Character(db.Model):
         return rate
 
     def get_character_sheet_values(self):
-        """Sum sheet values from each skill rank and from printed abilities."""
+        """Sum sheet values from skill ranks, printed abilities, and condition stages."""
         values = {}
 
         def add(value, times):
@@ -859,6 +859,11 @@ class Character(db.Model):
         for ability in self.printed_abilities():
             for value in ability.character_sheet_values_list:
                 add(value, 1)
+        for active in self.active_conditions:
+            if not active.current_stage:
+                continue
+            for value in active.condition.stage_sheet_values_list:
+                add(value, active.current_stage)
         return values
 
     def get_factions_with_reputation(self):

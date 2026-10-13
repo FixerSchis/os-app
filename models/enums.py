@@ -91,6 +91,7 @@ class AbilityType(Enum):
     GROUP_INCOME = "group_income"
     STARTING_ITEM = "starting_item"
     STARTING_REPUTATION = "starting_reputation"
+    STARTING_CONDITION = "starting_condition"
 
     @classmethod
     def values(cls):
@@ -110,6 +111,7 @@ class AbilityType(Enum):
             cls.GROUP_INCOME.value: "Group Income",
             cls.STARTING_ITEM.value: "Starting Item",
             cls.STARTING_REPUTATION.value: "Starting Reputation",
+            cls.STARTING_CONDITION.value: "Starting Condition (chosen stage)",
         }
 
 

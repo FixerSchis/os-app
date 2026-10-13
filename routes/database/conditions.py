@@ -34,6 +34,26 @@ def _assign_condition_tags(condition):
     condition.tags = RuleTag.resolve_list(request.form.getlist("tags[]"))
 
 
+def _assign_condition_progression(condition):
+    condition.progresses_naturally = request.form.get("progresses_naturally") == "1"
+    ids = request.form.getlist("stage_sheet_id[]")
+    descriptions = request.form.getlist("stage_sheet_description[]")
+    amounts = request.form.getlist("stage_sheet_value[]")
+    values = []
+    for value_id, description, amount in zip(ids, descriptions, amounts):
+        value_id = value_id.strip()
+        if not value_id:
+            continue
+        try:
+            number = int(amount) if amount.strip() else 0
+        except ValueError:
+            number = 0
+        values.append(
+            {"id": value_id, "description": description.strip() or value_id, "value": number}
+        )
+    condition.stage_sheet_values_list = values
+
+
 @conditions_bp.route("/new", methods=["GET"])
 @login_required
 @email_verified_required
@@ -59,6 +79,7 @@ def create_post():
         db.session.add(condition)
         db.session.flush()  # Get the condition ID
         _assign_condition_tags(condition)
+        _assign_condition_progression(condition)
 
         # Process stages
         for i, stage_data in enumerate(stages_data, 1):
@@ -106,6 +127,7 @@ def edit_post(id):
     try:
         condition.name = name
         _assign_condition_tags(condition)
+        _assign_condition_progression(condition)
 
         # Remove all existing stages
         for stage in condition.stages:

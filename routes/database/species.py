@@ -3,6 +3,7 @@ import re
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
+from models.database.conditions import Condition
 from models.database.faction import Faction
 from models.database.item_blueprint import ItemBlueprint
 from models.database.rule_tag import RuleTag
@@ -15,6 +16,16 @@ from utils.decorators import email_verified_required
 from utils.permission_decorators import permission_required
 
 species_bp = Blueprint("species", __name__)
+
+
+@species_bp.context_processor
+def inject_conditions_list():
+    return {"conditions_list": Condition.query.order_by(Condition.name).all()}
+
+
+def _assign_starting_condition(ability, index):
+    raw = request.form.get(f"ability_starting_condition_{index}") or ""
+    ability.starting_condition_id = int(raw) if raw.isdigit() else None
 
 
 def _assign_banned_skills(ability, index):
@@ -307,6 +318,8 @@ def edit_species_post(species_id):
                     ab.starting_reputation_value = int(ability_starting_reputation_values[i])
             elif ab_type == AbilityType.CONDITION_TIMING.value:
                 _assign_condition_progress_rate(ab, i)
+            elif ab_type == AbilityType.STARTING_CONDITION.value:
+                _assign_starting_condition(ab, i)
             _assign_ability_tags(ab, i)
             _assign_ability_sheet_values(ab, i)
             db.session.add(ab)
@@ -478,6 +491,8 @@ def new_species_post():
                     ab.starting_reputation_value = int(ability_starting_reputation_values[i])
             elif ab_type == AbilityType.CONDITION_TIMING.value:
                 _assign_condition_progress_rate(ab, i)
+            elif ab_type == AbilityType.STARTING_CONDITION.value:
+                _assign_starting_condition(ab, i)
             _assign_ability_tags(ab, i)
             _assign_ability_sheet_values(ab, i)
             db.session.add(ab)

@@ -435,6 +435,47 @@ class TestConditionProgression:
         assert char_condition.current_duration == pytest.approx(2 / 3)
         assert result["completed"] is False
 
+    def test_stage_sheet_values_multiply_by_current_stage(self, db, character):
+        condition = Condition(name="Black Frost", progresses_naturally=False)
+        condition.stage_sheet_values_list = [
+            {"id": "will", "description": "Will Points", "value": 1}
+        ]
+        db.session.add(condition)
+        db.session.flush()
+        for stage_number in (1, 2, 3):
+            db.session.add(
+                ConditionStage(
+                    condition_id=condition.id,
+                    stage_number=stage_number,
+                    rp_effect="Boils",
+                    diagnosis="Boils",
+                    cure="None",
+                    duration=0,
+                )
+            )
+        db.session.add(
+            CharacterCondition(
+                character_id=character.id,
+                condition_id=condition.id,
+                current_stage=3,
+                current_duration=0,
+            )
+        )
+        db.session.commit()
+        db.session.refresh(character)
+
+        assert condition.max_stage == 3
+        assert character.get_character_sheet_values()["will"] == {
+            "name": "Will Points",
+            "value": 3,
+        }
+
+    def test_conditions_advance_each_downtime_by_default(self, db):
+        condition = Condition(name="Ordinary Fever")
+        db.session.add(condition)
+        db.session.commit()
+        assert condition.progresses_naturally is True
+
     def test_new_rule_tag_is_found_by_later_lookups(self, db):
         created = RuleTag.resolve_list(["plasma"])
         assert created[0].name == "plasma"

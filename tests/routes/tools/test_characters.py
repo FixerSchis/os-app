@@ -658,3 +658,168 @@ def test_admin_character_edit_commits_conditions_and_points(test_client, db):
     assert character.base_character_points == 25
     assert character_condition.current_stage == 2
     assert character_condition.current_duration == 1
+
+
+def test_create_character_page_has_no_character_abilities(test_client, db):
+    """Character abilities are only edited on an existing character, even by staff."""
+    from tests.conftest import assign_role_to_user
+
+    admin = User(email="create-abilities@example.com", first_name="Create", surname="Admin")
+    admin.set_password("password")
+    admin.email_verified = True
+    db.session.add(admin)
+    db.session.commit()
+    assign_role_to_user(admin, "admin", db.session)
+    faction = Faction(
+        name="Ability Faction", wiki_slug="ability-faction", allow_player_characters=True
+    )
+    db.session.add(faction)
+    db.session.flush()
+    species = Species(
+        name="Ability Species",
+        wiki_page="ability-species",
+        body_hits_type="locational",
+        body_hits=3,
+        death_count=1,
+        permitted_factions_list=[faction.id],
+    )
+    db.session.add(species)
+    db.session.commit()
+    with test_client.session_transaction() as session:
+        session["_user_id"] = admin.id
+        session["_fresh"] = True
+
+    page = test_client.get("/characters/new").get_data(as_text=True)
+    assert "Character Abilities" not in page
+    assert "add-character-ability" not in page
+
+    response = test_client.post(
+        "/characters/new",
+        data={
+            "name": "No Abilities",
+            "faction": str(faction.id),
+            "species_id": str(species.id),
+            "character_ability_name_0": "Smuggled",
+            "character_ability_description_0": "Should not be saved.",
+        },
+    )
+    assert response.status_code == 302
+    character = Character.query.filter_by(name="No Abilities").one()
+    assert character.abilities == []
+
+
+def _black_frost_species(db, prefix):
+    from models.database.conditions import Condition, ConditionStage
+    from models.database.species import Ability
+    from models.enums import AbilityType
+
+    faction = Faction(
+        name=f"{prefix} Faction", wiki_slug=f"{prefix}-faction", allow_player_characters=True
+    )
+    db.session.add(faction)
+    db.session.flush()
+    species = Species(
+        name=f"{prefix} Raegar",
+        wiki_page=f"{prefix}-raegar",
+        body_hits_type="locational",
+        body_hits=2,
+        death_count=300,
+        permitted_factions_list=[faction.id],
+    )
+    condition = Condition(name=f"{prefix} Black Frost", progresses_naturally=False)
+    condition.stage_sheet_values_list = [{"id": "will", "description": "Will Points", "value": 1}]
+    db.session.add_all([species, condition])
+    db.session.flush()
+    for stage_number in range(1, 11):
+        db.session.add(
+            ConditionStage(
+                condition_id=condition.id,
+                stage_number=stage_number,
+                rp_effect="Boils",
+                diagnosis="Boils",
+                cure="None",
+                duration=0,
+            )
+        )
+    db.session.add(
+        Ability(
+            species_id=species.id,
+            name="Black Frost",
+            description="Starts at a chosen stage.",
+            type=AbilityType.STARTING_CONDITION,
+            starting_condition_id=condition.id,
+        )
+    )
+    db.session.commit()
+    return faction, species, condition
+
+
+def _login_player(test_client, db, email):
+    user = User(email=email, first_name="Frost", surname="Player")
+    user.set_password("password")
+    user.email_verified = True
+    db.session.add(user)
+    db.session.commit()
+    with test_client.session_transaction() as session:
+        session["_user_id"] = user.id
+        session["_fresh"] = True
+    return user
+
+
+def test_new_character_starts_with_chosen_condition_stage(test_client, db):
+    """A Raegar starts Black Frost at the chosen stage, with 1 Will Point per stage."""
+    from models.tools.character import CharacterCondition
+
+    faction, species, condition = _black_frost_species(db, "Chosen")
+    user = _login_player(test_client, db, "frost-chosen@example.com")
+    field = f"starting_condition_stage_{condition.id}"
+    base = {
+        "name": "Tyyn Staiger",
+        "pronouns_subject": "they",
+        "pronouns_object": "them",
+        "faction": str(faction.id),
+        "species_id": str(species.id),
+    }
+
+    for bad_stage in ("", "0", "11"):
+        response = test_client.post(
+            "/characters/new", data={**base, field: bad_stage}, follow_redirects=True
+        )
+        assert b"Choose a Chosen Black Frost starting stage from 1 to 10." in response.data
+    assert Character.query.filter_by(user_id=user.id).count() == 0
+
+    response = test_client.post("/characters/new", data={**base, field: "4"})
+    assert response.status_code == 302
+    character = Character.query.filter_by(user_id=user.id).one()
+    active = CharacterCondition.query.filter_by(character_id=character.id).one()
+    assert active.condition_id == condition.id
+    assert active.current_stage == 4
+    assert character.get_character_sheet_values()["will"] == {"name": "Will Points", "value": 4}
+
+
+def test_starting_stage_changes_only_while_developing(test_client, db):
+    """The owner can change the chosen stage while developing, and not after activation."""
+    from models.tools.character import CharacterCondition
+
+    faction, species, condition = _black_frost_species(db, "Developing")
+    user = _login_player(test_client, db, "frost-developing@example.com")
+    field = f"starting_condition_stage_{condition.id}"
+    base = {
+        "name": "Tyyn Rask",
+        "pronouns_subject": "they",
+        "pronouns_object": "them",
+        "faction": str(faction.id),
+        "species_id": str(species.id),
+    }
+    test_client.post("/characters/new", data={**base, field: "2"})
+    character = Character.query.filter_by(user_id=user.id).one()
+
+    test_client.post(f"/characters/{character.id}/edit", data={**base, field: "7"})
+    active = CharacterCondition.query.filter_by(character_id=character.id).one()
+    assert active.current_stage == 7
+
+    character.status = CharacterStatus.ACTIVE.value
+    db.session.commit()
+    test_client.post(f"/characters/{character.id}/edit", data={**base, field: "1"})
+    db.session.refresh(active)
+    assert active.current_stage == 7

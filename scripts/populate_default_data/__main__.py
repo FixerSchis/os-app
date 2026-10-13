@@ -565,6 +565,64 @@ def link_default_psi_points():
     db.session.commit()
 
 
+_BLACK_FROST_STAGES = 10
+
+
+def link_default_black_frost():
+    """Seed the trigger-only Black Frost condition and give it to Raegar at a chosen stage."""
+    condition = Condition.query.filter_by(name="Black Frost").first()
+    if condition is None:
+        condition = Condition(name="Black Frost", progresses_naturally=False)
+        condition.stage_sheet_values_list = [
+            {"id": "will", "description": "Will Points", "value": 1}
+        ]
+        condition.tags = RuleTag.resolve_list(["disease"])
+        db.session.add(condition)
+        db.session.flush()
+        for stage_number in range(1, _BLACK_FROST_STAGES + 1):
+            final = stage_number == _BLACK_FROST_STAGES
+            db.session.add(
+                ConditionStage(
+                    condition_id=condition.id,
+                    stage_number=stage_number,
+                    rp_effect=(
+                        "Black boils spread and pain grows. When this stage completes, "
+                        "the character dies."
+                        if final
+                        else "Black boils spread further across the skin, with growing pain."
+                    ),
+                    diagnosis="Clusters of black boils. Genetic, and present in every Raegar.",
+                    cure="Incurable. Medication eases the pain but does not stop it.",
+                    duration=0,
+                )
+            )
+    raegar = Species.query.filter_by(name="Raegar").first()
+    has_ability = raegar is not None and any(
+        ability.starting_condition_id == condition.id for ability in raegar.abilities
+    )
+    if raegar is not None and not has_ability:
+        db.session.add(
+            Ability(
+                species_id=raegar.id,
+                name="Black Frost",
+                description=(
+                    "Every Raegar has the Black Frost, an incurable condition with 10 stages. "
+                    "Choose the starting stage when you create the character. A referee "
+                    "advances it at most one stage per event, after a trigger. The character "
+                    "dies when stage 10 completes. Each stage gives 1 Will Point. Spend 1 to "
+                    "RESIST an EFFECT call or roleplay effect, gain 1 Steel Viscera rank for "
+                    "one surgery, ignore a Medicament or Condition's roleplay effects for an "
+                    "hour, act normally for 1 minute while Walking Wounded, or become Walking "
+                    "Wounded after 1 minute Unconscious or Badly Injured. Regain 1 per 5 "
+                    "minutes of meditative work with another Raegar."
+                ),
+                type=AbilityType.STARTING_CONDITION,
+                starting_condition_id=condition.id,
+            )
+        )
+    db.session.commit()
+
+
 def create_default_skills():
     """Create wiki skills if none exist."""
     if Skill.query.first():
@@ -2001,6 +2059,7 @@ def create_default_data():
     create_default_items()
     create_default_group_types()
     create_default_conditions()
+    link_default_black_frost()
     create_default_cybernetics()
     create_default_samples()
     create_default_events()

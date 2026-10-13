@@ -31,6 +31,11 @@ from utils import generate_qr_code, generate_web_qr_code
 from utils.decorators import email_verified_required
 from utils.permission_decorators import permission_required
 from utils.skill_pairs import apply_skill_pair_grants
+from utils.starting_conditions import (
+    apply_starting_conditions,
+    starting_condition_catalogue,
+    validate_starting_condition_stages,
+)
 from utils.starting_skills import (
     apply_starting_skills,
     choice_catalogue,
@@ -133,7 +138,10 @@ characters_bp = Blueprint("characters", __name__)
 
 @characters_bp.context_processor
 def inject_starting_skill_catalogue():
-    return {"starting_skill_catalogue": choice_catalogue()}
+    return {
+        "starting_skill_catalogue": choice_catalogue(),
+        "starting_condition_catalogue": starting_condition_catalogue(),
+    }
 
 
 @characters_bp.route("/")
@@ -250,7 +258,9 @@ def create_character_post():
             )
 
     species = db.session.get(Species, species_id)
-    pick_error = validate_starting_skill_picks(species, request.form.getlist("starting_skill_pick"))
+    pick_error = validate_starting_skill_picks(
+        species, request.form.getlist("starting_skill_pick")
+    ) or validate_starting_condition_stages(species, request.form)
     if pick_error:
         flash(pick_error, "error")
         return render_template(
@@ -260,19 +270,6 @@ def create_character_post():
             species_list=species_list,
             all_cybernetics=all_cybernetics,
         )
-
-    ability_rows = None
-    if current_user.has_permission("character.edit_all"):
-        ability_rows, ability_error = _posted_character_abilities()
-        if ability_error:
-            flash(ability_error, "error")
-            return render_template(
-                "characters/edit.html",
-                admin_context=admin_context,
-                factions=factions,
-                species_list=species_list,
-                all_cybernetics=all_cybernetics,
-            )
 
     base_character_points = 10
     posted_points, points_error = _posted_base_character_points(current_user)
@@ -312,8 +309,7 @@ def create_character_post():
         character, species, current_user, request.form.getlist("starting_skill_pick")
     )
     apply_skill_pair_grants(character, species, current_user)
-    if ability_rows is not None:
-        _replace_character_abilities(character, ability_rows)
+    condition_notes = apply_starting_conditions(character, species, request.form)
     db.session.commit()
 
     # Handle background review system for character creation
@@ -329,8 +325,8 @@ def create_character_post():
 
     # Audit log for creation
     created = "Character created"
-    if ability_rows:
-        created += " with abilities: " + ", ".join(name for name, _description in ability_rows)
+    if condition_notes:
+        created += ". " + "; ".join(condition_notes)
     audit = CharacterAuditLog(
         character_id=character.id,
         editor_user_id=current_user.id,
@@ -528,7 +524,10 @@ def edit_post(character_id):
             )
 
     species = db.session.get(Species, species_id)
+    choosing_starting_conditions = character.status == CharacterStatus.DEVELOPING.value
     pick_error = validate_starting_skill_picks(species, request.form.getlist("starting_skill_pick"))
+    if not pick_error and choosing_starting_conditions:
+        pick_error = validate_starting_condition_stages(species, request.form)
     if pick_error:
         flash(pick_error, "error")
         return render_template(
@@ -868,6 +867,17 @@ def edit_post(character_id):
         character, species, current_user, request.form.getlist("starting_skill_pick")
     )
     apply_skill_pair_grants(character, species, current_user)
+    if choosing_starting_conditions:
+        condition_notes = apply_starting_conditions(character, species, request.form)
+        if condition_notes:
+            db.session.add(
+                CharacterAuditLog(
+                    character_id=character.id,
+                    editor_user_id=current_user.id,
+                    action=CharacterAuditAction.CONDITION_CHANGE.value,
+                    changes="; ".join(condition_notes),
+                )
+            )
     db.session.commit()
     flash("Character updated successfully")
     redirect_url = url_for("characters.edit", character_id=character.id)
@@ -1325,21 +1335,11 @@ def create_for_player_post(user_id):
             )
 
     species = db.session.get(Species, species_id)
-    pick_error = validate_starting_skill_picks(species, request.form.getlist("starting_skill_pick"))
+    pick_error = validate_starting_skill_picks(
+        species, request.form.getlist("starting_skill_pick")
+    ) or validate_starting_condition_stages(species, request.form)
     if pick_error:
         flash(pick_error, "error")
-        return render_template(
-            "characters/edit.html",
-            user_id=user_id,
-            admin_context=True,
-            factions=factions,
-            species_list=species_list,
-            all_cybernetics=all_cybernetics,
-        )
-
-    ability_rows, ability_error = _posted_character_abilities()
-    if ability_error:
-        flash(ability_error, "error")
         return render_template(
             "characters/edit.html",
             user_id=user_id,
@@ -1372,7 +1372,7 @@ def create_for_player_post(user_id):
         character, species, current_user, request.form.getlist("starting_skill_pick")
     )
     apply_skill_pair_grants(character, species, current_user)
-    _replace_character_abilities(character, ability_rows)
+    condition_notes = apply_starting_conditions(character, species, request.form)
     db.session.commit()
 
     # Handle background review system for character creation by admin
@@ -1388,8 +1388,8 @@ def create_for_player_post(user_id):
 
     # Audit log for creation
     created = "Character created by admin"
-    if ability_rows:
-        created += " with abilities: " + ", ".join(name for name, _description in ability_rows)
+    if condition_notes:
+        created += ". " + "; ".join(condition_notes)
     audit = CharacterAuditLog(
         character_id=character.id,
         editor_user_id=current_user.id,

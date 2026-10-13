@@ -35,6 +35,7 @@ class Ability(db.Model):
         db.Integer, db.ForeignKey("faction.id"), nullable=True
     )
     starting_reputation_value = db.Column(db.Integer, nullable=True)
+    starting_condition_id = db.Column(db.Integer, db.ForeignKey("conditions.id"), nullable=True)
 
     __table_args__ = (
         db.CheckConstraint(
@@ -48,6 +49,7 @@ class Ability(db.Model):
     starting_reputation_faction = db.relationship(
         "Faction", foreign_keys=[starting_reputation_faction_id]
     )
+    starting_condition = db.relationship("Condition", foreign_keys=[starting_condition_id])
     tags = db.relationship("RuleTag", secondary=ability_rule_tags, order_by="RuleTag.name")
 
     @property
