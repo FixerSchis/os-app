@@ -1,0 +1,15 @@
+.skills-collapse-toggle {
+    cursor: pointer;
+}
+
+.skills-collapse-toggle .skills-chevron {
+    transition: transform 0.15s ease;
+}
+
+.skills-collapse-toggle[aria-expanded="true"] .skills-chevron {
+    transform: rotate(180deg);
+}
+
+.skill-tree {
+    border-left: 3px solid var(--bs-primary);
+}

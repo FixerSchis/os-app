@@ -13,6 +13,51 @@
                 <input type="text" class="form-control" id="name" name="name" value="{{ condition.name if condition else '' }}" required>
             </div>
 
+            <div class="form-group mb-4">
+                <label for="condition-tags">Tags</label>
+                <select class="form-control rule-tag-select" id="condition-tags" name="tags[]" multiple title="Select or add tags">
+                    {% if condition %}
+                    {% for tag in condition.tags %}
+                    <option value="{{ tag.id }}" selected>{{ tag.name }}</option>
+                    {% endfor %}
+                    {% endif %}
+                </select>
+                <small class="form-text text-muted">Radiation, toxic, and disease are examples. Search for a tag, or type a new one. Saving stores a new tag so later searches can find it.</small>
+            </div>
+
+            <div class="form-check mb-4">
+                <input class="form-check-input" type="checkbox" id="progresses_naturally" name="progresses_naturally" value="1" {% if not condition or condition.progresses_naturally %}checked{% endif %}>
+                <label class="form-check-label" for="progresses_naturally">Advances each downtime</label>
+                <small class="form-text text-muted d-block">Clear this for conditions that only advance when a referee rules a trigger. Staff then change the stage on the character.</small>
+            </div>
+
+            <div class="form-group mb-4">
+                <label>Character sheet values per stage</label>
+                <div id="stage-sheet-value-rows">
+                    {% for value in (condition.stage_sheet_values_list if condition else []) %}
+                    <div class="row mb-2 stage-sheet-value-row">
+                        <div class="col-md-3">
+                            <label class="sr-only" for="stage_sheet_id_{{ loop.index0 }}">ID</label>
+                            <input class="form-control" id="stage_sheet_id_{{ loop.index0 }}" name="stage_sheet_id[]" value="{{ value.id }}" placeholder="ID, such as will">
+                        </div>
+                        <div class="col-md-5">
+                            <label class="sr-only" for="stage_sheet_description_{{ loop.index0 }}">Description</label>
+                            <input class="form-control" id="stage_sheet_description_{{ loop.index0 }}" name="stage_sheet_description[]" value="{{ value.description }}" placeholder="Description, such as Will Points">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="sr-only" for="stage_sheet_value_{{ loop.index0 }}">Value per stage</label>
+                            <input type="number" class="form-control" id="stage_sheet_value_{{ loop.index0 }}" name="stage_sheet_value[]" value="{{ value.value }}" placeholder="Per stage">
+                        </div>
+                        <div class="col-md-2">
+                            <button type="button" class="btn btn-danger btn-sm remove-stage-sheet-value" aria-label="Remove sheet value">Remove</button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                <button type="button" class="btn btn-secondary btn-sm" id="add-stage-sheet-value">Add sheet value</button>
+                <small class="form-text text-muted d-block">Multiplied by the character's current stage. At stage 3, a value of 1 adds 3. Added to skill and ability values with the same ID.</small>
+            </div>
+
             <div id="stages-container">
                 <input type="hidden" id="stage-count" value="{{ condition.stages|length if condition and condition.stages else 0 }}">
                 {% if condition and condition.stages %}
@@ -68,5 +113,6 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="{{ url_for('static', filename='js/rule-tags.js') }}"></script>
 <script src="{{ url_for('static', filename='js/pages/conditions-edit.js') }}"></script>
 {% endblock %}

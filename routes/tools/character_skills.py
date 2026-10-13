@@ -2,7 +2,7 @@ from flask import Blueprint, flash, jsonify, redirect, render_template, request,
 from flask_login import current_user, login_required
 
 from models.database.faction import Faction
-from models.database.skills import Skill
+from models.database.skills import Skill, id_listed
 from models.enums import CharacterAuditAction, CharacterStatus
 from models.extensions import db
 from models.tools.character import Character, CharacterAuditLog, CharacterSkill
@@ -38,16 +38,22 @@ def character_skills(character_id):
             if skill.required_skill_id not in character_skill_ids:
                 continue
 
+        if character.skill_requirement_error(skill):
+            continue
+
+        if character.skill_ban_reason(skill):
+            continue
+
         # Check required factions
         if skill.required_factions:
             required_factions = skill.required_factions_list
-            if str(character.faction_id) not in required_factions:
+            if not id_listed(required_factions, character.faction_id):
                 continue
 
         # Check required species
         if skill.required_species:
             required_species = skill.required_species_list
-            if str(character.species_id) not in required_species:
+            if not id_listed(required_species, character.species_id):
                 continue
 
         # If we get here, the skill is available
@@ -81,18 +87,18 @@ def get_skill_cost(character_id):
 
     # Check if character has enough CP
     cost = character.get_skill_cost(skill)
-    total_skills_cost = character.get_total_skill_cost()
-    remaining_base_cp = character.base_character_points - total_skills_cost
-    cp_from_user = max(0, cost - remaining_base_cp)
+    cp_from_user = (
+        character.earned_points_spent(cost, skill.earned_points_only)
+        - character.earned_points_spent()
+    )
 
-    if character.status == CharacterStatus.ACTIVE.value and cp_from_user > 0:
-        if not current_user.can_spend_character_points(cp_from_user):
-            return jsonify(
-                {
-                    "can_purchase": False,
-                    "reason": (f"Not enough character points (need {cp_from_user} from user)"),
-                }
-            )
+    points_error = character.skill_points_error(skill, current_user, cost)
+    if points_error:
+        return jsonify({"can_purchase": False, "reason": points_error})
+
+    ban_reason = character.skill_ban_reason(skill)
+    if ban_reason:
+        return jsonify({"can_purchase": False, "reason": ban_reason})
 
     # Check required skill
     if skill.required_skill_id:
@@ -110,7 +116,7 @@ def get_skill_cost(character_id):
     # Check required factions
     if skill.required_factions:
         required_factions = skill.required_factions_list
-        if str(character.faction_id) not in required_factions:
+        if not id_listed(required_factions, character.faction_id):
             # Get faction names for the error message
             faction_names = [
                 f.name for f in Faction.query.filter(Faction.id.in_(required_factions)).all()
@@ -125,7 +131,7 @@ def get_skill_cost(character_id):
     # Check required species
     if skill.required_species:
         required_species = skill.required_species_list
-        if str(character.species_id) not in required_species:
+        if not id_listed(required_species, character.species_id):
             return jsonify(
                 {
                     "can_purchase": False,
@@ -215,6 +221,11 @@ def refund_skill(character_id):
                 "error",
             )
             return redirect(url_for("character_skills.character_skills", character_id=character_id))
+
+    refund_error = character.skill_refund_error(skill)
+    if refund_error:
+        flash(refund_error, "error")
+        return redirect(url_for("character_skills.character_skills", character_id=character_id))
 
     # Check if this skill is a prerequisite for any other skills the character has
     character_skills = CharacterSkill.query.filter_by(character_id=character.id).all()

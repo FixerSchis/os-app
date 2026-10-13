@@ -3,8 +3,10 @@ import re
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
+from models.database.conditions import Condition
 from models.database.faction import Faction
 from models.database.item_blueprint import ItemBlueprint
+from models.database.rule_tag import RuleTag
 from models.database.skills import Skill
 from models.database.species import Ability, Species
 from models.enums import AbilityType, BodyHitsType
@@ -14,6 +16,92 @@ from utils.decorators import email_verified_required
 from utils.permission_decorators import permission_required
 
 species_bp = Blueprint("species", __name__)
+
+
+@species_bp.context_processor
+def inject_conditions_list():
+    return {"conditions_list": Condition.query.order_by(Condition.name).all()}
+
+
+def _assign_starting_condition(ability, index):
+    raw = request.form.get(f"ability_starting_condition_{index}") or ""
+    ability.starting_condition_id = int(raw) if raw.isdigit() else None
+
+
+def _assign_banned_skills(ability, index):
+    ability.banned_skills_list = request.form.getlist(f"ability_banned_skills_{index}[]")
+
+
+def _assign_ability_sheet_values(ability, index):
+    ids = request.form.getlist(f"ability_sheet_id_{index}[]")
+    descriptions = request.form.getlist(f"ability_sheet_description_{index}[]")
+    amounts = request.form.getlist(f"ability_sheet_value_{index}[]")
+    values = []
+    for value_id, description, amount in zip(ids, descriptions, amounts):
+        value_id = value_id.strip()
+        if not value_id:
+            continue
+        try:
+            number = int(amount) if amount.strip() else 0
+        except ValueError:
+            number = 0
+        values.append(
+            {"id": value_id, "description": description.strip() or value_id, "value": number}
+        )
+    ability.character_sheet_values_list = values
+
+
+def _assign_ability_tags(ability, index):
+    ability_type = getattr(ability.type, "value", ability.type)
+    if ability_type != AbilityType.CONDITION_TIMING.value:
+        ability.tags = []
+        return
+    ability.tags = RuleTag.resolve_list(request.form.getlist(f"ability_tags_{index}[]"))
+
+
+def _assign_condition_progress_rate(ability, index):
+    raw = (request.form.get(f"ability_condition_progress_rate_{index}") or "").strip()
+    if not raw:
+        ability.condition_progress_rate = None
+        return
+    try:
+        rate = float(raw)
+    except ValueError:
+        ability.condition_progress_rate = None
+        return
+    ability.condition_progress_rate = rate if rate > 0 else None
+
+
+def _assign_rank_caps(ability, index):
+    skill_ids = request.form.getlist(f"ability_rank_cap_skill_{index}[]")
+    limits = request.form.getlist(f"ability_rank_cap_limit_{index}[]")
+    caps = []
+    for skill_id, limit in zip(skill_ids, limits):
+        if str(skill_id).isdigit() and str(limit).isdigit() and int(limit) > 0:
+            caps.append({"skill_id": int(skill_id), "max_ranks": int(limit)})
+    ability.rank_caps_list = caps
+
+
+def _assign_skill_pairs(ability, index):
+    triggers = request.form.getlist(f"ability_pair_trigger_{index}[]")
+    granted = request.form.getlist(f"ability_pair_granted_{index}[]")
+    pairs = []
+    for trigger_id, granted_id in zip(triggers, granted):
+        if str(trigger_id).isdigit() and str(granted_id).isdigit():
+            pairs.append({"trigger_skill_id": int(trigger_id), "granted_skill_id": int(granted_id)})
+    ability.skill_pairs_list = pairs
+
+
+def _assign_starting_skill_choices(ability, index):
+    skill_types = request.form.getlist(f"ability_choice_type_{index}[]")
+    counts = request.form.getlist(f"ability_choice_count_{index}[]")
+    choices = []
+    for skill_type, count in zip(skill_types, counts):
+        skill_type = (skill_type or "").strip()
+        if not skill_type or count in (None, ""):
+            continue
+        choices.append({"skill_type": skill_type, "count": int(count)})
+    ability.starting_skill_choices_list = choices
 
 
 @species_bp.route("/")
@@ -107,6 +195,16 @@ def edit_species(species_id):
     )
 
 
+def _extra_hits_per_toughness(value):
+    text = (value or "").strip()
+    if not text.lstrip("-").isdigit():
+        return 1
+    extra = int(text)
+    if extra < 0:
+        return 1
+    return extra
+
+
 @species_bp.route("/<int:species_id>/edit", methods=["POST"])
 @login_required
 @email_verified_required
@@ -174,6 +272,9 @@ def edit_species_post(species_id):
         species.wiki_page = wiki_page
         species.body_hits_type_enum = body_hits_type
         species.body_hits = int(body_hits)
+        species.extra_hits_per_toughness = _extra_hits_per_toughness(
+            request.form.get("extra_hits_per_toughness")
+        )
         species.death_count = int(death_count)
         species.permitted_factions_list = [int(faction_id) for faction_id in permitted_factions]
         species.keywords_list = request.form.getlist("keywords")
@@ -193,6 +294,14 @@ def edit_species_post(species_id):
             )
             if ab_type == AbilityType.STARTING_SKILLS.value:
                 ab.starting_skills_list = ability_starting_skills[i]
+            elif ab_type == AbilityType.STARTING_SKILL_CHOICES.value:
+                _assign_starting_skill_choices(ab, i)
+            elif ab_type == AbilityType.FIRST_SKILL_PAIR.value:
+                _assign_skill_pairs(ab, i)
+            elif ab_type == AbilityType.SKILL_RANK_CAPS.value:
+                _assign_rank_caps(ab, i)
+            elif ab_type == AbilityType.SKILL_BANS.value:
+                _assign_banned_skills(ab, i)
             elif ab_type == AbilityType.SKILL_DISCOUNTS.value:
                 discounts = {}
                 skills = request.form.getlist(f"ability_discount_skills_{i}[]")
@@ -211,6 +320,12 @@ def edit_species_post(species_id):
                     ab.starting_reputation_faction_id = int(ability_starting_reputation_factions[i])
                 if ability_starting_reputation_values[i]:
                     ab.starting_reputation_value = int(ability_starting_reputation_values[i])
+            elif ab_type == AbilityType.CONDITION_TIMING.value:
+                _assign_condition_progress_rate(ab, i)
+            elif ab_type == AbilityType.STARTING_CONDITION.value:
+                _assign_starting_condition(ab, i)
+            _assign_ability_tags(ab, i)
+            _assign_ability_sheet_values(ab, i)
             db.session.add(ab)
         db.session.commit()
         flash("Species updated successfully.", "success")
@@ -332,6 +447,9 @@ def new_species_post():
             wiki_page=wiki_page,
             body_hits_type_enum=body_hits_type,
             body_hits=int(body_hits),
+            extra_hits_per_toughness=_extra_hits_per_toughness(
+                request.form.get("extra_hits_per_toughness")
+            ),
             death_count=int(death_count),
             # Convert faction IDs to integers
             permitted_factions_list=[int(faction_id) for faction_id in permitted_factions],
@@ -349,6 +467,14 @@ def new_species_post():
             )
             if ab_type == AbilityType.STARTING_SKILLS.value:
                 ab.starting_skills_list = ability_starting_skills[i]
+            elif ab_type == AbilityType.STARTING_SKILL_CHOICES.value:
+                _assign_starting_skill_choices(ab, i)
+            elif ab_type == AbilityType.FIRST_SKILL_PAIR.value:
+                _assign_skill_pairs(ab, i)
+            elif ab_type == AbilityType.SKILL_RANK_CAPS.value:
+                _assign_rank_caps(ab, i)
+            elif ab_type == AbilityType.SKILL_BANS.value:
+                _assign_banned_skills(ab, i)
             elif ab_type == AbilityType.SKILL_DISCOUNTS.value:
                 discounts = {}
                 skills = request.form.getlist(f"ability_discount_skills_{i}[]")
@@ -367,6 +493,12 @@ def new_species_post():
                     ab.starting_reputation_faction_id = int(ability_starting_reputation_factions[i])
                 if ability_starting_reputation_values[i]:
                     ab.starting_reputation_value = int(ability_starting_reputation_values[i])
+            elif ab_type == AbilityType.CONDITION_TIMING.value:
+                _assign_condition_progress_rate(ab, i)
+            elif ab_type == AbilityType.STARTING_CONDITION.value:
+                _assign_starting_condition(ab, i)
+            _assign_ability_tags(ab, i)
+            _assign_ability_sheet_values(ab, i)
             db.session.add(ab)
         db.session.commit()
         flash("Species created successfully.", "success")

@@ -30,7 +30,7 @@
                 <label for="body_hits_type">Body Hits Type *</label>
                 <select class="form-control" id="body_hits_type" name="body_hits_type" required title="Select body hits type for species">
                     {% for hit_type in BodyHitsType %}
-                    <option value="{{ hit_type.value }}" {% if species and species.body_hits_type == hit_type.value %}selected{% endif %}>
+                    <option value="{{ hit_type.value }}" {% if species and (species.body_hits_type == hit_type or species.body_hits_type == hit_type.value) %}selected{% endif %}>
                         {{ BodyHitsType.descriptions()[hit_type.value] }}
                     </option>
                     {% endfor %}
@@ -40,6 +40,11 @@
             <div class="form-group">
                 <label for="body_hits">Body Hits *</label>
                 <input type="number" class="form-control" id="body_hits" name="body_hits" value="{{ species.body_hits if species else 0 }}" required min="0">
+            </div>
+
+            <div class="form-group" id="extra-hits-per-toughness-group">
+                <label for="extra_hits_per_toughness">Extra hits per Toughness skill</label>
+                <input type="number" class="form-control" id="extra_hits_per_toughness" name="extra_hits_per_toughness" min="0" value="{{ species.extra_hits_per_toughness if species and species.extra_hits_per_toughness is not none else 1 }}">
             </div>
 
             <div class="form-group">
@@ -74,9 +79,16 @@
                 {% for ability in (species.abilities if species else []) %}
                 {% set ability_type_value = ability.type.value if ability.type is not string else ability.type %}
                 {% set is_starting_skills = ability.type == AbilityType.STARTING_SKILLS %}
+                {% set is_starting_choices = ability.type == AbilityType.STARTING_SKILL_CHOICES %}
+                {% set is_skill_pairs = ability.type == AbilityType.FIRST_SKILL_PAIR %}
+                {% set is_rank_caps = ability.type == AbilityType.SKILL_RANK_CAPS %}
+                {% set is_skill_bans = ability.type == AbilityType.SKILL_BANS %}
+                {% set is_condition_timing = ability.type == AbilityType.CONDITION_TIMING %}
+                {% set is_group_income = ability.type == AbilityType.GROUP_INCOME %}
                 {% set is_skill_discounts = ability.type == AbilityType.SKILL_DISCOUNTS %}
                 {% set is_starting_item = ability.type == AbilityType.STARTING_ITEM %}
                 {% set is_starting_reputation = ability.type == AbilityType.STARTING_REPUTATION %}
+                {% set is_starting_condition = ability.type == AbilityType.STARTING_CONDITION %}
                 <div class="ability-block card mb-3 p-3">
                     <div class="form-row mb-2">
                         <div class="col-md-4 mb-2">
@@ -90,11 +102,11 @@
                             </select>
                         </div>
                     </div>
-                                            <div class="form-group mb-2">
-                            <label for="ability_additional_group_income_{{ loop.index0 }}">Additional Group Income (EC)</label>
-                            <input type="number" class="form-control" id="ability_additional_group_income_{{ loop.index0 }}" name="ability_additional_group_income_{{ loop.index0 }}"
-                                   value="{{ ability.additional_group_income if ability.additional_group_income else 0 }}" min="0" placeholder="0">
-                        </div>
+                    <div class="form-group mb-2 ability-extra ability-group-income" {% if not is_group_income %}style="display:none;"{% endif %}>
+                        <label for="ability_additional_group_income_{{ loop.index0 }}">Additional Group Income (EC)</label>
+                        <input type="number" class="form-control" id="ability_additional_group_income_{{ loop.index0 }}" name="ability_additional_group_income_{{ loop.index0 }}"
+                               value="{{ ability.additional_group_income if ability.additional_group_income else 0 }}" min="0" placeholder="0">
+                    </div>
                     <div class="form-group mb-2 ability-extra ability-starting-skills" {% if not is_starting_skills %}style="display:none;"{% endif %}>
                                                 <label for="ability_starting_skills_{{ loop.index0 }}">Starting Skills</label>
                         <select class="form-control select2-multiple" id="ability_starting_skills_{{ loop.index0 }}" name="ability_starting_skills_{{ loop.index0 }}[]" multiple title="Select starting skills for ability">
@@ -102,6 +114,134 @@
                                 <option value="{{ skill.id }}" {% if is_starting_skills and (skill.id|string) in ability.starting_skills_list %}selected{% endif %}>{{ skill.name }}</option>
                                 {% endfor %}
                             </select>
+                    </div>
+                    <div class="form-group mb-2 ability-extra ability-starting-choices" {% if not is_starting_choices %}style="display:none;"{% endif %}>
+                        <label>Starting skill choices</label>
+                        {% set ability_index = loop.index0 %}
+                        {% set saved_choices = ability.starting_skill_choices_list if is_starting_choices else [] %}
+                        {% for slot in range(2) %}
+                        {% set saved = saved_choices[slot] if slot < (saved_choices|length) else none %}
+                        <div class="row mb-2">
+                            <div class="col-md-6">
+                                <label class="sr-only" for="ability_choice_type_{{ ability_index }}_{{ slot }}">Skill type</label>
+                                <input class="form-control" id="ability_choice_type_{{ ability_index }}_{{ slot }}" name="ability_choice_type_{{ ability_index }}[]" placeholder="Skill type, such as standard_program" value="{{ saved.skill_type if saved else '' }}">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="sr-only" for="ability_choice_count_{{ ability_index }}_{{ slot }}">How many</label>
+                                <input type="number" class="form-control" id="ability_choice_count_{{ ability_index }}_{{ slot }}" name="ability_choice_count_{{ ability_index }}[]" placeholder="How many" min="1" value="{{ saved.count if saved else '' }}">
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <div class="form-group mb-2 ability-extra ability-skill-pairs" {% if not is_skill_pairs %}style="display:none;"{% endif %}>
+                        <label>First skill from this group grants its pair</label>
+                        {% set ability_index = loop.index0 %}
+                        {% set saved_pairs = ability.skill_pairs_list if is_skill_pairs else [] %}
+                        <div class="skill-pair-rows">
+                        {% for saved in saved_pairs %}
+                        <div class="row mb-2 skill-pair-row">
+                            <div class="col-md-5">
+                                <label class="sr-only" for="ability_pair_trigger_{{ ability_index }}_{{ loop.index0 }}">Skill they buy</label>
+                                <select class="form-control" id="ability_pair_trigger_{{ ability_index }}_{{ loop.index0 }}" name="ability_pair_trigger_{{ ability_index }}[]" title="Skill they buy">
+                                    <option value="">Skill they buy</option>
+                                    {% for skill in skills_list %}
+                                    <option value="{{ skill.id }}" {% if (saved.trigger_skill_id|string) == (skill.id|string) %}selected{% endif %}>{{ skill.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-5">
+                                <label class="sr-only" for="ability_pair_granted_{{ ability_index }}_{{ loop.index0 }}">Skill they receive</label>
+                                <select class="form-control" id="ability_pair_granted_{{ ability_index }}_{{ loop.index0 }}" name="ability_pair_granted_{{ ability_index }}[]" title="Skill they receive">
+                                    <option value="">Skill they receive</option>
+                                    {% for skill in skills_list %}
+                                    <option value="{{ skill.id }}" {% if (saved.granted_skill_id|string) == (skill.id|string) %}selected{% endif %}>{{ skill.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <button type="button" class="btn btn-danger btn-sm remove-skill-pair" aria-label="Remove pair">Remove</button>
+                            </div>
+                        </div>
+                        {% endfor %}
+                        </div>
+                        <button type="button" class="btn btn-secondary btn-sm add-skill-pair">Add pair</button>
+                    </div>
+                    <div class="form-group mb-2 ability-extra ability-rank-caps" {% if not is_rank_caps %}style="display:none;"{% endif %}>
+                        <label>Maximum ranks for this species</label>
+                        {% set ability_index = loop.index0 %}
+                        {% set saved_caps = ability.rank_caps_list if is_rank_caps else [] %}
+                        <div class="rank-cap-rows">
+                        {% for saved in saved_caps %}
+                        <div class="row mb-2 rank-cap-row">
+                            <div class="col-md-6">
+                                <label class="sr-only" for="ability_rank_cap_skill_{{ ability_index }}_{{ loop.index0 }}">Skill</label>
+                                <select class="form-control" id="ability_rank_cap_skill_{{ ability_index }}_{{ loop.index0 }}" name="ability_rank_cap_skill_{{ ability_index }}[]" title="Skill">
+                                    <option value="">Skill</option>
+                                    {% for skill in skills_list %}
+                                    <option value="{{ skill.id }}" {% if (saved.skill_id|string) == (skill.id|string) %}selected{% endif %}>{{ skill.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="sr-only" for="ability_rank_cap_limit_{{ ability_index }}_{{ loop.index0 }}">Maximum ranks</label>
+                                <input type="number" class="form-control" id="ability_rank_cap_limit_{{ ability_index }}_{{ loop.index0 }}" name="ability_rank_cap_limit_{{ ability_index }}[]" min="1" placeholder="Maximum ranks" value="{{ saved.max_ranks }}" title="Maximum ranks">
+                            </div>
+                            <div class="col-md-2">
+                                <button type="button" class="btn btn-danger btn-sm remove-rank-cap" aria-label="Remove rank cap">Remove</button>
+                            </div>
+                        </div>
+                        {% endfor %}
+                        </div>
+                        <button type="button" class="btn btn-secondary btn-sm add-rank-cap">Add cap</button>
+                    </div>
+                    <div class="form-group mb-2 ability-extra ability-condition-timing" {% if not is_condition_timing %}style="display:none;"{% endif %}>
+                        <label for="ability_condition_progress_rate_{{ loop.index0 }}">Events consumed per event</label>
+                        <input type="number" class="form-control" id="ability_condition_progress_rate_{{ loop.index0 }}" name="ability_condition_progress_rate_{{ loop.index0 }}"
+                               value="{{ ability.condition_progress_rate if ability.condition_progress_rate is not none else '' }}"
+                               min="0.01" step="any" placeholder="1">
+                        <small class="form-text text-muted">2 finishes a stage in half the stated time. 4 is a quarter of the time. 0.5 makes it last twice as long. This applies to conditions that share a tag.</small>
+                    </div>
+                    <div class="form-group mb-2 ability-extra ability-condition-timing ability-tags" {% if not is_condition_timing %}style="display:none;"{% endif %}>
+                        <label for="ability_tags_{{ loop.index0 }}">Tags</label>
+                        <select class="form-control rule-tag-select" id="ability_tags_{{ loop.index0 }}" name="ability_tags_{{ loop.index0 }}[]" multiple title="Select or add tags">
+                            {% for tag in ability.tags %}
+                            <option value="{{ tag.id }}" selected>{{ tag.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group mb-2 ability-sheet-values">
+                        <label>Character sheet values</label>
+                        {% set ability_index = loop.index0 %}
+                        <div class="sheet-value-rows">
+                        {% for value in ability.character_sheet_values_list %}
+                        <div class="row mb-2 sheet-value-row">
+                            <div class="col-md-3">
+                                <label class="sr-only" for="ability_sheet_id_{{ ability_index }}_{{ loop.index0 }}">ID</label>
+                                <input class="form-control" id="ability_sheet_id_{{ ability_index }}_{{ loop.index0 }}" name="ability_sheet_id_{{ ability_index }}[]" value="{{ value.id }}" placeholder="ID, such as psi">
+                            </div>
+                            <div class="col-md-5">
+                                <label class="sr-only" for="ability_sheet_description_{{ ability_index }}_{{ loop.index0 }}">Description</label>
+                                <input class="form-control" id="ability_sheet_description_{{ ability_index }}_{{ loop.index0 }}" name="ability_sheet_description_{{ ability_index }}[]" value="{{ value.description }}" placeholder="Description, such as Psi Points">
+                            </div>
+                            <div class="col-md-2">
+                                <label class="sr-only" for="ability_sheet_value_{{ ability_index }}_{{ loop.index0 }}">Value</label>
+                                <input type="number" class="form-control" id="ability_sheet_value_{{ ability_index }}_{{ loop.index0 }}" name="ability_sheet_value_{{ ability_index }}[]" value="{{ value.value }}" placeholder="Value">
+                            </div>
+                            <div class="col-md-2">
+                                <button type="button" class="btn btn-danger btn-sm remove-sheet-value" aria-label="Remove sheet value">Remove</button>
+                            </div>
+                        </div>
+                        {% endfor %}
+                        </div>
+                        <button type="button" class="btn btn-secondary btn-sm add-sheet-value">Add sheet value</button>
+                    </div>
+                    <div class="form-group mb-2 ability-extra ability-skill-bans" {% if not is_skill_bans %}style="display:none;"{% endif %}>
+                        <label for="ability_banned_skills_{{ loop.index0 }}">Banned skills</label>
+                        <select class="form-control select2-multiple" id="ability_banned_skills_{{ loop.index0 }}" name="ability_banned_skills_{{ loop.index0 }}[]" multiple title="Skills this species cannot buy">
+                            {% for skill in skills_list %}
+                            <option value="{{ skill.id }}" {% if is_skill_bans and (skill.id|string) in ability.banned_skills_list %}selected{% endif %}>{{ skill.name }}</option>
+                            {% endfor %}
+                        </select>
                     </div>
                     <div class="form-group mb-2 ability-extra ability-skill-discounts" {% if not is_skill_discounts %}style="display:none;"{% endif %}>
                         <label>Skill Discounts</label>
@@ -147,6 +287,16 @@
                                {% if is_starting_reputation %}required{% endif %}
                                placeholder="0">
                     </div>
+                    <div class="form-group mb-2 ability-extra ability-starting-condition" {% if not is_starting_condition %}style="display:none;"{% endif %}>
+                        <label for="ability_starting_condition_{{ loop.index0 }}">Starting condition</label>
+                        <select class="form-control" id="ability_starting_condition_{{ loop.index0 }}" name="ability_starting_condition_{{ loop.index0 }}" title="Condition every character of this species starts with">
+                            <option value="">Select a condition</option>
+                            {% for condition in conditions_list|default([]) %}
+                            <option value="{{ condition.id }}" {% if is_starting_condition and ability.starting_condition_id == condition.id %}selected{% endif %}>{{ condition.name }}</option>
+                            {% endfor %}
+                        </select>
+                        <small class="form-text text-muted">Players choose the starting stage when they create the character. The lowest choice is stage 1.</small>
+                    </div>
                     <div class="form-group mb-2">
                         <label for="ability_description_{{ loop.index0 }}">Description *</label>
                         <textarea class="form-control" id="ability_description_{{ loop.index0 }}" name="ability_description_{{ loop.index0 }}" required>{{ ability.description }}</textarea>
@@ -169,15 +319,20 @@
 
 <!-- Ability type options template, rendered ONCE -->
 <template id="ability-type-options-template">{% for t in AbilityType %}<option value="{{ t.value }}">{{ AbilityType.descriptions()[t.value] }}</option>{% endfor %}</template>
+<template id="skill-options-template">{% for skill in skills_list %}<option value="{{ skill.id }}">{{ skill.name }}</option>{% endfor %}</template>
+<template id="condition-options-template"><option value="">Select a condition</option>{% for condition in conditions_list|default([]) %}<option value="{{ condition.id }}">{{ condition.name }}</option>{% endfor %}</template>
 
 {% endblock %}
 
 {% block scripts %}
 {{ super() }}
 <script src="{{ url_for('static', filename='js/wiki_page_autocomplete.js') }}"></script>
+<script src="{{ url_for('static', filename='js/rule-tags.js') }}"></script>
 <script src="{{ url_for('static', filename='js/pages/species-edit.js') }}"></script>
 <script>
 window.ABILITY_TYPE_OPTIONS_HTML = document.getElementById('ability-type-options-template').innerHTML;
+window.SKILL_OPTIONS_HTML = document.getElementById('skill-options-template').innerHTML;
+window.CONDITION_OPTIONS_HTML = document.getElementById('condition-options-template').innerHTML;
 window.ITEM_BLUEPRINTS = JSON.parse('{{ item_blueprints | tojson | safe }}');
 window.FACTIONS = JSON.parse(document.getElementById('factions-data').dataset.factions);
 </script>

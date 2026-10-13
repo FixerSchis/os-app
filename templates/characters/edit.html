@@ -2,6 +2,10 @@
 
 {% block title %}{{ 'Edit' if character else 'Create' }} Character - Orion Sphere LRP{% endblock %}
 
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/pages/character-edit.css') }}">
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid px-0">
     <div class="character-management">
@@ -165,6 +169,109 @@
                     </div>
                 </div>
 
+                {% set catalogue = starting_skill_catalogue|default([]) %}
+                {% set free_skill_ids = (character.skills|selectattr('free_ranks')|map(attribute='skill_id')|list) if character else [] %}
+                <div class="col-12" id="character-creation-choices" style="display:none;">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Choices</h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="starting-skill-picks">
+                                {% for entry in catalogue %}
+                                <div class="starting-skill-panel creation-choice-panel" data-species-id="{{ entry.species_id }}" style="display:none;">
+                                    <p class="mb-3">Choose the free starting skills for this species.</p>
+                                    <div class="creation-choice-groups">
+                                        {% for group in entry.groups %}
+                                        <div class="creation-choice-group" style="--choice-weight: {{ group.skills|length }};">
+                                            <div class="creation-choice-heading">{{ group.label }} <span class="text-muted fw-normal">choose {{ group.count }}</span></div>
+                                            <div class="creation-choice-skills">
+                                                {% for skill in group.skills %}
+                                                <div class="form-check"{% if skill.description %} data-bs-toggle="tooltip" data-bs-placement="top" data-bs-custom-class="creation-choice-tooltip" title="{{ skill.description }}"{% endif %}>
+                                                    <input class="form-check-input starting-skill-pick" type="checkbox" name="starting_skill_pick" value="{{ skill.id }}" id="starting-skill-{{ entry.species_id }}-{{ skill.id }}" data-skill-type="{{ group.skill_type }}" data-max="{{ group.count }}" {% if skill.id in free_skill_ids %}checked{% endif %}{% if skill.description %} aria-description="{{ skill.description }}"{% endif %}>
+                                                    <label class="form-check-label" for="starting-skill-{{ entry.species_id }}-{{ skill.id }}">{{ skill.name }}</label>
+                                                </div>
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% if not character or character.status == 'developing' %}
+                            <div id="starting-condition-stages">
+                                {% for entry in starting_condition_catalogue|default([]) %}
+                                {% set owned = (character.active_conditions|selectattr('condition_id', 'equalto', entry.condition_id)|first) if character else none %}
+                                {% set chosen = owned.current_stage if owned and owned.current_stage else 1 %}
+                                <div class="starting-condition-panel creation-choice-panel mt-3" data-species-id="{{ entry.species_id }}" style="display:none;">
+                                    <label class="form-label fw-bold" for="{{ entry.field }}_{{ entry.species_id }}">{{ entry.name }} starting stage</label>
+                                    <select class="form-select w-auto" id="{{ entry.field }}_{{ entry.species_id }}" name="{{ entry.field }}" required>
+                                        {% for stage in range(1, entry.max_stage + 1) %}
+                                        <option value="{{ stage }}" {% if stage == chosen %}selected{% endif %}>Stage {{ stage }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <small class="form-text text-muted d-block">{% if entry.sheet_text %}{{ entry.sheet_text }} {% endif %}Your character dies when stage {{ entry.max_stage }} of {{ entry.name }} completes.</small>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                {% if character and (has_permission('character.edit_all') or character.abilities) %}
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Character Abilities</h5>
+                        </div>
+                        <div class="card-body">
+                            {% if has_permission('character.edit_all') %}
+                            <p class="text-muted">Printed on this character's sheet with their species abilities.</p>
+                            <div id="character-abilities-list">
+                                {% for ability in (character.abilities if character else []) %}
+                                <div class="character-ability-block border rounded p-3 mb-3">
+                                    <div class="row g-3">
+                                        <div class="col-md-4">
+                                            <label class="form-label" for="character_ability_name_{{ loop.index0 }}">Name *</label>
+                                            <input type="text" class="form-control" id="character_ability_name_{{ loop.index0 }}" name="character_ability_name_{{ loop.index0 }}" value="{{ ability.name }}" maxlength="100" required>
+                                        </div>
+                                        <div class="col-md-8">
+                                            <label class="form-label" for="character_ability_description_{{ loop.index0 }}">Description *</label>
+                                            <textarea class="form-control" id="character_ability_description_{{ loop.index0 }}" name="character_ability_description_{{ loop.index0 }}" rows="3" required>{{ ability.description }}</textarea>
+                                        </div>
+                                    </div>
+                                    <button type="button" class="btn btn-outline-danger btn-sm mt-2 remove-character-ability">Remove</button>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            <button type="button" class="btn btn-primary" id="add-character-ability">Add Ability</button>
+                            <template id="character-ability-template">
+                                <div class="character-ability-block border rounded p-3 mb-3">
+                                    <div class="row g-3">
+                                        <div class="col-md-4">
+                                            <label class="form-label" for="character_ability_name_0">Name *</label>
+                                            <input type="text" class="form-control" id="character_ability_name_0" name="character_ability_name_0" maxlength="100" required>
+                                        </div>
+                                        <div class="col-md-8">
+                                            <label class="form-label" for="character_ability_description_0">Description *</label>
+                                            <textarea class="form-control" id="character_ability_description_0" name="character_ability_description_0" rows="3" required></textarea>
+                                        </div>
+                                    </div>
+                                    <button type="button" class="btn btn-outline-danger btn-sm mt-2 remove-character-ability">Remove</button>
+                                </div>
+                            </template>
+                            {% else %}
+                            {% for ability in character.abilities %}
+                            <p class="mb-2"><strong>{{ ability.name }}:</strong> {{ ability.description }}</p>
+                            {% endfor %}
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
                 {% if character %}
                 <!-- Cybernetics -->
                 {% if has_permission('character.edit_all') or character.cybernetics %}
@@ -237,11 +344,16 @@
                                             </tr>
                                         </thead>
                                         <tbody>
+                                            {% set chosen_condition_ids = (starting_condition_catalogue|default([])|selectattr('species_id', 'equalto', character.species_id)|map(attribute='condition_id')|list) if character.status == 'developing' else [] %}
                                             {% for ac in character.active_conditions %}
                                             <tr>
                                                 <td>{{ ac.condition.name }}</td>
                                                 {% if has_permission('character.edit_all') %}
                                                 <td>
+                                                    {% if ac.condition_id in chosen_condition_ids %}
+                                                    Stage {{ ac.current_stage }}
+                                                    <small class="text-muted d-block">Chosen above while developing</small>
+                                                    {% else %}
                                                     <select name="condition_stage_{{ ac.id }}" class="form-select form-select-sm width-100-px" title="Select condition stage">
                                                         {% for condition in all_conditions %}
                                                             {% if condition.id == ac.condition_id %}
@@ -253,11 +365,16 @@
                                                             {% endif %}
                                                         {% endfor %}
                                                     </select>
+                                                    {% endif %}
                                                 </td>
                                                 <td>
+                                                    {% if ac.condition.progresses_naturally %}
                                                     <label for="condition_duration_{{ ac.id }}" class="sr-only">Condition duration</label>
-                                                    <input type="number" id="condition_duration_{{ ac.id }}" name="condition_duration_{{ ac.id }}" value="{{ ac.current_duration }}"
-                                                           class="form-control form-control-sm width-80-px" min="0">
+                                                    <input type="number" id="condition_duration_{{ ac.id }}" name="condition_duration_{{ ac.id }}" value="{{ ac.duration_label }}"
+                                                           class="form-control form-control-sm width-80-px" min="0" step="any">
+                                                    {% else %}
+                                                    Triggers only
+                                                    {% endif %}
                                                 </td>
                                                 <td>
                                                     <button type="submit" name="remove_condition" value="{{ ac.id }}" class="btn btn-danger btn-sm" aria-label="Remove condition">
@@ -266,7 +383,7 @@
                                                 </td>
                                                 {% else %}
                                                 <td>Stage {{ ac.current_stage }}</td>
-                                                <td>{{ ac.events_remaining }}</td>
+                                                <td>{{ ac.duration_label if ac.condition.progresses_naturally else 'Triggers only' }}</td>
                                                 {% endif %}
                                             </tr>
                                             {% endfor %}
@@ -307,7 +424,8 @@
                 </div>
                 {% endif %}
 
-                {% if has_permission('character.edit_all') %}
+                {% set can_edit_earned_points = character and has_permission('user.edit') %}
+                {% if has_permission('character.edit_all') or can_edit_earned_points %}
                 <!-- Character Points -->
                 <div class="col-lg-6">
                     <div class="card">
@@ -315,17 +433,29 @@
                             <h5 class="mb-0">Character Points</h5>
                         </div>
                         <div class="card-body">
-                            <div class="form-group mb-0">
+                            {% if has_permission('character.edit_all') %}
+                            <div class="form-group {% if can_edit_earned_points %}mb-3{% else %}mb-0{% endif %}">
                                 <label for="base_character_points" class="form-label">Base Character Points</label>
                                 <input type="number" id="base_character_points" name="base_character_points" class="form-control"
                                        value="{{ character.base_character_points if character else (30 if has_permission('character.edit_all') else 10) }}"
                                        min="0" {% if is_readonly %}readonly{% endif %}>
                                 <div class="form-text text-muted">Default is 10 CP, or 30 CP for NPCs</div>
                             </div>
+                            {% endif %}
+                            {% if can_edit_earned_points %}
+                            <div class="form-group mb-0">
+                                <label for="earned_character_points" class="form-label">Earned Character Points (unspent)</label>
+                                <input type="number" id="earned_character_points" name="earned_character_points" class="form-control"
+                                       value="{{ '%g'|format(character.user.character_points) }}"
+                                       min="0" step="0.5" {% if is_readonly %}readonly{% endif %}>
+                            </div>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
+                {% endif %}
 
+                {% if has_permission('character.edit_all') %}
                 <!-- Faction Reputation -->
                 {% if character %}
                 <div class="col-lg-6">

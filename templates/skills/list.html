@@ -2,6 +2,11 @@
 
 {% block title %}Skills{% endblock %}
 
+{% block head %}
+{{ super() }}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/pages/skills-list.css') }}">
+{% endblock %}
+
 {% block content %}
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
@@ -11,68 +16,43 @@
         {% endif %}
     </div>
 
-    {% for skill_type, skills in skills_by_type.items() %}
-    <div class="mb-5">
-        <h2 class="mb-3">{{ type_friendly_names[skill_type] }}</h2>
-        <div class="table-responsive">
-            <table class="table table-striped">
-                <thead>
-                    <tr>
-                        <th class="col-5">Name</th>
-                        <th class="col-1">CP Cost</th>
-                        <th class="col-4">Requirements</th>
-                        {% if current_user.is_authenticated and has_permission('rules.skills') %}
-                        <th class="col-3">Actions</th>
-                        {% endif %}
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for skill in skills %}
-                    <tr>
-                        <td class="col-5 align-middle">
-                            <strong>
-                                {{ skill.name }}
-                                {% set indicators = [] %}
-                                {% if skill.can_purchase_multiple and not skill.cost_increases %}
-                                    {% set _ = indicators.append('a') %}
-                                {% elif skill.can_purchase_multiple and skill.cost_increases %}
-                                    {% set _ = indicators.append('+') %}
-                                {% endif %}
-                                {% if skill.required_skill or skill.get_required_factions() or skill.get_required_species() or skill.get_required_tags() %}
-                                    {% set _ = indicators.append('*') %}
-                                {% endif %}
-                                {% if indicators %}
-                                    <sup>{{ indicators | join('') }}</sup>
-                                {% endif %}
-                            </strong>
-                            <div class="text-muted small ps-3">
-                                {{ skill.format_unapplied() | safe }}
-                            </div>
-                        </td>
-                        <td class="col-1 align-middle">{{ skill.base_cost }}</td>
-                        <td class="col-4 align-middle">
-                            {% if skill.required_skill %}
-                                <span class="badge bg-primary">Skill: {{ skill.required_skill.name }}</span>
-                            {% endif %}
-                            {% for faction in skill.get_required_factions() %}
-                                <span class="badge bg-secondary">Faction: {{ faction.name }}</span>
-                            {% endfor %}
-                            {% for species in skill.get_required_species() %}
-                                <span class="badge bg-success">Species: {{ species.name }}</span>
-                            {% endfor %}
-                            {% for tag in skill.get_required_tags() %}
-                                <span class="badge bg-info text-dark">Tag: {{ tag.name }}</span>
-                            {% endfor %}
-                        </td>
-                        {% if current_user.is_authenticated and has_permission('rules.skills') %}
-                        <td class="col-3">
-                            <a href="{{ url_for('skills.edit_skill', skill_id=skill.id) }}" class="btn btn-sm btn-primary">Edit</a>
-                        </td>
-                        {% endif %}
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+    {% for section in sections %}
+    <div class="card mb-3">
+        <div class="card-header skills-collapse-toggle d-flex justify-content-between align-items-center"
+             data-bs-toggle="collapse"
+             data-bs-target="#section-{{ section.key }}"
+             aria-expanded="{{ 'true' if section.open else 'false' }}"
+             aria-controls="section-{{ section.key }}">
+            <h2 class="h4 mb-0">{{ section.label }}</h2>
+            <i class="bi bi-chevron-down skills-chevron" aria-hidden="true"></i>
+        </div>
+        <div id="section-{{ section.key }}" class="collapse{% if section.open %} show{% endif %}">
+            <div class="card-body">
+                {% if section.standalone %}
+                {{ skill_table(section.standalone) }}
+                {% endif %}
+
+                {% for tree in section.trees %}
+                <div class="skill-tree card mt-3">
+                    <div class="card-header skills-collapse-toggle d-flex justify-content-between align-items-center py-2"
+                         data-bs-toggle="collapse"
+                         data-bs-target="#tree-{{ tree.id }}"
+                         aria-expanded="false"
+                         aria-controls="tree-{{ tree.id }}">
+                        <h3 class="h5 mb-0">
+                            {{ tree.title }}
+                            <span class="badge bg-secondary ms-2">{{ tree.skills|length }}</span>
+                        </h3>
+                        <i class="bi bi-chevron-down skills-chevron" aria-hidden="true"></i>
+                    </div>
+                    <div id="tree-{{ tree.id }}" class="collapse">
+                        <div class="card-body">
+                            {{ skill_table(tree.skills) }}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
         </div>
     </div>
     {% endfor %}
@@ -87,7 +67,76 @@
 </div>
 {% endblock %}
 
+{% macro skill_table(rows) %}
+<div class="table-responsive">
+    <table class="table table-striped mb-0">
+        <thead>
+            <tr>
+                <th class="col-5">Name</th>
+                <th class="col-1">CP Cost</th>
+                <th class="col-4">Requirements</th>
+                {% if current_user.is_authenticated and has_permission('rules.skills') %}
+                <th class="col-3">Actions</th>
+                {% endif %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in rows %}
+            {% set skill = row.skill %}
+            <tr>
+                <td class="col-5 align-middle" style="padding-left: {{ 0.75 + row.depth * 1.25 }}rem;">
+                    <strong>
+                        {{ skill.name }}
+                        {% set indicators = [] %}
+                        {% if skill.can_purchase_multiple and not skill.cost_increases %}
+                            {% set _ = indicators.append('a') %}
+                        {% elif skill.can_purchase_multiple and skill.cost_increases %}
+                            {% set _ = indicators.append('+') %}
+                        {% endif %}
+                        {% if skill.required_skill or skill.required_any_skills_list or skill.distinct_requirements_list or skill.get_required_factions() or skill.get_required_species() or skill.get_required_tags() %}
+                            {% set _ = indicators.append('*') %}
+                        {% endif %}
+                        {% if indicators %}
+                            <sup>{{ indicators | join('') }}</sup>
+                        {% endif %}
+                    </strong>
+                    <div class="text-muted small ps-3">
+                        {{ skill.format_unapplied() | safe }}
+                    </div>
+                </td>
+                <td class="col-1 align-middle">{{ skill.base_cost }}</td>
+                <td class="col-4 align-middle">
+                    {% if skill.required_skill %}
+                        <span class="badge bg-primary">Skill: {{ skill.required_skill.name }}</span>
+                    {% endif %}
+                    {% for required in skill.get_required_any_skills() %}
+                        <span class="badge bg-primary">One of: {{ required.name }}</span>
+                    {% endfor %}
+                    {% for required in skill.get_distinct_requirement_skills() %}
+                        <span class="badge bg-warning text-dark">Different: {{ required.name }}</span>
+                    {% endfor %}
+                    {% for faction in skill.get_required_factions() %}
+                        <span class="badge bg-secondary">Faction: {{ faction.name }}</span>
+                    {% endfor %}
+                    {% for species in skill.get_required_species() %}
+                        <span class="badge bg-success">Species: {{ species.name }}</span>
+                    {% endfor %}
+                    {% for tag in skill.get_required_tags() %}
+                        <span class="badge bg-info text-dark">Tag: {{ tag.name }}</span>
+                    {% endfor %}
+                </td>
+                {% if current_user.is_authenticated and has_permission('rules.skills') %}
+                <td class="col-3">
+                    <a href="{{ url_for('skills.edit_skill', skill_id=skill.id) }}" class="btn btn-sm btn-primary">Edit</a>
+                </td>
+                {% endif %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endmacro %}
+
 {% block scripts %}
 {{ super() }}
-<script src="{{ url_for('static', filename='js/pages/skills-list.js') }}"></script>
 {% endblock %}

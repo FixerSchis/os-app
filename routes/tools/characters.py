@@ -9,7 +9,7 @@ from models.database.faction import Faction
 from models.database.item import Item
 from models.database.item_blueprint import ItemBlueprint
 from models.database.sample import Sample
-from models.database.species import Species
+from models.database.species import Ability, Species
 from models.enums import AbilityType, CharacterAuditAction, PrintTemplateType
 from models.extensions import db
 from models.tools.character import (
@@ -20,6 +20,7 @@ from models.tools.character import (
     CharacterStatus,
     CharacterTag,
     assign_character_id,
+    format_event_count,
 )
 from models.tools.character_inventory import CharacterItem
 from models.tools.group import GroupBackground
@@ -29,6 +30,68 @@ from models.tools.user import User
 from utils import generate_qr_code, generate_web_qr_code
 from utils.decorators import email_verified_required
 from utils.permission_decorators import permission_required
+from utils.skill_pairs import apply_skill_pair_grants
+from utils.starting_conditions import (
+    apply_starting_conditions,
+    starting_condition_catalogue,
+    validate_starting_condition_stages,
+)
+from utils.starting_skills import (
+    apply_starting_skills,
+    choice_catalogue,
+    validate_starting_skill_picks,
+)
+
+
+def _posted_character_abilities():
+    """Read character-ability rows posted by the game team."""
+    rows = []
+    index = 0
+    while (
+        f"character_ability_name_{index}" in request.form
+        or f"character_ability_description_{index}" in request.form
+    ):
+        name = (request.form.get(f"character_ability_name_{index}") or "").strip()
+        description = (request.form.get(f"character_ability_description_{index}") or "").strip()
+        index += 1
+        if not name and not description:
+            continue
+        if not name or not description:
+            return None, "Each character ability needs a name and a description."
+        if len(name) > 100:
+            return None, "Character ability names must be 100 characters or fewer."
+        rows.append((name, description))
+    return rows, None
+
+
+def _replace_character_abilities(character, rows):
+    """Store the posted abilities on this character. Returns an audit note when they change."""
+    previous = [(ability.name, ability.description) for ability in character.abilities]
+    if previous == rows:
+        return None
+    for ability in list(character.abilities):
+        db.session.delete(ability)
+    db.session.flush()
+    for name, description in rows:
+        db.session.add(
+            Ability(
+                character_id=character.id,
+                name=name,
+                description=description,
+                type=AbilityType.GENERIC,
+            )
+        )
+    if rows:
+        names = ", ".join(name for name, _description in rows)
+        return f"Character abilities set to: {names}"
+    return "Character abilities removed"
+
+
+def _edit_redirect(character, admin_context):
+    redirect_url = url_for("characters.edit", character_id=character.id)
+    if admin_context:
+        redirect_url += "?admin_context=1"
+    return redirect(redirect_url)
 
 
 def can_edit_character(user, args, kwargs):
@@ -70,7 +133,37 @@ def _posted_base_character_points(user):
     return points, None
 
 
+def _posted_earned_character_points(user):
+    """Parse the owner's earned character points pool from the character form.
+
+    Returns (points, error_message). points is None when the field was not submitted
+    or the user cannot edit users.
+    """
+    if "earned_character_points" not in request.form:
+        return None, None
+    if not user.has_permission("user.edit"):
+        return None, None
+    raw = (request.form.get("earned_character_points") or "").strip()
+    try:
+        points = float(raw)
+    except ValueError:
+        return None, "Earned character points must be a number."
+    if points < 0:
+        return None, "Earned character points cannot be negative."
+    if points * 2 != int(points * 2):
+        return None, "Earned character points must be a whole or half point."
+    return points, None
+
+
 characters_bp = Blueprint("characters", __name__)
+
+
+@characters_bp.context_processor
+def inject_starting_skill_catalogue():
+    return {
+        "starting_skill_catalogue": choice_catalogue(),
+        "starting_condition_catalogue": starting_condition_catalogue(),
+    }
 
 
 @characters_bp.route("/")
@@ -186,6 +279,20 @@ def create_character_post():
                 all_cybernetics=all_cybernetics,
             )
 
+    species = db.session.get(Species, species_id)
+    pick_error = validate_starting_skill_picks(
+        species, request.form.getlist("starting_skill_pick")
+    ) or validate_starting_condition_stages(species, request.form)
+    if pick_error:
+        flash(pick_error, "error")
+        return render_template(
+            "characters/edit.html",
+            admin_context=admin_context,
+            factions=factions,
+            species_list=species_list,
+            all_cybernetics=all_cybernetics,
+        )
+
     base_character_points = 10
     posted_points, points_error = _posted_base_character_points(current_user)
     if points_error:
@@ -219,6 +326,12 @@ def create_character_post():
         concept=concept,
     )
     db.session.add(character)
+    db.session.flush()
+    apply_starting_skills(
+        character, species, current_user, request.form.getlist("starting_skill_pick")
+    )
+    apply_skill_pair_grants(character, species, current_user)
+    condition_notes = apply_starting_conditions(character, species, request.form)
     db.session.commit()
 
     # Handle background review system for character creation
@@ -233,11 +346,14 @@ def create_character_post():
         db.session.commit()
 
     # Audit log for creation
+    created = "Character created"
+    if condition_notes:
+        created += ". " + "; ".join(condition_notes)
     audit = CharacterAuditLog(
         character_id=character.id,
         editor_user_id=current_user.id,
         action=CharacterAuditAction.CREATE.value,
-        changes="Character created",
+        changes=created,
     )
     db.session.add(audit)
     db.session.commit()
@@ -429,7 +545,31 @@ def edit_post(character_id):
                 species_list=species_list,
             )
 
+    species = db.session.get(Species, species_id)
+    choosing_starting_conditions = character.status == CharacterStatus.DEVELOPING.value
+    pick_error = validate_starting_skill_picks(species, request.form.getlist("starting_skill_pick"))
+    if not pick_error and choosing_starting_conditions:
+        pick_error = validate_starting_condition_stages(species, request.form)
+    if pick_error:
+        flash(pick_error, "error")
+        return render_template(
+            "characters/edit.html",
+            character=character,
+            admin_context=admin_context,
+            factions=factions,
+            species_list=species_list,
+        )
+
+    ability_rows = None
+    if current_user.has_permission("character.edit_all"):
+        ability_rows, ability_error = _posted_character_abilities()
+        if ability_error:
+            flash(ability_error, "error")
+            return _edit_redirect(character, admin_context)
+
     posted_points, points_error = _posted_base_character_points(current_user)
+    posted_earned, earned_error = _posted_earned_character_points(current_user)
+    points_error = points_error or earned_error
     if points_error:
         flash(points_error, "error")
         redirect_url = url_for("characters.edit", character_id=character.id)
@@ -468,6 +608,13 @@ def edit_post(character_id):
             f"Base character points changed from '{character.base_character_points}' "
             f"to '{posted_points}'"
         )
+    owner = character.user
+    if posted_earned is not None and owner.character_points != posted_earned:
+        basic_changes.append(
+            f"Player earned character points changed from '{owner.character_points:g}' "
+            f"to '{posted_earned:g}'"
+        )
+        owner.character_points = posted_earned
 
     character.name = name
     character.pronouns_subject = pronouns_subject
@@ -511,6 +658,17 @@ def edit_post(character_id):
     sample_changes = []  # Initialize sample_changes outside the if block
 
     if current_user.has_permission("character.edit_all"):
+        if ability_rows is not None:
+            ability_change = _replace_character_abilities(character, ability_rows)
+            if ability_change:
+                db.session.add(
+                    CharacterAuditLog(
+                        character_id=character.id,
+                        editor_user_id=current_user.id,
+                        action=CharacterAuditAction.EDIT.value,
+                        changes=ability_change,
+                    )
+                )
         # Remove condition
         remove_condition_id = request.form.get("remove_condition")
         if remove_condition_id:
@@ -572,12 +730,19 @@ def edit_post(character_id):
                     f"to {stage_val}"
                 )
                 cc.current_stage = int(stage_val)
-            if duration_val is not None and int(duration_val) != cc.current_duration:
+            posted_duration = None
+            if duration_val is not None and str(duration_val).strip() != "":
+                try:
+                    posted_duration = float(duration_val)
+                except ValueError:
+                    posted_duration = None
+            if posted_duration is not None and posted_duration != float(cc.current_duration or 0):
                 condition_changes.append(
-                    f"Condition {cc.condition.name} duration changed from {cc.current_duration} "
-                    f"to {duration_val}"
+                    f"Condition {cc.condition.name} duration changed from "
+                    f"{format_event_count(cc.current_duration)} to "
+                    f"{format_event_count(posted_duration)}"
                 )
-                cc.current_duration = int(duration_val)
+                cc.current_duration = posted_duration
 
         # Track cybernetic changes for CYBERNETICS_CHANGE action
 
@@ -729,6 +894,21 @@ def edit_post(character_id):
         )
         db.session.add(audit)
 
+    apply_starting_skills(
+        character, species, current_user, request.form.getlist("starting_skill_pick")
+    )
+    apply_skill_pair_grants(character, species, current_user)
+    if choosing_starting_conditions:
+        condition_notes = apply_starting_conditions(character, species, request.form)
+        if condition_notes:
+            db.session.add(
+                CharacterAuditLog(
+                    character_id=character.id,
+                    editor_user_id=current_user.id,
+                    action=CharacterAuditAction.CONDITION_CHANGE.value,
+                    changes="; ".join(condition_notes),
+                )
+            )
     db.session.commit()
     flash("Character updated successfully")
     redirect_url = url_for("characters.edit", character_id=character.id)
@@ -988,18 +1168,16 @@ def activate_character(character_id):
         flash("Could not find character owner.", "error")
         return redirect(url_for("characters.character_list"))
 
-    total_skill_cost = character.get_total_skill_cost()
-    if total_skill_cost > character.base_character_points and not user.can_spend_character_points(
-        total_skill_cost - character.base_character_points
-    ):
+    earned_spend = character.earned_points_spent()
+    if earned_spend > 0 and not user.can_spend_character_points(earned_spend):
         flash("Not enough character points to activate character.", "error")
         return redirect(url_for("characters.character_list"))
 
     if character.character_id is None:
         character.character_id = assign_character_id(character.user_id)
 
-    if total_skill_cost > character.base_character_points:
-        user.spend_character_points(total_skill_cost - character.base_character_points)
+    if earned_spend > 0:
+        user.spend_character_points(earned_spend)
 
     character.status = CharacterStatus.ACTIVE.value
 
@@ -1088,7 +1266,10 @@ def activate_character(character_id):
         character_id=character.id,
         editor_user_id=current_user.id,
         action=CharacterAuditAction.STATUS_CHANGE.value,
-        changes=(f"Character activated. Spent {total_skill_cost} character points on skills."),
+        changes=(
+            f"Character activated. Spent {character.get_total_skill_cost()} character points "
+            "on skills."
+        ),
     )
     db.session.add(audit)
     db.session.commit()
@@ -1185,6 +1366,21 @@ def create_for_player_post(user_id):
                 all_cybernetics=all_cybernetics,
             )
 
+    species = db.session.get(Species, species_id)
+    pick_error = validate_starting_skill_picks(
+        species, request.form.getlist("starting_skill_pick")
+    ) or validate_starting_condition_stages(species, request.form)
+    if pick_error:
+        flash(pick_error, "error")
+        return render_template(
+            "characters/edit.html",
+            user_id=user_id,
+            admin_context=True,
+            factions=factions,
+            species_list=species_list,
+            all_cybernetics=all_cybernetics,
+        )
+
     # Get background fields from form
     background = request.form.get("background", "").strip()
     goals = request.form.get("goals", "").strip()
@@ -1203,6 +1399,12 @@ def create_for_player_post(user_id):
         concept=concept,
     )
     db.session.add(character)
+    db.session.flush()
+    apply_starting_skills(
+        character, species, current_user, request.form.getlist("starting_skill_pick")
+    )
+    apply_skill_pair_grants(character, species, current_user)
+    condition_notes = apply_starting_conditions(character, species, request.form)
     db.session.commit()
 
     # Handle background review system for character creation by admin
@@ -1217,11 +1419,14 @@ def create_for_player_post(user_id):
         db.session.commit()
 
     # Audit log for creation
+    created = "Character created by admin"
+    if condition_notes:
+        created += ". " + "; ".join(condition_notes)
     audit = CharacterAuditLog(
         character_id=character.id,
         editor_user_id=current_user.id,
         action=CharacterAuditAction.CREATE.value,
-        changes="Character created by admin",
+        changes=created,
     )
     db.session.add(audit)
     db.session.commit()

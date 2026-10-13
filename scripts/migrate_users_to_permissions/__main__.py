@@ -20,7 +20,7 @@ def migrate_users_to_new_system():
         default_role = Role.query.filter_by(name="default").first()
 
         if not owner_role or not admin_role or not default_role:
-            print("Error: Default roles not found. Please run setup_permissions.py first.")
+            print("Error: Default roles not found. Run python scripts/setup_permissions first.")
             return
 
         # Get all users

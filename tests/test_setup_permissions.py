@@ -5,7 +5,7 @@ from models.database.permissions import Role
 
 
 def _load_setup_permissions():
-    path = Path(__file__).resolve().parents[1] / "scripts" / "setup_permissions.py"
+    path = Path(__file__).resolve().parents[1] / "scripts" / "setup_permissions" / "__main__.py"
     spec = importlib.util.spec_from_file_location("setup_permissions", path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)

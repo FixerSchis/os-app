@@ -2,7 +2,11 @@ import pytest
 from sqlalchemy.orm import joinedload
 
 from models.database.conditions import Condition, ConditionStage
-from models.tools.character import CharacterCondition
+from models.database.rule_tag import RuleTag
+from models.database.skills import Skill
+from models.database.species import Ability
+from models.enums import AbilityType
+from models.tools.character import CharacterCondition, CharacterSkill
 
 
 class TestConditionProgression:
@@ -253,3 +257,229 @@ class TestConditionProgression:
         assert result3["completed"] is True
         assert char_condition.current_stage is None
         assert char_condition.current_duration == 0
+
+    def _tag(self, db, name):
+        tag = RuleTag(name=name)
+        db.session.add(tag)
+        db.session.flush()
+        return tag
+
+    def _condition(self, db, name, duration, tags, next_duration=None):
+        condition = Condition(name=name)
+        condition.tags = tags
+        db.session.add(condition)
+        db.session.flush()
+        db.session.add(
+            ConditionStage(
+                condition_id=condition.id,
+                stage_number=1,
+                rp_effect="Effect",
+                diagnosis="Diagnosis",
+                cure="Cure",
+                duration=duration,
+            )
+        )
+        if next_duration is not None:
+            db.session.add(
+                ConditionStage(
+                    condition_id=condition.id,
+                    stage_number=2,
+                    rp_effect="Later",
+                    diagnosis="Later",
+                    cure="Later",
+                    duration=next_duration,
+                )
+            )
+        db.session.commit()
+        return db.session.query(Condition).options(joinedload(Condition.stages)).get(condition.id)
+
+    def _timing_ability(self, db, character, rate, tags):
+        ability = Ability(
+            species_id=character.species_id,
+            name="Timing",
+            description="Timing",
+            type=AbilityType.CONDITION_TIMING,
+            condition_progress_rate=rate,
+        )
+        ability.tags = tags
+        db.session.add(ability)
+        db.session.commit()
+        return ability
+
+    def _progress(self, db, character, condition, duration):
+        char_condition = CharacterCondition(
+            character_id=character.id,
+            condition_id=condition.id,
+            current_stage=1,
+            current_duration=duration,
+        )
+        db.session.add(char_condition)
+        db.session.commit()
+        char_condition.condition = condition
+        result = char_condition.progress_condition()
+        db.session.flush()
+        return char_condition, result
+
+    def test_half_time_consumes_two_events(self, db, character):
+        toxic = self._tag(db, "toxic")
+        self._timing_ability(db, character, 2, [toxic])
+        condition = self._condition(db, "Toxic Burn", 4, [toxic])
+
+        char_condition, result = self._progress(db, character, condition, 4)
+
+        assert result["completed"] is False
+        assert "has 2 events remaining" in result["message"]
+        assert char_condition.current_duration == 2
+        assert char_condition.current_stage == 1
+
+    def test_untagged_condition_keeps_the_usual_rate(self, db, character):
+        toxic = self._tag(db, "toxic")
+        self._timing_ability(db, character, 2, [toxic])
+        condition = self._condition(db, "Plain Fever", 4, [])
+
+        char_condition, result = self._progress(db, character, condition, 4)
+
+        assert "has 3 events remaining" in result["message"]
+        assert char_condition.current_duration == 3
+
+    def test_quarter_time_finishes_a_matching_stage(self, db, character):
+        toxic = self._tag(db, "toxic")
+        self._timing_ability(db, character, 4, [toxic])
+        condition = self._condition(db, "Hive Toxin", 4, [toxic])
+
+        char_condition, result = self._progress(db, character, condition, 4)
+
+        assert result["completed"] is True
+        assert char_condition.current_duration == 0
+
+    def test_next_stage_reloads_the_catalogue_duration(self, db, character):
+        toxic = self._tag(db, "toxic")
+        self._timing_ability(db, character, 2, [toxic])
+        condition = self._condition(db, "Staged Toxin", 2, [toxic], next_duration=6)
+
+        char_condition, result = self._progress(db, character, condition, 2)
+
+        assert "progressed to stage 2" in result["message"]
+        assert char_condition.current_stage == 2
+        assert char_condition.current_duration == 6
+
+    def test_owned_skill_rate_multiplies_with_the_species(self, db, character):
+        toxic = self._tag(db, "toxic")
+        self._timing_ability(db, character, 2, [toxic])
+        skill = Skill(
+            name="Steel Viscera",
+            description="Slows a matching condition.",
+            base_cost=2,
+            can_purchase_multiple=False,
+            cost_increases=False,
+            condition_progress_rate=0.5,
+        )
+        skill.condition_tags = [toxic]
+        db.session.add(skill)
+        db.session.flush()
+        db.session.add(
+            CharacterSkill(
+                character_id=character.id,
+                skill_id=skill.id,
+                times_purchased=1,
+                purchased_by_user_id=character.user_id,
+            )
+        )
+        db.session.commit()
+        condition = self._condition(db, "Slowed Toxin", 4, [toxic])
+
+        char_condition, result = self._progress(db, character, condition, 4)
+
+        assert "has 3 events remaining" in result["message"]
+        assert char_condition.current_duration == 3
+
+    def _steel_viscera(self, db, character, ranks, tags):
+        skill = Skill(
+            name="Steel Viscera",
+            description="Slows toxins and diseases.",
+            base_cost=2,
+            can_purchase_multiple=True,
+            cost_increases=True,
+            condition_progress_rate=0.5,
+        )
+        skill.condition_tags = tags
+        db.session.add(skill)
+        db.session.flush()
+        db.session.add(
+            CharacterSkill(
+                character_id=character.id,
+                skill_id=skill.id,
+                times_purchased=ranks,
+                purchased_by_user_id=character.user_id,
+            )
+        )
+        db.session.commit()
+
+    def test_fractional_rate_keeps_a_partial_event(self, db, character):
+        disease = self._tag(db, "disease")
+        self._steel_viscera(db, character, 1, [disease])
+        condition = self._condition(db, "Slow Disease", 2, [disease])
+
+        char_condition, result = self._progress(db, character, condition, 2)
+
+        assert "has 1.5 events remaining" in result["message"]
+        assert char_condition.current_duration == pytest.approx(1.5)
+
+    def test_each_steel_viscera_rank_adds_the_stated_time_again(self, db, character):
+        disease = self._tag(db, "disease")
+        self._steel_viscera(db, character, 2, [disease])
+        condition = self._condition(db, "Slower Disease", 1, [disease])
+
+        char_condition, result = self._progress(db, character, condition, 1)
+
+        assert char_condition.current_duration == pytest.approx(2 / 3)
+        assert result["completed"] is False
+
+    def test_stage_sheet_values_multiply_by_current_stage(self, db, character):
+        condition = Condition(name="Black Frost", progresses_naturally=False)
+        condition.stage_sheet_values_list = [
+            {"id": "will", "description": "Will Points", "value": 1}
+        ]
+        db.session.add(condition)
+        db.session.flush()
+        for stage_number in (1, 2, 3):
+            db.session.add(
+                ConditionStage(
+                    condition_id=condition.id,
+                    stage_number=stage_number,
+                    rp_effect="Boils",
+                    diagnosis="Boils",
+                    cure="None",
+                    duration=0,
+                )
+            )
+        db.session.add(
+            CharacterCondition(
+                character_id=character.id,
+                condition_id=condition.id,
+                current_stage=3,
+                current_duration=0,
+            )
+        )
+        db.session.commit()
+        db.session.refresh(character)
+
+        assert condition.max_stage == 3
+        assert character.get_character_sheet_values()["will"] == {
+            "name": "Will Points",
+            "value": 3,
+        }
+
+    def test_conditions_advance_each_downtime_by_default(self, db):
+        condition = Condition(name="Ordinary Fever")
+        db.session.add(condition)
+        db.session.commit()
+        assert condition.progresses_naturally is True
+
+    def test_new_rule_tag_is_found_by_later_lookups(self, db):
+        created = RuleTag.resolve_list(["plasma"])
+        assert created[0].name == "plasma"
+        again = RuleTag.resolve_list(["Plasma"])
+        assert again[0].id == created[0].id
+        found = RuleTag.query.filter(RuleTag.name.ilike("%plas%")).all()
+        assert [tag.name for tag in found] == ["plasma"]

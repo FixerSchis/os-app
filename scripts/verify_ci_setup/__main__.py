@@ -33,7 +33,7 @@ def main():
     print("=" * 50)
 
     # Get repository root
-    repo_root = Path(__file__).parent.parent
+    repo_root = Path(__file__).resolve().parents[2]
     os.chdir(repo_root)
 
     checks_passed = 0

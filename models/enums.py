@@ -82,10 +82,16 @@ class WikiPageVersionStatus(Enum):
 class AbilityType(Enum):
     GENERIC = "generic"
     STARTING_SKILLS = "starting_skills"
+    STARTING_SKILL_CHOICES = "starting_skill_choices"
+    FIRST_SKILL_PAIR = "first_skill_pair"
+    SKILL_RANK_CAPS = "skill_rank_caps"
+    SKILL_BANS = "skill_bans"
+    CONDITION_TIMING = "condition_timing"
     SKILL_DISCOUNTS = "skill_discounts"
     GROUP_INCOME = "group_income"
     STARTING_ITEM = "starting_item"
     STARTING_REPUTATION = "starting_reputation"
+    STARTING_CONDITION = "starting_condition"
 
     @classmethod
     def values(cls):
@@ -96,10 +102,16 @@ class AbilityType(Enum):
         return {
             cls.GENERIC.value: "Generic Ability",
             cls.STARTING_SKILLS.value: "Starting Skills",
+            cls.STARTING_SKILL_CHOICES.value: "Starting Skill Choices",
+            cls.FIRST_SKILL_PAIR.value: "First Skill Pair",
+            cls.SKILL_RANK_CAPS.value: "Skill Rank Caps",
+            cls.SKILL_BANS.value: "Skill Bans",
+            cls.CONDITION_TIMING.value: "Condition Timing",
             cls.SKILL_DISCOUNTS.value: "Skill Discounts",
             cls.GROUP_INCOME.value: "Group Income",
             cls.STARTING_ITEM.value: "Starting Item",
             cls.STARTING_REPUTATION.value: "Starting Reputation",
+            cls.STARTING_CONDITION.value: "Starting Condition (chosen stage)",
         }
 
 

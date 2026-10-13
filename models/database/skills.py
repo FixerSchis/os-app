@@ -2,6 +2,7 @@ import json
 from datetime import datetime, timezone
 
 from models.database.faction import Faction
+from models.database.rule_tag import skill_rule_tags
 from models.database.species import Species
 from models.tools.character import CharacterTag
 from utils.description_format import format_rank_description
@@ -10,11 +11,31 @@ from ..enums import ScienceType
 from ..extensions import db
 
 
+def id_listed(raw_ids, value):
+    """True when value matches a stored id, whether that id was saved as text or a number."""
+    if value is None:
+        return False
+    text = str(value)
+    return any(str(item) == text for item in raw_ids or [])
+
+
+def _load_id_list(raw):
+    if not raw:
+        return []
+    return [int(item) for item in json.loads(raw)]
+
+
+def _dump_id_list(skill_ids):
+    cleaned = sorted({int(item) for item in skill_ids or []})
+    return json.dumps(cleaned) if cleaned else None
+
+
 class Skill(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text)
     skill_type = db.Column(db.String(50))
+    group_name = db.Column(db.String(100), nullable=True)
     adds_engineering_mods = db.Column(db.Integer, default=0)
     adds_engineering_downtime = db.Column(db.Integer, default=0)
     adds_science_downtime = db.Column(db.Integer, default=0)
@@ -35,19 +56,25 @@ class Skill(db.Model):
     base_cost = db.Column(db.Integer, nullable=False)
     can_purchase_multiple = db.Column(db.Boolean, nullable=False, default=False)
     cost_increases = db.Column(db.Boolean, nullable=False, default=False)
+    earned_points_only = db.Column(db.Boolean, nullable=False, default=False)
+    max_ranks = db.Column(db.Integer, nullable=True)
     character_sheet_values = db.Column(db.String, nullable=True)  # Stored as JSON string
 
     # Foreign keys for requirements
     required_skill_id = db.Column(db.Integer, db.ForeignKey("skill.id"), nullable=True)
+    required_any_skills = db.Column(db.String, nullable=True)
+    distinct_requirements = db.Column(db.String, nullable=True)
     required_factions = db.Column(
         db.String, nullable=True
     )  # Stored as JSON string of faction values
     required_species = db.Column(db.String, nullable=True)  # Stored as JSON string of species IDs
     required_tags = db.Column(db.String, nullable=True)  # Stored as JSON string of tag IDs
+    condition_progress_rate = db.Column(db.Float, nullable=True)
 
     # Relationships
     required_skill = db.relationship("Skill", remote_side=[id], backref="prerequisites")
     adds_reputation_faction = db.relationship("Faction", foreign_keys=[adds_reputation_faction_id])
+    condition_tags = db.relationship("RuleTag", secondary=skill_rule_tags, order_by="RuleTag.name")
 
     def __repr__(self):
         return f"<Skill {self.name}>"
@@ -92,6 +119,22 @@ class Skill(db.Model):
     def required_tags_list(self, tag_ids):
         self.required_tags = json.dumps(tag_ids) if tag_ids else None
 
+    @property
+    def required_any_skills_list(self):
+        return _load_id_list(self.required_any_skills)
+
+    @required_any_skills_list.setter
+    def required_any_skills_list(self, skill_ids):
+        self.required_any_skills = _dump_id_list(skill_ids)
+
+    @property
+    def distinct_requirements_list(self):
+        return _load_id_list(self.distinct_requirements)
+
+    @distinct_requirements_list.setter
+    def distinct_requirements_list(self, skill_ids):
+        self.distinct_requirements = _dump_id_list(skill_ids)
+
     @classmethod
     def get_all_skill_types(cls):
         """Get a list of all unique skill types in the database."""
@@ -120,6 +163,16 @@ class Skill(db.Model):
             return []
         return Species.query.filter(Species.id.in_(self.required_species_list)).all()
 
+    def get_required_any_skills(self):
+        if not self.required_any_skills_list:
+            return []
+        return Skill.query.filter(Skill.id.in_(self.required_any_skills_list)).all()
+
+    def get_distinct_requirement_skills(self):
+        if not self.distinct_requirements_list:
+            return []
+        return Skill.query.filter(Skill.id.in_(self.distinct_requirements_list)).all()
+
     def get_required_tags(self):
         if not self.required_tags_list:
             return []
@@ -128,11 +181,15 @@ class Skill(db.Model):
     def character_meets_requirements(self, character):
         """Check if a character meets all requirements to learn this skill."""
         # Check faction requirements
-        if self.required_factions_list and character.faction_id not in self.required_factions_list:
+        if self.required_factions_list and not id_listed(
+            self.required_factions_list, character.faction_id
+        ):
             return False
 
         # Check species requirements
-        if self.required_species_list and character.species_id not in self.required_species_list:
+        if self.required_species_list and not id_listed(
+            self.required_species_list, character.species_id
+        ):
             return False
 
         # Check tag requirements
@@ -140,6 +197,9 @@ class Skill(db.Model):
             character_tag_ids = {tag.id for tag in character.tags}
             if not any(tag_id in character_tag_ids for tag_id in self.required_tags_list):
                 return False
+
+        if character.skill_requirement_error(self):
+            return False
 
         # Check skill prerequisites
         if self.required_skill_id:

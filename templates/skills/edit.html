@@ -40,6 +40,15 @@
             </div>
 
             <div class="form-group">
+                <label for="group_name">Group</label>
+                <input type="text" class="form-control" id="group_name" name="group_name" value="{{ skill.group_name if skill and skill.group_name else '' }}">
+                <small class="form-text text-muted">
+                    Skills with the same group are listed together on the skills page.
+                    Armour Training covers Medium and Heavy Armour Training.
+                </small>
+            </div>
+
+            <div class="form-group">
                 <label for="adds_engineering_mods">Adds Engineering Mods</label>
                 <input type="number" class="form-control" id="adds_engineering_mods" name="adds_engineering_mods" value="{{ skill.adds_engineering_mods if skill else 0 }}" min="0">
             </div>
@@ -103,7 +112,20 @@
                   <label class="form-check-label" for="cost_increases">Cost increases with each purchase</label>
                 </td>
               </tr>
+              <tr>
+                <td class="width-1-5-em" style="vertical-align: middle;">
+                  <input class="form-check-input" type="checkbox" id="earned_points_only" name="earned_points_only" {% if skill and skill.earned_points_only %}checked{% endif %}>
+                </td>
+                <td>
+                  <label class="form-check-label" for="earned_points_only">Earned character points only (base character points cannot pay for it)</label>
+                </td>
+              </tr>
             </table>
+
+            <div class="form-group">
+                <label for="max_ranks">Maximum ranks</label>
+                <input type="number" class="form-control" id="max_ranks" name="max_ranks" min="1" placeholder="No limit" value="{{ skill.max_ranks if skill and skill.max_ranks else '' }}">
+            </div>
 
             <div class="form-group">
                 <label for="required_skill_id">Required Skill</label>
@@ -112,6 +134,28 @@
                     {% for s in skills_list %}
                     {% if not skill or s.id != skill.id %}
                     <option value="{{ s.id }}" {% if skill and skill.required_skill_id == s.id %}selected{% endif %}>{{ s.name }}</option>
+                    {% endif %}
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="required_any_skills">Requires one of</label>
+                <select class="form-control" id="required_any_skills" name="required_any_skills" multiple title="Select skills that satisfy this requirement">
+                    {% for s in skills_list %}
+                    {% if not skill or s.id != skill.id %}
+                    <option value="{{ s.id }}" {% if skill and s.id in skill.required_any_skills_list %}selected{% endif %}>{{ s.name }}</option>
+                    {% endif %}
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="distinct_requirements">Requires a different one of</label>
+                <select class="form-control" id="distinct_requirements" name="distinct_requirements" multiple title="Select skills that each qualify only one skill with this same list">
+                    {% for s in skills_list %}
+                    {% if not skill or s.id != skill.id %}
+                    <option value="{{ s.id }}" {% if skill and s.id in skill.distinct_requirements_list %}selected{% endif %}>{{ s.name }}</option>
                     {% endif %}
                     {% endfor %}
                 </select>
@@ -179,6 +223,27 @@
             </div>
 
             <div class="form-group">
+                <label for="condition-tags">Condition tags</label>
+                <select class="form-control rule-tag-select" id="condition-tags" name="condition_tags[]" multiple title="Select or add condition tags">
+                    {% if skill %}
+                    {% for tag in skill.condition_tags %}
+                    <option value="{{ tag.id }}" selected>{{ tag.name }}</option>
+                    {% endfor %}
+                    {% endif %}
+                </select>
+                <small class="form-text text-muted">Search for a tag, or type a new one. Saving stores a new tag so later searches on conditions and abilities can find it.</small>
+            </div>
+
+            <div class="form-group">
+                <label for="condition_progress_rate">Condition events per event</label>
+                <input type="number" class="form-control" id="condition_progress_rate" name="condition_progress_rate"
+                       min="0.01" step="any"
+                       value="{{ skill.condition_progress_rate if skill and skill.condition_progress_rate is not none else '' }}"
+                       placeholder="Blank leaves condition timing unchanged">
+                <small class="form-text text-muted">Rate for the first rank, applied to conditions that share a tag. 0.5 doubles the time, and each further rank adds the stated time again (3x, 4x). 2 halves the time.</small>
+            </div>
+
+            <div class="form-group">
                 <button type="submit" class="btn btn-primary">{{ 'Save Changes' if skill else 'Create Skill' }}</button>
                 <a href="{{ url_for('skills.skills_list') }}" class="btn btn-secondary">Cancel</a>
             </div>
@@ -189,6 +254,7 @@
 
 {% block scripts %}
 {{ super() }}
+<script src="{{ url_for('static', filename='js/rule-tags.js') }}"></script>
 <script>
 $(document).ready(function() {
     $('.select2-multiple').select2({
@@ -218,6 +284,14 @@ $(document).ready(function() {
         placeholder: 'Select a required skill...',
         allowClear: true
     });
+    $('#required_any_skills, #distinct_requirements').select2({
+        theme: 'bootstrap-5',
+        width: '100%',
+        placeholder: 'Select skills...',
+        allowClear: true
+    });
+    initRuleTagSelects();
+
     $('#required_tags').select2({
         theme: 'bootstrap-5',
         width: '100%',

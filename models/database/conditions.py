@@ -1,5 +1,7 @@
+import json
 from datetime import datetime, timezone
 
+from models.database.rule_tag import condition_rule_tags
 from models.extensions import db
 
 
@@ -30,6 +32,10 @@ class Condition(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False, unique=True)
+    progresses_naturally = db.Column(
+        db.Boolean, nullable=False, default=True, server_default=db.true()
+    )
+    stage_sheet_values = db.Column(db.String, nullable=True)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.now(timezone.utc))
     updated_at = db.Column(
         db.DateTime,
@@ -42,6 +48,20 @@ class Condition(db.Model):
     stages = db.relationship(
         "ConditionStage", back_populates="condition", cascade="all, delete-orphan"
     )
+    tags = db.relationship("RuleTag", secondary=condition_rule_tags, order_by="RuleTag.name")
 
     def __repr__(self):
         return f"<Condition {self.name}>"
+
+    @property
+    def stage_sheet_values_list(self):
+        """Character sheet values granted once per stage the character has reached."""
+        return json.loads(self.stage_sheet_values) if self.stage_sheet_values else []
+
+    @stage_sheet_values_list.setter
+    def stage_sheet_values_list(self, values):
+        self.stage_sheet_values = json.dumps(values) if values else None
+
+    @property
+    def max_stage(self):
+        return max((stage.stage_number for stage in self.stages), default=0)

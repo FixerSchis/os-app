@@ -566,3 +566,706 @@ def test_get_available_engineering_mod_slots(db, new_user, character):
     db.session.commit()
 
     assert character.get_available_engineering_mod_slots() == 4 + 5
+
+
+def test_free_rank_is_left_out_of_the_rising_cost(db, new_user, character):
+    """A creation rank counts for the skill and leaves the next purchase at the first price."""
+    from models.tools.character import CharacterSkill
+
+    skill = Skill(
+        name="Rising Skill",
+        description="Costs more on each paid rank",
+        base_cost=2,
+        can_purchase_multiple=True,
+        cost_increases=True,
+    )
+    db.session.add(skill)
+    db.session.flush()
+    db.session.add(
+        CharacterSkill(
+            character_id=character.id,
+            skill_id=skill.id,
+            times_purchased=1,
+            free_ranks=1,
+            purchased_by_user_id=new_user.id,
+        )
+    )
+    db.session.commit()
+    db.session.refresh(character)
+
+    assert character.get_total_skill_cost() == 0
+    assert character.get_skill_cost(skill) == 2
+
+    character.purchase_skill(skill, new_user)
+    db.session.refresh(character)
+    assert character.get_total_skill_cost() == 2
+    assert character.get_skill_cost(skill) == 3
+
+    character.refund_skill(skill, new_user)
+    db.session.refresh(character)
+    assert character.get_total_skill_cost() == 0
+    assert character.get_available_character_points() == 10
+
+    character.refund_skill(skill, new_user)
+    db.session.refresh(character)
+    owned = CharacterSkill.query.filter_by(character_id=character.id, skill_id=skill.id).first()
+    assert owned is None
+    assert character.get_available_character_points() == 10
+
+
+def test_starting_skill_grant_and_choice_quota(db, new_user, character, species, faction):
+    """Named starting skills are granted free, and a choice quota is enforced."""
+    from models.database.species import Ability, Species
+    from models.enums import AbilityType
+    from models.tools.character import CharacterSkill
+    from utils.starting_skills import apply_starting_skills, validate_starting_skill_picks
+
+    engineer = Skill(
+        name="Grant Engineer",
+        description="A granted rank",
+        base_cost=2,
+        can_purchase_multiple=True,
+        cost_increases=True,
+        skill_type="professional",
+    )
+    first_program = Skill(
+        name="Program One",
+        description="A standard program",
+        base_cost=1,
+        skill_type="standard_program",
+    )
+    second_program = Skill(
+        name="Program Two",
+        description="A standard program",
+        base_cost=1,
+        skill_type="standard_program",
+    )
+    advanced = Skill(
+        name="Program Advanced",
+        description="An advanced program",
+        base_cost=1,
+        skill_type="advanced_program",
+    )
+    db.session.add_all([engineer, first_program, second_program, advanced])
+    db.session.flush()
+    first_program.required_species_list = [species.id]
+    second_program.required_species_list = [species.id]
+    advanced.required_species_list = [species.id]
+
+    grant = Ability(
+        name="Technical aptitude",
+        description="One free rank of Engineer.",
+        type=AbilityType.STARTING_SKILLS,
+        species=species,
+    )
+    grant.starting_skills_list = [str(engineer.id)]
+    choices = Ability(
+        name="Known programs",
+        description="Pick programs.",
+        type=AbilityType.STARTING_SKILL_CHOICES,
+        species=species,
+    )
+    choices.starting_skill_choices_list = [
+        {"skill_type": "standard_program", "count": 2},
+        {"skill_type": "advanced_program", "count": 1},
+    ]
+    db.session.add_all([grant, choices])
+    db.session.commit()
+    db.session.refresh(species)
+
+    error = validate_starting_skill_picks(species, [str(first_program.id)])
+    assert error == "Choose 2 Standard Program skills."
+
+    picks = [str(first_program.id), str(second_program.id), str(advanced.id)]
+    assert validate_starting_skill_picks(species, picks) is None
+
+    apply_starting_skills(character, species, new_user, picks)
+    db.session.commit()
+    owned = CharacterSkill.query.filter_by(character_id=character.id, skill_id=engineer.id).one()
+    assert owned.times_purchased == 1
+    assert owned.free_ranks == 1
+    assert character.get_skill_cost(engineer) == 2
+
+    apply_starting_skills(character, species, new_user, picks)
+    db.session.commit()
+    db.session.refresh(owned)
+    assert owned.times_purchased == 1
+
+    plain = Species(
+        name="Plain Species",
+        wiki_page="plain-species",
+        permitted_factions=f"[{faction.id}]",
+        body_hits_type="locational",
+        body_hits=1,
+        death_count=100,
+    )
+    db.session.add(plain)
+    db.session.commit()
+    apply_starting_skills(character, plain, new_user, [])
+    db.session.commit()
+    assert (
+        CharacterSkill.query.filter_by(character_id=character.id, skill_id=engineer.id).first()
+        is None
+    )
+    assert (
+        CharacterSkill.query.filter_by(character_id=character.id, skill_id=first_program.id).first()
+        is None
+    )
+
+
+def test_free_rank_cannot_be_raised_until_its_prerequisite_is_owned(
+    db, new_user, character, species
+):
+    """A creation rank is kept without its prerequisite, and the next rank waits for it."""
+    from models.database.species import Ability
+    from models.enums import AbilityType
+    from models.tools.character import CharacterSkill
+    from utils.starting_skills import apply_starting_skills
+
+    scientist = Skill(
+        name="Gate Scientist",
+        description="The prerequisite",
+        base_cost=2,
+        skill_type="professional",
+    )
+    science = Skill(
+        name="Granted Science",
+        description="Each rank grants a research point",
+        base_cost=1,
+        can_purchase_multiple=True,
+        cost_increases=True,
+        skill_type="professional",
+    )
+    db.session.add_all([scientist, science])
+    db.session.flush()
+    science.required_skill_id = scientist.id
+    grant = Ability(
+        name="Scientist training",
+        description="One free rank.",
+        type=AbilityType.STARTING_SKILLS,
+        species=species,
+    )
+    grant.starting_skills_list = [str(science.id)]
+    db.session.add(grant)
+    db.session.commit()
+    db.session.refresh(species)
+
+    apply_starting_skills(character, species, new_user, [])
+    db.session.commit()
+    owned = CharacterSkill.query.filter_by(character_id=character.id, skill_id=science.id).one()
+    assert owned.times_purchased == 1
+    assert owned.free_ranks == 1
+    assert character.get_skill_cost(science) == 1
+    assert character.get_total_skill_cost() == 0
+
+    with pytest.raises(ValueError, match="Requires Gate Scientist"):
+        character.purchase_skill(science, new_user)
+    db.session.refresh(owned)
+    assert owned.times_purchased == 1
+
+    character.purchase_skill(scientist, new_user)
+    character.purchase_skill(science, new_user)
+    db.session.refresh(owned)
+    assert owned.times_purchased == 2
+    assert owned.free_ranks == 1
+    assert character.get_total_skill_cost() == 3
+    assert character.get_skill_cost(science) == 2
+
+
+def test_first_skill_in_a_group_grants_its_pair(db, new_user, character, species, faction):
+    """The first skill bought from a group grants its pair, and only that one."""
+    from models.database.species import Ability, Species
+    from models.enums import AbilityType
+    from models.tools.character import CharacterSkill
+    from utils.skill_pairs import apply_skill_pair_grants
+
+    helm = Skill(name="Helm Basic", base_cost=1, skill_type="spaceflight")
+    helm_advanced = Skill(name="Helm Advanced", base_cost=2, skill_type="spaceflight")
+    weapons = Skill(name="Weapons Basic", base_cost=1, skill_type="spaceflight")
+    weapons_advanced = Skill(name="Weapons Advanced", base_cost=2, skill_type="spaceflight")
+    db.session.add_all([helm, helm_advanced, weapons, weapons_advanced])
+    db.session.flush()
+    helm_advanced.required_skill_id = helm.id
+    weapons_advanced.required_skill_id = weapons.id
+    pairs = Ability(
+        name="Spaceflight aptitude",
+        description="The first basic console grants its advanced skill.",
+        type=AbilityType.FIRST_SKILL_PAIR,
+        species=species,
+    )
+    pairs.skill_pairs_list = [
+        {"trigger_skill_id": helm.id, "granted_skill_id": helm_advanced.id},
+        {"trigger_skill_id": weapons.id, "granted_skill_id": weapons_advanced.id},
+    ]
+    db.session.add(pairs)
+    db.session.flush()
+    plain = Species(
+        name="Plain Pilot",
+        wiki_page="plain-pilot",
+        permitted_factions=f"[{faction.id}]",
+        body_hits_type="locational",
+        body_hits=1,
+        death_count=100,
+    )
+    outsider = Character(
+        user_id=new_user.id,
+        name="Outsider",
+        status=CharacterStatus.ACTIVE.value,
+        species=plain,
+    )
+    db.session.add_all([plain, outsider])
+    db.session.commit()
+    db.session.refresh(species)
+    character.species = species
+
+    outsider.purchase_skill(helm, new_user)
+    assert (
+        CharacterSkill.query.filter_by(character_id=outsider.id, skill_id=helm_advanced.id).first()
+        is None
+    )
+
+    character.purchase_skill(helm, new_user)
+    granted = CharacterSkill.query.filter_by(
+        character_id=character.id, skill_id=helm_advanced.id
+    ).one()
+    assert granted.free_ranks == 1
+    assert character.get_total_skill_cost() == 1
+
+    character.purchase_skill(weapons, new_user)
+    assert (
+        CharacterSkill.query.filter_by(
+            character_id=character.id, skill_id=weapons_advanced.id
+        ).first()
+        is None
+    )
+    assert character.get_total_skill_cost() == 2
+
+    apply_skill_pair_grants(character, plain, new_user)
+    db.session.commit()
+    assert (
+        CharacterSkill.query.filter_by(character_id=character.id, skill_id=helm_advanced.id).first()
+        is None
+    )
+    assert character.skill_pair_grants_list
+
+    apply_skill_pair_grants(character, species, new_user)
+    db.session.commit()
+    restored = CharacterSkill.query.filter_by(
+        character_id=character.id, skill_id=helm_advanced.id
+    ).one()
+    assert restored.free_ranks == 1
+    assert character.get_total_skill_cost() == 2
+
+    character.refund_skill(helm_advanced, new_user)
+    character.refund_skill(helm, new_user)
+    character.refund_skill(weapons, new_user)
+    assert character.skill_pair_grants_list == []
+
+    character.purchase_skill(weapons, new_user)
+    again = CharacterSkill.query.filter_by(
+        character_id=character.id, skill_id=weapons_advanced.id
+    ).one()
+    assert again.free_ranks == 1
+    assert character.get_total_skill_cost() == 1
+
+
+def test_buying_the_only_paired_skill_grants_one_free_rank(db, new_user, character, species):
+    """A one-pair group grants its skill on purchase, and that rank stays unpaid."""
+    from models.database.species import Ability
+    from models.enums import AbilityType
+    from models.tools.character import CharacterSkill
+
+    scientist = Skill(name="Pair Scientist", base_cost=2, skill_type="professional")
+    science = Skill(
+        name="Pair Science",
+        base_cost=1,
+        can_purchase_multiple=True,
+        cost_increases=True,
+        skill_type="professional",
+    )
+    db.session.add_all([scientist, science])
+    db.session.flush()
+    science.required_skill_id = scientist.id
+    pairs = Ability(
+        name="Scientist training",
+        description="Buying the scientist skill grants one science rank.",
+        type=AbilityType.FIRST_SKILL_PAIR,
+        species=species,
+    )
+    pairs.skill_pairs_list = [{"trigger_skill_id": scientist.id, "granted_skill_id": science.id}]
+    db.session.add(pairs)
+    db.session.commit()
+    db.session.refresh(species)
+    character.species = species
+
+    with pytest.raises(ValueError, match="Requires Pair Scientist"):
+        character.purchase_skill(science, new_user)
+
+    character.purchase_skill(scientist, new_user)
+    owned = CharacterSkill.query.filter_by(character_id=character.id, skill_id=science.id).one()
+    assert owned.times_purchased == 1
+    assert owned.free_ranks == 1
+    assert character.get_total_skill_cost() == 2
+    assert character.get_skill_cost(science) == 1
+
+    character.purchase_skill(science, new_user)
+    db.session.refresh(owned)
+    assert owned.times_purchased == 2
+    assert owned.free_ranks == 1
+    assert character.get_total_skill_cost() == 3
+
+
+def test_species_rank_cap_stays_below_the_skill_maximum(db, new_user, character, species):
+    """A species cap can lower a skill's maximum, and cannot raise it."""
+    from models.database.species import Ability
+    from models.enums import AbilityType
+    from models.tools.character import CharacterSkill
+
+    guarded = Skill(
+        name="Guarded",
+        base_cost=1,
+        can_purchase_multiple=True,
+        cost_increases=True,
+        skill_type="combat",
+        max_ranks=3,
+    )
+    db.session.add(guarded)
+    db.session.flush()
+    caps = Ability(
+        name="Rank cap",
+        description="At most 2 ranks.",
+        type=AbilityType.SKILL_RANK_CAPS,
+        species=species,
+    )
+    caps.rank_caps_list = [{"skill_id": guarded.id, "max_ranks": 2}]
+    outsider = Character(
+        user_id=new_user.id,
+        name="Uncapped",
+        status=CharacterStatus.ACTIVE.value,
+    )
+    db.session.add_all([caps, outsider])
+    db.session.commit()
+    db.session.refresh(species)
+    character.species = species
+
+    character.purchase_skill(guarded, new_user)
+    character.purchase_skill(guarded, new_user)
+    with pytest.raises(ValueError, match="Maximum 2 ranks"):
+        character.purchase_skill(guarded, new_user)
+    owned = CharacterSkill.query.filter_by(character_id=character.id, skill_id=guarded.id).one()
+    assert owned.times_purchased == 2
+
+    for _ in range(3):
+        outsider.purchase_skill(guarded, new_user)
+    with pytest.raises(ValueError, match="Maximum 3 ranks"):
+        outsider.purchase_skill(guarded, new_user)
+    other = CharacterSkill.query.filter_by(character_id=outsider.id, skill_id=guarded.id).one()
+    assert other.times_purchased == 3
+
+
+def test_captain_skills_need_one_expert_and_a_different_console(db, new_user, character):
+    """One expert unlocks every captain skill, and each one needs its own console."""
+    helm = Skill(name="Helm Advanced", base_cost=1, skill_type="spaceflight")
+    weapons = Skill(name="Weapons Advanced", base_cost=1, skill_type="spaceflight")
+    evasive = Skill(name="Evasive", base_cost=1, skill_type="spaceflight")
+    evacuation = Skill(name="Evacuation", base_cost=1, skill_type="spaceflight")
+    first = Skill(name="A Good Day", base_cost=1, skill_type="spaceflight")
+    second = Skill(name="Fly Apart", base_cost=1, skill_type="spaceflight")
+    db.session.add_all([helm, weapons, evasive, evacuation, first, second])
+    db.session.flush()
+    for captain in (first, second):
+        captain.required_any_skills_list = [evasive.id, evacuation.id]
+        captain.distinct_requirements_list = [helm.id, weapons.id]
+    db.session.commit()
+    assert first.character_meets_requirements(character) is False
+
+    with pytest.raises(ValueError, match="Requires one of"):
+        character.purchase_skill(first, new_user)
+
+    character.purchase_skill(evasive, new_user)
+    with pytest.raises(ValueError, match="Requires a different one of"):
+        character.purchase_skill(first, new_user)
+
+    character.purchase_skill(helm, new_user)
+    character.purchase_skill(first, new_user)
+    character.purchase_skill(evacuation, new_user)
+    with pytest.raises(ValueError, match="Requires a different one of"):
+        character.purchase_skill(second, new_user)
+
+    character.purchase_skill(weapons, new_user)
+    character.purchase_skill(second, new_user)
+
+    character.refund_skill(evasive, new_user)
+    with pytest.raises(ValueError, match="Cannot refund Evacuation"):
+        character.refund_skill(evacuation, new_user)
+    with pytest.raises(ValueError, match="Cannot refund Helm Advanced"):
+        character.refund_skill(helm, new_user)
+
+
+def test_core_species_status_discount_applies_to_every_rank(db, new_user, character, species):
+    """A skill discount lowers each rank, and a flat-cost skill charges every rank."""
+    from models.database.species import Ability
+    from models.enums import AbilityType
+
+    status = Skill(
+        name="Faction Status",
+        base_cost=3,
+        can_purchase_multiple=True,
+        cost_increases=False,
+        skill_type="reputation",
+    )
+    db.session.add(status)
+    db.session.flush()
+    discount = Ability(
+        name="Status discount",
+        description="Faction Status costs 1 less per rank.",
+        type=AbilityType.SKILL_DISCOUNTS,
+        species=species,
+    )
+    discount.skill_discounts_dict = {str(status.id): 1}
+    outsider = Character(
+        user_id=new_user.id,
+        name="Full Price",
+        status=CharacterStatus.ACTIVE.value,
+    )
+    db.session.add_all([discount, outsider])
+    db.session.commit()
+    db.session.refresh(species)
+    character.species = species
+
+    assert character.get_skill_cost(status) == 2
+    assert outsider.get_skill_cost(status) == 3
+
+    character.purchase_skill(status, new_user)
+    character.purchase_skill(status, new_user)
+    assert character.get_total_skill_cost() == 4
+    assert character.get_skill_cost(status) == 2
+
+    outsider.purchase_skill(status, new_user)
+    outsider.purchase_skill(status, new_user)
+    assert outsider.get_total_skill_cost() == 6
+
+
+def test_global_species_adds_extra_hits_for_each_toughness_rank(db, new_user, character, species):
+    """Each Toughness rank adds the species extra when body hits are global."""
+    toughness = Skill(
+        name="Toughness",
+        base_cost=1,
+        can_purchase_multiple=True,
+        cost_increases=True,
+        skill_type="combat",
+    )
+    db.session.add(toughness)
+    species.body_hits_type = "global"
+    species.body_hits = 6
+    species.extra_hits_per_toughness = 3
+    character.species = species
+    db.session.commit()
+
+    assert character.toughness_hit_bonus() == 0
+    character.purchase_skill(toughness, new_user)
+    assert character.toughness_hit_bonus() == 3
+    character.purchase_skill(toughness, new_user)
+    assert character.toughness_hit_bonus() == 6
+
+    species.body_hits_type = "locational"
+    db.session.commit()
+    assert character.toughness_hit_bonus() == 0
+
+
+def test_character_abilities_print_after_species_abilities(db, new_user, character, species):
+    """Abilities stored on a character print after that species' abilities."""
+    from models.database.species import Ability
+    from models.enums import AbilityType
+
+    shared = Ability(
+        name="Regeneration",
+        description="Regain 1 hit.",
+        type=AbilityType.GENERIC,
+        species=species,
+    )
+    own = Ability(
+        name="Natural armour",
+        description="3 armour hits on every location.",
+        type=AbilityType.GENERIC,
+        character=character,
+    )
+    character.species = species
+    db.session.add_all([shared, own])
+    db.session.commit()
+
+    assert [ability.name for ability in character.printed_abilities()] == [
+        "Regeneration",
+        "Natural armour",
+    ]
+    assert [ability.name for ability in species.abilities] == ["Regeneration"]
+
+
+def test_skill_ban_stops_that_species_buying_the_skill(db, new_user, character, species):
+    """A skill-ban ability blocks purchase for that species only."""
+    from models.database.species import Ability
+    from models.enums import AbilityType
+
+    banned = Skill(name="Heavy Armour Training", base_cost=1, skill_type="combat")
+    allowed = Skill(name="Shield Training", base_cost=1, skill_type="combat")
+    db.session.add_all([banned, allowed])
+    db.session.flush()
+    ban = Ability(
+        name="Skill bans",
+        description="Cannot buy heavy armour.",
+        type=AbilityType.SKILL_BANS,
+        species=species,
+    )
+    ban.banned_skills_list = [banned.id]
+    outsider = Character(
+        user_id=new_user.id,
+        name="Unrestricted",
+        status=CharacterStatus.ACTIVE.value,
+    )
+    character.species = species
+    db.session.add_all([ban, outsider])
+    db.session.commit()
+
+    with pytest.raises(ValueError, match="cannot buy Heavy Armour Training"):
+        character.purchase_skill(banned, new_user)
+    character.purchase_skill(allowed, new_user)
+    outsider.purchase_skill(banned, new_user)
+
+
+def test_starting_psi_adds_to_purchased_psi_on_the_sheet(db, new_user, character, species):
+    """Species starting psi and each purchased psi rank share one sheet total."""
+    from models.database.species import Ability
+    from models.enums import AbilityType
+    from models.tools.character import CharacterSkill
+
+    psi = [{"id": "psi", "description": "Psi Points", "value": 2}]
+    potential = Skill(name="Psionic Potential", base_cost=1, skill_type="psionic")
+    potential.character_sheet_values_list = psi
+    rank_six = Skill(name="Telekinesis [6]", base_cost=1, skill_type="psionic")
+    rank_six.character_sheet_values_list = [{"id": "psi", "description": "Psi Points", "value": 1}]
+    db.session.add_all([potential, rank_six])
+    db.session.flush()
+    starting = Ability(
+        name="Starting psi",
+        description="Start with 2 Psi Points.",
+        type=AbilityType.GENERIC,
+        species=species,
+    )
+    starting.character_sheet_values_list = psi
+    character.species = species
+    db.session.add_all(
+        [
+            starting,
+            CharacterSkill(
+                character_id=character.id,
+                skill_id=potential.id,
+                times_purchased=2,
+                purchased_by_user_id=new_user.id,
+            ),
+            CharacterSkill(
+                character_id=character.id,
+                skill_id=rank_six.id,
+                times_purchased=1,
+                purchased_by_user_id=new_user.id,
+            ),
+        ]
+    )
+    db.session.commit()
+    db.session.refresh(character)
+
+    assert character.get_character_sheet_values()["psi"] == {"name": "Psi Points", "value": 7}
+
+
+def test_extra_will_point_ranks_add_to_discipline_will(db, new_user, character):
+    """Each Extra Will Point rank adds one Will Point to Discipline's two."""
+    from models.tools.character import CharacterSkill
+
+    discipline = Skill(name="Discipline", base_cost=2, skill_type="discipline")
+    discipline.character_sheet_values_list = [
+        {"id": "will", "description": "Will Points", "value": 2}
+    ]
+    extra = Skill(name="Extra Will Point", base_cost=1, skill_type="discipline")
+    extra.character_sheet_values_list = [{"id": "will", "description": "Will Points", "value": 1}]
+    db.session.add_all([discipline, extra])
+    db.session.flush()
+    db.session.add_all(
+        [
+            CharacterSkill(
+                character_id=character.id,
+                skill_id=discipline.id,
+                times_purchased=1,
+                purchased_by_user_id=new_user.id,
+            ),
+            CharacterSkill(
+                character_id=character.id,
+                skill_id=extra.id,
+                times_purchased=3,
+                purchased_by_user_id=new_user.id,
+            ),
+        ]
+    )
+    db.session.commit()
+    db.session.refresh(character)
+
+    assert character.get_character_sheet_values()["will"] == {"name": "Will Points", "value": 5}
+
+
+def _earned_only_skill(db, name="Mutate Claws [1]"):
+    mutation = Skill(name=name, base_cost=2, skill_type="mutation", earned_points_only=True)
+    db.session.add(mutation)
+    db.session.commit()
+    return mutation
+
+
+def test_earned_only_skill_cannot_use_base_points(db, new_user, character):
+    """Unspent base points never pay for a mutation; only earned points do."""
+    from models.tools.user import User
+
+    mutation = _earned_only_skill(db)
+    assert character.get_available_character_points() == 10
+    assert character.available_points_for(mutation) == 0
+    allowed, reason = character.can_purchase_skill(mutation, new_user)
+    assert not allowed
+    assert reason == (
+        "Mutate Claws [1] needs earned character points. "
+        "Base character points cannot pay for it."
+    )
+
+    new_user.add_character_points(1)
+    db.session.commit()
+    assert not character.can_purchase_skill(mutation, new_user)[0]
+
+    new_user.add_character_points(1)
+    db.session.commit()
+    character.purchase_skill(mutation, new_user)
+    assert User.query.get(new_user.id).character_points == 0
+    assert character.get_available_character_points() == 10
+
+    ordinary = Skill(name="Ordinary", base_cost=10, skill_type="professional")
+    db.session.add(ordinary)
+    db.session.commit()
+    character.purchase_skill(ordinary, new_user)
+    assert User.query.get(new_user.id).character_points == 0
+    assert character.earned_points_spent() == 2
+
+    character.refund_skill(mutation, new_user)
+    assert User.query.get(new_user.id).character_points == 2
+    assert character.earned_points_spent() == 0
+
+
+def test_developing_character_needs_earned_points_for_mutations(db, new_user, character):
+    """A developing character's mutations wait on earned points, charged at activation."""
+    character.status = CharacterStatus.DEVELOPING.value
+    first = _earned_only_skill(db)
+    second = _earned_only_skill(db, "Mutate Claws [2]")
+    ordinary = Skill(name="Ordinary", base_cost=12, skill_type="professional")
+    db.session.add(ordinary)
+    new_user.add_character_points(4)
+    db.session.merge(new_user)
+    db.session.commit()
+
+    character.purchase_skill(first, new_user)
+    character.purchase_skill(ordinary, new_user)
+    assert character.earned_points_spent() == 4
+    assert character.available_points_for(second) == 0
+    assert not character.can_purchase_skill(second, new_user)[0]

@@ -20,7 +20,7 @@
        </tr>
        <tr>
           <td class="header">Body Hits</td>
-          <td>{{ character.species.body_hits }}</td>
+          <td>{% if character.toughness_hit_bonus() %}{{ character.species.body_hits }} + {{ character.toughness_hit_bonus() }}{% else %}{{ character.species.body_hits if character.species else 0 }}{% endif %}</td>
           <td class="header">Death Count</td>
           <td>{{ character.species.death_count }}</td>
        </tr>
@@ -47,7 +47,7 @@
     </table>
     <div>
        <span class="section-title">Species Abilities:</span><br>
-       {% for ability in character.species.abilities %}
+       {% for ability in character.printed_abilities() %}
        <strong>{{ ability.name }}: </strong>{{ ability.description }}
        {% endfor %}
     </div>
@@ -68,7 +68,5 @@
  <div class="affix-box">
     <div class="affix-content">
         <strong>Affix: Exotic Substance</strong>
-        <br><br>
-        After Project: Use on your character profile. If hung outside storage, bring it off-site with you, but must be handed in at the end of the event.
     </div>
  </div>

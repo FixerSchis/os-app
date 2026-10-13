@@ -127,6 +127,46 @@ class TestCharacterSkills:
         assert data["can_purchase"] is False
         assert "only be purchased once" in data["reason"]
 
+    def test_additional_rank_stays_locked_without_prerequisite(
+        self, test_client, regular_user, character_with_faction
+    ):
+        unique = uuid.uuid4().hex[:8]
+        scientist = Skill(
+            name=f"Gate Scientist {unique}",
+            base_cost=2,
+            skill_type="professional",
+        )
+        science = Skill(
+            name=f"Granted Science {unique}",
+            base_cost=1,
+            can_purchase_multiple=True,
+            cost_increases=True,
+            skill_type="professional",
+        )
+        db.session.add_all([scientist, science])
+        db.session.flush()
+        science.required_skill_id = scientist.id
+        db.session.add(
+            CharacterSkill(
+                character_id=character_with_faction.id,
+                skill_id=science.id,
+                times_purchased=1,
+                free_ranks=1,
+                purchased_by_user_id=regular_user.id,
+            )
+        )
+        db.session.commit()
+        login_user(test_client, regular_user)
+
+        response = test_client.get(self.url(character_with_faction.id))
+        assert response.status_code == 200
+        page = response.get_data(as_text=True)
+        button = page.split(f'aria-label="Increase {science.name} level"')[0].rsplit("<button", 1)[
+            -1
+        ]
+        assert "disabled" in button
+        assert f'title="Requires {scientist.name}"' in button
+
     def test_purchase_skill_success(self, test_client, regular_user, character_with_faction, skill):
         login_user(test_client, regular_user)
         response = test_client.post(

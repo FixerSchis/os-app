@@ -1,9 +1,16 @@
+import json
 from datetime import datetime, timezone
 
 from sqlalchemy import false, func, or_
 
 from models.database.mods import Mod
-from models.enums import AbilityType, CharacterAuditAction, CharacterStatus, ScienceType
+from models.enums import (
+    AbilityType,
+    BodyHitsType,
+    CharacterAuditAction,
+    CharacterStatus,
+    ScienceType,
+)
 from models.extensions import db
 from models.tools.pack import Pack
 
@@ -13,6 +20,63 @@ character_tags = db.Table(
     db.Column("character_id", db.Integer, db.ForeignKey("character.id"), primary_key=True),
     db.Column("tag_id", db.Integer, db.ForeignKey("character_tag.id"), primary_key=True),
 )
+
+
+def _species_uses_global_hits(species):
+    hit_type = species.body_hits_type
+    hit_value = hit_type.value if hasattr(hit_type, "value") else hit_type
+    return hit_value == BodyHitsType.GLOBAL.value
+
+
+def _ability_type_value(ability):
+    ability_type = ability.type
+    return ability_type.value if hasattr(ability_type, "value") else ability_type
+
+
+def format_event_count(value):
+    """Show a whole event count without a decimal, and keep a real fraction."""
+    number = float(value or 0)
+    if number.is_integer():
+        return str(int(number))
+    return f"{number:.2f}".rstrip("0").rstrip(".")
+
+
+def _ranked_condition_rate(first_rank_rate, ranks):
+    time_multiplier = 1 + ranks * (1 / first_rank_rate - 1)
+    if time_multiplier <= 0.01:
+        return first_rank_rate
+    return 1 / time_multiplier
+
+
+def _earned_points_message(skill):
+    return f"{skill.name} needs earned character points. Base character points cannot pay for it."
+
+
+def _pool_key(skill_ids):
+    return tuple(sorted(int(item) for item in skill_ids or []))
+
+
+def _skill_name_list(skill_ids):
+    from models.database.skills import Skill
+
+    rows = Skill.query.filter(Skill.id.in_(list(skill_ids))).all()
+    by_id = {row.id: row.name for row in rows}
+    names = [by_id[skill_id] for skill_id in skill_ids if skill_id in by_id]
+    if not names:
+        return "another skill"
+    if len(names) == 1:
+        return names[0]
+    return ", ".join(names[:-1]) + ", or " + names[-1]
+
+
+def _positive_rank_limit(value):
+    if value is None or value == "":
+        return None
+    limit = int(value)
+    if limit < 1:
+        return None
+    return limit
+
 
 # Association table for many-to-many relationship between Character and Sample
 character_samples = db.Table(
@@ -43,6 +107,7 @@ class CharacterSkill(db.Model):
     character_id = db.Column(db.Integer, db.ForeignKey("character.id"), nullable=False)
     skill_id = db.Column(db.Integer, db.ForeignKey("skill.id"), nullable=False)
     times_purchased = db.Column(db.Integer, nullable=False, default=1)
+    free_ranks = db.Column(db.Integer, nullable=False, default=0)
     purchased_at = db.Column(db.DateTime, default=datetime.now(timezone.utc), nullable=False)
     purchased_by_user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
 
@@ -58,6 +123,10 @@ class CharacterSkill(db.Model):
         if not self.skill:
             return ""
         return self.skill.format_applied(self.times_purchased)
+
+    def paid_purchases(self):
+        """Ranks the character paid for. A free creation rank is not one of these."""
+        return max(0, self.times_purchased - (self.free_ranks or 0))
 
 
 class Character(db.Model):
@@ -87,6 +156,7 @@ class Character(db.Model):
     background = db.Column(db.Text, nullable=True)
     goals = db.Column(db.Text, nullable=True)
     concept = db.Column(db.Text, nullable=True)
+    skill_pair_grants = db.Column(db.String, nullable=True)
 
     # Relationships
     user = db.relationship("User", back_populates="characters")
@@ -102,6 +172,12 @@ class Character(db.Model):
     event_tickets = db.relationship("EventTicket", back_populates="character")
     inventory_items = db.relationship("CharacterItem", back_populates="character")
     samples = db.relationship("Sample", secondary="character_samples", lazy="dynamic")
+    abilities = db.relationship(
+        "Ability",
+        backref="character",
+        cascade="all, delete-orphan",
+        foreign_keys="Ability.character_id",
+    )
 
     @property
     def pack(self):
@@ -168,40 +244,51 @@ class Character(db.Model):
     def __repr__(self):
         return f"<Character {self.name}>"
 
+    def _paid_skill_cost(self, character_skill):
+        skill = character_skill.skill
+        paid = character_skill.paid_purchases()
+        discount = self.skill_discount(skill)
+        if skill.cost_increases:
+            # The first paid purchase costs base_cost. A free rank is not a paid purchase.
+            return sum(max(0, skill.base_cost + i - discount) for i in range(paid))
+        return max(0, skill.base_cost - discount) * paid
+
     def get_total_skill_cost(self):
         """Calculate the total cost of all skills for this character."""
-        total_cost = 0
+        return sum(self._paid_skill_cost(character_skill) for character_skill in self.skills)
+
+    def earned_points_spent(self, change=0, earned_only=False):
+        """Earned points the skills need, with an optional pending cost change.
+
+        Base character points never pay for earned-points-only skills.
+        """
+        earned_only_cost = 0
+        other_cost = 0
         for character_skill in self.skills:
-            skill = character_skill.skill
-            if skill.cost_increases:
-                # For a skill with increasing cost, the cost of the nth purchase is
-                # base_cost + (n-1). We sum the cost for each purchase from 1 to
-                # times_purchased
-                for i in range(character_skill.times_purchased):
-                    purchase_cost = skill.base_cost + i
-                    # Apply species discounts
-                    if self.species:
-                        for ability in self.species.abilities:
-                            if (
-                                ability.type == "skill_discounts"
-                                and str(skill.id) in ability.skill_discounts_dict
-                            ):
-                                discount = ability.skill_discounts_dict[str(skill.id)]
-                                purchase_cost = max(0, purchase_cost - discount)
-                    total_cost += purchase_cost
+            cost = self._paid_skill_cost(character_skill)
+            if character_skill.skill.earned_points_only:
+                earned_only_cost += cost
             else:
-                purchase_cost = skill.base_cost
-                # Apply species discounts
-                if self.species:
-                    for ability in self.species.abilities:
-                        if (
-                            ability.type == "skill_discounts"
-                            and str(skill.id) in ability.skill_discounts_dict
-                        ):
-                            discount = ability.skill_discounts_dict[str(skill.id)]
-                            purchase_cost = max(0, purchase_cost - discount)
-                total_cost += purchase_cost
-        return total_cost
+                other_cost += cost
+        if earned_only:
+            earned_only_cost += change
+        else:
+            other_cost += change
+        return earned_only_cost + max(0, other_cost - self.base_character_points)
+
+    def _unspent_base_points(self):
+        other_cost = sum(
+            self._paid_skill_cost(character_skill)
+            for character_skill in self.skills
+            if not character_skill.skill.earned_points_only
+        )
+        return max(0, self.base_character_points - other_cost)
+
+    def _unspent_earned_points(self, user_points):
+        # A developing character's earned spend is only taken from the user at activation.
+        if self.status == CharacterStatus.DEVELOPING.value:
+            return max(0, user_points - self.earned_points_spent())
+        return user_points
 
     def get_faction_name(self):
         return self.faction.name if self.faction else None
@@ -229,7 +316,9 @@ class Character(db.Model):
         ).first()
 
         # If the skill hasn't been purchased yet, start at 0
-        count = 0 if character_skill is None else character_skill.times_purchased
+        count = 0 if character_skill is None else character_skill.paid_purchases()
+        if is_refund and count <= 0:
+            return 0
 
         # Calculate the base cost based on the skill's properties
         base_cost = skill.base_cost
@@ -243,15 +332,20 @@ class Character(db.Model):
             else:
                 base_cost += count  # Cost of the (N+1)th purchase
 
-        # Apply species discounts if any
-        if self.species:
-            for ability in self.species.abilities:
-                if ability.type == "skill_discounts":
-                    if str(skill.id) in ability.skill_discounts_dict:
-                        discount = ability.skill_discounts_dict[str(skill.id)]
-                        base_cost = max(0, base_cost - discount)
+        return max(0, base_cost - self.skill_discount(skill))
 
-        return base_cost
+    def skill_discount(self, skill):
+        """Character points a species skill-discount ability takes off this skill."""
+        if self.species is None:
+            return 0
+        discount = 0
+        for ability in self.species.abilities:
+            if _ability_type_value(ability) != AbilityType.SKILL_DISCOUNTS.value:
+                continue
+            amount = ability.skill_discounts_dict.get(str(skill.id))
+            if amount:
+                discount += int(amount)
+        return discount
 
     def get_available_character_points(self):
         """Get the available character points for the character to spend."""
@@ -261,10 +355,139 @@ class Character(db.Model):
         user = User.query.get(self.user_id)
         user_points = user.character_points if user else 0
 
-        character_cp_balance = self.base_character_points - self.get_total_skill_cost()
-        total_available = user_points + max(0, character_cp_balance)
+        return self._unspent_earned_points(user_points) + self._unspent_base_points()
 
-        return total_available
+    def available_points_for(self, skill):
+        """Points this character can put toward the skill."""
+        if not skill.earned_points_only:
+            return self.get_available_character_points()
+        from models.tools.user import User
+
+        user = User.query.get(self.user_id)
+        return self._unspent_earned_points(user.character_points if user else 0)
+
+    def skill_points_error(self, skill, user, cost):
+        """Why the points cannot cover this skill, or None when they can."""
+        needed = self.earned_points_spent(cost, skill.earned_points_only)
+        from_user = needed - self.earned_points_spent()
+        if self.status == CharacterStatus.ACTIVE.value and from_user > 0:
+            if not user.can_spend_character_points(from_user):
+                if skill.earned_points_only:
+                    return _earned_points_message(skill)
+                return "Not enough character points"
+        if self.status == CharacterStatus.DEVELOPING.value and skill.earned_points_only:
+            from models.tools.user import User
+
+            owner = User.query.get(self.user_id)
+            if owner is None or not owner.can_spend_character_points(needed):
+                return _earned_points_message(skill)
+        return None
+
+    @property
+    def skill_pair_grants_list(self):
+        if not self.skill_pair_grants:
+            return []
+        return json.loads(self.skill_pair_grants)
+
+    @skill_pair_grants_list.setter
+    def skill_pair_grants_list(self, grants):
+        self.skill_pair_grants = json.dumps(grants) if grants else None
+
+    def skill_requirement_error(self, skill):
+        """Return why this skill cannot be bought, or None when its skill rules are met."""
+        owned = self._owned_skill_ids()
+        any_of = skill.required_any_skills_list
+        if any_of and not set(any_of) & owned:
+            return f"Requires one of {_skill_name_list(any_of)}"
+        pool = skill.distinct_requirements_list
+        if pool and not self._has_distinct_requirement(skill, owned):
+            return f"Requires a different one of {_skill_name_list(pool)}"
+        return None
+
+    def skill_refund_error(self, skill):
+        """Return why this skill cannot be refunded, or None when other skills stay valid."""
+        owned = self._owned_skill_ids()
+        if skill.id not in owned:
+            return None
+        for peer in self._requirement_skills():
+            if peer.id not in owned:
+                continue
+            options = peer.required_any_skills_list
+            if skill.id in options and not any(
+                option in owned and option != skill.id for option in options
+            ):
+                return f"Cannot refund {skill.name} as it is required for {peer.name}."
+            pool = peer.distinct_requirements_list
+            if skill.id not in pool:
+                continue
+            key = _pool_key(pool)
+            consumers = sum(
+                1
+                for other in self._requirement_skills()
+                if other.id in owned and _pool_key(other.distinct_requirements_list) == key
+            )
+            remaining = len(set(pool) & owned) - 1
+            if remaining < consumers:
+                return f"Cannot refund {skill.name} as it is required for {peer.name}."
+        return None
+
+    def _has_distinct_requirement(self, skill, owned):
+        key = _pool_key(skill.distinct_requirements_list)
+        consumers = 0
+        for peer in self._requirement_skills():
+            if _pool_key(peer.distinct_requirements_list) != key:
+                continue
+            if peer.id in owned or peer.id == skill.id:
+                consumers += 1
+        return len(set(skill.distinct_requirements_list) & owned) >= consumers
+
+    def _requirement_skills(self):
+        cached = getattr(self, "_requirement_skill_cache", None)
+        if cached is None:
+            from models.database.skills import Skill
+
+            cached = Skill.query.filter(
+                or_(
+                    Skill.required_any_skills.isnot(None),
+                    Skill.distinct_requirements.isnot(None),
+                )
+            ).all()
+            self._requirement_skill_cache = cached
+        return cached
+
+    def _owned_skill_ids(self):
+        return {row.skill_id for row in self.skills}
+
+    def maximum_rank(self, skill):
+        """Lowest rank cap from the skill and this species. None means no cap."""
+        limit = _positive_rank_limit(skill.max_ranks)
+        if self.species is None:
+            return limit
+        for ability in self.species.abilities:
+            ability_type = ability.type.value if hasattr(ability.type, "value") else ability.type
+            if ability_type != AbilityType.SKILL_RANK_CAPS.value:
+                continue
+            for cap in ability.rank_caps_list:
+                if int(cap.get("skill_id") or 0) != skill.id:
+                    continue
+                species_limit = _positive_rank_limit(cap.get("max_ranks"))
+                if species_limit is None:
+                    continue
+                limit = species_limit if limit is None else min(limit, species_limit)
+        return limit
+
+    def skill_ban_reason(self, skill):
+        """Why this species cannot buy the skill, or None when the purchase is allowed."""
+        if self.species is None:
+            return None
+        from models.database.skills import id_listed
+
+        for ability in self.species.abilities:
+            if _ability_type_value(ability) != AbilityType.SKILL_BANS.value:
+                continue
+            if id_listed(ability.banned_skills_list, skill.id):
+                return f"{self.species.name} cannot buy {skill.name}"
+        return None
 
     def can_purchase_skill(self, skill, user):
         """Check if the character can purchase a skill."""
@@ -287,19 +510,33 @@ class Character(db.Model):
         if existing_skill and not skill.can_purchase_multiple:
             return False, "This skill cannot be purchased multiple times"
 
-        cost = self.get_skill_cost(skill)
+        owned_ranks = existing_skill.times_purchased if existing_skill else 0
+        rank_limit = self.maximum_rank(skill)
+        if rank_limit is not None and owned_ranks >= rank_limit:
+            return False, f"Maximum {rank_limit} ranks"
 
-        # Calculate total CP spent on all current skills
-        total_skills_cost = self.get_total_skill_cost()
+        ban_reason = self.skill_ban_reason(skill)
+        if ban_reason:
+            return False, ban_reason
 
-        # Calculate how much CP we need from the user
-        remaining_base_cp = self.base_character_points - total_skills_cost
-        cp_from_user = max(0, cost - remaining_base_cp)
+        requirement_error = self.skill_requirement_error(skill)
+        if requirement_error:
+            return False, requirement_error
 
-        # Spend CP if character is active
-        if self.status == CharacterStatus.ACTIVE.value and cp_from_user > 0:
-            if not user.can_spend_character_points(cp_from_user):
-                return False, "Not enough character points"
+        if skill.required_skill_id:
+            has_prerequisite = CharacterSkill.query.filter_by(
+                character_id=self.id, skill_id=skill.required_skill_id
+            ).first()
+            if not has_prerequisite:
+                if skill.required_skill:
+                    required_name = skill.required_skill.name
+                else:
+                    required_name = "another skill"
+                return False, f"Requires {required_name}"
+
+        points_error = self.skill_points_error(skill, user, self.get_skill_cost(skill))
+        if points_error:
+            return False, points_error
 
         return True, None
 
@@ -310,14 +547,9 @@ class Character(db.Model):
             raise ValueError(error)
 
         cost = self.get_skill_cost(skill)
-
-        # Calculate total CP spent on all current skills
-        total_skills_cost = self.get_total_skill_cost()
-
-        # Calculate how much CP we need from the user
-        user_spent_before = max(0, total_skills_cost - self.base_character_points)
-        user_spent_after = max(0, total_skills_cost + cost - self.base_character_points)
-        cp_from_user = user_spent_after - user_spent_before
+        cp_from_user = (
+            self.earned_points_spent(cost, skill.earned_points_only) - self.earned_points_spent()
+        )
 
         # Spend CP if character is active
         if self.status == CharacterStatus.ACTIVE.value and cp_from_user > 0:
@@ -342,6 +574,11 @@ class Character(db.Model):
                 purchased_by_user_id=user.id,
             )
             db.session.add(character_skill)
+
+        db.session.flush()
+        from utils.skill_pairs import note_skill_purchase
+
+        note_skill_purchase(self, skill, user)
 
         # Handle reputation from skill if character is active
         if (
@@ -413,12 +650,17 @@ class Character(db.Model):
         if not character_skill:
             raise ValueError("Character does not have this skill")
 
-        # Calculate how much CP was spent from the user's pool before the refund
-        total_skills_cost_before = self.get_total_skill_cost()
-        user_spent_before = max(0, total_skills_cost_before - self.base_character_points)
+        refund_error = self.skill_refund_error(skill)
+        if refund_error:
+            raise ValueError(refund_error)
 
-        # Calculate refund amount for this specific skill purchase
+        from utils.skill_pairs import note_skill_refund
+
+        note_skill_refund(self, skill)
+
         refund_amount = self.get_skill_cost(skill, is_refund=True)
+        user_spent_before = self.earned_points_spent()
+        user_spent_after = self.earned_points_spent(-refund_amount, skill.earned_points_only)
 
         # Handle reputation removal if character is active
         if (
@@ -430,16 +672,15 @@ class Character(db.Model):
             new_reputation = current_reputation - skill.adds_reputation_value
             self.set_reputation(skill.adds_reputation_faction_id, new_reputation, user.id)
 
+        if character_skill.paid_purchases() == 0:
+            character_skill.free_ranks = max(0, (character_skill.free_ranks or 0) - 1)
+
         if character_skill.times_purchased <= 1:
             # Remove the skill entirely
             db.session.delete(character_skill)
         else:
             # Decrease the times purchased
             character_skill.times_purchased -= 1
-
-        # Calculate how much CP would be spent from the user's pool after the refund
-        total_skills_cost_after = total_skills_cost_before - refund_amount
-        user_spent_after = max(0, total_skills_cost_after - self.base_character_points)
 
         # The actual refund is the difference
         refund_to_user = user_spent_before - user_spent_after
@@ -581,22 +822,84 @@ class Character(db.Model):
         )
         return skill_slots + cybernetic_slots
 
+    def toughness_ranks(self):
+        """Purchased ranks of Toughness, including a free rank."""
+        for row in self.skills:
+            if row.skill is not None and row.skill.name == "Toughness":
+                return row.times_purchased or 0
+        return 0
+
+    def toughness_hit_bonus(self):
+        """Global hits added by Toughness. Locational species keep those hits per location."""
+        if self.species is None or not _species_uses_global_hits(self.species):
+            return 0
+        per_rank = self.species.extra_hits_per_toughness
+        if per_rank is None:
+            per_rank = 1
+        return self.toughness_ranks() * per_rank
+
+    def printed_abilities(self):
+        """Species abilities, then abilities written for this character alone."""
+        shared = list(self.species.abilities) if self.species is not None else []
+        return shared + list(self.abilities)
+
+    def condition_progress_rate(self, condition):
+        """Events consumed for one event of this condition.
+
+        Condition-timing abilities and owned skills multiply when they share a tag
+        with the condition. 2 finishes a stage in half the stated time. 0.5 makes
+        it last twice as long. A condition with no tags always consumes 1.
+        A skill's rate is its first rank. Each further rank adds the same extra
+        time again, so 0.5 gives 2x, 3x, then 4x the stated time.
+        """
+        tag_ids = {tag.id for tag in condition.tags}
+        if not tag_ids:
+            return 1.0
+        rate = 1.0
+        abilities = []
+        if self.species is not None:
+            abilities.extend(self.species.abilities)
+        abilities.extend(self.abilities)
+        for ability in abilities:
+            if _ability_type_value(ability) != AbilityType.CONDITION_TIMING.value:
+                continue
+            factor = ability.condition_progress_rate
+            if not factor or not tag_ids.intersection(tag.id for tag in ability.tags):
+                continue
+            rate *= float(factor)
+        for link in self.skills:
+            skill = link.skill
+            if skill is None or not link.times_purchased:
+                continue
+            factor = skill.condition_progress_rate
+            if not factor or not tag_ids.intersection(tag.id for tag in skill.condition_tags):
+                continue
+            rate *= _ranked_condition_rate(float(factor), link.times_purchased)
+        return rate
+
     def get_character_sheet_values(self):
-        """Get the character sheet values for the character."""
+        """Sum sheet values from skill ranks, printed abilities, and condition stages."""
         values = {}
+
+        def add(value, times):
+            value_id = value["id"]
+            amount = value["value"] * times
+            if value_id in values:
+                values[value_id]["value"] += amount
+            else:
+                values[value_id] = {"name": value["description"], "value": amount}
+
         for skill in self.skills:
-            if skill.skill.character_sheet_values_list:
-                for value in skill.skill.character_sheet_values_list:
-                    value_id = value["id"]
-                    if value_id in values:
-                        # Add to existing value
-                        values[value_id]["value"] += value["value"]
-                    else:
-                        # Create new entry
-                        values[value_id] = {
-                            "name": value["description"],
-                            "value": value["value"],
-                        }
+            for value in skill.skill.character_sheet_values_list:
+                add(value, skill.times_purchased or 1)
+        for ability in self.printed_abilities():
+            for value in ability.character_sheet_values_list:
+                add(value, 1)
+        for active in self.active_conditions:
+            if not active.current_stage:
+                continue
+            for value in active.condition.stage_sheet_values_list:
+                add(value, active.current_stage)
         return values
 
     def get_factions_with_reputation(self):
@@ -771,7 +1074,7 @@ class CharacterCondition(db.Model):
     character_id = db.Column(db.Integer, db.ForeignKey("character.id"), nullable=False)
     condition_id = db.Column(db.Integer, db.ForeignKey("conditions.id"), nullable=False)
     current_stage = db.Column(db.Integer, nullable=True, default=1)
-    current_duration = db.Column(db.Integer, nullable=False, default=0)
+    current_duration = db.Column(db.Float, nullable=False, default=0)
 
     # Relationships
     character = db.relationship("Character", back_populates="active_conditions")
@@ -791,6 +1094,10 @@ class CharacterCondition(db.Model):
     def events_remaining(self):
         """Return the number of events remaining for this condition."""
         return self.current_duration
+
+    @property
+    def duration_label(self):
+        return format_event_count(self.current_duration)
 
     def progress_condition(self) -> dict:
         """
@@ -815,11 +1122,14 @@ class CharacterCondition(db.Model):
                 "completed": False,
             }
 
-        # Deduct one event from the current duration
-        self.current_duration -= 1
+        # Consume this character's rate for the condition. 1 is the usual event.
+        rate = 1.0
+        if self.character is not None:
+            rate = self.character.condition_progress_rate(self.condition)
+        self.current_duration = float(self.current_duration) - rate
 
         # Check if we've reached 0 events remaining
-        if self.current_duration <= 0:
+        if self.current_duration <= 1e-9:
             # Find the next stage
             next_stage = None
             for stage in self.condition.stages:
@@ -850,11 +1160,12 @@ class CharacterCondition(db.Model):
                 }
         else:
             # Still in the same stage
+            remaining = format_event_count(self.current_duration)
             return {
                 "progressed": True,
                 "message": (
                     f"Condition {self.condition.name} stage {self.current_stage} "
-                    f"has {self.current_duration} events remaining"
+                    f"has {remaining} events remaining"
                 ),
                 "completed": False,
             }

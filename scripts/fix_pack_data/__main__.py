@@ -14,7 +14,7 @@ from models.tools.group import Group
 from models.tools.pack import Pack
 
 # Add the project root to the Python path
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
 
 def fix_pack_data():
