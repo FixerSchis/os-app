@@ -1503,7 +1503,7 @@ def _rows_for_names(model, names, label):
     rows = model.query.filter(model.name.in_(names)).all()
     missing = sorted(set(names) - {row.name for row in rows})
     if missing:
-        raise ValueError(f"Mod seed references unknown {label}: {missing}")
+        raise ValueError(f"Seed references unknown {label}: {missing}")
     return rows
 
 
@@ -1533,85 +1533,65 @@ def create_default_mods():
     db.session.commit()
 
 
+def _load_blueprint_definitions():
+    path = os.path.join(os.path.dirname(__file__), "default_item_blueprints.py")
+    spec = importlib.util.spec_from_file_location("default_item_blueprints", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.BLUEPRINT_DEFINITIONS
+
+
+def _blueprint_mods(name, item_type, mod_names):
+    mods = {mod.name: mod for mod in _rows_for_names(Mod, mod_names, "mods")}
+    for mod_name in mod_names:
+        allowed = mods[mod_name].item_types
+        if allowed and item_type not in allowed:
+            raise ValueError(f"Mod {mod_name} cannot be applied to {name} ({item_type.name})")
+    return [mods[mod_name] for mod_name in mod_names]
+
+
 def create_default_item_blueprints():
-    if not ItemBlueprint.query.first():
-        # Helper to get item type by name
-        def get_type(name):
-            return ItemType.query.filter_by(name=name).first()
-
-        # Helper to get mod by name
-        def get_mod(name):
-            return Mod.query.filter_by(name=name).first()
-
-        blueprints = [
-            ("AA Blaster", "Light Energy Weapon", 100, ["Charge Cells"]),
-            (
-                "AA Rifle",
-                "Medium Energy Weapon",
-                150,
-                ["Charge Cells", "Hardened Components"],
-            ),
-            ("AA Cannon", "Heavy Energy Weapon", 200, ["Heavy Shock Bolt"]),
-            ("Light Combat Armor", "Light Armour", 80, []),
-            ("Medium Combat Armor", "Medium Armour", 120, ["Hardened Components"]),
-            ("Heavy Combat Armor", "Heavy Armour", 180, ["Hardened Components"]),
-            ("Combat Knife", "Small Melee Weapon", 50, []),
-            ("Vibro Sword", "Medium Melee Weapon", 80, []),
-            ("Plasma Axe", "Large Melee Weapon", 120, []),
-            ("Personal Shield", "Energy Field", 200, ["Charge Cells"]),
-            ("Tactical Scanner", "Scanner", 150, []),
-            ("Medical Device", "Medical Device", 100, []),
-            ("Ancient Relic", "Artefact", 500, []),
-        ]
-
-        # Track blueprint_id per item type prefix
-        prefix_counters = {}
-
-        for name, type_name, cost, mod_names in blueprints:
-            logging.info(f"Adding blueprint: {name}")
-            item_type = get_type(type_name)
-            if item_type:
-                prefix = item_type.id_prefix
-                if prefix not in prefix_counters:
-                    prefix_counters[prefix] = 1
-                blueprint_id = prefix_counters[prefix]
-                prefix_counters[prefix] += 1
-
-                blueprint = ItemBlueprint(
-                    name=name, item_type_id=item_type.id, base_cost=cost, blueprint_id=blueprint_id
-                )
-                db.session.add(blueprint)
-                db.session.flush()
-
-                # Add mods to blueprint
-                for mod_name in mod_names:
-                    mod = get_mod(mod_name)
-                    if mod:
-                        blueprint.mods_applied.append(mod)
-
-        db.session.commit()
+    """Create the Downtime Equipment List blueprints if none exist."""
+    if ItemBlueprint.query.first():
+        return
+    item_types = {item_type.name: item_type for item_type in ItemType.query.all()}
+    prefix_counters = {}
+    for spec in _load_blueprint_definitions():
+        name = spec["name"]
+        item_type = item_types.get(spec["item_type"])
+        if item_type is None:
+            raise ValueError(f"Blueprint seed references unknown item type: {spec['item_type']}")
+        prefix = item_type.id_prefix
+        prefix_counters[prefix] = prefix_counters.get(prefix, 0) + 1
+        logging.info(f"Adding blueprint: {name}")
+        blueprint = ItemBlueprint(
+            name=name,
+            item_type_id=item_type.id,
+            blueprint_id=prefix_counters[prefix],
+            base_cost=spec["base_cost"],
+            ability=spec["ability"],
+            purchaseable=True,
+        )
+        db.session.add(blueprint)
+        blueprint.mods_applied = _blueprint_mods(name, item_type, spec["mods"])
+        db.session.flush()
+    db.session.commit()
 
 
 def create_default_items():
     if not Item.query.first():
-        # Helper to get blueprint by name
-        def get_blueprint(name):
-            return ItemBlueprint.query.filter_by(name=name).first()
-
-        items = [
-            ("AA Blaster", 1, 100),
-            ("AA Rifle", 2, 150),
-            ("Light Combat Armor", 1, 80),
-            ("Combat Knife", 1, 50),
-        ]
-
-        for name, item_id, cost in items:
+        items = (
+            "AA Blaster Pistol",
+            "AA Blaster Rifle",
+            "AA PowerSkin",
+            "AA Power Blade",
+        )
+        for name in items:
+            blueprint = ItemBlueprint.query.filter_by(name=name).first()
+            if blueprint is None:
+                continue
             logging.info(f"Adding item: {name}")
-            blueprint = get_blueprint(name)
-            if blueprint:
-                item = Item(item_id=item_id, blueprint_id=blueprint.id)
-                db.session.add(item)
-
+            db.session.add(Item(item_id=1, blueprint_id=blueprint.id))
         db.session.commit()
 
 
