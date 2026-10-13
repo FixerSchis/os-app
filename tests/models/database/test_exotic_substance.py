@@ -20,3 +20,23 @@ def test_new_exotic_substance(db):
     assert retrieved_substance.wiki_slug == wiki_slug
     assert retrieved_substance.type == ScienceType.LIFE
     assert retrieved_substance.id is not None
+    assert retrieved_substance.effect is None
+
+
+def test_exotic_substance_rules(db):
+    substance = ExoticSubstance(
+        name="Rules Substance",
+        wiki_slug="exotic/rules-substance",
+        type=ScienceType.ETHERIC,
+        used_on="Energy Fields",
+        effect="Protects from Minor Heat Environments",
+        duration="1 hour/all Hits lost",
+    )
+    db.session.add(substance)
+    db.session.commit()
+
+    db.session.expire_all()
+    retrieved = ExoticSubstance.query.filter_by(name="Rules Substance").first()
+    assert retrieved.used_on == "Energy Fields"
+    assert retrieved.effect == "Protects from Minor Heat Environments"
+    assert retrieved.duration == "1 hour/all Hits lost"

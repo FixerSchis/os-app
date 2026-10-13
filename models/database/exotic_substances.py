@@ -16,6 +16,9 @@ class ExoticSubstance(db.Model):
         nullable=False,
     )
     wiki_slug = db.Column(db.String(100), nullable=False)
+    used_on = db.Column(db.String(50), nullable=True)
+    effect = db.Column(db.String(200), nullable=True)
+    duration = db.Column(db.String(50), nullable=True)
 
     def __repr__(self):
         return f"<ExoticSubstance {self.name}>"

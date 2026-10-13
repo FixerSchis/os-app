@@ -1,1 +1,8 @@
-{{ substance.name }}
+<div class="exotic-label">
+    <div class="exotic-name">{{ substance.name }}</div>
+    {% if substance.effect %}<div class="exotic-effect">{% if substance.used_on %}<strong>{{ substance.used_on }}:</strong> {% endif %}{{ substance.effect }}</div>{% endif %}
+    <div class="exotic-footer">
+        <span class="exotic-duration">{{ substance.duration or '' }}</span>
+        <span class="exotic-applied">Applied:</span>
+    </div>
+</div>

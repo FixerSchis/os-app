@@ -17,6 +17,9 @@
                 <tr>
                     <th>Name</th>
                     <th>Type</th>
+                    <th>Used On</th>
+                    <th>Effect</th>
+                    <th>Duration</th>
                     {% if can_edit or current_user.is_authenticated and has_permission('user.roles') %}
                     <th>Actions</th>
                     {% endif %}
@@ -31,6 +34,9 @@
                         </a>
                     </td>
                     <td>{{ type_friendly_names[substance.type.value] if type_friendly_names and substance.type.value in type_friendly_names else substance.type.value }}</td>
+                    <td>{{ substance.used_on or '' }}</td>
+                    <td>{{ substance.effect or '' }}</td>
+                    <td>{{ substance.duration or '' }}</td>
                     {% if can_edit or current_user.is_authenticated and has_permission('user.roles') %}
                     <td>
                         <div class="btn-group">
@@ -48,7 +54,7 @@
                 </tr>
                 {% else %}
                 <tr>
-                    <td colspan="{% if can_edit or current_user.is_authenticated and has_permission('user.roles') %}3{% else %}2{% endif %}" class="text-center text-muted">No exotic substances found.</td>
+                    <td colspan="{% if can_edit or current_user.is_authenticated and has_permission('user.roles') %}6{% else %}5{% endif %}" class="text-center text-muted">No exotic substances found.</td>
                 </tr>
                 {% endfor %}
             </tbody>

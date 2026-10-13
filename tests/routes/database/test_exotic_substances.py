@@ -90,6 +90,39 @@ def test_exotic_substances_edit_post_authorized(test_client, rules_team_user, ex
     assert updated.type == ScienceType.LIFE
 
 
+def test_exotic_substances_edit_post_saves_rules(
+    test_client, rules_team_user, exotic_substance, db
+):
+    with test_client.session_transaction() as session:
+        session["_user_id"] = rules_team_user.id
+        session["_fresh"] = True
+    post_data = MultiDict(
+        [
+            ("name", exotic_substance.name),
+            ("type", ScienceType.CORPOREAL.value),
+            ("wiki_slug", exotic_substance.wiki_slug),
+            ("used_on", " Armour "),
+            ("effect", "Adds 1 hit to Armour"),
+            ("duration", ""),
+        ]
+    )
+    response = test_client.post(
+        f"/db/exotic-substances/{exotic_substance.id}/edit",
+        data=post_data,
+        follow_redirects=True,
+        content_type="application/x-www-form-urlencoded",
+    )
+    assert response.status_code == 200
+    db.session.expire_all()
+    updated = db.session.get(ExoticSubstance, exotic_substance.id)
+    assert updated.used_on == "Armour"
+    assert updated.effect == "Adds 1 hit to Armour"
+    assert updated.duration is None
+
+    response = test_client.get("/db/exotic-substances/")
+    assert b"Adds 1 hit to Armour" in response.data
+
+
 def test_exotic_substances_create_missing_fields(test_client, rules_team_user, db):
     with test_client.session_transaction() as session:
         session["_user_id"] = rules_team_user.id
