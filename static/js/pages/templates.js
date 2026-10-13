@@ -83,28 +83,53 @@ function getTemplateTypeConfig(templateType) {
     return configs[templateType] || configs[TEMPLATE_TYPES.CHARACTER_SHEET];
 }
 
+// Copy the editor into monacoContents. The Data tab has no editor content.
+function saveEditorContent() {
+    if (currentMonacoTab === 'data') {
+        return;
+    }
+    if (monacoEditor) {
+        monacoContents[currentMonacoTab] = monacoEditor.getValue();
+    } else {
+        const fallbackEditor = document.getElementById('fallback-editor');
+        if (fallbackEditor) {
+            monacoContents[currentMonacoTab] = fallbackEditor.value;
+        }
+    }
+}
+
+function showPreviewDataPanel(show) {
+    const editorContainer = document.getElementById('monaco-editor-container');
+    const dataPanel = document.getElementById('preview-data-panel');
+    if (editorContainer) {
+        editorContainer.classList.toggle('d-none', show);
+    }
+    if (dataPanel) {
+        dataPanel.classList.toggle('d-none', !show);
+    }
+}
+
+function currentPreviewData() {
+    return typeof getTemplatePreviewData === 'function' ? getTemplatePreviewData() : null;
+}
+
 // Attach tab event listeners immediately so UI works even if Monaco is not ready
 document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('#monacoTabs button[data-tab]').forEach(btn => {
         btn.addEventListener('click', function() {
             const tab = this.getAttribute('data-tab');
 
-            // Save current content if Monaco is ready
-            if (monacoEditor) {
-                monacoContents[currentMonacoTab] = monacoEditor.getValue();
-            } else {
-                // Save content from fallback editor if available
-                const fallbackEditor = document.getElementById('fallback-editor');
-                if (fallbackEditor) {
-                    monacoContents[currentMonacoTab] = fallbackEditor.value;
-                }
-            }
+            saveEditorContent();
 
             // Update active tab
             document.querySelectorAll('#monacoTabs .nav-link').forEach(b => b.classList.remove('active'));
             this.classList.add('active');
 
             currentMonacoTab = tab;
+            showPreviewDataPanel(tab === 'data');
+            if (tab === 'data') {
+                return;
+            }
 
             // If Monaco is ready, update editor content/language
             if (monacoEditor) {
@@ -253,16 +278,7 @@ function getEditorContent(editorId) {
 }
 
 function updateHiddenFields() {
-    // Ensure we have the latest content from the Monaco editor
-    if (monacoEditor) {
-        monacoContents[currentMonacoTab] = monacoEditor.getValue();
-    } else {
-        // Get content from fallback editor if available
-        const fallbackEditor = document.getElementById('fallback-editor');
-        if (fallbackEditor) {
-            monacoContents[currentMonacoTab] = fallbackEditor.value;
-        }
-    }
+    saveEditorContent();
 
     // Update hidden form fields
     document.getElementById('front_html').value = monacoContents.front;
@@ -319,7 +335,8 @@ function updatePreview() {
         body: JSON.stringify({
             front_html: frontHtml,
             back_html: backHtml,
-            css_styles: cssStyles
+            css_styles: cssStyles,
+            preview_data: currentPreviewData()
         })
     })
     .then(response => response.json())
@@ -793,15 +810,14 @@ function printTemplatePreview() {
         return;
     }
 
-    // Get current content from Monaco editor
-    const currentContent = monacoEditor.getValue();
-    monacoContents[currentMonacoTab] = currentContent;
+    saveEditorContent();
 
     // Prepare request data
     const data = {
         front_html: monacoContents.front,
         back_html: monacoContents.back,
-        css_styles: monacoContents.css
+        css_styles: monacoContents.css,
+        preview_data: currentPreviewData()
     };
 
     // Call the print preview endpoint

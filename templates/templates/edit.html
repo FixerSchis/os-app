@@ -95,10 +95,20 @@
                                             CSS Styles
                                         </button>
                                     </li>
+                                    {% if template and preview_sample is not none %}
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link" id="monaco-data-tab" data-tab="data" type="button" role="tab">
+                                            Data
+                                        </button>
+                                    </li>
+                                    {% endif %}
                                 </ul>
                             </div>
                             <div class="card-body">
                                 <div id="monaco-editor-container" style="height: 400px; border: 1px solid #ced4da; border-radius: 0.375rem;"></div>
+                                {% if template and preview_sample is not none %}
+                                {% include "templates/_preview_data.html" %}
+                                {% endif %}
                                 <!-- Hidden textareas for form submission -->
                                 <textarea id="front_html" name="front_html" style="display:none;">{{ template.front_html if template else '' }}</textarea>
                                 {% if template and template.has_back_side %}
@@ -133,4 +143,5 @@
 {% block scripts %}
 <script src="{{ url_for('static', filename='external/js/monaco-loader.js') }}"></script>
 <script src="{{ url_for('static', filename='js/pages/templates.js') }}"></script>
+<script src="{{ url_for('static', filename='js/pages/template-preview-data.js') }}"></script>
 {% endblock %}

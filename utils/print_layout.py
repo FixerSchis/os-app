@@ -2,7 +2,9 @@ import math
 from io import BytesIO
 from typing import Dict, List
 
+from flask import url_for
 from weasyprint import HTML
+from werkzeug.routing import BuildError
 
 from models.enums import PrintTemplateType
 from models.tools.print_template import PrintTemplate
@@ -12,6 +14,15 @@ from utils import generate_qr_code, generate_web_qr_code
 A4_WIDTH_MM = 210
 A4_HEIGHT_MM = 297
 CUT_GUIDE_WIDTH_MM = 0.2  # Width of cut guide lines
+
+
+def item_card_links(item):
+    """The item's view URL and a QR code for it, as item card templates expect."""
+    try:
+        view_url = url_for("items.view", id=item.id, version=item.version, _external=True)
+    except (RuntimeError, BuildError):
+        view_url = f"/db/items/{item.id}/{item.version}/view"
+    return {"item_view_url": view_url, "item_qr_code": generate_qr_code(view_url, size=3)}
 
 
 class PrintLayout:
@@ -417,6 +428,7 @@ class PrintLayout:
         for item in items:
             template_context = {
                 "item": item,
+                **item_card_links(item),
                 "generate_qr_code": generate_qr_code,
                 "generate_web_qr_code": generate_web_qr_code,
             }

@@ -1588,6 +1588,20 @@ def link_default_medicament_card():
     db.session.commit()
 
 
+_BROKEN_CONDITION_CARD_BACK = "{{ character.name }} Back"
+
+
+def link_default_condition_card():
+    """Replace the condition card back that named a character, which conditions don't have."""
+    template = PrintTemplate.query.filter_by(type=PrintTemplateType.CONDITION_CARD).first()
+    if template is None or (template.back_html or "").strip() != _BROKEN_CONDITION_CARD_BACK:
+        return
+    path = os.path.join("data", "templates", PrintTemplateType.CONDITION_CARD.value, "back.html")
+    with open(path, "r", encoding="utf-8") as handle:
+        template.back_html = handle.read()
+    db.session.commit()
+
+
 def create_default_item_types():
     if not ItemType.query.first():
         default_types = [
@@ -2222,6 +2236,7 @@ def create_default_data():
     create_default_templates()
     link_default_character_sheet_abilities()
     link_default_medicament_card()
+    link_default_condition_card()
     link_default_exotic_label()
 
 

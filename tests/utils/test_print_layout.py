@@ -248,3 +248,15 @@ def test_generate_print_html_no_items(print_layout):
     """Test HTML generation with no items."""
     with pytest.raises(ValueError, match="No items provided for layout calculation"):
         print_layout._generate_print_html([], PrintTemplateType.ITEM_CARD)
+
+
+def test_item_cards_get_view_url_and_qr_code(print_layout, mock_template):
+    """Item card templates print a QR code linking to the item."""
+    mock_template.has_back_side = False
+    mock_template.get_front_page_render.return_value = "front"
+    item = MagicMock(id=5, version=2)
+    with patch.object(print_layout, "generate_pdf"):
+        print_layout.generate_item_cards_pdf([item], mock_template)
+    context = mock_template.get_front_page_render.call_args[0][0]
+    assert context["item_view_url"].endswith("/5/2/view")
+    assert context["item_qr_code"].startswith("data:image/png;base64,")
