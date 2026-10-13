@@ -21,6 +21,9 @@ $(document).ready(function() {
             $(this).find('.ability-starting-skills select').attr('name', 'ability_starting_skills_' + i + '[]');
             $(this).find('.ability-starting-choices input[name^="ability_choice_type"]').attr('name', 'ability_choice_type_' + i + '[]');
             $(this).find('.ability-starting-choices input[name^="ability_choice_count"]').attr('name', 'ability_choice_count_' + i + '[]');
+            $(this).find('.ability-skill-pairs select[name^="ability_pair_trigger"]').attr('name', 'ability_pair_trigger_' + i + '[]');
+            $(this).find('.ability-skill-pairs select[name^="ability_pair_granted"]').attr('name', 'ability_pair_granted_' + i + '[]');
+            $(this).find('[name^="ability_additional_group_income"]').attr('name', 'ability_additional_group_income_' + i);
             $(this).find('.ability-skill-discounts select.select2-multiple').attr('name', 'ability_discount_skills_' + i + '[]');
             $(this).find('.ability-skill-discounts input[type=number]').attr('name', 'ability_discount_value_' + i);
             $(this).find('.ability-starting-item select').attr('name', 'ability_starting_item_blueprint_' + i);
@@ -94,6 +97,10 @@ $(document).ready(function() {
             block.find('.ability-starting-skills').show();
         } else if ($(this).val() === 'starting_skill_choices') {
             block.find('.ability-starting-choices').show();
+        } else if ($(this).val() === 'first_skill_pair') {
+            block.find('.ability-skill-pairs').show();
+        } else if ($(this).val() === 'group_income') {
+            block.find('.ability-group-income').show();
         } else if ($(this).val() === 'skill_discounts') {
             block.find('.ability-skill-discounts').show();
             // Only add required if visible
@@ -113,10 +120,43 @@ $(document).ready(function() {
     // After attaching the change handler, trigger change on all ability-type-selects to set required attributes correctly
     $('.ability-type-select').trigger('change');
 
+    function skillPairRow() {
+        var options = window.SKILL_OPTIONS_HTML || '';
+        return $(`
+            <div class="row mb-2 skill-pair-row">
+                <div class="col-md-5">
+                    <select class="form-control" name="ability_pair_trigger_0[]" title="Skill they buy">
+                        <option value="">Skill they buy</option>
+                        ${options}
+                    </select>
+                </div>
+                <div class="col-md-5">
+                    <select class="form-control" name="ability_pair_granted_0[]" title="Skill they receive">
+                        <option value="">Skill they receive</option>
+                        ${options}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button type="button" class="btn btn-danger btn-sm remove-skill-pair" aria-label="Remove pair">Remove</button>
+                </div>
+            </div>
+        `);
+    }
+
+    $(document).on('click', '.add-skill-pair', function() {
+        $(this).closest('.ability-skill-pairs').find('.skill-pair-rows').append(skillPairRow());
+        reindexAbilities();
+    });
+
+    $(document).on('click', '.remove-skill-pair', function() {
+        $(this).closest('.skill-pair-row').remove();
+        reindexAbilities();
+    });
+
     // Add/remove ability blocks
     $('#add-ability').click(function() {
         var idx = $('#abilities-list .ability-block').length;
-        var skillsOptions = $('#abilities-list .ability-block:first .ability-starting-skills select').html() || '';
+        var skillsOptions = window.SKILL_OPTIONS_HTML || '';
         var block = $(
         `<div class="ability-block card mb-3 p-3">
             <div class="form-row mb-2">
@@ -155,6 +195,15 @@ $(document).ready(function() {
                         <input type="number" class="form-control" name="ability_choice_count_${idx}[]" placeholder="How many" min="1">
                     </div>
                 </div>
+            </div>
+            <div class="form-group mb-2 ability-extra ability-group-income" style="display:none;">
+                <label>Additional Group Income (EC)</label>
+                <input type="number" class="form-control" name="ability_additional_group_income_${idx}" value="0" min="0" placeholder="0">
+            </div>
+            <div class="form-group mb-2 ability-extra ability-skill-pairs" style="display:none;">
+                <label>First skill from this group grants its pair</label>
+                <div class="skill-pair-rows"></div>
+                <button type="button" class="btn btn-secondary btn-sm add-skill-pair">Add pair</button>
             </div>
             <div class="form-group mb-2 ability-extra ability-skill-discounts" style="display:none;">
                 <label>Skill Discounts</label>

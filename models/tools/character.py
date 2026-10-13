@@ -1,3 +1,4 @@
+import json
 from datetime import datetime, timezone
 
 from sqlalchemy import false, func, or_
@@ -92,6 +93,7 @@ class Character(db.Model):
     background = db.Column(db.Text, nullable=True)
     goals = db.Column(db.Text, nullable=True)
     concept = db.Column(db.Text, nullable=True)
+    skill_pair_grants = db.Column(db.String, nullable=True)
 
     # Relationships
     user = db.relationship("User", back_populates="characters")
@@ -272,6 +274,16 @@ class Character(db.Model):
 
         return total_available
 
+    @property
+    def skill_pair_grants_list(self):
+        if not self.skill_pair_grants:
+            return []
+        return json.loads(self.skill_pair_grants)
+
+    @skill_pair_grants_list.setter
+    def skill_pair_grants_list(self, grants):
+        self.skill_pair_grants = json.dumps(grants) if grants else None
+
     def can_purchase_skill(self, skill, user):
         """Check if the character can purchase a skill."""
         # Check if user has permission
@@ -360,6 +372,11 @@ class Character(db.Model):
             )
             db.session.add(character_skill)
 
+        db.session.flush()
+        from utils.skill_pairs import note_skill_purchase
+
+        note_skill_purchase(self, skill, user)
+
         # Handle reputation from skill if character is active
         if (
             self.status == CharacterStatus.ACTIVE.value
@@ -429,6 +446,10 @@ class Character(db.Model):
 
         if not character_skill:
             raise ValueError("Character does not have this skill")
+
+        from utils.skill_pairs import note_skill_refund
+
+        note_skill_refund(self, skill)
 
         # Calculate how much CP was spent from the user's pool before the refund
         total_skills_cost_before = self.get_total_skill_cost()

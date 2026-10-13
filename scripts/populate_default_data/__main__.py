@@ -40,7 +40,7 @@ from models.enums import (
     WikiPageVersionStatus,
 )
 from models.event import Event
-from models.tools.character import CharacterSkill
+from models.tools.character import Character, CharacterSkill
 from models.tools.print_template import PrintTemplate
 from models.wiki import WikiPage, WikiPageVersion, WikiSection, WikiTag
 
@@ -719,16 +719,12 @@ def link_default_starting_skills():
             "One rank of Engineer and one rank of Extra Mods at character creation.",
             ("Engineer", "Extra Mods"),
         ),
-        (
-            "Etherna",
-            "Scientist training",
-            "One rank of Etheric Science at character creation. Further ranks require Scientist.",
-            ("Etheric Science",),
-        ),
     )
     for species_name, ability_name, description, skill_names in grants:
         _add_fixed_starting_skills(species_name, ability_name, description, skill_names)
     _add_corpori_program_choices()
+    _add_arctonyx_console_pairs()
+    _move_etherna_science_to_pair()
     db.session.commit()
 
 
@@ -768,6 +764,80 @@ def _add_corpori_program_choices():
         {"skill_type": "advanced_program", "count": 1},
     ]
     db.session.add(ability)
+
+
+def _add_arctonyx_console_pairs():
+    """The first Basic console an Arctonyx buys grants that console's Advanced skill."""
+    species = Species.query.filter_by(name="Arctonyx").first()
+    if species is None or _species_has_ability(species, AbilityType.FIRST_SKILL_PAIR):
+        return
+    consoles = ("Helm", "Weapons", "Engineering", "Science", "Relay")
+    pairs = []
+    for console in consoles:
+        basic = Skill.query.filter_by(name=f"{console} Console [Basic]").first()
+        advanced = Skill.query.filter_by(name=f"{console} Console [Advanced]").first()
+        if basic is None or advanced is None:
+            logging.warning(f"Console pair for {console} is missing; skipped Arctonyx")
+            return
+        pairs.append({"trigger_skill_id": basic.id, "granted_skill_id": advanced.id})
+    ability = Ability(
+        species_id=species.id,
+        name="Spaceflight aptitude",
+        description=("The first Basic console skill also grants that console's Advanced skill."),
+        type=AbilityType.FIRST_SKILL_PAIR,
+    )
+    ability.skill_pairs_list = pairs
+    db.session.add(ability)
+
+
+def _move_etherna_science_to_pair():
+    """Buying Scientist grants one Etheric Science rank. Creation no longer grants it."""
+    species = Species.query.filter_by(name="Etherna").first()
+    scientist = Skill.query.filter_by(name="Scientist").first()
+    science = Skill.query.filter_by(name="Etheric Science").first()
+    if species is None or scientist is None or science is None:
+        return
+    for ability in list(species.abilities):
+        current = ability.type.value if hasattr(ability.type, "value") else ability.type
+        if ability.name == "Scientist training" and current == AbilityType.STARTING_SKILLS.value:
+            db.session.delete(ability)
+    db.session.flush()
+    if not _species_has_ability(species, AbilityType.FIRST_SKILL_PAIR):
+        ability = Ability(
+            species_id=species.id,
+            name="Scientist training",
+            description="Buying Scientist grants one rank of Etheric Science.",
+            type=AbilityType.FIRST_SKILL_PAIR,
+        )
+        ability.skill_pairs_list = [
+            {"trigger_skill_id": scientist.id, "granted_skill_id": science.id}
+        ]
+        db.session.add(ability)
+    for character in Character.query.filter_by(species_id=species.id).all():
+        _align_etherna_science_grant(character, scientist.id, science.id)
+
+
+def _align_etherna_science_grant(character, scientist_id, science_id):
+    """Keep a free Etheric Science rank only when the character owns Scientist."""
+    science_row = CharacterSkill.query.filter_by(
+        character_id=character.id, skill_id=science_id
+    ).first()
+    owns_scientist = (
+        CharacterSkill.query.filter_by(character_id=character.id, skill_id=scientist_id).first()
+        is not None
+    )
+    if owns_scientist:
+        if not character.skill_pair_grants_list:
+            character.skill_pair_grants_list = [
+                {"trigger_skill_id": scientist_id, "granted_skill_id": science_id}
+            ]
+        return
+    if science_row is None or not science_row.free_ranks:
+        return
+    science_row.free_ranks = max(0, (science_row.free_ranks or 0) - 1)
+    science_row.times_purchased -= 1
+    if science_row.times_purchased <= 0:
+        db.session.delete(science_row)
 
 
 def _species_has_ability(species, ability_type):

@@ -75,6 +75,8 @@
                 {% set ability_type_value = ability.type.value if ability.type is not string else ability.type %}
                 {% set is_starting_skills = ability.type == AbilityType.STARTING_SKILLS %}
                 {% set is_starting_choices = ability.type == AbilityType.STARTING_SKILL_CHOICES %}
+                {% set is_skill_pairs = ability.type == AbilityType.FIRST_SKILL_PAIR %}
+                {% set is_group_income = ability.type == AbilityType.GROUP_INCOME %}
                 {% set is_skill_discounts = ability.type == AbilityType.SKILL_DISCOUNTS %}
                 {% set is_starting_item = ability.type == AbilityType.STARTING_ITEM %}
                 {% set is_starting_reputation = ability.type == AbilityType.STARTING_REPUTATION %}
@@ -91,11 +93,11 @@
                             </select>
                         </div>
                     </div>
-                                            <div class="form-group mb-2">
-                            <label for="ability_additional_group_income_{{ loop.index0 }}">Additional Group Income (EC)</label>
-                            <input type="number" class="form-control" id="ability_additional_group_income_{{ loop.index0 }}" name="ability_additional_group_income_{{ loop.index0 }}"
-                                   value="{{ ability.additional_group_income if ability.additional_group_income else 0 }}" min="0" placeholder="0">
-                        </div>
+                    <div class="form-group mb-2 ability-extra ability-group-income" {% if not is_group_income %}style="display:none;"{% endif %}>
+                        <label for="ability_additional_group_income_{{ loop.index0 }}">Additional Group Income (EC)</label>
+                        <input type="number" class="form-control" id="ability_additional_group_income_{{ loop.index0 }}" name="ability_additional_group_income_{{ loop.index0 }}"
+                               value="{{ ability.additional_group_income if ability.additional_group_income else 0 }}" min="0" placeholder="0">
+                    </div>
                     <div class="form-group mb-2 ability-extra ability-starting-skills" {% if not is_starting_skills %}style="display:none;"{% endif %}>
                                                 <label for="ability_starting_skills_{{ loop.index0 }}">Starting Skills</label>
                         <select class="form-control select2-multiple" id="ability_starting_skills_{{ loop.index0 }}" name="ability_starting_skills_{{ loop.index0 }}[]" multiple title="Select starting skills for ability">
@@ -121,6 +123,39 @@
                             </div>
                         </div>
                         {% endfor %}
+                    </div>
+                    <div class="form-group mb-2 ability-extra ability-skill-pairs" {% if not is_skill_pairs %}style="display:none;"{% endif %}>
+                        <label>First skill from this group grants its pair</label>
+                        {% set ability_index = loop.index0 %}
+                        {% set saved_pairs = ability.skill_pairs_list if is_skill_pairs else [] %}
+                        <div class="skill-pair-rows">
+                        {% for saved in saved_pairs %}
+                        <div class="row mb-2 skill-pair-row">
+                            <div class="col-md-5">
+                                <label class="sr-only" for="ability_pair_trigger_{{ ability_index }}_{{ loop.index0 }}">Skill they buy</label>
+                                <select class="form-control" id="ability_pair_trigger_{{ ability_index }}_{{ loop.index0 }}" name="ability_pair_trigger_{{ ability_index }}[]" title="Skill they buy">
+                                    <option value="">Skill they buy</option>
+                                    {% for skill in skills_list %}
+                                    <option value="{{ skill.id }}" {% if (saved.trigger_skill_id|string) == (skill.id|string) %}selected{% endif %}>{{ skill.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-5">
+                                <label class="sr-only" for="ability_pair_granted_{{ ability_index }}_{{ loop.index0 }}">Skill they receive</label>
+                                <select class="form-control" id="ability_pair_granted_{{ ability_index }}_{{ loop.index0 }}" name="ability_pair_granted_{{ ability_index }}[]" title="Skill they receive">
+                                    <option value="">Skill they receive</option>
+                                    {% for skill in skills_list %}
+                                    <option value="{{ skill.id }}" {% if (saved.granted_skill_id|string) == (skill.id|string) %}selected{% endif %}>{{ skill.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <button type="button" class="btn btn-danger btn-sm remove-skill-pair" aria-label="Remove pair">Remove</button>
+                            </div>
+                        </div>
+                        {% endfor %}
+                        </div>
+                        <button type="button" class="btn btn-secondary btn-sm add-skill-pair">Add pair</button>
                     </div>
                     <div class="form-group mb-2 ability-extra ability-skill-discounts" {% if not is_skill_discounts %}style="display:none;"{% endif %}>
                         <label>Skill Discounts</label>
@@ -188,6 +223,7 @@
 
 <!-- Ability type options template, rendered ONCE -->
 <template id="ability-type-options-template">{% for t in AbilityType %}<option value="{{ t.value }}">{{ AbilityType.descriptions()[t.value] }}</option>{% endfor %}</template>
+<template id="skill-options-template">{% for skill in skills_list %}<option value="{{ skill.id }}">{{ skill.name }}</option>{% endfor %}</template>
 
 {% endblock %}
 
@@ -197,6 +233,7 @@
 <script src="{{ url_for('static', filename='js/pages/species-edit.js') }}"></script>
 <script>
 window.ABILITY_TYPE_OPTIONS_HTML = document.getElementById('ability-type-options-template').innerHTML;
+window.SKILL_OPTIONS_HTML = document.getElementById('skill-options-template').innerHTML;
 window.ITEM_BLUEPRINTS = JSON.parse('{{ item_blueprints | tojson | safe }}');
 window.FACTIONS = JSON.parse(document.getElementById('factions-data').dataset.factions);
 </script>

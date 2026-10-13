@@ -770,3 +770,146 @@ def test_free_rank_cannot_be_raised_until_its_prerequisite_is_owned(
     assert owned.free_ranks == 1
     assert character.get_total_skill_cost() == 3
     assert character.get_skill_cost(science) == 2
+
+
+def test_first_skill_in_a_group_grants_its_pair(db, new_user, character, species, faction):
+    """The first skill bought from a group grants its pair, and only that one."""
+    from models.database.species import Ability, Species
+    from models.enums import AbilityType
+    from models.tools.character import CharacterSkill
+    from utils.skill_pairs import apply_skill_pair_grants
+
+    helm = Skill(name="Helm Basic", base_cost=1, skill_type="spaceflight")
+    helm_advanced = Skill(name="Helm Advanced", base_cost=2, skill_type="spaceflight")
+    weapons = Skill(name="Weapons Basic", base_cost=1, skill_type="spaceflight")
+    weapons_advanced = Skill(name="Weapons Advanced", base_cost=2, skill_type="spaceflight")
+    db.session.add_all([helm, helm_advanced, weapons, weapons_advanced])
+    db.session.flush()
+    helm_advanced.required_skill_id = helm.id
+    weapons_advanced.required_skill_id = weapons.id
+    pairs = Ability(
+        name="Spaceflight aptitude",
+        description="The first basic console grants its advanced skill.",
+        type=AbilityType.FIRST_SKILL_PAIR,
+        species=species,
+    )
+    pairs.skill_pairs_list = [
+        {"trigger_skill_id": helm.id, "granted_skill_id": helm_advanced.id},
+        {"trigger_skill_id": weapons.id, "granted_skill_id": weapons_advanced.id},
+    ]
+    db.session.add(pairs)
+    db.session.flush()
+    plain = Species(
+        name="Plain Pilot",
+        wiki_page="plain-pilot",
+        permitted_factions=f"[{faction.id}]",
+        body_hits_type="locational",
+        body_hits=1,
+        death_count=100,
+    )
+    outsider = Character(
+        user_id=new_user.id,
+        name="Outsider",
+        status=CharacterStatus.ACTIVE.value,
+        species=plain,
+    )
+    db.session.add_all([plain, outsider])
+    db.session.commit()
+    db.session.refresh(species)
+    character.species = species
+
+    outsider.purchase_skill(helm, new_user)
+    assert (
+        CharacterSkill.query.filter_by(character_id=outsider.id, skill_id=helm_advanced.id).first()
+        is None
+    )
+
+    character.purchase_skill(helm, new_user)
+    granted = CharacterSkill.query.filter_by(
+        character_id=character.id, skill_id=helm_advanced.id
+    ).one()
+    assert granted.free_ranks == 1
+    assert character.get_total_skill_cost() == 1
+
+    character.purchase_skill(weapons, new_user)
+    assert (
+        CharacterSkill.query.filter_by(
+            character_id=character.id, skill_id=weapons_advanced.id
+        ).first()
+        is None
+    )
+    assert character.get_total_skill_cost() == 2
+
+    apply_skill_pair_grants(character, plain, new_user)
+    db.session.commit()
+    assert (
+        CharacterSkill.query.filter_by(character_id=character.id, skill_id=helm_advanced.id).first()
+        is None
+    )
+    assert character.skill_pair_grants_list
+
+    apply_skill_pair_grants(character, species, new_user)
+    db.session.commit()
+    restored = CharacterSkill.query.filter_by(
+        character_id=character.id, skill_id=helm_advanced.id
+    ).one()
+    assert restored.free_ranks == 1
+    assert character.get_total_skill_cost() == 2
+
+    character.refund_skill(helm_advanced, new_user)
+    character.refund_skill(helm, new_user)
+    character.refund_skill(weapons, new_user)
+    assert character.skill_pair_grants_list == []
+
+    character.purchase_skill(weapons, new_user)
+    again = CharacterSkill.query.filter_by(
+        character_id=character.id, skill_id=weapons_advanced.id
+    ).one()
+    assert again.free_ranks == 1
+    assert character.get_total_skill_cost() == 1
+
+
+def test_buying_the_only_paired_skill_grants_one_free_rank(db, new_user, character, species):
+    """A one-pair group grants its skill on purchase, and that rank stays unpaid."""
+    from models.database.species import Ability
+    from models.enums import AbilityType
+    from models.tools.character import CharacterSkill
+
+    scientist = Skill(name="Pair Scientist", base_cost=2, skill_type="professional")
+    science = Skill(
+        name="Pair Science",
+        base_cost=1,
+        can_purchase_multiple=True,
+        cost_increases=True,
+        skill_type="professional",
+    )
+    db.session.add_all([scientist, science])
+    db.session.flush()
+    science.required_skill_id = scientist.id
+    pairs = Ability(
+        name="Scientist training",
+        description="Buying the scientist skill grants one science rank.",
+        type=AbilityType.FIRST_SKILL_PAIR,
+        species=species,
+    )
+    pairs.skill_pairs_list = [{"trigger_skill_id": scientist.id, "granted_skill_id": science.id}]
+    db.session.add(pairs)
+    db.session.commit()
+    db.session.refresh(species)
+    character.species = species
+
+    with pytest.raises(ValueError, match="Requires Pair Scientist"):
+        character.purchase_skill(science, new_user)
+
+    character.purchase_skill(scientist, new_user)
+    owned = CharacterSkill.query.filter_by(character_id=character.id, skill_id=science.id).one()
+    assert owned.times_purchased == 1
+    assert owned.free_ranks == 1
+    assert character.get_total_skill_cost() == 2
+    assert character.get_skill_cost(science) == 1
+
+    character.purchase_skill(science, new_user)
+    db.session.refresh(owned)
+    assert owned.times_purchased == 2
+    assert owned.free_ranks == 1
+    assert character.get_total_skill_cost() == 3

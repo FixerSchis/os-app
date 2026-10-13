@@ -29,6 +29,7 @@ from models.tools.user import User
 from utils import generate_qr_code, generate_web_qr_code
 from utils.decorators import email_verified_required
 from utils.permission_decorators import permission_required
+from utils.skill_pairs import apply_skill_pair_grants
 from utils.starting_skills import (
     apply_starting_skills,
     choice_catalogue,
@@ -245,6 +246,7 @@ def create_character_post():
     apply_starting_skills(
         character, species, current_user, request.form.getlist("starting_skill_pick")
     )
+    apply_skill_pair_grants(character, species, current_user)
     db.session.commit()
 
     # Handle background review system for character creation
@@ -770,6 +772,7 @@ def edit_post(character_id):
     apply_starting_skills(
         character, species, current_user, request.form.getlist("starting_skill_pick")
     )
+    apply_skill_pair_grants(character, species, current_user)
     db.session.commit()
     flash("Character updated successfully")
     redirect_url = url_for("characters.edit", character_id=character.id)
@@ -1261,6 +1264,7 @@ def create_for_player_post(user_id):
     apply_starting_skills(
         character, species, current_user, request.form.getlist("starting_skill_pick")
     )
+    apply_skill_pair_grants(character, species, current_user)
     db.session.commit()
 
     # Handle background review system for character creation by admin
