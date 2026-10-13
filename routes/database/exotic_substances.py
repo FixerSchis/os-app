@@ -11,6 +11,12 @@ from utils.permission_decorators import permission_required
 exotic_substances_bp = Blueprint("exotic_substances", __name__)
 
 
+def _assign_substance_rules(substance):
+    substance.used_on = request.form.get("used_on", "").strip() or None
+    substance.effect = request.form.get("effect", "").strip() or None
+    substance.duration = request.form.get("duration", "").strip() or None
+
+
 @exotic_substances_bp.route("/")
 def list():
     # Get all substances and order by type and name
@@ -85,6 +91,7 @@ def create_post():
         )
 
     substance = ExoticSubstance(name=name, type=substance_type, wiki_slug=wiki_slug)
+    _assign_substance_rules(substance)
 
     db.session.add(substance)
     db.session.commit()
@@ -159,6 +166,7 @@ def edit_post(id):
     substance.name = name
     substance.type = substance_type
     substance.wiki_slug = wiki_slug
+    _assign_substance_rules(substance)
 
     db.session.commit()
 

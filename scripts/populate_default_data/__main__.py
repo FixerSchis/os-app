@@ -1387,41 +1387,99 @@ def create_default_species():
     db.session.commit()
 
 
+def _load_exotic_definitions():
+    """Return (name, type, used on, effect, duration) for each wiki exotic substance."""
+    path = os.path.join(os.path.dirname(__file__), "default_exotic_substances.py")
+    spec = importlib.util.spec_from_file_location("default_exotic_substances", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    lists = (
+        (module.EXOTIC_PARTICLES, ScienceType.ETHERIC),
+        (module.EXOTIC_REAGENTS, ScienceType.CORPOREAL),
+        (module.EXOTIC_BIOTICS, ScienceType.LIFE),
+    )
+    return [(row[0], science_type, *row[1:]) for rows, science_type in lists for row in rows]
+
+
+_RETIRED_EXOTICS = ("Bioplasma",)
+
+
+def _exotic_slug(name):
+    return "exotic/" + name.lower().replace(" ", "-")
+
+
+def _exotic_wiki_content(used_on, effect, duration):
+    return (
+        f"<p><strong>Used on:</strong> {html.escape(used_on)}</p>"
+        f"<p>{html.escape(effect)}</p>"
+        f"<p><strong>Duration:</strong> {html.escape(duration)}</p>"
+    )
+
+
+def _exotic_in_use(exotic_id):
+    from models.tools.downtime import DowntimePack
+    from models.tools.group import Group
+    from models.tools.research import ResearchStageRequirement
+
+    for owner in Character.query.all() + Group.query.all():
+        if exotic_id in owner.pack.exotics:
+            return True
+    for pack in DowntimePack.query.all():
+        if any(str(entry.get("id")) == str(exotic_id) for entry in pack.exotic_substances or []):
+            return True
+    return (
+        ResearchStageRequirement.query.filter_by(exotic_substance_id=exotic_id).first() is not None
+    )
+
+
+def _retire_placeholder_exotics():
+    for name in _RETIRED_EXOTICS:
+        substance = ExoticSubstance.query.filter_by(name=name).first()
+        if substance is None or _exotic_in_use(substance.id):
+            continue
+        logging.info(f"Removing placeholder exotic: {name}")
+        db.session.delete(substance)
+    db.session.flush()
+
+
 def create_default_exotics():
-    if not ExoticSubstance.query.first():
-        exotics = [
-            ("Bioplasma", ScienceType.LIFE, "exotic/bioplasma"),
-            ("Notum", ScienceType.CORPOREAL, "exotic/notum"),
-            ("Quark Plasma", ScienceType.ETHERIC, "exotic/quark-plasma"),
-        ]
-        tag = WikiTag(name="exotic")
-        for name, exo_type, wiki_slug in exotics:
+    """Create each wiki exotic substance, and fill in rules on rows that have none."""
+    _retire_placeholder_exotics()
+    for name, science_type, used_on, effect, duration in _load_exotic_definitions():
+        substance = ExoticSubstance.query.filter_by(name=name).first()
+        if substance is None:
             logging.info(f"Adding exotic: {name}")
-            # Create wiki page if it doesn't exist
-            wiki_page = WikiPage.query.filter_by(slug=wiki_slug).first()
-            if not wiki_page:
-                wiki_page = WikiPage(slug=wiki_slug, title=f"{name} - Exotic Substance", tags=[tag])
-                db.session.add(wiki_page)
-                db.session.flush()
-                wiki_version = WikiPageVersion(
-                    page_slug=wiki_slug,
-                    version_number=1,
-                    status=WikiPageVersionStatus.PUBLISHED,
-                )
-                db.session.add(wiki_version)
-                db.session.flush()
-                wiki_section = WikiSection(
-                    id=str(uuid.uuid4()),
-                    version_id=wiki_version.id,
-                    order=0,
-                    title=name,
-                    content=(f"<p>Description for {name} ({exo_type}) exotic substance.</p>"),
-                )
-                db.session.add(wiki_section)
-                db.session.flush()
-            substance = ExoticSubstance(name=name, type=exo_type, wiki_slug=wiki_slug)
+            substance = ExoticSubstance(name=name, type=science_type, wiki_slug=_exotic_slug(name))
             db.session.add(substance)
-        db.session.commit()
+        if not (substance.used_on or substance.effect or substance.duration):
+            substance.used_on = used_on
+            substance.effect = effect
+            substance.duration = duration
+        _ensure_stub_wiki_page(
+            substance.wiki_slug,
+            f"{name} - Exotic Substance",
+            "exotic",
+            name,
+            _exotic_wiki_content(used_on, effect, duration),
+        )
+    db.session.commit()
+
+
+_PLACEHOLDER_EXOTIC_LABEL = "{{ substance.name }}"
+
+
+def link_default_exotic_label():
+    """Replace the placeholder exotic label with one that prints the substance's rules."""
+    template = PrintTemplate.query.filter_by(type=PrintTemplateType.EXOTIC_SUBSTANCE_LABEL).first()
+    if template is None or (template.front_html or "").strip() != _PLACEHOLDER_EXOTIC_LABEL:
+        return
+    folder = os.path.join("data", "templates", PrintTemplateType.EXOTIC_SUBSTANCE_LABEL.value)
+    with open(os.path.join(folder, "front.html"), "r", encoding="utf-8") as handle:
+        template.front_html = handle.read()
+    if not (template.css_styles or "").strip():
+        with open(os.path.join(folder, "styles.css"), "r", encoding="utf-8") as handle:
+            template.css_styles = handle.read()
+    db.session.commit()
 
 
 def _load_medicament_definitions():
@@ -2164,6 +2222,7 @@ def create_default_data():
     create_default_templates()
     link_default_character_sheet_abilities()
     link_default_medicament_card()
+    link_default_exotic_label()
 
 
 def main():

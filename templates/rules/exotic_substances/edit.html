@@ -32,6 +32,22 @@
                 required=true
             ) }}
 
+            <div class="form-group mb-4">
+                <label for="used_on">Used on</label>
+                <input type="text" class="form-control" id="used_on" name="used_on" maxlength="50" value="{{ substance.used_on if substance and substance.used_on else '' }}" placeholder="Such as Energy Fields or Characters">
+            </div>
+
+            <div class="form-group mb-4">
+                <label for="effect">Effect</label>
+                <textarea class="form-control" id="effect" name="effect" rows="2" maxlength="200" placeholder="Such as Protects from Minor Heat Environments">{{ substance.effect if substance and substance.effect else '' }}</textarea>
+                <small class="form-text text-muted">Printed on the sticker, so keep it brief.</small>
+            </div>
+
+            <div class="form-group mb-4">
+                <label for="duration">Duration</label>
+                <input type="text" class="form-control" id="duration" name="duration" maxlength="50" value="{{ substance.duration if substance and substance.duration else '' }}" placeholder="Such as 2 hours or 1 day or until used">
+            </div>
+
             <div class="form-group">
                 <button type="submit" class="btn btn-primary">{% if substance %}Save Changes{% else %}Create{% endif %}</button>
                 <a href="{{ url_for('exotic_substances.list') }}" class="btn btn-secondary">Cancel</a>
