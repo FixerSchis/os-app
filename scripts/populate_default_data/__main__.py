@@ -1478,9 +1478,9 @@ def create_default_item_types():
             ("Energy Field", "EF"),
             ("Scanner", "DV"),
             ("Charge Pack", "CP"),
-            ("Engineering Device", "ED"),
+            ("Engineering Device", "DV"),
             ("Engineering Tools", "ET"),
-            ("Medical Device", "MD"),
+            ("Medical Device", "DV"),
             ("Breathing Mask", "BM"),
             ("Artefact", "AX"),
         ]
