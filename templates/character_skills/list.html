@@ -43,6 +43,7 @@
                         {% set cost = character.get_skill_cost(skill) %}
                         {% set can_afford = character.get_available_character_points() >= cost %}
                         {% set can_refund = has_permission('character.edit_all') or character.status == 'developing' %}
+                        {% set owns_prerequisite = (not skill.required_skill_id) or (character.skills|selectattr('skill_id', 'equalto', skill.required_skill_id)|list) %}
                         <tr>
                             <td class="ps-4" style="padding-left: 2em;">
                                 <div><strong>
@@ -88,7 +89,8 @@
                                             <label for="purchase_skill_{{ skill.id }}" class="sr-only">Purchase {{ skill.name }}</label>
                                             <input type="hidden" id="purchase_skill_{{ skill.id }}" name="skill_id" value="{{ skill.id }}">
                                             <button type="submit" class="btn btn-outline-primary btn-sm"
-                                                {% if not can_afford %}disabled{% endif %}
+                                                {% if not can_afford or not owns_prerequisite %}disabled{% endif %}
+                                                {% if not owns_prerequisite %}title="Requires {{ skill.required_skill.name }}"{% endif %}
                                                 aria-label="Increase {{ skill.name }} level">
                                                 <i class="fas fa-plus"></i>
                                             </button>
@@ -105,7 +107,7 @@
                                         <form method="POST" action="{{ url_for('character_skills.purchase_skill', character_id=character.id) }}" class="d-inline">
                                             <label for="purchase_skill_single_{{ skill.id }}" class="sr-only">Purchase {{ skill.name }}</label>
                                             <input type="hidden" id="purchase_skill_single_{{ skill.id }}" name="skill_id" value="{{ skill.id }}">
-                                            <button type="submit" class="btn btn-primary btn-sm" {% if not can_afford %}disabled{% endif %} aria-label="Buy {{ skill.name }}">Buy</button>
+                                            <button type="submit" class="btn btn-primary btn-sm" {% if not can_afford or not owns_prerequisite %}disabled{% endif %}{% if not owns_prerequisite %} title="Requires {{ skill.required_skill.name }}"{% endif %} aria-label="Buy {{ skill.name }}">Buy</button>
                                         </form>
                                     {% endif %}
                                 {% endif %}

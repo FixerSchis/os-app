@@ -719,6 +719,12 @@ def link_default_starting_skills():
             "One rank of Engineer and one rank of Extra Mods at character creation.",
             ("Engineer", "Extra Mods"),
         ),
+        (
+            "Etherna",
+            "Scientist training",
+            "One rank of Etheric Science at character creation. Further ranks require Scientist.",
+            ("Etheric Science",),
+        ),
     )
     for species_name, ability_name, description, skill_names in grants:
         _add_fixed_starting_skills(species_name, ability_name, description, skill_names)

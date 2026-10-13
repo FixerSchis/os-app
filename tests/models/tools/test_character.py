@@ -711,3 +711,62 @@ def test_starting_skill_grant_and_choice_quota(db, new_user, character, species,
         CharacterSkill.query.filter_by(character_id=character.id, skill_id=first_program.id).first()
         is None
     )
+
+
+def test_free_rank_cannot_be_raised_until_its_prerequisite_is_owned(
+    db, new_user, character, species
+):
+    """A creation rank is kept without its prerequisite, and the next rank waits for it."""
+    from models.database.species import Ability
+    from models.enums import AbilityType
+    from models.tools.character import CharacterSkill
+    from utils.starting_skills import apply_starting_skills
+
+    scientist = Skill(
+        name="Gate Scientist",
+        description="The prerequisite",
+        base_cost=2,
+        skill_type="professional",
+    )
+    science = Skill(
+        name="Granted Science",
+        description="Each rank grants a research point",
+        base_cost=1,
+        can_purchase_multiple=True,
+        cost_increases=True,
+        skill_type="professional",
+    )
+    db.session.add_all([scientist, science])
+    db.session.flush()
+    science.required_skill_id = scientist.id
+    grant = Ability(
+        name="Scientist training",
+        description="One free rank.",
+        type=AbilityType.STARTING_SKILLS,
+        species=species,
+    )
+    grant.starting_skills_list = [str(science.id)]
+    db.session.add(grant)
+    db.session.commit()
+    db.session.refresh(species)
+
+    apply_starting_skills(character, species, new_user, [])
+    db.session.commit()
+    owned = CharacterSkill.query.filter_by(character_id=character.id, skill_id=science.id).one()
+    assert owned.times_purchased == 1
+    assert owned.free_ranks == 1
+    assert character.get_skill_cost(science) == 1
+    assert character.get_total_skill_cost() == 0
+
+    with pytest.raises(ValueError, match="Requires Gate Scientist"):
+        character.purchase_skill(science, new_user)
+    db.session.refresh(owned)
+    assert owned.times_purchased == 1
+
+    character.purchase_skill(scientist, new_user)
+    character.purchase_skill(science, new_user)
+    db.session.refresh(owned)
+    assert owned.times_purchased == 2
+    assert owned.free_ranks == 1
+    assert character.get_total_skill_cost() == 3
+    assert character.get_skill_cost(science) == 2

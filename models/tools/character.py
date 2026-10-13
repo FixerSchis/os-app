@@ -293,6 +293,17 @@ class Character(db.Model):
         if existing_skill and not skill.can_purchase_multiple:
             return False, "This skill cannot be purchased multiple times"
 
+        if skill.required_skill_id:
+            has_prerequisite = CharacterSkill.query.filter_by(
+                character_id=self.id, skill_id=skill.required_skill_id
+            ).first()
+            if not has_prerequisite:
+                if skill.required_skill:
+                    required_name = skill.required_skill.name
+                else:
+                    required_name = "another skill"
+                return False, f"Requires {required_name}"
+
         cost = self.get_skill_cost(skill)
 
         # Calculate total CP spent on all current skills
