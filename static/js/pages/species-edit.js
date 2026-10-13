@@ -26,7 +26,7 @@ $(document).ready(function() {
             $(this).find('.ability-rank-caps select[name^="ability_rank_cap_skill"]').attr('name', 'ability_rank_cap_skill_' + i + '[]');
             $(this).find('.ability-rank-caps input[name^="ability_rank_cap_limit"]').attr('name', 'ability_rank_cap_limit_' + i + '[]');
             $(this).find('.ability-skill-bans select').attr('name', 'ability_banned_skills_' + i + '[]');
-            $(this).find('.ability-condition-timing input').attr('name', 'ability_condition_progress_rate_' + i);
+            $(this).find('.ability-condition-timing input[type=number]').attr('name', 'ability_condition_progress_rate_' + i);
             $(this).find('.ability-tags select').attr('name', 'ability_tags_' + i + '[]');
             $(this).find('.ability-sheet-values input[name^="ability_sheet_id"]').attr('name', 'ability_sheet_id_' + i + '[]');
             $(this).find('.ability-sheet-values input[name^="ability_sheet_description"]').attr('name', 'ability_sheet_description_' + i + '[]');
@@ -299,16 +299,14 @@ $(document).ready(function() {
                 <input type="number" class="form-control" name="ability_condition_progress_rate_${idx}" min="0.01" step="any" placeholder="1">
                 <small class="form-text text-muted">2 finishes a stage in half the stated time. 4 is a quarter of the time. 0.5 makes it last twice as long. This applies to conditions that share a tag.</small>
             </div>
-            <div class="form-group mb-2 ability-tags">
+            <div class="form-group mb-2 ability-extra ability-condition-timing ability-tags" style="display:none;">
                 <label>Tags</label>
                 <select class="form-control rule-tag-select" name="ability_tags_${idx}[]" multiple title="Select or add tags"></select>
-                <small class="form-text text-muted">Search for a tag, or type a new one. Saving stores a new tag so later searches can find it.</small>
             </div>
             <div class="form-group mb-2 ability-sheet-values">
                 <label>Character sheet values</label>
                 <div class="sheet-value-rows"></div>
                 <button type="button" class="btn btn-secondary btn-sm add-sheet-value">Add sheet value</button>
-                <small class="form-text text-muted">Added to skill values with the same ID on the character sheet. Psionic Potential and rank 6 path skills use psi.</small>
             </div>
             <div class="form-group mb-2 ability-extra ability-skill-discounts" style="display:none;">
                 <label>Skill Discounts</label>

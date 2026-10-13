@@ -52,6 +52,10 @@ def _assign_ability_sheet_values(ability, index):
 
 
 def _assign_ability_tags(ability, index):
+    ability_type = getattr(ability.type, "value", ability.type)
+    if ability_type != AbilityType.CONDITION_TIMING.value:
+        ability.tags = []
+        return
     ability.tags = RuleTag.resolve_list(request.form.getlist(f"ability_tags_{index}[]"))
 
 
