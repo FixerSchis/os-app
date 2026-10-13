@@ -523,6 +523,7 @@ def create_default_skills():
             base_cost=spec["base_cost"],
             can_purchase_multiple=spec.get("multiple", False),
             cost_increases=spec.get("increases", False),
+            max_ranks=spec.get("max_ranks"),
             adds_engineering_mods=spec.get("mods", 0),
             adds_engineering_downtime=spec.get("eng_slots", 0),
             adds_science_downtime=spec.get("sci_slots", 0),
@@ -838,6 +839,46 @@ def _align_etherna_science_grant(character, scientist_id, science_id):
     science_row.times_purchased -= 1
     if science_row.times_purchased <= 0:
         db.session.delete(science_row)
+
+
+def link_default_rank_limits():
+    """Set catalogue rank limits, and Felani's lower caps, when they are still empty."""
+    changed = False
+    for spec in _load_skill_definitions():
+        if spec.get("max_ranks") is None:
+            continue
+        skill = Skill.query.filter_by(name=spec["name"]).first()
+        if skill is None or skill.max_ranks is not None:
+            continue
+        skill.max_ranks = spec["max_ranks"]
+        changed = True
+    if _add_felani_rank_caps():
+        changed = True
+    if changed:
+        db.session.commit()
+
+
+def _add_felani_rank_caps():
+    """Felani stop at 2 ranks of Toughness and the three Steel skills."""
+    species = Species.query.filter_by(name="Felani").first()
+    if species is None or _species_has_ability(species, AbilityType.SKILL_RANK_CAPS):
+        return False
+    caps = []
+    for skill_name in ("Toughness", "Steel Head", "Steel Nerves", "Steel Viscera"):
+        skill = Skill.query.filter_by(name=skill_name).first()
+        if skill is None:
+            logging.warning(f"Rank cap skill {skill_name} is missing; skipped Felani")
+            return False
+        caps.append({"skill_id": skill.id, "max_ranks": 2})
+    ability = Ability(
+        species_id=species.id,
+        name="Rank cap",
+        description=("At most 2 ranks of Toughness, Steel Head, Steel Nerves, or Steel Viscera."),
+        type=AbilityType.SKILL_RANK_CAPS,
+    )
+    ability.rank_caps_list = caps
+    db.session.add(ability)
+    return True
 
 
 def _species_has_ability(species, ability_type):
@@ -1597,6 +1638,7 @@ def create_default_data():
     ensure_ranked_mutation_skills()
     link_default_skill_species()
     link_default_starting_skills()
+    link_default_rank_limits()
     create_default_exotics()
     create_default_medicaments()
     create_default_item_types()

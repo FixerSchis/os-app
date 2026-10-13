@@ -15,6 +15,7 @@ Costs marked "+" on the wiki increase by 1 each rank. Costs marked "a" or
 here; those grants belong on the species, and must not count as a paid rank.
 Console skills have a maximum of 2 ranks, so each one is a Basic skill and an
 Advanced skill. The Advanced skill is what the later spaceflight skills require.
+A skill's own maximum is max_ranks. A species rank-cap ability can set a lower one.
 Each psionic path rank is its own skill, because the benefit changes every rank.
 Each N-DAX mutation rank is its own skill for the same reason.
 """
@@ -248,6 +249,7 @@ SKILL_DEFINITIONS = [
         1,
         multiple=True,
         increases=True,
+        max_ranks=4,
     ),
     _skill(
         "Physician",

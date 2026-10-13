@@ -115,6 +115,11 @@
             </table>
 
             <div class="form-group">
+                <label for="max_ranks">Maximum ranks</label>
+                <input type="number" class="form-control" id="max_ranks" name="max_ranks" min="1" placeholder="No limit" value="{{ skill.max_ranks if skill and skill.max_ranks else '' }}">
+            </div>
+
+            <div class="form-group">
                 <label for="required_skill_id">Required Skill</label>
                 <select class="form-control" id="required_skill_id" name="required_skill_id" title="Select required skill">
                     <option value="">None</option>

@@ -16,6 +16,16 @@ from utils.permission_decorators import permission_required
 species_bp = Blueprint("species", __name__)
 
 
+def _assign_rank_caps(ability, index):
+    skill_ids = request.form.getlist(f"ability_rank_cap_skill_{index}[]")
+    limits = request.form.getlist(f"ability_rank_cap_limit_{index}[]")
+    caps = []
+    for skill_id, limit in zip(skill_ids, limits):
+        if str(skill_id).isdigit() and str(limit).isdigit() and int(limit) > 0:
+            caps.append({"skill_id": int(skill_id), "max_ranks": int(limit)})
+    ability.rank_caps_list = caps
+
+
 def _assign_skill_pairs(ability, index):
     triggers = request.form.getlist(f"ability_pair_trigger_{index}[]")
     granted = request.form.getlist(f"ability_pair_granted_{index}[]")
@@ -219,6 +229,8 @@ def edit_species_post(species_id):
                 _assign_starting_skill_choices(ab, i)
             elif ab_type == AbilityType.FIRST_SKILL_PAIR.value:
                 _assign_skill_pairs(ab, i)
+            elif ab_type == AbilityType.SKILL_RANK_CAPS.value:
+                _assign_rank_caps(ab, i)
             elif ab_type == AbilityType.SKILL_DISCOUNTS.value:
                 discounts = {}
                 skills = request.form.getlist(f"ability_discount_skills_{i}[]")
@@ -379,6 +391,8 @@ def new_species_post():
                 _assign_starting_skill_choices(ab, i)
             elif ab_type == AbilityType.FIRST_SKILL_PAIR.value:
                 _assign_skill_pairs(ab, i)
+            elif ab_type == AbilityType.SKILL_RANK_CAPS.value:
+                _assign_rank_caps(ab, i)
             elif ab_type == AbilityType.SKILL_DISCOUNTS.value:
                 discounts = {}
                 skills = request.form.getlist(f"ability_discount_skills_{i}[]")

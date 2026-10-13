@@ -23,6 +23,8 @@ $(document).ready(function() {
             $(this).find('.ability-starting-choices input[name^="ability_choice_count"]').attr('name', 'ability_choice_count_' + i + '[]');
             $(this).find('.ability-skill-pairs select[name^="ability_pair_trigger"]').attr('name', 'ability_pair_trigger_' + i + '[]');
             $(this).find('.ability-skill-pairs select[name^="ability_pair_granted"]').attr('name', 'ability_pair_granted_' + i + '[]');
+            $(this).find('.ability-rank-caps select[name^="ability_rank_cap_skill"]').attr('name', 'ability_rank_cap_skill_' + i + '[]');
+            $(this).find('.ability-rank-caps input[name^="ability_rank_cap_limit"]').attr('name', 'ability_rank_cap_limit_' + i + '[]');
             $(this).find('[name^="ability_additional_group_income"]').attr('name', 'ability_additional_group_income_' + i);
             $(this).find('.ability-skill-discounts select.select2-multiple').attr('name', 'ability_discount_skills_' + i + '[]');
             $(this).find('.ability-skill-discounts input[type=number]').attr('name', 'ability_discount_value_' + i);
@@ -99,6 +101,8 @@ $(document).ready(function() {
             block.find('.ability-starting-choices').show();
         } else if ($(this).val() === 'first_skill_pair') {
             block.find('.ability-skill-pairs').show();
+        } else if ($(this).val() === 'skill_rank_caps') {
+            block.find('.ability-rank-caps').show();
         } else if ($(this).val() === 'group_income') {
             block.find('.ability-group-income').show();
         } else if ($(this).val() === 'skill_discounts') {
@@ -153,6 +157,36 @@ $(document).ready(function() {
         reindexAbilities();
     });
 
+    function rankCapRow() {
+        var options = window.SKILL_OPTIONS_HTML || '';
+        return $(`
+            <div class="row mb-2 rank-cap-row">
+                <div class="col-md-6">
+                    <select class="form-control" name="ability_rank_cap_skill_0[]" title="Skill">
+                        <option value="">Skill</option>
+                        ${options}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <input type="number" class="form-control" name="ability_rank_cap_limit_0[]" min="1" placeholder="Maximum ranks" title="Maximum ranks">
+                </div>
+                <div class="col-md-2">
+                    <button type="button" class="btn btn-danger btn-sm remove-rank-cap" aria-label="Remove rank cap">Remove</button>
+                </div>
+            </div>
+        `);
+    }
+
+    $(document).on('click', '.add-rank-cap', function() {
+        $(this).closest('.ability-rank-caps').find('.rank-cap-rows').append(rankCapRow());
+        reindexAbilities();
+    });
+
+    $(document).on('click', '.remove-rank-cap', function() {
+        $(this).closest('.rank-cap-row').remove();
+        reindexAbilities();
+    });
+
     // Add/remove ability blocks
     $('#add-ability').click(function() {
         var idx = $('#abilities-list .ability-block').length;
@@ -204,6 +238,11 @@ $(document).ready(function() {
                 <label>First skill from this group grants its pair</label>
                 <div class="skill-pair-rows"></div>
                 <button type="button" class="btn btn-secondary btn-sm add-skill-pair">Add pair</button>
+            </div>
+            <div class="form-group mb-2 ability-extra ability-rank-caps" style="display:none;">
+                <label>Maximum ranks for this species</label>
+                <div class="rank-cap-rows"></div>
+                <button type="button" class="btn btn-secondary btn-sm add-rank-cap">Add cap</button>
             </div>
             <div class="form-group mb-2 ability-extra ability-skill-discounts" style="display:none;">
                 <label>Skill Discounts</label>

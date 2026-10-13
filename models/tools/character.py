@@ -15,6 +15,16 @@ character_tags = db.Table(
     db.Column("tag_id", db.Integer, db.ForeignKey("character_tag.id"), primary_key=True),
 )
 
+
+def _positive_rank_limit(value):
+    if value is None or value == "":
+        return None
+    limit = int(value)
+    if limit < 1:
+        return None
+    return limit
+
+
 # Association table for many-to-many relationship between Character and Sample
 character_samples = db.Table(
     "character_samples",
@@ -284,6 +294,24 @@ class Character(db.Model):
     def skill_pair_grants_list(self, grants):
         self.skill_pair_grants = json.dumps(grants) if grants else None
 
+    def maximum_rank(self, skill):
+        """Lowest rank cap from the skill and this species. None means no cap."""
+        limit = _positive_rank_limit(skill.max_ranks)
+        if self.species is None:
+            return limit
+        for ability in self.species.abilities:
+            ability_type = ability.type.value if hasattr(ability.type, "value") else ability.type
+            if ability_type != AbilityType.SKILL_RANK_CAPS.value:
+                continue
+            for cap in ability.rank_caps_list:
+                if int(cap.get("skill_id") or 0) != skill.id:
+                    continue
+                species_limit = _positive_rank_limit(cap.get("max_ranks"))
+                if species_limit is None:
+                    continue
+                limit = species_limit if limit is None else min(limit, species_limit)
+        return limit
+
     def can_purchase_skill(self, skill, user):
         """Check if the character can purchase a skill."""
         # Check if user has permission
@@ -304,6 +332,11 @@ class Character(db.Model):
         ).first()
         if existing_skill and not skill.can_purchase_multiple:
             return False, "This skill cannot be purchased multiple times"
+
+        owned_ranks = existing_skill.times_purchased if existing_skill else 0
+        rank_limit = self.maximum_rank(skill)
+        if rank_limit is not None and owned_ranks >= rank_limit:
+            return False, f"Maximum {rank_limit} ranks"
 
         if skill.required_skill_id:
             has_prerequisite = CharacterSkill.query.filter_by(

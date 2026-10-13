@@ -913,3 +913,51 @@ def test_buying_the_only_paired_skill_grants_one_free_rank(db, new_user, charact
     assert owned.times_purchased == 2
     assert owned.free_ranks == 1
     assert character.get_total_skill_cost() == 3
+
+
+def test_species_rank_cap_stays_below_the_skill_maximum(db, new_user, character, species):
+    """A species cap can lower a skill's maximum, and cannot raise it."""
+    from models.database.species import Ability
+    from models.enums import AbilityType
+    from models.tools.character import CharacterSkill
+
+    guarded = Skill(
+        name="Guarded",
+        base_cost=1,
+        can_purchase_multiple=True,
+        cost_increases=True,
+        skill_type="combat",
+        max_ranks=3,
+    )
+    db.session.add(guarded)
+    db.session.flush()
+    caps = Ability(
+        name="Rank cap",
+        description="At most 2 ranks.",
+        type=AbilityType.SKILL_RANK_CAPS,
+        species=species,
+    )
+    caps.rank_caps_list = [{"skill_id": guarded.id, "max_ranks": 2}]
+    outsider = Character(
+        user_id=new_user.id,
+        name="Uncapped",
+        status=CharacterStatus.ACTIVE.value,
+    )
+    db.session.add_all([caps, outsider])
+    db.session.commit()
+    db.session.refresh(species)
+    character.species = species
+
+    character.purchase_skill(guarded, new_user)
+    character.purchase_skill(guarded, new_user)
+    with pytest.raises(ValueError, match="Maximum 2 ranks"):
+        character.purchase_skill(guarded, new_user)
+    owned = CharacterSkill.query.filter_by(character_id=character.id, skill_id=guarded.id).one()
+    assert owned.times_purchased == 2
+
+    for _ in range(3):
+        outsider.purchase_skill(guarded, new_user)
+    with pytest.raises(ValueError, match="Maximum 3 ranks"):
+        outsider.purchase_skill(guarded, new_user)
+    other = CharacterSkill.query.filter_by(character_id=outsider.id, skill_id=guarded.id).one()
+    assert other.times_purchased == 3

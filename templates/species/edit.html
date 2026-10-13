@@ -76,6 +76,7 @@
                 {% set is_starting_skills = ability.type == AbilityType.STARTING_SKILLS %}
                 {% set is_starting_choices = ability.type == AbilityType.STARTING_SKILL_CHOICES %}
                 {% set is_skill_pairs = ability.type == AbilityType.FIRST_SKILL_PAIR %}
+                {% set is_rank_caps = ability.type == AbilityType.SKILL_RANK_CAPS %}
                 {% set is_group_income = ability.type == AbilityType.GROUP_INCOME %}
                 {% set is_skill_discounts = ability.type == AbilityType.SKILL_DISCOUNTS %}
                 {% set is_starting_item = ability.type == AbilityType.STARTING_ITEM %}
@@ -156,6 +157,34 @@
                         {% endfor %}
                         </div>
                         <button type="button" class="btn btn-secondary btn-sm add-skill-pair">Add pair</button>
+                    </div>
+                    <div class="form-group mb-2 ability-extra ability-rank-caps" {% if not is_rank_caps %}style="display:none;"{% endif %}>
+                        <label>Maximum ranks for this species</label>
+                        {% set ability_index = loop.index0 %}
+                        {% set saved_caps = ability.rank_caps_list if is_rank_caps else [] %}
+                        <div class="rank-cap-rows">
+                        {% for saved in saved_caps %}
+                        <div class="row mb-2 rank-cap-row">
+                            <div class="col-md-6">
+                                <label class="sr-only" for="ability_rank_cap_skill_{{ ability_index }}_{{ loop.index0 }}">Skill</label>
+                                <select class="form-control" id="ability_rank_cap_skill_{{ ability_index }}_{{ loop.index0 }}" name="ability_rank_cap_skill_{{ ability_index }}[]" title="Skill">
+                                    <option value="">Skill</option>
+                                    {% for skill in skills_list %}
+                                    <option value="{{ skill.id }}" {% if (saved.skill_id|string) == (skill.id|string) %}selected{% endif %}>{{ skill.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="sr-only" for="ability_rank_cap_limit_{{ ability_index }}_{{ loop.index0 }}">Maximum ranks</label>
+                                <input type="number" class="form-control" id="ability_rank_cap_limit_{{ ability_index }}_{{ loop.index0 }}" name="ability_rank_cap_limit_{{ ability_index }}[]" min="1" placeholder="Maximum ranks" value="{{ saved.max_ranks }}" title="Maximum ranks">
+                            </div>
+                            <div class="col-md-2">
+                                <button type="button" class="btn btn-danger btn-sm remove-rank-cap" aria-label="Remove rank cap">Remove</button>
+                            </div>
+                        </div>
+                        {% endfor %}
+                        </div>
+                        <button type="button" class="btn btn-secondary btn-sm add-rank-cap">Add cap</button>
                     </div>
                     <div class="form-group mb-2 ability-extra ability-skill-discounts" {% if not is_skill_discounts %}style="display:none;"{% endif %}>
                         <label>Skill Discounts</label>

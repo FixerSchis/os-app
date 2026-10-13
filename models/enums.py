@@ -84,6 +84,7 @@ class AbilityType(Enum):
     STARTING_SKILLS = "starting_skills"
     STARTING_SKILL_CHOICES = "starting_skill_choices"
     FIRST_SKILL_PAIR = "first_skill_pair"
+    SKILL_RANK_CAPS = "skill_rank_caps"
     SKILL_DISCOUNTS = "skill_discounts"
     GROUP_INCOME = "group_income"
     STARTING_ITEM = "starting_item"
@@ -100,6 +101,7 @@ class AbilityType(Enum):
             cls.STARTING_SKILLS.value: "Starting Skills",
             cls.STARTING_SKILL_CHOICES.value: "Starting Skill Choices",
             cls.FIRST_SKILL_PAIR.value: "First Skill Pair",
+            cls.SKILL_RANK_CAPS.value: "Skill Rank Caps",
             cls.SKILL_DISCOUNTS.value: "Skill Discounts",
             cls.GROUP_INCOME.value: "Group Income",
             cls.STARTING_ITEM.value: "Starting Item",
