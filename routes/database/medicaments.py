@@ -10,6 +10,21 @@ from utils.permission_decorators import permission_required
 medicaments_bp = Blueprint("medicaments", __name__)
 
 
+def _assign_medicament_rules(medicament):
+    medicament.summary = request.form.get("summary", "").strip() or None
+    medicament.effect = request.form.get("effect", "").strip() or None
+    names = request.form.getlist("mode_name[]")
+    effects = request.form.getlist("mode_effect[]")
+    modes = []
+    for name, effect in zip(names, effects):
+        name = name.strip()
+        effect = effect.strip()
+        if not name and not effect:
+            continue
+        modes.append({"name": name, "effect": effect})
+    medicament.modes_list = modes
+
+
 @medicaments_bp.route("/")
 def list():
     # Get all medicaments and order by name
@@ -40,6 +55,7 @@ def create_post():
         return render_template("rules/medicaments/edit.html", initial_title="")
     get_or_create_wiki_page(wiki_slug, f"{name} - Medicament", created_by=current_user.id)
     medicament = Medicament(name=name, wiki_slug=wiki_slug)
+    _assign_medicament_rules(medicament)
     db.session.add(medicament)
     db.session.commit()
     flash("Medicament created successfully", "success")
@@ -87,6 +103,7 @@ def edit_post(id):
     get_or_create_wiki_page(wiki_slug, f"{name} - Medicament", created_by=current_user.id)
     medicament.name = name
     medicament.wiki_slug = wiki_slug
+    _assign_medicament_rules(medicament)
     db.session.commit()
     flash("Medicament updated successfully", "success")
     return redirect(url_for("medicaments.list"))

@@ -364,6 +364,7 @@ def generate_template_completions(template_type):
         for column in Medicament.__table__.columns:
             if column.name not in ["id"]:
                 medicament_fields[column.name] = str(column.type)
+        medicament_fields["modes_list"] = "list - each mode has name and effect"
 
         completions = {
             "medicament": medicament_fields,

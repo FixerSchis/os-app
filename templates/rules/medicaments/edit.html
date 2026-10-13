@@ -23,6 +23,40 @@
                 required=true
             ) }}
 
+            <div class="form-group mb-4">
+                <label for="summary">Summary</label>
+                <input type="text" class="form-control" id="summary" name="summary" maxlength="200" value="{{ medicament.summary if medicament and medicament.summary else '' }}" placeholder="Such as Restores lost Body Hits">
+            </div>
+
+            <div class="form-group mb-4">
+                <label for="effect">Effect for every dose</label>
+                <textarea class="form-control" id="effect" name="effect" rows="3">{{ medicament.effect if medicament and medicament.effect else '' }}</textarea>
+                <small class="form-text text-muted">Rules that apply whichever mode is chosen. For a medicament without modes, put all of its rules here.</small>
+            </div>
+
+            <div class="form-group mb-4">
+                <label>Modes</label>
+                <div id="mode-rows">
+                    {% for mode in (medicament.modes_list if medicament else []) %}
+                    <div class="row mb-2 mode-row">
+                        <div class="col-md-3">
+                            <label class="sr-only" for="mode_name_{{ loop.index0 }}">Mode</label>
+                            <input class="form-control" id="mode_name_{{ loop.index0 }}" name="mode_name[]" value="{{ mode.name }}" placeholder="Mode, such as TREAT">
+                        </div>
+                        <div class="col-md-7">
+                            <label class="sr-only" for="mode_effect_{{ loop.index0 }}">Effect</label>
+                            <textarea class="form-control" id="mode_effect_{{ loop.index0 }}" name="mode_effect[]" rows="2" placeholder="Effect of a dose in this mode">{{ mode.effect }}</textarea>
+                        </div>
+                        <div class="col-md-2">
+                            <button type="button" class="btn btn-danger btn-sm remove-mode" aria-label="Remove mode">Remove</button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                <button type="button" class="btn btn-secondary btn-sm" id="add-mode">Add mode</button>
+                <small class="form-text text-muted d-block">The person applying a dose picks one mode, such as RED, AMBER, or GREEN, or TREAT or RESIST.</small>
+            </div>
+
             <div class="form-group">
                 <button type="submit" class="btn btn-primary">{% if medicament %}Save Changes{% else %}Create{% endif %}</button>
                 <a href="{{ url_for('medicaments.list') }}" class="btn btn-secondary">Cancel</a>
@@ -35,4 +69,5 @@
 {% block scripts %}
 {{ super() }}
 <script src="{{ url_for('static', filename='js/wiki_page_autocomplete.js') }}"></script>
+<script src="{{ url_for('static', filename='js/pages/medicaments-edit.js') }}"></script>
 {% endblock %}
