@@ -699,9 +699,56 @@ class Character(db.Model):
         db.session.commit()
         return True
 
+    def _learned_modification_ids(self):
+        return {int(mod_id) for mod_id in self.known_modifications or []}
+
+    def get_learned_modifications(self):
+        """Mods held in a mod slot. Granted mods and mods missing a prerequisite take no slot."""
+        learned_ids = self._learned_modification_ids()
+        if not learned_ids:
+            return []
+        mods = Mod.query.filter(Mod.id.in_(learned_ids)).order_by(Mod.name).all()
+        return [
+            mod
+            for mod in mods
+            if mod.character_meets_requirements(self) and not mod.is_granted_to(self)
+        ]
+
+    def get_granted_modifications(self):
+        """Mods the character knows from a skill without spending a mod slot."""
+        mods = Mod.query.filter(Mod.granted_by_skills.isnot(None)).order_by(Mod.name).all()
+        return [mod for mod in mods if mod.is_granted_to(self)]
+
     def get_known_modifications(self):
         """Get the known modifications for the character."""
-        return Mod.query.filter(Mod.id.in_(self.known_modifications)).all()
+        known = {mod.id: mod for mod in self.get_learned_modifications()}
+        for mod in self.get_granted_modifications():
+            known.setdefault(mod.id, mod)
+        return sorted(known.values(), key=lambda mod: mod.name)
+
+    def knows_modification(self, mod):
+        return any(known.id == mod.id for known in self.get_known_modifications())
+
+    def get_free_engineering_mod_slots(self):
+        """Mod slots not yet used by a learned mod."""
+        used = len(self.get_learned_modifications())
+        return max(0, self.get_available_engineering_mod_slots() - used)
+
+    def can_learn_modification(self, mod):
+        """Return (allowed, reason) for learning mod with a mod slot."""
+        if self.knows_modification(mod):
+            return False, "already known"
+        if not mod.character_meets_requirements(self):
+            return False, f"requires {_skill_name_list(mod.required_skills_list)}"
+        if self.get_free_engineering_mod_slots() <= 0:
+            return False, "no free mod slots"
+        return True, None
+
+    def learn_modification(self, mod):
+        self.known_modifications = sorted(self._learned_modification_ids() | {mod.id})
+
+    def forget_modification(self, mod):
+        self.known_modifications = sorted(self._learned_modification_ids() - {mod.id})
 
     def get_total_reputation(self):
         """Get the total reputation for the character."""

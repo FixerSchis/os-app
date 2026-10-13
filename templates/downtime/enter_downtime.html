@@ -261,7 +261,16 @@
                 <div class="card mb-4">
                     <div class="card-body mod-list">
                         <ul class="list-unstyled">
-                            {% for mod in character.get_known_modifications() %}
+                            {% for mod in granted_mods %}
+                            <li class="form-group d-flex align-items-center">
+                                <label for="granted_mod_name_{{ mod.id }}" class="sr-only">Modification name</label>
+                                <input type="text" class="form-control" id="granted_mod_name_{{ mod.id }}" value="{{ mod.name }}" disabled>
+                                <div class="mod-forget-group">
+                                    <span class="text-muted">From skill</span>
+                                </div>
+                            </li>
+                            {% endfor %}
+                            {% for mod in learned_mods %}
                             <li class="form-group d-flex align-items-center">
                                 <label for="mod_name_{{ mod.id }}" class="sr-only">Modification name</label>
                                 <input type="text" class="form-control" id="mod_name_{{ mod.id }}" value="{{ mod.name }}" disabled>
@@ -272,17 +281,16 @@
                                 </div>
                             </li>
                             {% endfor %}
-                            {% set available_slots = character.get_available_engineering_mod_slots() - character.known_modifications|length %}
                             {% set learning_mods = pack_modifications | selectattr('type', 'equalto', 'learning') | list %}
-                            {% for i in range(available_slots) %}
+                            {% for i in range(free_mod_slots) %}
                             <li class="form-group">
                                 <select class="form-control select2 mod-select" name="mod_learning[]" title="Select modification to learn">
                                     <option value="">Select a modification</option>
                                     {% for mod in all_mods %}
                                     <option value="{{ mod.id }}"
                                         {% if learning_mods|length > i and learning_mods[i].mod_id|string == mod.id|string %}selected{% endif %}
-                                        {% if mod.id in character.known_modifications %}disabled{% endif %}>
-                                        {{ mod.name }}
+                                        {% if mod.id not in learnable_mod_ids %}disabled{% endif %}>
+                                        {{ mod.name }}{% if mod.id not in known_mod_ids and mod.id not in learnable_mod_ids %} (requires {{ mod.get_required_skills()|map(attribute='name')|join(' or ') }}){% endif %}
                                     </option>
                                     {% endfor %}
                                 </select>

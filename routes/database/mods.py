@@ -3,12 +3,30 @@ from flask_login import current_user, login_required
 
 from models.database.item_type import ItemType
 from models.database.mods import Mod
+from models.database.skills import Skill
 from models.extensions import db
 from models.wiki import WikiPage
 from utils.decorators import email_verified_required
 from utils.permission_decorators import permission_required
 
 mods_bp = Blueprint("mods", __name__)
+
+
+def _form_context(**extra):
+    wiki_pages = [
+        {"title": page.title, "slug": page.slug}
+        for page in WikiPage.query.order_by(WikiPage.title).all()
+    ]
+    return {
+        "wiki_pages": wiki_pages,
+        "item_types": ItemType.query.order_by(ItemType.name).all(),
+        "skills": Skill.query.order_by(Skill.name).all(),
+        **extra,
+    }
+
+
+def _form_skill_ids(name):
+    return [int(value) for value in request.form.getlist(name) if value]
 
 
 @mods_bp.route("/")
@@ -32,12 +50,7 @@ def list():
 @email_verified_required
 @permission_required(permissions=["rules.mods"])
 def create():
-    wiki_pages = [
-        {"title": page.title, "slug": page.slug}
-        for page in WikiPage.query.order_by(WikiPage.title).all()
-    ]
-    item_types = ItemType.query.order_by(ItemType.name).all()
-    return render_template("rules/mods/edit.html", wiki_pages=wiki_pages, item_types=item_types)
+    return render_template("rules/mods/edit.html", **_form_context())
 
 
 @mods_bp.route("/new", methods=["POST"])
@@ -52,14 +65,11 @@ def create_post():
 
     if not all([name, wiki_slug]):
         flash("Name and wiki page are required", "error")
-        wiki_pages = [
-            {"title": page.title, "slug": page.slug}
-            for page in WikiPage.query.order_by(WikiPage.title).all()
-        ]
-        item_types = ItemType.query.order_by(ItemType.name).all()
-        return render_template("rules/mods/edit.html", wiki_pages=wiki_pages, item_types=item_types)
+        return render_template("rules/mods/edit.html", **_form_context())
 
     mod = Mod(name=name, wiki_slug=wiki_slug, description=description if description else None)
+    mod.required_skills_list = _form_skill_ids("required_skills")
+    mod.granted_by_skills_list = _form_skill_ids("granted_by_skills")
 
     if item_type_ids:
         mod.item_types = ItemType.query.filter(ItemType.id.in_(item_type_ids)).all()
@@ -77,14 +87,7 @@ def create_post():
 @permission_required(permissions=["rules.mods"])
 def edit(id):
     mod = Mod.query.get_or_404(id)
-    wiki_pages = [
-        {"title": page.title, "slug": page.slug}
-        for page in WikiPage.query.order_by(WikiPage.title).all()
-    ]
-    item_types = ItemType.query.order_by(ItemType.name).all()
-    return render_template(
-        "rules/mods/edit.html", mod=mod, wiki_pages=wiki_pages, item_types=item_types
-    )
+    return render_template("rules/mods/edit.html", **_form_context(mod=mod))
 
 
 @mods_bp.route("/<int:id>/edit", methods=["POST"])
@@ -101,18 +104,13 @@ def edit_post(id):
 
     if not all([name, wiki_slug]):
         flash("Name and wiki page are required", "error")
-        wiki_pages = [
-            {"title": page.title, "slug": page.slug}
-            for page in WikiPage.query.order_by(WikiPage.title).all()
-        ]
-        item_types = ItemType.query.order_by(ItemType.name).all()
-        return render_template(
-            "rules/mods/edit.html", mod=mod, wiki_pages=wiki_pages, item_types=item_types
-        )
+        return render_template("rules/mods/edit.html", **_form_context(mod=mod))
 
     mod.name = name
     mod.wiki_slug = wiki_slug
     mod.description = description if description else None
+    mod.required_skills_list = _form_skill_ids("required_skills")
+    mod.granted_by_skills_list = _form_skill_ids("granted_by_skills")
 
     if item_type_ids:
         mod.item_types = ItemType.query.filter(ItemType.id.in_(item_type_ids)).all()

@@ -466,10 +466,16 @@ def enter_downtime(period_id, character_id):
     group_bank_balance = character.group.bank_account if character.group else None
 
     # Get all mods: known + available
-    known_mod_ids = [mod_id for mod_id in character.known_modifications]
+    learned_mods = character.get_learned_modifications()
+    granted_mods = character.get_granted_modifications()
+    known_mods = character.get_known_modifications()
+    known_mod_ids = {mod.id for mod in known_mods}
     available_mods = Mod.query.filter(~Mod.id.in_(known_mod_ids)).order_by(Mod.name).all()
-    known_mods = Mod.query.filter(Mod.id.in_(known_mod_ids)).order_by(Mod.name).all()
     all_mods = known_mods + available_mods
+    learnable_mod_ids = {
+        mod.id for mod in available_mods if mod.character_meets_requirements(character)
+    }
+    free_mod_slots = character.get_free_engineering_mod_slots()
 
     # Items from own and group downtime packs
     pack_items = [db.session.get(Item, int(item_id)) for item_id in pack.items if item_id]
@@ -629,6 +635,11 @@ def enter_downtime(period_id, character_id):
         bank_balance=bank_balance,
         group_bank_balance=group_bank_balance,
         all_mods=all_mods,
+        learned_mods=learned_mods,
+        granted_mods=granted_mods,
+        known_mod_ids=known_mod_ids,
+        learnable_mod_ids=learnable_mod_ids,
+        free_mod_slots=free_mod_slots,
         pack_items=pack_items,
         group_items=group_items,
         blueprints_data=blueprints_data,
@@ -1156,23 +1167,30 @@ def process_downtime(period_id):
         # Update the character's pack
         pack.character.pack = character_pack
 
-    # Process modifications
+    # Process modifications. Forgetting runs first so it frees slots for learning.
     for pack in packs:
-        for modification in pack.modifications:
-            if modification["type"] == "learning":
-                mod = db.session.get(Mod, int(modification["mod_id"]))
-                if mod:
-                    pack.character.known_modifications.append(modification["mod_id"])
-                    pack.character.pack.add_downtime_result(
-                        str(pack.id), f"Learned mod: {mod.name}"
-                    )
-            elif modification["type"] == "forgetting":
-                mod = db.session.get(Mod, int(modification["mod_id"]))
-                if mod:
-                    pack.character.known_modifications.remove(modification["mod_id"])
-                    pack.character.pack.add_downtime_result(
-                        str(pack.id), f"Forgot modification: {mod.name}"
-                    )
+        modifications = pack.modifications or []
+        forgetting = [m for m in modifications if m.get("type") == "forgetting"]
+        learning = [m for m in modifications if m.get("type") == "learning"]
+        for modification in forgetting:
+            mod = db.session.get(Mod, int(modification["mod_id"]))
+            if mod:
+                pack.character.forget_modification(mod)
+                pack.character.pack.add_downtime_result(
+                    str(pack.id), f"Forgot modification: {mod.name}"
+                )
+        for modification in learning:
+            mod = db.session.get(Mod, int(modification["mod_id"]))
+            if not mod:
+                continue
+            allowed, reason = pack.character.can_learn_modification(mod)
+            if allowed:
+                pack.character.learn_modification(mod)
+                pack.character.pack.add_downtime_result(str(pack.id), f"Learned mod: {mod.name}")
+            else:
+                pack.character.pack.add_downtime_result(
+                    str(pack.id), f"Could not learn {mod.name} - {reason}"
+                )
 
     # Process purchases
     for pack in packs:
@@ -1274,7 +1292,7 @@ def process_downtime(period_id):
                     and pack.character.can_afford(
                         item.get_modification_cost(engineering.get("mods", 0))
                     )
-                    and pack.character.known_modifications.contains(mod)
+                    and pack.character.knows_modification(mod)
                 ):
                     pack.character.remove_funds(
                         item.get_modification_cost(engineering.get("mods", 0)),
@@ -1302,7 +1320,7 @@ def process_downtime(period_id):
                         str(pack.id),
                         f"Could not apply {mod.name} to {item.name} - insufficient funds",
                     )
-                elif not pack.character.known_modifications.contains(mod):
+                elif not pack.character.knows_modification(mod):
                     pack.character.pack.add_downtime_result(
                         str(pack.id),
                         f"Could not apply {mod.name} to {item.name} - "

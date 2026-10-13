@@ -35,6 +35,26 @@
                 <small class="form-text text-muted">Select one or more item types this mod can be applied to.</small>
             </div>
 
+            <div class="form-group">
+                <label for="required_skills">Requires one of</label>
+                <select class="form-select" id="required_skills" name="required_skills" multiple title="Select skills a character needs to learn this mod">
+                    {% for skill in skills %}
+                    <option value="{{ skill.id }}" {% if mod and skill.id in mod.required_skills_list %}selected{% endif %}>{{ skill.name }}</option>
+                    {% endfor %}
+                </select>
+                <small class="form-text text-muted">A character needs at least one of these skills to learn this mod. Leave empty for no prerequisite.</small>
+            </div>
+
+            <div class="form-group">
+                <label for="granted_by_skills">Known automatically with</label>
+                <select class="form-select" id="granted_by_skills" name="granted_by_skills" multiple title="Select skills that grant this mod">
+                    {% for skill in skills %}
+                    <option value="{{ skill.id }}" {% if mod and skill.id in mod.granted_by_skills_list %}selected{% endif %}>{{ skill.name }}</option>
+                    {% endfor %}
+                </select>
+                <small class="form-text text-muted">Characters with mod slots and one of these skills know this mod without using a slot.</small>
+            </div>
+
             {{ wiki_page_select(
                 input_id='wiki_page_autocomplete',
                 select_name='wiki_slug',
