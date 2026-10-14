@@ -5,7 +5,12 @@ from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from models.database.conditions import Condition
-from models.database.cybernetic import CharacterCybernetic, Cybernetic
+from models.database.cybernetic import (
+    CharacterCybernetic,
+    Cybernetic,
+    adding_conflict_message,
+    occupied_slots,
+)
 from models.database.exotic_substances import ExoticSubstance
 from models.database.faction import Faction
 from models.database.item import Item
@@ -64,7 +69,7 @@ def get_available_science_slots_with_sources(character, science_type=None):
             if science_type is None or cybernetic.cybernetic.science_type == science_type:
                 slots.append(
                     {
-                        "source": f"Cybernetic: {cybernetic.cybernetic.name}",
+                        "source": f"Implant: {cybernetic.cybernetic.name}",
                         "type": cybernetic.cybernetic.science_type,
                     }
                 )
@@ -105,7 +110,7 @@ def get_available_engineering_slots_with_sources(character):
     # Get slots from cybernetics
     for cybernetic in character.cybernetics_link:
         if cybernetic.cybernetic.adds_engineering_downtime > 0:
-            slots.append({"source": f"Cybernetic: {cybernetic.cybernetic.name}"})
+            slots.append({"source": f"Implant: {cybernetic.cybernetic.name}"})
 
     return slots
 
@@ -273,6 +278,7 @@ def enter_pack_contents(period_id, character_id):
         samples=samples,
         sample_tags=sample_tags,
         cybernetics=cybernetics,
+        occupied_implant_slots=occupied_slots(pack.character),
         factions=factions,
         ScienceType=ScienceType,
     )
@@ -333,6 +339,17 @@ def enter_pack_contents_post(period_id, character_id):
 
     # On confirm, add samples to group inventory and conditions to player
     if request.form.get("confirm_complete"):
+        implant_conflict = adding_conflict_message(pack.character, pack.cybernetics or [])
+        if implant_conflict:
+            db.session.commit()
+            flash(implant_conflict, "error")
+            return redirect(
+                url_for(
+                    "downtime.enter_pack_contents",
+                    period_id=period_id,
+                    character_id=character_id,
+                )
+            )
         # Add credits to bank account immediately
         if pack.credits_added > 0:
             pack.character.add_funds(
@@ -408,14 +425,18 @@ def enter_pack_contents_post(period_id, character_id):
             from models.tools.character import CharacterAuditLog
 
             for cybernetic_id in pack.cybernetics:
-                cybernetic = db.session.get(Cybernetic, int(cybernetic_id))
+                try:
+                    cybernetic_id_int = int(cybernetic_id)
+                except (TypeError, ValueError):
+                    continue
+                cybernetic = db.session.get(Cybernetic, cybernetic_id_int)
                 if cybernetic:
                     # Check if cybernetic already exists for this character
                     existing_cybernetic = next(
                         (
                             cc
                             for cc in pack.character.cybernetics_link
-                            if cc.cybernetic_id == cybernetic_id
+                            if cc.cybernetic_id == cybernetic_id_int
                         ),
                         None,
                     )
@@ -426,13 +447,14 @@ def enter_pack_contents_post(period_id, character_id):
                             character_id=pack.character.id,
                             editor_user_id=current_user.id,
                             action=CharacterAuditAction.CYBERNETICS_CHANGE.value,
-                            changes=f"Cybernetic added via downtime: {cybernetic.name}",
+                            changes=f"Implant added via downtime: {cybernetic.name}",
                         )
                         db.session.add(audit)
 
                         db.session.add(
                             CharacterCybernetic(
-                                character_id=pack.character.id, cybernetic_id=cybernetic_id
+                                character_id=pack.character.id,
+                                cybernetic_id=cybernetic_id_int,
                             )
                         )
         pack.status = DowntimeTaskStatus.ENTER_DOWNTIME
@@ -845,17 +867,20 @@ def manual_review(period_id, character_id):
         has_data = True
 
     if pack.cybernetics:
-        summary_data["cybernetics"] = [
-            {
-                "id": cybernetic_id,
-                "name": (
-                    db.session.get(Cybernetic, int(cybernetic_id)).name
-                    if db.session.get(Cybernetic, int(cybernetic_id))
-                    else f"Cybernetic {cybernetic_id}"
-                ),
-            }
-            for cybernetic_id in pack.cybernetics
-        ]
+        summary_data["cybernetics"] = []
+        for cybernetic_id in pack.cybernetics:
+            implant = None
+            try:
+                implant = db.session.get(Cybernetic, int(cybernetic_id))
+            except (TypeError, ValueError):
+                implant = None
+            if implant:
+                label = implant.name
+                if implant.slot:
+                    label = f"{implant.name} ({implant.slot})"
+            else:
+                label = f"Implant {cybernetic_id}"
+            summary_data["cybernetics"].append({"id": cybernetic_id, "name": label})
         has_data = True
 
     if pack.research_teams:

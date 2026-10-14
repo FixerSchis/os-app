@@ -273,27 +273,28 @@
                 {% endif %}
 
                 {% if character %}
-                <!-- Cybernetics -->
+                <!-- Implants -->
                 {% if has_permission('character.edit_all') or character.cybernetics %}
                 <div class="col-lg-6">
                     <div class="card">
                         <div class="card-header">
-                            <h5 class="mb-0">Cybernetics</h5>
+                            <h5 class="mb-0">Implants</h5>
                         </div>
                         <div class="card-body">
                             <div class="form-group mb-0">
                                 {% if has_permission('character.edit_all') %}
-                                <select id="cybernetic_ids" name="cybernetic_ids[]" class="form-select select2-cybernetics width-100" multiple data-placeholder="Select cybernetics..." title="Select cybernetics...">
+                                <select id="cybernetic_ids" name="cybernetic_ids[]" class="form-select select2-cybernetics width-100" multiple data-placeholder="Select implants..." title="Select implants...">
                                     {% for cyber in all_cybernetics %}
-                                    <option value="{{ cyber.id }}" {% if character and cyber in character.cybernetics %}selected{% endif %}>{{ cyber.name }}</option>
+                                    <option value="{{ cyber.id }}" data-slot="{{ cyber.slot or '' }}" {% if character and cyber in character.cybernetics %}selected{% endif %}>{{ cyber.choice_label }}</option>
                                     {% endfor %}
                                 </select>
-                                <div class="form-text text-muted mt-2">Add or remove cybernetics for this character.</div>
+                                <div class="implant-slot-warning text-danger small mt-2 d-none"></div>
+                                <div class="form-text text-muted mt-2">Add or remove implants for this character. Only one implant can be installed in each slot.</div>
                                 {% else %}
                                 <div class="cybernetics-list">
                                     {% for cyber in character.cybernetics %}
                                         <a href="{{ url_for('wiki.wiki_view', slug=cyber.wiki_slug) }}" class="badge bg-info text-dark text-decoration-none" target="_blank">
-                                            <i class="fas fa-microchip me-1"></i>{{ cyber.name }}
+                                            <i class="fas fa-microchip me-1"></i>{{ cyber.choice_label }}
                                         </a>
                                     {% endfor %}
                                 </div>
@@ -728,6 +729,7 @@
 <link href="{{ url_for('static', filename='external/css/select2.min.css') }}" rel="stylesheet" />
 <link href="{{ url_for('static', filename='css/components/select2-custom.css') }}" rel="stylesheet" />
 <script src="{{ url_for('static', filename='js/components/tag-select.js') }}"></script>
+<script src="{{ url_for('static', filename='js/components/implant-slots.js') }}"></script>
 {% endif %}
 
 

@@ -66,7 +66,7 @@
                             <a href="{{ url_for('items.list') }}">Item Database</a>
                             <hr>
                             <a href="{{ url_for('conditions.list') }}">Conditions</a>
-                            <a href="{{ url_for('cybernetics.list') }}">Cybernetics</a>
+                            <a href="{{ url_for('cybernetics.list') }}">Implants</a>
                             <a href="{{ url_for('samples.sample_list') }}">Samples</a>
                         {% elif current_user.is_authenticated and has_permission('downtime.manage') %}
                             <a href="{{ url_for('samples.sample_list') }}">Samples</a>

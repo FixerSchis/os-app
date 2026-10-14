@@ -84,21 +84,23 @@
                     </div>
                 </div>
 
-                <!-- Cybernetics -->
+                <!-- Implants -->
                 <div class="card mb-4">
                     <div class="card-header">
-                        <h5 class="mb-0">Cybernetics</h5>
+                        <h5 class="mb-0">Implants</h5>
                     </div>
                     <div class="card-body">
                         <div class="form-group">
-                            <label for="cybernetics">Select Cybernetics</label>
-                            <select class="form-control select2-cybernetics" id="cybernetics" name="cybernetics[]" multiple title="Select cybernetics for pack">
+                            <label for="cybernetics">Select Implants</label>
+                            <select class="form-control select2-cybernetics" id="cybernetics" name="cybernetics[]" multiple title="Select implants for pack" data-occupied-slots="{{ occupied_implant_slots|tojson|e }}">
                                 {% for cyber in cybernetics %}
-                                <option value="{{ cyber.id }}" {% if cyber.id|string in pack.cybernetics %}selected{% endif %}>
-                                    {{ cyber.name }}
+                                <option value="{{ cyber.id }}" data-slot="{{ cyber.slot or '' }}" {% if cyber.id|string in pack.cybernetics %}selected{% endif %}>
+                                    {{ cyber.choice_label }}
                                 </option>
                                 {% endfor %}
                             </select>
+                            <div class="implant-slot-warning text-danger small mt-2 d-none"></div>
+                            <div class="form-text text-muted mt-2">A character can only have one implant in each slot.</div>
                         </div>
                     </div>
                 </div>
@@ -258,4 +260,5 @@
 {% block scripts %}
 {{ super() }}
 <script src="{{ url_for('static', filename='js/downtime/enter_pack_contents.js') }}"></script>
+<script src="{{ url_for('static', filename='js/components/implant-slots.js') }}"></script>
 {% endblock %}

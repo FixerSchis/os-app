@@ -1929,39 +1929,124 @@ def create_default_cybernetics():
     if not Cybernetic.query.first():
         tag = WikiTag(name="cybernetic")
         cybernetics = [
-            ("Cybernetic Limb", "cybernetic/cybernetic-limb", 10, 0, 0, 0, None),
-            (
-                "Neural Interface",
-                "cybernetic/neural-interface",
-                15,
-                0,
-                0,
-                1,
-                ScienceType.GENERIC,
-            ),
+            {
+                "name": "Cybernetic Limb",
+                "wiki_slug": "cybernetic/cybernetic-limb",
+                "neural_shock_value": 10,
+                "implant_type": "Cybernetic",
+                "slot": "Limb",
+                "description": "Description for Cybernetic Limb.",
+            },
+            {
+                "name": "Neural Interface",
+                "wiki_slug": "cybernetic/neural-interface",
+                "neural_shock_value": 15,
+                "adds_science_downtime": 1,
+                "science_type": ScienceType.GENERIC,
+                "implant_type": "Cybernetic",
+                "slot": "Brain",
+                "description": "Description for Neural Interface.",
+            },
+            {
+                "name": "Neural Catalogue Uplink",
+                "wiki_slug": "cybernetic/neural-catalogue-uplink",
+                "neural_shock_value": 10,
+                "adds_science_downtime": 1,
+                "science_type": ScienceType.GENERIC,
+                "implant_type": "Cybernetic",
+                "slot": "Brain",
+                "description": "Adds a generic science downtime point. +10 seconds neural shock.",
+            },
+            {
+                "name": "Hephaestus Implant",
+                "wiki_slug": "cybernetic/hephaestus-implant",
+                "neural_shock_value": 10,
+                "adds_engineering_downtime": 1,
+                "implant_type": "Cybernetic",
+                "slot": "Hands",
+                "description": "Adds an engineering downtime point. +10 seconds neural shock.",
+            },
+            {
+                "name": "Nano Claws",
+                "wiki_slug": "cybernetic/nano-claws",
+                "neural_shock_value": 10,
+                "implant_type": "Cybernetic",
+                "slot": "Hands",
+                "description": (
+                    "Allows the user to use clawed weapon physreps. +10 seconds neural shock."
+                ),
+            },
+            {
+                "name": "Integrated Backup Coil",
+                "wiki_slug": "cybernetic/integrated-backup-coil",
+                "neural_shock_value": 0,
+                "implant_type": "Cybernetic",
+                "slot": "Spine",
+                "description": "Limits neural shock to 10 seconds.",
+            },
+            {
+                "name": "Plasma Infuser",
+                "wiki_slug": "cybernetic/plasma-infuser",
+                "neural_shock_value": 0,
+                "implant_type": "Cybernetic",
+                "slot": "Liver",
+                "description": (
+                    "Allows the user to spend a minute with an unresisting character to "
+                    "inflict a Global Through to that character and restore one hit to "
+                    "all of their own locations."
+                ),
+            },
+            {
+                "name": "Med-glands",
+                "wiki_slug": "cybernetic/med-glands",
+                "neural_shock_value": 0,
+                "implant_type": "Bioware",
+                "slot": "Neck",
+                "description": (
+                    "Allows the user to store up to 5 doses of medicament for self "
+                    "administration at will."
+                ),
+            },
+            {
+                "name": "Amplified Filtration",
+                "wiki_slug": "cybernetic/amplified-filtration",
+                "neural_shock_value": 0,
+                "implant_type": "Bioware",
+                "slot": "Liver",
+                "description": (
+                    "The user restores one locational or global hit point every 30 minutes."
+                ),
+            },
+            {
+                "name": "Fake Bioware",
+                "wiki_slug": "cybernetic/fake-bioware",
+                "neural_shock_value": 0,
+                "implant_type": "Bioware",
+                "slot": "Spine",
+                "description": (
+                    "This is a test item. It identifies itself as a test item to let the "
+                    "players know that none of these implants are necessarily real."
+                ),
+            },
         ]
-        for (
-            name,
-            wiki_slug,
-            neural_shock_value,
-            eng_mods,
-            eng_downtime,
-            sci_downtime,
-            sci_type,
-        ) in cybernetics:
-            logging.info(f"Adding cybernetic: {name}")
+        for implant in cybernetics:
+            name = implant["name"]
+            wiki_slug = implant["wiki_slug"]
+            logging.info(f"Adding implant: {name}")
             cybernetic = Cybernetic(
                 name=name,
                 wiki_slug=wiki_slug,
-                neural_shock_value=neural_shock_value,
-                adds_engineering_mods=eng_mods,
-                adds_engineering_downtime=eng_downtime,
-                adds_science_downtime=sci_downtime,
-                science_type=sci_type,
+                neural_shock_value=implant["neural_shock_value"],
+                adds_engineering_mods=implant.get("adds_engineering_mods", 0),
+                adds_engineering_downtime=implant.get("adds_engineering_downtime", 0),
+                adds_science_downtime=implant.get("adds_science_downtime", 0),
+                science_type=implant.get("science_type"),
+                implant_type=implant["implant_type"],
+                slot=implant["slot"],
             )
             db.session.add(cybernetic)
             db.session.flush()
-            wiki_page = WikiPage(slug=wiki_slug, title=f"{name} - Cybernetic", tags=[tag])
+            wiki_page = WikiPage(slug=wiki_slug, title=f"{name} - Implant", tags=[tag])
             db.session.add(wiki_page)
             db.session.flush()
             wiki_version = WikiPageVersion(
@@ -1976,7 +2061,7 @@ def create_default_cybernetics():
                 version_id=wiki_version.id,
                 order=0,
                 title=name,
-                content=f"<p>Description for {name} cybernetic.</p>",
+                content=f"<p>{html.escape(implant['description'])}</p>",
             )
             db.session.add(wiki_section)
             db.session.flush()

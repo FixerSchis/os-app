@@ -40,7 +40,7 @@ $(document).ready(function() {
 
     // Cybernetics select2 as a plain multi-select
     $('.select2-cybernetics').select2({
-        placeholder: 'Select cybernetics...',
+        placeholder: 'Select implants...',
         allowClear: true,
         width: '100%',
         theme: 'default',

@@ -58,7 +58,7 @@ class SectionRestrictionType(Enum):
             cls.SPECIES.value: "Species",
             cls.REPUTATION.value: "Reputation",
             cls.SKILL.value: "Skill",
-            cls.CYBERNETIC.value: "Character has Cybernetic",
+            cls.CYBERNETIC.value: "Character has Implant",
             cls.TAG.value: "Character Tag",
         }
 
@@ -143,7 +143,7 @@ class CharacterAuditAction(Enum):
             cls.GROUP_JOINED.value: "Joined Group",
             cls.GROUP_LEFT.value: "Left Group",
             cls.CONDITION_CHANGE.value: "Condition Changed",
-            cls.CYBERNETICS_CHANGE.value: "Cybernetic Changed",
+            cls.CYBERNETICS_CHANGE.value: "Implant Changed",
         }
 
 

@@ -138,7 +138,7 @@ function renderSections() {
                         <option value="species" ${section.restriction_type === 'species' ? 'selected' : ''}>Species</option>
                         <option value="skill" ${section.restriction_type === 'skill' ? 'selected' : ''}>Skill</option>
                         <option value="tag" ${section.restriction_type === 'tag' ? 'selected' : ''}>Tag</option>
-                        <option value="cybernetic" ${section.restriction_type === 'cybernetic' ? 'selected' : ''}>Cybernetic</option>
+                        <option value="cybernetic" ${section.restriction_type === 'cybernetic' ? 'selected' : ''}>Implant</option>
                         <option value="reputation" ${section.restriction_type === 'reputation' ? 'selected' : ''}>Reputation</option>
                     </select>
                 </div>
@@ -367,7 +367,7 @@ function initializeSelect2() {
         $(sel).select2({
             data: data,
             width: 'resolve',
-            placeholder: 'Select cybernetics...',
+            placeholder: 'Select implants...',
             allowClear: true,
             tags: false
         });

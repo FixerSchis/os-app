@@ -4,7 +4,12 @@ from flask import Blueprint, flash, jsonify, redirect, render_template, request,
 from flask_login import current_user, login_required
 
 from models.database.conditions import Condition
-from models.database.cybernetic import CharacterCybernetic, Cybernetic
+from models.database.cybernetic import (
+    CharacterCybernetic,
+    Cybernetic,
+    implants_by_ids,
+    slot_conflict_message,
+)
 from models.database.faction import Faction
 from models.database.item import Item
 from models.database.item_blueprint import ItemBlueprint
@@ -92,6 +97,19 @@ def _edit_redirect(character, admin_context):
     if admin_context:
         redirect_url += "?admin_context=1"
     return redirect(redirect_url)
+
+
+def _assign_new_character_implants(character, raw_ids):
+    """Install the submitted implants on a new character, or return an error."""
+    implants = implants_by_ids(raw_ids)
+    conflict = slot_conflict_message(implants)
+    if conflict:
+        return conflict
+    for implant in implants:
+        db.session.add(CharacterCybernetic(character_id=character.id, cybernetic_id=implant.id))
+    if implants:
+        db.session.commit()
+    return None
 
 
 def can_edit_character(user, args, kwargs):
@@ -358,10 +376,11 @@ def create_character_post():
     db.session.add(audit)
     db.session.commit()
     if current_user.has_permission("character.edit_all"):
-        selected_cyber_ids = request.form.getlist("cybernetic_ids[]")
-        for cid in selected_cyber_ids:
-            db.session.add(CharacterCybernetic(character_id=character.id, cybernetic_id=cid))
-        db.session.commit()
+        implant_error = _assign_new_character_implants(
+            character, request.form.getlist("cybernetic_ids[]")
+        )
+        if implant_error:
+            flash(implant_error, "error")
     flash("Character created successfully!", "success")
     return redirect(url_for("characters.character_list"))
 
@@ -577,6 +596,14 @@ def edit_post(character_id):
             redirect_url += "?admin_context=1"
         return redirect(redirect_url)
 
+    selected_implants = []
+    if current_user.has_permission("character.edit_all"):
+        selected_implants = implants_by_ids(request.form.getlist("cybernetic_ids[]"))
+        conflict = slot_conflict_message(selected_implants)
+        if conflict:
+            flash(conflict, "error")
+            return _edit_redirect(character, admin_context)
+
     # Track basic information changes for EDIT action
     basic_changes = []
 
@@ -747,9 +774,8 @@ def edit_post(character_id):
         # Track cybernetic changes for CYBERNETICS_CHANGE action
 
         # Update cybernetics if user_admin
-        selected_cyber_ids = request.form.getlist("cybernetic_ids[]")
         current_cyber_ids = {cc.cybernetic_id for cc in character.cybernetics_link}
-        new_cyber_ids = set(int(cid) for cid in selected_cyber_ids if cid.isdigit())
+        new_cyber_ids = {implant.id for implant in selected_implants}
 
         # Track cybernetic changes
         added_cybernetics = new_cyber_ids - current_cyber_ids
@@ -758,18 +784,18 @@ def edit_post(character_id):
         for cyber_id in added_cybernetics:
             cyber = Cybernetic.query.get(cyber_id)
             if cyber:
-                cybernetic_changes.append(f"Cybernetic added: {cyber.name}")
+                cybernetic_changes.append(f"Implant added: {cyber.name}")
 
         for cyber_id in removed_cybernetics:
             cyber = Cybernetic.query.get(cyber_id)
             if cyber:
-                cybernetic_changes.append(f"Cybernetic removed: {cyber.name}")
+                cybernetic_changes.append(f"Implant removed: {cyber.name}")
 
         # Remove all current
         CharacterCybernetic.query.filter_by(character_id=character.id).delete()
         # Add new
-        for cid in selected_cyber_ids:
-            db.session.add(CharacterCybernetic(character_id=character.id, cybernetic_id=cid))
+        for implant in selected_implants:
+            db.session.add(CharacterCybernetic(character_id=character.id, cybernetic_id=implant.id))
 
     # Update faction reputations if user is admin (handled by set_reputation method)
     if current_user.has_permission("character.edit_all"):
@@ -1431,10 +1457,11 @@ def create_for_player_post(user_id):
     db.session.add(audit)
     db.session.commit()
     if current_user.has_permission("character.edit_all"):
-        selected_cyber_ids = request.form.getlist("cybernetic_ids[]")
-        for cid in selected_cyber_ids:
-            db.session.add(CharacterCybernetic(character_id=character.id, cybernetic_id=cid))
-        db.session.commit()
+        implant_error = _assign_new_character_implants(
+            character, request.form.getlist("cybernetic_ids[]")
+        )
+        if implant_error:
+            flash(implant_error, "error")
     flash("Character created successfully!", "success")
     return redirect(url_for("user_management.user_management_edit_user", user_id=user.id))
 

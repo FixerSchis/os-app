@@ -40,7 +40,7 @@ class TestDatabaseManagement:
                 "Item Blueprints",
                 "Items",
                 "Conditions",
-                "Cybernetics",
+                "Implants",
                 "Samples",
                 "Exotic Substances",
                 "Medicaments",

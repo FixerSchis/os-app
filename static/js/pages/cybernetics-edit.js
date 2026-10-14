@@ -16,4 +16,11 @@ $(document).ready(function() {
 
     scienceDowntimeInput.addEventListener('change', toggleScienceType);
     toggleScienceType(); // Initial state
+
+    $('.select2-implant-label').select2({
+        tags: true,
+        width: '100%',
+        placeholder: 'Search existing values or type a new one',
+        allowClear: false
+    });
 });
