@@ -182,8 +182,11 @@ class Character(db.Model):
     @property
     def pack(self):
         try:
-            # character_pack is always JSON data (dict) since we control the data
-            pack = Pack(**self.character_pack)
+            raw = dict(self.character_pack or {})
+            # Messages sit beside the pack document and are not Pack fields.
+            raw.pop("messages", None)
+            raw.pop("is_completed", None)
+            pack = Pack(**raw)
             return pack
         except Exception:
             return Pack()

@@ -32,6 +32,12 @@ class Item(db.Model):
         return f"{self.blueprint.full_code}-{self.item_id:03d}"
 
     @property
+    def name(self):
+        if self.blueprint:
+            return self.blueprint.display_name
+        return f"Item {self.id}"
+
+    @property
     def total_mods(self):
         # Count only applied mods
         rows = db.session.execute(

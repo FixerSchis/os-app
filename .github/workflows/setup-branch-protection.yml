@@ -24,6 +24,7 @@ jobs:
                 required_status_checks: {
                   strict: true,
                   contexts: [
+                    'Downtime end-to-end',
                     'Tests and Linting',
                     'Security Checks',
                     'Pre-commit Checks'
