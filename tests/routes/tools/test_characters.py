@@ -492,6 +492,105 @@ def _button_form_owners(html):
     return owners
 
 
+def test_admin_cannot_install_two_implants_in_the_same_slot(test_client, db):
+    """Saving a character rejects a second implant for a slot that is already chosen."""
+    from models.database.cybernetic import CharacterCybernetic, Cybernetic
+    from tests.conftest import assign_role_to_user
+
+    admin = User(email="implant-slot-admin@example.com", first_name="Slot", surname="Admin")
+    admin.set_password("password")
+    admin.email_verified = True
+    db.session.add(admin)
+    db.session.commit()
+    assign_role_to_user(admin, "admin", db.session)
+
+    faction = Faction(name="Slot Faction", wiki_slug="slot-faction", allow_player_characters=True)
+    db.session.add(faction)
+    db.session.flush()
+    species = Species(
+        name="Slot Species",
+        wiki_page="slot-species",
+        body_hits_type="locational",
+        body_hits=3,
+        death_count=1,
+        permitted_factions_list=[faction.id],
+    )
+    db.session.add(species)
+    db.session.flush()
+    character = Character(
+        user_id=admin.id,
+        name="Slot Subject",
+        status=CharacterStatus.ACTIVE.value,
+        faction_id=faction.id,
+        species_id=species.id,
+    )
+    brain = Cybernetic(
+        name="Cortex Weave",
+        neural_shock_value=1,
+        wiki_slug="slot-cortex-weave",
+        implant_type="Bioware",
+        slot="Brain",
+    )
+    other_brain = Cybernetic(
+        name="Neural Lace",
+        neural_shock_value=1,
+        wiki_slug="slot-neural-lace",
+        implant_type="Cybernetic",
+        slot="Brain",
+    )
+    hands = Cybernetic(
+        name="Tool Hands",
+        neural_shock_value=1,
+        wiki_slug="slot-tool-hands",
+        implant_type="Cybernetic",
+        slot="Hands",
+    )
+    db.session.add_all([character, brain, other_brain, hands])
+    db.session.commit()
+
+    with test_client.session_transaction() as session:
+        session["_user_id"] = admin.id
+        session["_fresh"] = True
+
+    rejected = test_client.post(
+        f"/characters/{character.id}/edit",
+        data={
+            "name": "Renamed Subject",
+            "pronouns_subject": "they",
+            "pronouns_object": "them",
+            "faction": str(faction.id),
+            "species_id": str(species.id),
+            "cybernetic_ids[]": [str(brain.id), str(other_brain.id)],
+        },
+        follow_redirects=True,
+    )
+    assert rejected.status_code == 200
+    assert b"already installed" in rejected.data
+    db.session.expire_all()
+    refreshed = db.session.get(Character, character.id)
+    assert refreshed.name == "Slot Subject"
+    assert CharacterCybernetic.query.filter_by(character_id=character.id).count() == 0
+
+    accepted = test_client.post(
+        f"/characters/{character.id}/edit",
+        data={
+            "name": "Slot Subject",
+            "pronouns_subject": "they",
+            "pronouns_object": "them",
+            "faction": str(faction.id),
+            "species_id": str(species.id),
+            "cybernetic_ids[]": [str(brain.id), str(hands.id)],
+        },
+        follow_redirects=True,
+    )
+    assert accepted.status_code == 200
+    installed = {
+        link.cybernetic_id
+        for link in CharacterCybernetic.query.filter_by(character_id=character.id).all()
+    }
+    assert installed == {brain.id, hands.id}
+
+
 def test_admin_character_edit_save_stays_on_character_form(test_client, db):
     """Save Changes, conditions, and samples stay on the character form."""
     from tests.conftest import assign_role_to_user

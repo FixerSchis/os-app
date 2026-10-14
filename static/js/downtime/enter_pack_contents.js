@@ -7,7 +7,7 @@ $(document).ready(function() {
     // Initialize select2 for cybernetics
     $('.select2-cybernetics').select2({
         width: '100%',
-        placeholder: 'Select cybernetics...',
+        placeholder: 'Select implants...',
         allowClear: true
     });
 

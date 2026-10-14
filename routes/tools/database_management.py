@@ -150,7 +150,7 @@ def get_database_stats():
         "Item Blueprints": ItemBlueprint,
         "Items": Item,
         "Conditions": Condition,
-        "Cybernetics": Cybernetic,
+        "Implants": Cybernetic,
         "Samples": Sample,
         "Exotic Substances": ExoticSubstance,
         "Medicaments": Medicament,

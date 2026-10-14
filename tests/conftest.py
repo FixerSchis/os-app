@@ -63,7 +63,7 @@ def initialize_test_permissions(db_session):
         ("rules.conditions", "Manage conditions", "rules"),
         ("rules.skills", "Manage skills", "rules"),
         ("rules.species", "Manage species", "rules"),
-        ("rules.cybernetics", "Manage cybernetics", "rules"),
+        ("rules.cybernetics", "Manage implants", "rules"),
         ("rules.exotic_substances", "Manage exotic substances", "rules"),
         ("rules.factions", "Manage factions", "rules"),
         ("rules.items", "Manage items", "rules"),
