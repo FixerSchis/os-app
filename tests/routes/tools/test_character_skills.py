@@ -288,3 +288,102 @@ class TestCharacterSkills:
         )
         assert response.status_code == 302  # Should redirect on error
         # No error message check
+
+    def test_skill_actions_submit_together(
+        self, test_client, regular_user, character_with_faction, skill
+    ):
+        login_user(test_client, regular_user)
+        response = test_client.get(self.url(character_with_faction.id))
+        page = response.get_data(as_text=True)
+        assert 'id="skill-spend-form"' in page
+        assert ">Submit<" in page
+        assert 'type="button"' in page
+        assert "/purchase" not in page
+        assert "/refund" not in page
+
+    def test_submit_buys_several_ranks_at_once(
+        self, test_client, regular_user, character_with_faction
+    ):
+        unique = uuid.uuid4().hex[:8]
+        ranked = Skill(
+            name=f"Repeated {unique}",
+            base_cost=1,
+            can_purchase_multiple=True,
+            cost_increases=False,
+            skill_type="general",
+        )
+        db.session.add(ranked)
+        db.session.commit()
+        login_user(test_client, regular_user)
+
+        response = test_client.post(
+            self.url(character_with_faction.id),
+            data={f"rank_{ranked.id}": "3"},
+            follow_redirects=True,
+        )
+        assert response.status_code == 200
+        assert b"Skill changes saved." in response.data
+        owned = CharacterSkill.query.filter_by(
+            character_id=character_with_faction.id, skill_id=ranked.id
+        ).one()
+        assert owned.times_purchased == 3
+
+    def test_submit_rolls_back_when_the_full_spend_cannot_be_paid(
+        self, test_client, regular_user, character_with_faction
+    ):
+        character_with_faction.base_character_points = 10
+        regular_user.character_points = 0
+        unique = uuid.uuid4().hex[:8]
+        ranked = Skill(
+            name=f"Expensive {unique}",
+            base_cost=6,
+            can_purchase_multiple=True,
+            cost_increases=False,
+            skill_type="general",
+        )
+        db.session.add(ranked)
+        db.session.commit()
+        login_user(test_client, regular_user)
+
+        response = test_client.post(
+            self.url(character_with_faction.id),
+            data={f"rank_{ranked.id}": "2"},
+            follow_redirects=True,
+        )
+        assert response.status_code == 200
+        assert b"Not enough character points" in response.data
+        owned = CharacterSkill.query.filter_by(
+            character_id=character_with_faction.id, skill_id=ranked.id
+        ).first()
+        assert owned is None
+        db.session.refresh(regular_user)
+        assert regular_user.character_points == 0
+
+    def test_submit_refunds_down_to_the_chosen_rank(
+        self, test_client, regular_user, character_with_faction, skill
+    ):
+        character_with_faction.status = "developing"
+        skill.can_purchase_multiple = True
+        skill.base_cost = 1
+        db.session.add(
+            CharacterSkill(
+                character_id=character_with_faction.id,
+                skill_id=skill.id,
+                times_purchased=3,
+                purchased_by_user_id=regular_user.id,
+            )
+        )
+        db.session.commit()
+        login_user(test_client, regular_user)
+
+        response = test_client.post(
+            self.url(character_with_faction.id),
+            data={f"rank_{skill.id}": "1"},
+            follow_redirects=True,
+        )
+        assert response.status_code == 200
+        assert b"Skill changes saved." in response.data
+        owned = CharacterSkill.query.filter_by(
+            character_id=character_with_faction.id, skill_id=skill.id
+        ).one()
+        assert owned.times_purchased == 1

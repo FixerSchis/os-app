@@ -16,124 +16,136 @@
             <a href="{{ url_for('characters.edit', character_id=character.id) }}" class="btn btn-secondary">Back to Edit</a>
         </div>
 
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <span class="h5 mb-0" id="available-cp">Available CP: <strong>{{ character.get_available_character_points() }}</strong></span>
-            <span class="h5 mb-0" id="spent-cp">Spent CP: <strong>{{ character.get_total_skill_cost() }}</strong></span>
-        </div>
+        <form id="skill-spend-form" method="POST" action="{{ url_for('character_skills.character_skills', character_id=character.id) }}" autocomplete="off">
+            <p class="text-muted">Adjust ranks, then submit. The page stays in place until you submit.</p>
 
-        <div class="table-responsive">
-            <table class="table table-striped w-100" aria-labelledby="skills-table-caption">
-                <caption id="skills-table-caption" class="sr-only">Character skills list with purchase options</caption>
-                <thead>
-                    <tr>
-                        <th scope="col" class="width-80">Skill</th>
-                        <th scope="col" class="width-10">Cost</th>
-                        <th scope="col" class="width-10">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for skill_type, group in skills|groupby('skill_type') %}
-                        <tr class="bg-skilltype">
-                            <td colspan="3" class="fw-bold">
-                                <strong>{{ skill_type|capitalize }}</strong>
-                            </td>
-                        </tr>
-                        {% for skill in group %}
-                        {% set character_skill = character.skills|selectattr('skill_id', 'equalto', skill.id)|first %}
-                        {% set cost = character.get_skill_cost(skill) %}
-                        {% set can_afford = character.available_points_for(skill) >= cost %}
-                        {% set earned_only_blocked = skill.earned_points_only and not can_afford %}
-                        {% set can_refund = has_permission('character.edit_all') or character.status == 'developing' %}
-                        {% set owns_prerequisite = (not skill.required_skill_id) or (character.skills|selectattr('skill_id', 'equalto', skill.required_skill_id)|list) %}
-                        {% set rank_limit = character.maximum_rank(skill) %}
-                        {% set owned_ranks = character_skill.times_purchased if character_skill else 0 %}
-                        {% set at_rank_limit = rank_limit is not none and owned_ranks >= rank_limit %}
-                        {% set requirement_error = character.skill_requirement_error(skill) %}
+            <div class="skill-spend-summary d-flex justify-content-between align-items-center mb-4 gap-3 flex-wrap">
+                <div>
+                    <span class="h5 mb-0 me-4" id="available-cp">Available CP: <strong id="available-cp-value">{{ '%g'|format(character.get_available_character_points()) }}</strong></span>
+                    <span class="h5 mb-0" id="spent-cp">Spent CP: <strong id="spent-cp-value">{{ '%g'|format(character.get_total_skill_cost()) }}</strong></span>
+                </div>
+                <button type="submit" class="btn btn-primary skill-spend-submit">Submit</button>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-striped w-100" aria-labelledby="skills-table-caption">
+                    <caption id="skills-table-caption" class="sr-only">Character skills list with purchase options</caption>
+                    <thead>
                         <tr>
-                            <td class="ps-4" style="padding-left: 2em;">
-                                <div><strong>
-                                    {{ skill.name }}
-                                    {% set indicators = [] %}
-                                    {% if skill.can_purchase_multiple and not skill.cost_increases %}
-                                        {% set _ = indicators.append('a') %}
-                                    {% elif skill.can_purchase_multiple and skill.cost_increases %}
-                                        {% set _ = indicators.append('+') %}
-                                    {% endif %}
-                                    {% if skill.required_skill or skill.required_any_skills_list or skill.distinct_requirements_list or skill.get_required_factions() or skill.get_required_species() or skill.get_required_tags() %}
-                                        {% set _ = indicators.append('*') %}
-                                    {% endif %}
-                                    {% if skill.earned_points_only %}
-                                        {% set _ = indicators.append('e') %}
-                                    {% endif %}
-                                    {% if indicators %}
-                                        <sup>{{ indicators | join('') }}</sup>
-                                    {% endif %}
-                                </strong></div>
-                                <div class="text-muted small">
-                                    {% if character_skill and character_skill.times_purchased %}
-                                        {{ character_skill.format_description() }}
-                                    {% else %}
-                                        {{ skill.format_unapplied() }}
-                                    {% endif %}
-                                </div>
-                            </td>
-                            <td class="text-center">
-                                {{ cost }} CP
-                            </td>
-                            <td class="text-center">
-                                {% if skill.can_purchase_multiple %}
-                                    <div class="d-flex align-items-center justify-content-center gap-2" style="min-width:120px;">
-                                        <form method="POST" action="{{ url_for('character_skills.refund_skill', character_id=character.id) }}" style="display:inline;">
-                                            <label for="refund_skill_{{ skill.id }}" class="sr-only">Refund {{ skill.name }}</label>
-                                            <input type="hidden" id="refund_skill_{{ skill.id }}" name="skill_id" value="{{ skill.id }}">
-                                            <button type="submit" class="btn btn-outline-primary btn-sm"
-                                                {% if not character_skill or character_skill.times_purchased == 0 or not can_refund %}disabled{% endif %}
+                            <th scope="col" class="width-80">Skill</th>
+                            <th scope="col" class="width-10">Cost</th>
+                            <th scope="col" class="width-10">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for skill_type, group in skills|groupby('skill_type') %}
+                            <tr class="bg-skilltype">
+                                <td colspan="3" class="fw-bold">
+                                    <strong>{{ skill_type|capitalize }}</strong>
+                                </td>
+                            </tr>
+                            {% for skill in group %}
+                            {% set character_skill = character.skills|selectattr('skill_id', 'equalto', skill.id)|first %}
+                            {% set cost = character.get_skill_cost(skill) %}
+                            {% set can_afford = character.available_points_for(skill) >= cost %}
+                            {% set earned_only_blocked = skill.earned_points_only and not can_afford %}
+                            {% set owns_prerequisite = (not skill.required_skill_id) or (character.skills|selectattr('skill_id', 'equalto', skill.required_skill_id)|list) %}
+                            {% set rank_limit = character.maximum_rank(skill) %}
+                            {% set owned_ranks = character_skill.times_purchased if character_skill else 0 %}
+                            {% set at_rank_limit = rank_limit is not none and owned_ranks >= rank_limit %}
+                            {% set requirement_error = character.skill_requirement_error(skill) %}
+                            <tr data-skill-id="{{ skill.id }}">
+                                <td class="ps-4" style="padding-left: 2em;">
+                                    <div><strong>
+                                        {{ skill.name }}
+                                        {% set indicators = [] %}
+                                        {% if skill.can_purchase_multiple and not skill.cost_increases %}
+                                            {% set _ = indicators.append('a') %}
+                                        {% elif skill.can_purchase_multiple and skill.cost_increases %}
+                                            {% set _ = indicators.append('+') %}
+                                        {% endif %}
+                                        {% if skill.required_skill or skill.required_any_skills_list or skill.distinct_requirements_list or skill.get_required_factions() or skill.get_required_species() or skill.get_required_tags() %}
+                                            {% set _ = indicators.append('*') %}
+                                        {% endif %}
+                                        {% if skill.earned_points_only %}
+                                            {% set _ = indicators.append('e') %}
+                                        {% endif %}
+                                        {% if indicators %}
+                                            <sup>{{ indicators | join('') }}</sup>
+                                        {% endif %}
+                                    </strong></div>
+                                    <div class="text-muted small skill-description">
+                                        {% if character_skill and character_skill.times_purchased %}
+                                            {{ character_skill.format_description() }}
+                                        {% else %}
+                                            {{ skill.format_unapplied() }}
+                                        {% endif %}
+                                    </div>
+                                </td>
+                                <td class="text-center skill-cost">
+                                    {{ cost }} CP
+                                </td>
+                                <td class="text-center">
+                                    <input type="hidden" name="rank_{{ skill.id }}" id="rank-{{ skill.id }}" value="{{ owned_ranks }}">
+                                    {% if skill.can_purchase_multiple %}
+                                        <div class="d-flex align-items-center justify-content-center gap-2" style="min-width:120px;">
+                                            <button type="button" class="btn btn-outline-primary btn-sm"
+                                                data-action="decrease"
+                                                {% if owned_ranks == 0 or not can_refund %}disabled{% endif %}
                                                 aria-label="Decrease {{ skill.name }} level">
                                                 <i class="fas fa-minus"></i>
                                             </button>
-                                        </form>
-                                        <span class="text-center" style="width:2em;" aria-label="Current level of {{ skill.name }}">{{ character_skill.times_purchased if character_skill else 0 }}</span>
-                                        <form method="POST" action="{{ url_for('character_skills.purchase_skill', character_id=character.id) }}" style="display:inline;">
-                                            <label for="purchase_skill_{{ skill.id }}" class="sr-only">Purchase {{ skill.name }}</label>
-                                            <input type="hidden" id="purchase_skill_{{ skill.id }}" name="skill_id" value="{{ skill.id }}">
-                                            <button type="submit" class="btn btn-outline-primary btn-sm"
+                                            <span class="text-center skill-rank" style="width:2em;" aria-label="Current level of {{ skill.name }}">{{ owned_ranks }}</span>
+                                            <button type="button" class="btn btn-outline-primary btn-sm"
+                                                data-action="increase"
                                                 {% if not can_afford or not owns_prerequisite or at_rank_limit or requirement_error %}disabled{% endif %}
                                                 {% if not owns_prerequisite %}title="Requires {{ skill.required_skill.name }}"{% elif requirement_error %}title="{{ requirement_error }}"{% elif at_rank_limit %}title="Maximum {{ rank_limit }} ranks"{% elif earned_only_blocked %}title="Needs earned character points"{% endif %}
                                                 aria-label="Increase {{ skill.name }} level">
                                                 <i class="fas fa-plus"></i>
                                             </button>
-                                        </form>
-                                    </div>
-                                {% else %}
-                                    {% if character_skill %}
-                                        <form method="POST" action="{{ url_for('character_skills.refund_skill', character_id=character.id) }}" class="d-inline">
-                                            <label for="refund_skill_single_{{ skill.id }}" class="sr-only">Refund {{ skill.name }}</label>
-                                            <input type="hidden" id="refund_skill_single_{{ skill.id }}" name="skill_id" value="{{ skill.id }}">
-                                            <button type="submit" class="btn btn-danger btn-sm" {% if not can_refund %}disabled{% endif %} aria-label="Refund {{ skill.name }}">Refund</button>
-                                        </form>
+                                        </div>
                                     {% else %}
-                                        <form method="POST" action="{{ url_for('character_skills.purchase_skill', character_id=character.id) }}" class="d-inline">
-                                            <label for="purchase_skill_single_{{ skill.id }}" class="sr-only">Purchase {{ skill.name }}</label>
-                                            <input type="hidden" id="purchase_skill_single_{{ skill.id }}" name="skill_id" value="{{ skill.id }}">
-                                            <button type="submit" class="btn btn-primary btn-sm" {% if not can_afford or not owns_prerequisite or requirement_error %}disabled{% endif %}{% if not owns_prerequisite %} title="Requires {{ skill.required_skill.name }}"{% elif requirement_error %} title="{{ requirement_error }}"{% elif earned_only_blocked %} title="Needs earned character points"{% endif %} aria-label="Buy {{ skill.name }}">Buy</button>
-                                        </form>
+                                        <button type="button" class="btn btn-danger btn-sm"
+                                            data-action="decrease"
+                                            {% if not character_skill %}hidden{% endif %}
+                                            {% if not character_skill or not can_refund %}disabled{% endif %}
+                                            aria-label="Refund {{ skill.name }}">Refund</button>
+                                        <button type="button" class="btn btn-primary btn-sm"
+                                            data-action="increase"
+                                            {% if character_skill %}hidden{% endif %}
+                                            {% if not can_afford or not owns_prerequisite or requirement_error %}disabled{% endif %}
+                                            {% if not owns_prerequisite %} title="Requires {{ skill.required_skill.name }}"{% elif requirement_error %} title="{{ requirement_error }}"{% elif earned_only_blocked %} title="Needs earned character points"{% endif %}
+                                            aria-label="Buy {{ skill.name }}">Buy</button>
                                     {% endif %}
-                                {% endif %}
-                            </td>
-                        </tr>
+                                </td>
+                            </tr>
+                            {% endfor %}
                         {% endfor %}
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-        <div class="mt-4">
-            <p class="small text-muted">
-                <sup>a</sup> - Can be bought multiple times. Cost does not increase each time.<br>
-                <sup>+</sup> - Can be bought multiple times. Cost increases by 1 point each time.<br>
-                <sup>*</sup> - Prerequisite skill required.<br>
-                <sup>e</sup> - Earned character points only. Base character points cannot pay for it.
-            </p>
-        </div>
+                    </tbody>
+                </table>
+            </div>
+            <div class="mt-4">
+                <p class="small text-muted">
+                    <sup>a</sup> - Can be bought multiple times. Cost does not increase each time.<br>
+                    <sup>+</sup> - Can be bought multiple times. Cost increases by 1 point each time.<br>
+                    <sup>*</sup> - Prerequisite skill required.<br>
+                    <sup>e</sup> - Earned character points only. Base character points cannot pay for it.
+                </p>
+            </div>
+            <div class="skill-spend-bar">
+                <div>
+                    <span id="skill-spend-status" class="text-muted" hidden>Unsaved changes</span>
+                    <span class="ms-3">Available CP: <strong id="available-cp-bar">{{ '%g'|format(character.get_available_character_points()) }}</strong></span>
+                </div>
+                <button type="submit" class="btn btn-primary skill-spend-submit">Submit</button>
+            </div>
+        </form>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script id="skill-spend-data" type="application/json">{{ skill_spend|tojson }}</script>
+<script src="{{ url_for('static', filename='js/pages/character-skills.js') }}"></script>
 {% endblock %}
