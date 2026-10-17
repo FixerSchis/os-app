@@ -228,6 +228,62 @@ def test_admin_bypasses_species_faction_validation(test_client, db):
     assert b"Character created successfully!" in response.data
 
 
+def test_admin_create_for_player_assigns_that_user(test_client, db):
+    """Creating a character from another user's page stores it on that user."""
+    from tests.conftest import assign_role_to_user
+
+    admin = User(email="create-for-admin@example.com", first_name="Create", surname="Admin")
+    admin.set_password("password")
+    admin.email_verified = True
+    player = User(email="create-for-player@example.com", first_name="Target", surname="Player")
+    player.set_password("password")
+    player.email_verified = True
+    db.session.add_all([admin, player])
+    db.session.commit()
+    assign_role_to_user(admin, "admin", db.session)
+
+    faction = Faction(name="Owned Faction", wiki_slug="owned-faction", allow_player_characters=True)
+    db.session.add(faction)
+    db.session.flush()
+    species = Species(
+        name="Owned Species",
+        wiki_page="owned-species",
+        permitted_factions_list=[faction.id],
+        body_hits_type="global",
+        body_hits=3,
+        death_count=0,
+    )
+    db.session.add(species)
+    db.session.commit()
+
+    with test_client.session_transaction() as session:
+        session["_user_id"] = admin.id
+        session["_fresh"] = True
+
+    page = test_client.get(f"/characters/new/{player.id}").get_data(as_text=True)
+    assert f'action="/characters/new/{player.id}"' in page
+
+    response = test_client.post(
+        f"/characters/new/{player.id}",
+        data={
+            "name": "Player Character",
+            "pronouns_subject": "they",
+            "pronouns_object": "them",
+            "faction": str(faction.id),
+            "species_id": str(species.id),
+            "base_character_points": "30",
+        },
+        follow_redirects=False,
+    )
+    assert response.status_code == 302
+    assert f"/user-management/user/{player.id}" in response.location
+
+    character = Character.query.filter_by(name="Player Character").one()
+    assert character.user_id == player.id
+    assert character.base_character_points == 30
+    assert Character.query.filter_by(user_id=admin.id).count() == 0
+
+
 def test_character_activation_with_starting_items(test_client, db, new_user):
     """Test that character activation creates starting items through the route."""
     from models.database.item import Item

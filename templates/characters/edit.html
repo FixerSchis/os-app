@@ -23,7 +23,8 @@
             {% endif %}
         </div>
 
-        <form id="character-edit-form" method="POST" action="{{ url_for('characters.create_character_post' if not character else 'characters.edit_post', character_id=character.id if character else None) }}" class="settings-form w-100">
+        {% set form_action = url_for('characters.edit_post', character_id=character.id) if character else (url_for('characters.create_for_player_post', user_id=user_id) if user_id is defined else url_for('characters.create_character_post')) %}
+        <form id="character-edit-form" method="POST" action="{{ form_action }}" class="settings-form w-100">
             {% if admin_context %}
             <input type="hidden" name="admin_context" value="1">
             {% endif %}

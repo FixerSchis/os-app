@@ -1407,6 +1407,21 @@ def create_for_player_post(user_id):
             all_cybernetics=all_cybernetics,
         )
 
+    base_character_points = 10
+    posted_points, points_error = _posted_base_character_points(current_user)
+    if points_error:
+        flash(points_error, "error")
+        return render_template(
+            "characters/edit.html",
+            user_id=user_id,
+            admin_context=True,
+            factions=factions,
+            species_list=species_list,
+            all_cybernetics=all_cybernetics,
+        )
+    if posted_points is not None:
+        base_character_points = posted_points
+
     # Get background fields from form
     background = request.form.get("background", "").strip()
     goals = request.form.get("goals", "").strip()
@@ -1420,6 +1435,7 @@ def create_for_player_post(user_id):
         status=CharacterStatus.DEVELOPING.value,
         faction_id=faction.id,
         species_id=int(species_id),
+        base_character_points=base_character_points,
         background=background,
         goals=goals,
         concept=concept,
