@@ -543,8 +543,10 @@ class Character(db.Model):
 
         return True, None
 
-    def purchase_skill(self, skill, user):
+    def purchase_skill(self, skill, user, commit=True):
         """Purchase a skill for the character."""
+        # A batch of spends applies several purchases before committing.
+        db.session.expire(self, ["skills"])
         can_purchase, error = self.can_purchase_skill(skill, user)
         if not can_purchase:
             raise ValueError(error)
@@ -593,7 +595,10 @@ class Character(db.Model):
             new_reputation = current_reputation + skill.adds_reputation_value
             self.set_reputation(skill.adds_reputation_faction_id, new_reputation, user.id)
 
-        db.session.commit()
+        if commit:
+            db.session.commit()
+        else:
+            db.session.flush()
         return True
 
     def activate(self, user):
@@ -631,8 +636,10 @@ class Character(db.Model):
         db.session.commit()
         return True
 
-    def refund_skill(self, skill, user):
+    def refund_skill(self, skill, user, commit=True):
         """Refund a skill purchase for the character."""
+        # A batch of spends applies several refunds before committing.
+        db.session.expire(self, ["skills"])
         # Check if user has permission
         if not (user.id == self.user_id or user.has_permission("character.edit_all")):
             raise ValueError("You don't have permission to modify this character's skills")
@@ -699,7 +706,10 @@ class Character(db.Model):
                 # Ensure the user is tracked in the session
                 db.session.merge(user_to_refund)
 
-        db.session.commit()
+        if commit:
+            db.session.commit()
+        else:
+            db.session.flush()
         return True
 
     def _learned_modification_ids(self):
