@@ -161,7 +161,12 @@
     }
 
     function decreaseReason(skill) {
-        if ((ranks.get(skill.id) || 0) <= 0 || !config.canRefund) {
+        const rank = ranks.get(skill.id) || 0;
+        if (rank <= 0) {
+            return 'unavailable';
+        }
+        // Saved ranks need refund permission. Ranks added in this edit can still be undone.
+        if (!config.canRefund && rank <= (originalRanks.get(skill.id) || 0)) {
             return 'unavailable';
         }
         const owned = ownedIds();
